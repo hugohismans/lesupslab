@@ -1,6 +1,9 @@
 const grid = document.querySelector('#projects');
 
-fetch('../projects/projects.json')
+const base = location.pathname.endsWith('/') 
+  ? location.pathname 
+  : location.pathname.replace(/[^/]+$/, '/');
+fetch(`${base}projects/projects.json`)
   .then(res => res.json())
   .then(projects => {
     projects.forEach(p => grid.appendChild(card(p)));
