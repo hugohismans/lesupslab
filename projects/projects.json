@@ -16,7 +16,16 @@
   "tags": ["Three.js"],
   "thumbnail": "thumb.png",
   "date": "2025-08-24"
-},   {
+},   
+ {
+  "title": "bovis detector",
+  "folder": "bovis",
+  "description": "do shit",
+  "tags": ["medecine"],
+  "thumbnail": "thumb.png",
+  "date": "2025-08-24"
+},   
+{
     "title": "harmonograph",
     "folder": "harmonographe",
     "description": "multi axis pendulum image and gif generator",
