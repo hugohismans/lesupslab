@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Détecteur "énergies" – lecture style Bovis (expérimental)</title>
+  <style>
+    :root {
+      --bg: #0b0e13;
+      --card: #131a22;
+      --ink: #e8f0ff;
+      --muted: #92a2c0;
+      --accent: #86e1ff;
+      --good: #5ce08e;
+      --warn: #ffd36e;
+      --bad: #ff7a7a;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 700px at 80% -10%,#1b2735,transparent),
+                      radial-gradient(900px 600px at -10% 110%,#141a24,transparent),
+                      var(--bg);
+         color:var(--ink);font:16px/1.4 system-ui,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Noto Color Emoji,EmojiOne}
+    .wrap{max-width:1050px;margin:24px auto;padding:16px}
+    .grid{display:grid;gap:16px;grid-template-columns:1.1fr 1fr}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+          border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+    h1{font-size:clamp(22px,2.6vw,32px);margin:0 0 8px 0;letter-spacing:.3px}
+    p.small{color:var(--muted);margin:.3rem 0}
+    label{display:block;color:var(--muted);font-size:13px;margin:6px 0 6px 2px}
+    input[type="number"],input[type="text"],select{width:100%;
+      background:#0f141b;color:var(--ink);border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;padding:12px 14px;outline:none}
+    input[type="number"]:focus,input[type="text"]:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(134,225,255,.18)}
+    button{background:linear-gradient(180deg,#2a3a4e,#1c2836);color:var(--ink);
+      border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 14px;cursor:pointer}
+    button:hover{filter:brightness(1.06)}
+    .row{display:flex;gap:10px;align-items:center}
+    .row>div{flex:1}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block;border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);font-size:12px}
+    .gauge{position:relative;height:260px}
+    .gauge svg{display:block;width:100%;height:100%}
+    .needle{transform-origin:50% 85%;transition:transform .8s cubic-bezier(.2,.9,.2,1.1)}
+    .value{font-size:38px;font-weight:700;letter-spacing:.5px}
+    .unit{font-size:13px;color:var(--muted)}
+    .status{font-weight:600}
+    .list{display:grid;gap:10px}
+    .advice{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+            border:1px dashed rgba(255,255,255,.12);padding:10px 12px;border-radius:12px}
+    .footer{margin-top:10px;font-size:12px;color:var(--muted)}
+    .switch{display:inline-flex;gap:8px;align-items:center}
+    .switch input{accent-color:#86e1ff}
+    .tag{font-size:12px;padding:4px 8px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+    .ok{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .spark{height:46px}
+    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0f141b;border:1px solid rgba(255,255,255,.1);padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Détecteur d’« énergies » – Lectures style <span class="pill">Bovis (expérimental)</span></h1>
+    <p class="small">Note : cet outil est ludique et méditatif. Les « unités Bovis » n’ont pas de base scientifique reconnue. Aucune lecture ne doit être interprétée comme un avis médical ou de sécurité.</p>
+
+    <div class="grid">
+      <section class="card">
+        <div class="row" style="flex-wrap:wrap;gap:12px">
+          <div style="min-width:200px;flex:2">
+            <label>Nom du lieu (optionnel)</label>
+            <input id="placeName" type="text" placeholder="Maison, Cabinet, Parc…"/>
+          </div>
+          <div>
+            <label>Latitude</label>
+            <input id="lat" type="number" step="0.000001" placeholder="50.45"/>
+          </div>
+          <div>
+            <label>Longitude</label>
+            <input id="lon" type="number" step="0.000001" placeholder="3.93"/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:10px">
+          <button id="btnLocate">Utiliser ma position</button>
+          <button id="btnStart">Démarrer</button>
+          <button id="btnStop" disabled>Pause</button>
+          <button id="btnExport" title="Export CSV des lectures">Exporter CSV</button>
+          <span class="pill" id="sessionState">⏸️ En pause</span>
+          <span class="pill" id="wakelockState" title="Empêche la mise en veille si possible">🔒 Écran actif : non</span>
+        </div>
+        <div class="row" style="margin-top:10px;gap:12px;align-items:flex-end">
+          <div>
+            <label>Rayon d’observation (m)</label>
+            <input id="radius" type="number" min="1" step="1" value="20" />
+          </div>
+          <div>
+            <label>Réglage de base (kBv)</label>
+            <input id="baseline" type="number" min="0" step="100" value="9000" />
+          </div>
+          <div>
+            <label>Sensibilité</label>
+            <select id="sensitivity">
+              <option value="low">Faible</option>
+              <option value="med" selected>Moyenne</option>
+              <option value="high">Haute</option>
+            </select>
+          </div>
+          <div class="switch">
+            <input id="soundToggle" type="checkbox" />
+            <label for="soundToggle">Carillon sur variation forte</label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="gauge">
+          <!-- Demi-jauge en SVG -->
+          <svg viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ff7a7a"/>
+                <stop offset="45%" stop-color="#ffd36e"/>
+                <stop offset="70%" stop-color="#86e1ff"/>
+                <stop offset="100%" stop-color="#5ce08e"/>
+              </linearGradient>
+            </defs>
+            <path d="M10,55 A40,40 0 0 1 90,55" fill="none" stroke="url(#grad)" stroke-width="6"/>
+            <!-- ticks -->
+            <g id="ticks"></g>
+            <!-- aiguille -->
+            <g class="needle" id="needle">
+              <polygon points="49.4,55 50.6,55 50,15" fill="#e8f0ff"/>
+              <circle cx="50" cy="55" r="2.3" fill="#e8f0ff"/>
+            </g>
+          </svg>
+        </div>
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <div class="value"><span id="reading">—</span> <span class="unit">kBv</span></div>
+            <div class="muted">Plage dynamique adaptative : <span id="range">6 000 → 18 000 kBv</span></div>
+          </div>
+          <div class="tag" id="status">—</div>
+        </div>
+        <canvas class="spark" id="spark" width="600" height="46"></canvas>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px">
+      <h3 style="margin:.3rem 0 10px 0">Conseils d’harmonisation (automatiques)</h3>
+      <div class="grid-2 list" id="adviceList"></div>
+      <div class="footer">Astuce : laissez l’onglet ouvert. Les lectures se mettront à jour toutes les quelques secondes et seront consignées. <span class="kbd">S</span> pour démarrer/pauser rapidement.</div>
+    </section>
+
+    <section class="card" style="margin-top:16px">
+      <h3 style="margin:.3rem 0 10px 0">Journal de session</h3>
+      <div id="log" class="list" style="max-height:220px;overflow:auto"></div>
+    </section>
+
+    <p class="small" style="margin-top:14px">Transparence : la « mesure » utilise un bruit pseudo‑aléatoire lissé basé sur l’instant, la position GPS, le rayon et des micro‑mouvements d’appareil si disponibles (orientation). C’est un indicateur symbolique pour soutenir l’intention, la présence et vos pratiques énergétiques, pas un instrument scientifique.</p>
+  </div>
+
+  <script>
+    // ====== Utilitaires ======
+    const $ = sel => document.querySelector(sel);
+    const clamp = (v,min,max)=>Math.min(max,Math.max(min,v));
+    const lerp = (a,b,t)=>a+(b-a)*t;
+    const map = (v,a,b,c,d)=> c + (d-c)*((v-a)/(b-a));
+
+    // Petite fonction de bruit lisse (sans dépendances)
+    // Combinaison de sinusoïdes et d'un LCG seedé par lat/lon
+    function seededRand(seed){
+      let s = Math.imul(seed>>>0, 2654435761) >>> 0;
+      return ()=> (s = (s + 0x6D2B79F5) >>> 0, (s ^ (s>>>15)) / 0xFFFFFFFF);
+    }
+    function smoothNoise(t, seedA, seedB){
+      // t en secondes
+      const rA = seededRand(seedA)();
+      const rB = seededRand(seedB)();
+      const w1 = Math.sin(t*0.15 + rA*6.2831);
+      const w2 = Math.sin(t*0.031 + rB*6.2831);
+      const w3 = Math.sin(t*0.007 + (rA+rB)*6.2831);
+      return (w1*0.62 + w2*0.28 + w3*0.10 + 1)/2; // 0..1
+    }
+
+    // Ticks visuels de la jauge
+    (function buildTicks(){
+      const g = document.getElementById('ticks');
+      for(let i=0;i<=10;i++){
+        const x = 10 + (80*(i/10));
+        const y1 = 55, y2 = 51.5;
+        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',x); line.setAttribute('y1',y1);
+        line.setAttribute('x2',x); line.setAttribute('y2',y2);
+        line.setAttribute('stroke','rgba(255,255,255,.6)');
+        line.setAttribute('stroke-width', i%5===0? 1.7: 1);
+        g.appendChild(line);
+      }
+    })();
+
+    // ====== État ======
+    let running = false;
+    let lastVal = 9000;
+    let history = []; // {t, val}
+    let wakelock = null;
+
+    // ====== DOM ======
+    const elLat = $('#lat');
+    const elLon = $('#lon');
+    const elName = $('#placeName');
+    const elRadius = $('#radius');
+    const elBaseline = $('#baseline');
+    const elSens = $('#sensitivity');
+    const elReading = $('#reading');
+    const elRange = $('#range');
+    const elStatus = $('#status');
+    const elNeedle = $('#needle');
+    const elSpark = $('#spark');
+    const elLog = $('#log');
+    const elWakelock = $('#wakelockState');
+    const elSession = $('#sessionState');
+
+    // Restaurer derniers paramètres
+    (function restore(){
+      try{
+        const cfg = JSON.parse(localStorage.getItem('bovisCfg')||'{}');
+        if(cfg.lat) elLat.value = cfg.lat;
+        if(cfg.lon) elLon.value = cfg.lon;
+        if(cfg.name) elName.value = cfg.name;
+        if(cfg.radius) elRadius.value = cfg.radius;
+        if(cfg.baseline) elBaseline.value = cfg.baseline;
+        if(cfg.sens) elSens.value = cfg.sens;
+      }catch(e){}
+    })();
+
+    function persist(){
+      const cfg = { lat: +elLat.value||null, lon: +elLon.value||null, name: elName.value||'',
+                    radius: +elRadius.value||20, baseline: +elBaseline.value||9000, sens: elSens.value };
+      localStorage.setItem('bovisCfg', JSON.stringify(cfg));
+    }
+
+    // ====== Lecture principale ======
+    function computeBovis(now){
+      const lat = +elLat.value || 0;
+      const lon = +elLon.value || 0;
+      const radius = +elRadius.value || 1;
+      const baseline = +elBaseline.value || 9000;
+      const sens = elSens.value;
+
+      // graines en fonction position/rayon
+      const seedA = Math.abs(Math.floor((lat*1000) ^ (radius*17)));
+      const seedB = Math.abs(Math.floor((lon*1000) ^ (radius*31)));
+      const t = now/1000;
+      let n = smoothNoise(t, seedA, seedB); // 0..1
+
+      // modulations lentes par heure/jour
+      const d = new Date(now);
+      const hour = d.getUTCHours();
+      const day = Math.floor(now / 86400000);
+      const daily = Math.sin((day%29)/29 * Math.PI*2)*0.15 + 0.5; // pseudo cycle 
+      const circ = Math.cos((hour/24)*Math.PI*2)*0.1 + 0.5;
+      n = (n*0.72 + daily*0.18 + circ*0.10); // mélange
+
+      // sensibilité = amplitude
+      const amp = sens==='high' ? 5200 : sens==='low' ? 1800 : 3200;
+
+      // bruit orienté autour du baseline
+      let value = baseline + (n-0.5)*2*amp; // baseline ± amp
+
+      // Lissage (inertie) pour éviter les sauts trop brusques
+      value = lerp(lastVal, value, 0.25);
+      lastVal = value;
+
+      // Contrainte plage visible adaptative (affichage uniquement)
+      return clamp(Math.round(value), 1000, 200000);
+    }
+
+    function statusFor(v){
+      if(v < 6000) return {label:'Très bas', cls:'bad'};
+      if(v < 9000) return {label:'Bas', cls:'warn'};
+      if(v < 11000) return {label:'Moyen', cls:''};
+      if(v < 14000) return {label:'Harmonieux', cls:'ok'};
+      if(v < 18000) return {label:'Élevé', cls:'ok'};
+      return {label:'Très élevé', cls:'ok'};
+    }
+
+    function advicesFor(v){
+      const base = [
+        'Aérez 3–5 min et laissez entrer la lumière.',
+        'Coupez les appareils inutilisés (bruit électromagnétique).',
+        'Rangez une petite zone (1 m²) pour clarifier l’espace.',
+        'Buvez un grand verre d’eau.',
+        'Ajoutez une plante ou des fleurs au centre du lieu.',
+        'Posez une intention claire pendant 60 secondes (mains sur le cœur).',
+        'Faites 5 cycles de respiration cohérente (5 s inspire / 5 s expire).'
+      ];
+      const low = [
+        'Placez un bol de sel près de l’entrée pendant 24 h.',
+        'Marchez 3 minutes pieds bien ancrés en conscience (si extérieur possible).',
+        'Diffusez une musique douce ou sons de nature ~10 min.'
+      ];
+      const high = [
+        'Prenez 2 min pour gratitude/journal: que soutient cet espace ?',
+        'Partagez l’ambiance : mini-méditation guidée (2 min) avec les présents.',
+        'Allégez : réduisez les stimuli (sons/écrans) pour intégrer.'
+      ];
+      if(v<9000) return base.concat(low).slice(0,6);
+      if(v>14000) return base.concat(high).slice(0,6);
+      return base.slice(0,6);
+    }
+
+    function updateGauge(v){
+      elReading.textContent = (v/1000).toFixed(2).replace('.',',');
+      const st = statusFor(v);
+      elStatus.textContent = st.label;
+      elStatus.className = 'tag ' + st.cls;
+
+      // angle 0..180 -> rotation aiguille
+      const angle = map(clamp(v, 6000, 18000), 6000, 18000, -90, 90);
+      elNeedle.style.transform = `rotate(${angle}deg)`;
+      elRange.textContent = '6 000 → 18 000 kBv';
+
+      // sparkline
+      const ctx = elSpark.getContext('2d');
+      const W = elSpark.width, H = elSpark.height;
+      ctx.clearRect(0,0,W,H);
+      ctx.globalAlpha = 0.9;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const len = history.length;
+      for(let i=0;i<len;i++){
+        const p = history[i];
+        const x = map(i, 0, Math.max(1,len-1), 6, W-6);
+        const y = map(clamp(p.val,6000,18000), 6000, 18000, H-6, 6);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = '#86e1ff';
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function renderAdvice(v){
+      const adv = advicesFor(v);
+      const box = $('#adviceList');
+      box.innerHTML = '';
+      adv.forEach(a=>{
+        const d = document.createElement('div');
+        d.className='advice';
+        d.textContent=a; box.appendChild(d);
+      });
+    }
+
+    function addLog(v){
+      const name = elName.value || 'Lieu';
+      const lat = +elLat.value || 0, lon = +elLon.value || 0;
+      const t = new Date();
+      const line = document.createElement('div');
+      line.className='advice';
+      line.textContent = `${t.toLocaleTimeString()} – ${name} (${lat.toFixed(4)}, ${lon.toFixed(4)}) : ${(v/1000).toFixed(2)} kBv`;
+      elLog.prepend(line);
+      // garder ~120 lignes
+      while(elLog.children.length>120) elLog.removeChild(elLog.lastChild);
+    }
+
+    function ping(){
+      if(!$('#soundToggle').checked) return;
+      try{
+        const ctx = new (window.AudioContext||window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type='sine';
+        o.frequency.value = 660;
+        o.connect(g); g.connect(ctx.destination);
+        g.gain.value=0.0001; g.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime+0.02);
+        o.start();
+        o.stop(ctx.currentTime+0.14);
+        setTimeout(()=>ctx.close(), 250);
+      }catch(e){}
+    }
+
+    function tryWakeLock(){
+      if('wakeLock' in navigator){
+        navigator.wakeLock.request('screen').then(lock=>{
+          wakelock = lock; elWakelock.textContent='🔒 Écran actif : oui';
+          lock.addEventListener('release',()=>{elWakelock.textContent='🔒 Écran actif : non';});
+        }).catch(()=>{ elWakelock.textContent='🔒 Écran actif : non'; });
+      }
+    }
+
+    function releaseWakeLock(){ try{ wakelock?.release(); }catch(e){} wakelock=null; elWakelock.textContent='🔒 Écran actif : non'; }
+
+    // Boucle
+    let rafId = null, tickId = null;
+    function start(){
+      if(running) return;
+      running = true; $('#btnStart').disabled=true; $('#btnStop').disabled=false;
+      elSession.textContent='▶️ En cours';
+      tryWakeLock();
+      persist();
+
+      const step = ()=>{
+        const now = performance.now();
+        const val = computeBovis(now);
+        // journal toutes les 6 s et sparkline à ~2 Hz
+        if(history.length===0 || now - history.at(-1).t > 500){
+          history.push({t:now, val}); if(history.length>300) history.shift();
+          updateGauge(val);
+        }
+        rafId = requestAnimationFrame(step);
+      };
+      step();
+      tickId = setInterval(()=>{
+        const v = lastVal;
+        addLog(v);
+        renderAdvice(v);
+        // si variation > seuil, carillon
+        if(history.length>3){
+          const diff = Math.abs(history.at(-1).val - history.at(-3).val);
+          if(diff > (elSens.value==='high'? 1200 : elSens.value==='low'? 400 : 800)) ping();
+        }
+      }, 6000);
+    }
+
+    function stop(){
+      running = false; $('#btnStart').disabled=false; $('#btnStop').disabled=true;
+      elSession.textContent='⏸️ En pause';
+      cancelAnimationFrame(rafId); clearInterval(tickId); releaseWakeLock();
+    }
+
+    // ====== Actions UI ======
+    $('#btnLocate').addEventListener('click',()=>{
+      if(!('geolocation' in navigator)) { alert('Géolocalisation non disponible sur cet appareil.'); return; }
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const {latitude, longitude} = pos.coords;
+        elLat.value = latitude.toFixed(6);
+        elLon.value = longitude.toFixed(6);
+        persist();
+      }, err=>{
+        alert('Impossible de récupérer la position ('+err.message+').');
+      }, {enableHighAccuracy:true, timeout:8000, maximumAge:10000});
+    });
+
+    $('#btnStart').addEventListener('click', start);
+    $('#btnStop').addEventListener('click', stop);
+
+    window.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()==='s'){ running?stop():start(); }});
+
+    [elLat, elLon, elName, elRadius, elBaseline, elSens].forEach(el=> el.addEventListener('change',()=>{ persist(); if(!running){ lastVal = +elBaseline.value||9000; updateGauge(lastVal); renderAdvice(lastVal);} }));
+
+    // Export CSV
+    $('#btnExport').addEventListener('click',()=>{
+      if(history.length===0){ alert('Pas encore de données à exporter.'); return; }
+      const head = 'timestamp_ms;heure;latitude;longitude;nom;rayon_m;kBv\n';
+      const rows = history.map(h=>{
+        const t = new Date();
+        const lat = +elLat.value||0, lon = +elLon.value||0; const name = (elName.value||'Lieu').replace(/;/g, ',');
+        return [Math.floor(h.t), new Date(Date.now()).toLocaleTimeString(), lat.toFixed(6), lon.toFixed(6), name, (+elRadius.value||0), (h.val/1000).toFixed(2)].join(';');
+      }).join('\n');
+      const blob = new Blob([head+rows], {type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='bovis_session.csv'; a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Initial render
+    updateGauge(+elBaseline.value||9000);
+    renderAdvice(+elBaseline.value||9000);
+  </script>
+</body>
+</html>
