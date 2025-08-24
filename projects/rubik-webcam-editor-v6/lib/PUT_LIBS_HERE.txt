@@ -1,0 +1,1 @@
+Placez cube.min.js, solve.min.js et three.min.js ici pour un fonctionnement hors-CDN.

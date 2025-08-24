@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Rubik — Capture webcam → Éditeur → Résolution 3D</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<header>
+  <strong>Rubik’s Cube — Webcam → Éditeur → 3D</strong>
+  <div class="row">
+    <button id="btnStart" class="primary">🎥 Démarrer la caméra</button>
+    <button id="btnMirror">🪞 Miroir</button>
+    <label class="pill"><input id="chkOverlay" type="checkbox" checked> Overlay live</label>
+    <button id="btnArm">🛡️ Armer (A)</button>
+    <button id="btnCapture">📸 Capturer (C)</button>
+    <button id="btnBack">↺ Effacer / Revenir</button>
+    <button id="btnSolveEdit" class="ok">🧠 Résoudre (éditeur)</button>
+  </div>
+</header>
+
+<main>
+  <section id="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+    <div id="hud">
+      Face : <b id="curFace">F</b> — ordre : <code>F → R → B → L → U → D</code><br/>
+      <span id="hint" class="muted"></span>
+    </div>
+    <div id="statusBar">
+      <div>Armement : <span id="armed" class="badge">OFF</span></div>
+      <div style="margin-top:6px">Stabilité : <span id="stabilityVal">0</span>/<span id="stabilityMax">12</span></div>
+      <div class="meter" style="width:180px;margin-top:6px"><div id="stabilityMeter"></div></div>
+      <div style="margin-top:6px">État capture : <span id="ready" class="badge">—</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="faces" id="facesPanel"></div>
+
+    <div id="tuner" class="card">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <strong>Debug couleur & seuils</strong>
+        <div class="row">
+          <label class="pill"><input type="checkbox" id="chkShowDebug" checked> Afficher overlay debug</label>
+          <button id="btnResetCfg">Réinitialiser seuils</button>
+        </div>
+      </div>
+      <div class="tunerGrid">
+        <div class="tcol">
+          <div class="tsec">Blanc "like" (haut FRBL)</div>
+          <label>S max <input id="wSatMax" type="range" min="0" max="100" step="1"><span class="val" id="wSatMaxVal"></span></label>
+          <label>V min <input id="wValMin" type="range" min="0" max="100" step="1"><span class="val" id="wValMinVal"></span></label>
+          <label>V très haut (ou) <input id="wValHi" type="range" min="0" max="100" step="1"><span class="val" id="wValHiVal"></span></label>
+        </div>
+        <div class="tcol">
+          <div class="tsec">Vert "like" (haut U / bas D)</div>
+          <label>H min <input id="gHueMin" type="range" min="0" max="360" step="1"><span class="val" id="gHueMinVal"></span></label>
+          <label>H max <input id="gHueMax" type="range" min="0" max="360" step="1"><span class="val" id="gHueMaxVal"></span></label>
+          <label>S min <input id="gSatMin" type="range" min="0" max="100" step="1"><span class="val" id="gSatMinVal"></span></label>
+          <label>V min <input id="gValMin" type="range" min="0" max="100" step="1"><span class="val" id="gValMinVal"></span></label>
+        </div>
+        <div class="tcol">
+          <div class="tsec">Stabilité</div>
+          <label>Frames stables <input id="stableN" type="range" min="1" max="30" step="1"><span class="val" id="stableNVal"></span></label>
+          <label>DeltaE tolérance <input id="stabEps" type="range" min="1" max="20" step="0.5"><span class="val" id="stabEpsVal"></span></label>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:6px">Astuce : surveillez l’overlay en haut à gauche (centre, haut, bas), ajustez jusqu’à ce que “PRÊT” s’allume sans forcer.</div>
+    </div>
+
+    <div id="viewer" style="margin-top:12px">
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div><strong>Visualisation 3D de la solution</strong> — <span id="moveNow" class="badge">—</span></div>
+        <div class="row">
+          <button id="btnPrev">⟵ Prev</button>
+          <button id="btnPlay">▶ Play</button>
+          <button id="btnPause">⏸ Pause</button>
+          <button id="btnNext">Next ⟶</button>
+          <label class="pill">Vitesse <input id="speed" type="range" min="0.2" max="2.0" step="0.1" value="1"/></label>
+        </div>
+      </div>
+      <div id="three"><div style="padding:8px;color:#9aa4b2">Chargement du rendu 3D…</div></div>
+      <div id="solution" class="log" style="margin-top:10px"></div>
+    </div>
+
+    <div id="editor">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <strong>Éditeur d’état (corrigez si besoin — on passe toujours par ici)</strong>
+        <div class="row">
+          <button id="btnPropose" title="Reconstruire à partir des captures webcam">✨ Proposer depuis webcam</button>
+          <button id="btnClearEdit">🧹 Vider</button>
+        </div>
+      </div>
+      <div class="muted" style="margin:6px 0">
+        Convention : <code>F=Vert</code>, <code>R=Rouge</code>, <code>L=Orange</code>, <code>B=Bleu</code>, <code>U=Blanc</code>, <code>D=Jaune</code>.
+        Centres verrouillés. Respectez les indications d’orientation lors du scan.
+      </div>
+      <div id="editorFaces"></div>
+      <div id="countBar" class="counts"></div>
+    </div>
+
+    <div id="netWrap">
+      <div class="row" style="align-items:center;justify-content:space-between">
+        <strong>Cube aplati</strong>
+        <div class="row">
+          <span class="muted">Disposition : U ↑, L–F–R–B, D ↓</span>
+          <label class="pill"><input id="chkNetMirrorB" type="checkbox"> Miroir B</label>
+        </div>
+      </div>
+      <div id="netGrid">
+        <div class="netCell" style="grid-column:2;grid-row:1"><div class="netTitle">U</div><div id="net-U" class="net3"></div></div>
+        <div class="netCell" style="grid-column:1;grid-row:2"><div class="netTitle">L</div><div id="net-L" class="net3"></div></div>
+        <div class="netCell" style="grid-column:2;grid-row:2"><div class="netTitle">F</div><div id="net-F" class="net3"></div></div>
+        <div class="netCell" style="grid-column:3;grid-row:2"><div class="netTitle">R</div><div id="net-R" class="net3"></div></div>
+        <div class="netCell" style="grid-column:4;grid-row:2"><div class="netTitle">B</div><div id="net-B" class="net3"></div></div>
+        <div class="netCell" style="grid-column:2;grid-row:3"><div class="netTitle">D</div><div id="net-D" class="net3"></div></div>
+      </div>
+    </div>
+
+    <div id="logs" class="log" style="margin-top:10px"></div>
+  </section>
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
