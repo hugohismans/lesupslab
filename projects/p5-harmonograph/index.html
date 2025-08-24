@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harmonographe — p5.js</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <style>html,body{margin:0;height:100%;overflow:hidden} canvas{display:block}</style>
+</head>
+<body>
+<script>
+let t=0;
+function setup(){
+  createCanvas(window.innerWidth, window.innerHeight);
+  background(250); stroke(30,30,120,120); noFill();
+}
+function draw(){
+  translate(width/2, height/2);
+  const A1=200, A2=120, f1=2, f2=3, d=0.002;
+  let x = A1 * sin(f1*t) * exp(-d*t);
+  let y = A2 * sin(f2*t + PI/2) * exp(-d*t);
+  point(x, y);
+  t += 0.05;
+}
+function windowResized(){ resizeCanvas(window.innerWidth, window.innerHeight); background(250); }
+</script>
+</body>
+</html>

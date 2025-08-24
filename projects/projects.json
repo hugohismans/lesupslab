@@ -1,0 +1,24 @@
+[
+  {
+    "title": "Harmonographe p5.js (démo)",
+    "folder": "p5-harmonograph",
+    "description": "Un harmonographe simple en p5.js (points et courbes).",
+    "tags": [
+      "p5.js",
+      "génératif"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-24"
+  },
+  {
+    "title": "Three.js — Cube étoilé (démo)",
+    "folder": "three-starry-night",
+    "description": "Scène Three.js minimale (cube + étoiles).",
+    "tags": [
+      "Three.js",
+      "WebGL"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-24"
+  }
+]
