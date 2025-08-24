@@ -23,9 +23,9 @@
   },
   {
   "title": "Rubiks Cube Solver",
-  "folder": "projects/rubik-webcam-editor-v6",
-  "description": "Recupere les face d'un rubiks cube par webcam et propose une solution avec rendu 3d",
-  "tags": ["Threejs"],
+  "folder": "rubik-webcam-editor-v6",
+  "description": "Recupere les faces d'un rubiks cube par webcam et propose une solution avec rendu 3d",
+  "tags": ["Three.js"],
   "thumbnail": "thumb.png",
   "date": "2025-08-24"
 }
