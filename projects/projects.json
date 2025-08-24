@@ -16,5 +16,14 @@
   "tags": ["Three.js"],
   "thumbnail": "thumb.png",
   "date": "2025-08-24"
-}
+},   {
+    "title": "harmonograph",
+    "folder": "harmonographe",
+    "description": "multi axis pendulum image and gif generator",
+    "tags": [
+      "three.js"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-24"
+  }
 ]
