@@ -21,6 +21,16 @@
     "thumbnail": "thumb.png",
     "date": "2025-08-24"
   },
+    {
+    "title": "mini jeu banc de poisson",
+    "folder": "lespoissoooonn",
+    "description": "mini jeu inspire des mouvement de banc de poisson",
+    "tags": [
+      "p5.js"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-24"
+  },
   {
   "title": "Rubiks Cube Solver",
   "folder": "rubik-webcam-editor-v6",

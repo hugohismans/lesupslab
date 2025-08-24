@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Berger de Poissons – p5.js (Boids 2D)</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+  <style>
+    :root { --sidebar-w: 320px; }
+    html, body { margin:0; padding:0; height:100%; background:#0e0f12; color:#e7e7ea; font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    #app { display:flex; height:100vh; width:100vw; overflow:hidden; }
+    #hud { width:var(--sidebar-w); box-sizing:border-box; padding:12px; background:#14161bcc; border-right:1px solid #2a2d36; backdrop-filter: blur(4px); }
+    #hud h3 { margin:0 0 8px 0; font-size:16px; font-weight:700; }
+    #hud .row { display:flex; align-items:center; gap:10px; margin:6px 0; font-size:12px; color:#b9bcc7; flex-wrap: wrap; }
+    .kbd { display:inline-block; padding:1px 6px; border:1px solid #3b3f4c; border-bottom-width:2px; border-radius:6px; font-size:11px; background:#1b1e26; color:#cfd3de; }
+    .badge { display:inline-block; margin:2px 4px 0 0; padding:2px 6px; border-radius:8px; font-size:11px; border:1px solid #3b3f4c; background:#1b1e26; }
+    #game { flex:1; position:relative; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="hud">
+      <h3>Berger de Poissons – 2D</h3>
+      <div class="row">Score : <span id="score">0</span> / <span id="goal">15</span> • Temps : <span id="time">60</span>s • Difficulté : <span id="diffName">Normal</span></div>
+      <div class="row">Contrôles : Maintiens le <span class="kbd">clic</span> (attracteur avec charge) • <span class="kbd">Espace</span> pulse • <span class="kbd">1/2/3/4</span> difficulté • <span class="kbd">D</span> debug • <span class="kbd">N</span> nouvelle zone • <span class="kbd">R</span> recommencer • <span class="kbd">P</span> pause</div>
+      <div class="row" id="effectsRow"></div>
+      <div class="row" id="logRow"><span class="badge">Aucun événement</span></div>
+    </div>
+    <div id="game"></div>
+  </div>
+
+  <script>
+  'use strict';
+  // ================= CONFIG =================
+  const SIDEBAR_W = 320; // doit correspondre à --sidebar-w
+  const CFG = {
+    START_BOIDS: 50,
+    TARGET_SCORE: 15,
+    TIME_LIMIT: 60, // secondes
+    TRI_SIZE: 8,
+    WRAP: true,
+    // Flocking
+    PERCEPTION: 80,
+    MAX_SPEED: 3.0,
+    MAX_FORCE: 0.08,
+    ALIGN_W: 0.9,
+    COH_W: 0.8,
+    SEP_W: 1.5,
+    // Attracteur (base, modulée par charge + bonus/malus)
+    ATTR_RADIUS: 140,
+    ATTR_STRENGTH: 0.25,
+    // Pulse
+    PULSE_RADIUS: 200,
+    PULSE_STRENGTH: 5.0,
+    // Prédateur (base "Normal")
+    SHARK_COUNT: 1,
+    SHARK_SPEED: 3.6,
+    SHARK_FORCE: 0.1,
+    SHARK_CATCH_RADIUS: 12,
+    PENALTY_ON_EAT: 1,
+    // Zone de sécurité
+    SAFE_R: 80
+  };
+
+  const DIFFICULTIES = {
+    Easy:   { SHARK_COUNT: 0, SHARK_SPEED: 3.2, SHARK_FORCE: 0.08, TARGET_SCORE: 12, TIME_LIMIT: 70 },
+    Normal: { SHARK_COUNT: 1, SHARK_SPEED: 3.6, SHARK_FORCE: 0.10, TARGET_SCORE: 15, TIME_LIMIT: 60 },
+    Hard:   { SHARK_COUNT: 2, SHARK_SPEED: 4.1, SHARK_FORCE: 0.12, TARGET_SCORE: 18, TIME_LIMIT: 55 },
+    Insane: { SHARK_COUNT: 3, SHARK_SPEED: 4.6, SHARK_FORCE: 0.14, TARGET_SCORE: 24, TIME_LIMIT: 50 }
+  };
+
+  // ============ TOKENS (bonus/malus) ============
+  const TOKEN_TYPES = {
+    // BONUSES
+    ATTR_BOOST:   { good:true,  color:[100,220,170], label:'+A', name:'Attraction boostée', dur:8000 },
+    FISH_SPAWN:   { good:true,  color:[120,200,255], label:'+F', name:'Poissons supplémentaires (+12)', dur:0,   spawn:12 },
+    TIME_PLUS:    { good:true,  color:[200,220,120], label:'+T', name:'+10s au chrono', dur:0,   time:+10 },
+    SLOW_SHARKS:  { good:true,  color:[160,160,255], label:'SL', name:'Requins ralentis', dur:6000 },
+    // MALUSES
+    ATTR_SHRINK:  { good:false, color:[255,120,120], label:'-A', name:'Attraction réduite', dur:8000 },
+    SPAWN_SHARK:  { good:false, color:[255,90,90],  label:'+S', name:'Nouveau prédateur', dur:0,   addShark:1 },
+    INVERT_PULL:  { good:false, color:[255,150,100], label:'IV', name:'Attraction inversée', dur:5000 },
+    TIME_MINUS:   { good:false, color:[255,160,160], label:'-T', name:'-10s au chrono', dur:0,   time:-10 },
+    NO_PULSE:     { good:false, color:[255,120,180], label:'NP', name:'Pulse désactivé', dur:7000 }
+  };
+
+  const TOKEN_SPAWN = { MIN: 5000, MAX: 9000, TTL: 12000, GOOD_WEIGHT: 0.6 };
+
+  // Cooldowns (ms) après prise d'un token
+  const EFFECT_COOLDOWN_MS = {
+    ATTR_BOOST: 3000,
+    SLOW_SHARKS: 3000,
+    ATTR_SHRINK: 3000,
+    INVERT_PULL: 2500,
+    NO_PULSE: 3000,
+    FISH_SPAWN: 2000,
+    TIME_PLUS: 2000,
+    TIME_MINUS: 2000,
+    SPAWN_SHARK: 2500
+  };
+  const EPHEMERAL_BADGE_MS = 3000; // badges temporaires pour effets instantanés
+
+  // ================= GLOBALS =================
+  let boids = [];
+  let sharks = [];
+  let tokens = [];
+  let activeEffects = [];      // {type, until}
+  let flashEffects = [];       // {text, good, until}
+  let effectCooldownUntil = {}; // map type -> timestamp
+  let nextTokenAt = 0;
+
+  let safeZone;
+  let score = 0;
+  let timeLeft = CFG.TIME_LIMIT;
+  let paused = false;
+  let gameOver = false;
+  let lastSecondTick = 0;
+  let lastFrameMs = 0;
+  let showDebug = false;
+  let currentDifficulty = 'Normal';
+
+  // Multiplicateurs/états d'effets
+  let attrRadiusMul = 1;
+  let attrStrengthMul = 1;
+  let sharksSpeedMul = 1;
+  let invertAttractor = false;
+  let pulseDisabledUntil = 0;
+
+  // Pulse state
+  let pulseActive = false;
+  let pulseStart = 0;
+  let pulsePos = null;
+  let pulseProg = 0;
+
+  // Attractor charge state
+  let attractCharge = 0;          // 0..1
+  const ATTR_CHARGE_RATE = 1.6;   // /s (vitesse de charge)
+  const ATTR_DECAY_RATE  = 1.8;   // /s (vitesse de décharge)
+
+  // Toasts & Log
+  let toasts = []; // {x,y,text,color,until}
+  let eventLog = []; // [{text,color,ts}]
+  const TOAST_TTL = 1800;
+  const LOG_LIMIT = 6;
+
+  // ================= UTILS =================
+  function randRange(a,b){ return a + Math.random()*(b-a); }
+  function clamp(x,a,b){ return Math.max(a, Math.min(b, x)); }
+  function easeOutQuad(x){ x = clamp(x,0,1); return 1 - (1-x)*(1-x); }
+
+  function inBoundsWrap(v){
+    if (!CFG.WRAP) return;
+    const s = CFG.TRI_SIZE;
+    if (v.x < -s) v.x = width + s;
+    if (v.x > width + s) v.x = -s;
+    if (v.y < -s) v.y = height + s;
+    if (v.y > height + s) v.y = -s;
+  }
+
+  function computeAttractParams(){
+    const ch = easeOutQuad(attractCharge);
+    const r = CFG.ATTR_RADIUS * (0.8 + 0.8 * ch) * attrRadiusMul;   // 0.8x..1.6x * mul
+    const s = CFG.ATTR_STRENGTH * (0.5 + 1.5 * ch) * attrStrengthMul; // 0.5x..2.0x * mul
+    return { r, s, ch };
+  }
+
+  function applyDifficulty(name){
+    const d = DIFFICULTIES[name] || DIFFICULTIES.Normal;
+    currentDifficulty = name;
+    CFG.SHARK_COUNT   = d.SHARK_COUNT;
+    CFG.SHARK_SPEED   = d.SHARK_SPEED;
+    CFG.SHARK_FORCE   = d.SHARK_FORCE;
+    CFG.TARGET_SCORE  = d.TARGET_SCORE;
+    CFG.TIME_LIMIT    = d.TIME_LIMIT;
+    document.getElementById('diffName').textContent = name;
+    document.getElementById('goal').textContent = String(CFG.TARGET_SCORE);
+    resetGame();
+  }
+
+  // ================= CLASSES =================
+  class Boid {
+    constructor(x,y){
+      this.pos = createVector(x,y);
+      const ang = random(TWO_PI);
+      this.vel = p5.Vector.fromAngle(ang).mult(random(1.5,2.3));
+      this.acc = createVector(0,0);
+      this.maxSpeed = CFG.MAX_SPEED;
+      this.maxForce = CFG.MAX_FORCE;
+      this.perception = CFG.PERCEPTION;
+    }
+    applyForce(f){ this.acc.add(f); }
+    flock(others){
+      const align = createVector(0,0);
+      const cohesion = createVector(0,0);
+      const separation = createVector(0,0);
+      let total=0, totalSep=0;
+      const range = this.perception;
+      for (const o of others){
+        if (o===this) continue;
+        const d = p5.Vector.dist(this.pos, o.pos);
+        if (d<range){
+          align.add(o.vel);
+          cohesion.add(o.pos);
+          total++;
+          if (d<range*0.6){
+            const diff = p5.Vector.sub(this.pos,o.pos);
+            diff.mult(1/(d*d+0.0001));
+            separation.add(diff);
+            totalSep++;
+          }
+        }
+      }
+      if (total>0){
+        align.div(total).setMag(this.maxSpeed).sub(this.vel).limit(this.maxForce);
+        cohesion.div(total).sub(this.pos).setMag(this.maxSpeed).sub(this.vel).limit(this.maxForce);
+      }
+      if (totalSep>0){
+        separation.div(totalSep).setMag(this.maxSpeed).sub(this.vel).limit(this.maxForce*1.2);
+      }
+      align.mult(CFG.ALIGN_W); cohesion.mult(CFG.COH_W); separation.mult(CFG.SEP_W);
+      this.applyForce(align); this.applyForce(cohesion); this.applyForce(separation);
+    }
+    avoidEdges(){
+      if (CFG.WRAP) return;
+      const m=40; const steer=createVector(0,0);
+      if (this.pos.x<m) steer.x=this.maxSpeed; else if (this.pos.x>width-m) steer.x=-this.maxSpeed;
+      if (this.pos.y<m) steer.y=this.maxSpeed; else if (this.pos.y>height-m) steer.y=-this.maxSpeed;
+      if (steer.magSq()>0){ steer.sub(this.vel).limit(this.maxForce*1.5); this.applyForce(steer);} }
+    update(){ this.vel.add(this.acc); this.vel.limit(this.maxSpeed); this.pos.add(this.vel); this.acc.mult(0); inBoundsWrap(this.pos); }
+    draw(){
+      const t=this.vel.heading();
+      push(); translate(this.pos.x,this.pos.y); rotate(t);
+      noStroke(); fill(210,220,255,220);
+      const s=CFG.TRI_SIZE; beginShape(); vertex(s,0); vertex(-s*0.7, s*0.55); vertex(-s*0.7, -s*0.55); endShape(CLOSE);
+      if (showDebug){ noFill(); stroke(120,180,255,40); circle(0,0,this.perception*2); stroke(255,160,120,40); circle(0,0,this.perception*1.2*0.6*2); stroke(180,220,255,180); line(0,0,this.vel.mag()*8,0);} 
+      pop();
+    }
+  }
+
+  class Shark {
+    constructor(x,y){ this.pos=createVector(x,y); this.vel=p5.Vector.random2D().mult(1.8); this.acc=createVector(0,0); this.maxSpeed=CFG.SHARK_SPEED; this.maxForce=CFG.SHARK_FORCE; this.target=null; }
+    applyForce(f){ this.acc.add(f); }
+    update(){
+      this.maxSpeed=CFG.SHARK_SPEED*sharksSpeedMul; this.maxForce=CFG.SHARK_FORCE*sharksSpeedMul; this.target=null;
+      if (boids.length){ let nearest=null, nd=1e9; for (const b of boids){ const d=p5.Vector.dist(this.pos,b.pos); if(d<nd){ nd=d; nearest=b; } } this.target=nearest; if(nearest){ const desired=p5.Vector.sub(nearest.pos,this.pos).setMag(this.maxSpeed); const steer=desired.sub(this.vel).limit(this.maxForce*1.4); this.applyForce(steer);} }
+      this.vel.add(this.acc); this.vel.limit(this.maxSpeed); this.pos.add(this.vel); this.acc.mult(0); inBoundsWrap(this.pos);
+      for (let i=boids.length-1;i>=0;i--){ if (p5.Vector.dist(this.pos, boids[i].pos) < CFG.SHARK_CATCH_RADIUS){ boids.splice(i,1); score=Math.max(0, score-CFG.PENALTY_ON_EAT); } }
+    }
+    draw(){ const t=this.vel.heading(); push(); translate(this.pos.x,this.pos.y); rotate(t); noStroke(); fill(250,120,120,240); const s=CFG.TRI_SIZE*1.4; beginShape(); vertex(s*1.2,0); vertex(-s*0.9, s*0.7); vertex(-s*0.9, -s*0.7); endShape(CLOSE); pop(); if (showDebug && this.target){ stroke(255,120,120,200); line(this.pos.x,this.pos.y,this.target.pos.x,this.target.pos.y); noFill(); stroke(255,120,120,160); circle(this.target.pos.x,this.target.pos.y,16);} }
+  }
+
+  class SafeZone { constructor(){ this.pos=createVector(randRange(120,width-120), randRange(120,height-120)); this.r=CFG.SAFE_R; } relocate(){ this.pos.set(randRange(120,width-120), randRange(120,height-120)); } draw(){ noFill(); stroke(120,240,180,180); strokeWeight(2); circle(this.pos.x,this.pos.y,this.r*2); noStroke(); fill(120,240,180,20); circle(this.pos.x,this.pos.y,this.r*2);} }
+
+  class Token { constructor(type,x,y){ this.type=type; this.def=TOKEN_TYPES[type]; this.pos=createVector(x,y); this.r=16; this.spawn=millis(); this.ttl=TOKEN_SPAWN.TTL; } expired(now){ return now-this.spawn>this.ttl; } draw(now){ push(); translate(this.pos.x,this.pos.y); const [cr,cg,cb]=this.def.color; const alpha=map((this.ttl-(now-this.spawn)),0,this.ttl,40,220); noStroke(); fill(cr,cg,cb,alpha); circle(0,0,this.r*2); stroke(255,255,255,120); noFill(); circle(0,0,this.r*2+6); noStroke(); fill(20); textAlign(CENTER,CENTER); textSize(12); text(this.def.label,0,0); pop(); } }
+
+  // ================= GAME LOOP =================
+  function scheduleNextToken(){ nextTokenAt = millis() + randRange(TOKEN_SPAWN.MIN, TOKEN_SPAWN.MAX); }
+  function spawnToken(){ const good=Math.random()<TOKEN_SPAWN.GOOD_WEIGHT; const keys=Object.keys(TOKEN_TYPES).filter(k=>TOKEN_TYPES[k].good===good); const type=random(keys); const x=randRange(80,width-80), y=randRange(80,height-80); tokens.push(new Token(type,x,y)); }
+  function spawnBoids(n){ for (let i=0;i<n;i++){ boids.push(new Boid(randRange(0,width), randRange(0,height))); } }
+  function spawnSharks(n){ for (let i=0;i<n;i++){ sharks.push(new Shark(randRange(0,width), randRange(0,height))); } }
+
+  function setup(){
+    const gameEl = document.getElementById('game');
+    const cnv = createCanvas(window.innerWidth - SIDEBAR_W, window.innerHeight);
+    cnv.parent(gameEl);
+    pixelDensity(1); angleMode(RADIANS);
+    lastFrameMs = millis();
+    resetGame();
+    runSelfTests();
+  }
+
+  function resetGame(){
+    boids=[]; sharks=[]; tokens=[]; activeEffects=[]; flashEffects=[]; effectCooldownUntil={}; score=0; timeLeft=CFG.TIME_LIMIT; gameOver=false; paused=false; lastSecondTick=millis(); attractCharge=0;
+    attrRadiusMul=1; attrStrengthMul=1; sharksSpeedMul=1; invertAttractor=false; pulseDisabledUntil=0;
+    toasts=[]; eventLog=[];
+    spawnBoids(CFG.START_BOIDS); spawnSharks(CFG.SHARK_COUNT); safeZone=new SafeZone();
+    document.getElementById('goal').textContent=String(CFG.TARGET_SCORE);
+    document.getElementById('diffName').textContent=currentDifficulty;
+    scheduleNextToken();
+    renderEffectsBadges();
+    renderEventLog();
+  }
+
+  function draw(){
+    const now=millis(); const dtSec=(now-lastFrameMs)/1000; lastFrameMs=now;
+
+    // MAJ pulse avant physique/affichage
+    updatePulse();
+
+    background(14,15,18);
+    if (!paused && !gameOver && now-lastSecondTick>=1000){ timeLeft--; lastSecondTick+=1000; if (timeLeft<=0){ timeLeft=0; gameOver=true; } }
+
+    // Tokens spawn & cleanup
+    if (!gameOver && now>=nextTokenAt){ spawnToken(); scheduleNextToken(); }
+    for (let i=tokens.length-1;i>=0;i--){ if (tokens[i].expired(now)) tokens.splice(i,1); }
+
+    // Attracteur charge
+    if (mouseIsPressed) attractCharge=Math.min(1, attractCharge+ATTR_CHARGE_RATE*dtSec);
+    else attractCharge=Math.max(0, attractCharge-ATTR_DECAY_RATE*dtSec);
+    const mouse=createVector(mouseX,mouseY);
+    const { r:effR, s:effS, ch }=computeAttractParams();
+
+    // Attraction (inversion possible)
+    if (attractCharge>0){
+      for (const b of boids){
+        const dir=p5.Vector.sub(mouse,b.pos); const d=dir.mag();
+        if (d<effR && d>1){
+          let pull=dir.copy().setMag(map(d,0,effR,effS*0.2,effS));
+          const tang=createVector(-dir.y,dir.x).setMag(effS*0.22*ch);
+          if (invertAttractor) pull.mult(-1);
+          b.applyForce(pull.add(tang));
+        }
+      }
+    }
+
+    // Flocking + update
+    for (const b of boids){ b.flock(boids); b.avoidEdges(); }
+    for (const b of boids){ b.update(); }
+
+    // Sharks
+    for (const s of sharks){ s.update(); }
+
+    // Score
+    for (let i=boids.length-1;i>=0;i--){ if (p5.Vector.dist(boids[i].pos, safeZone.pos) < safeZone.r){ boids.splice(i,1); score++; if (score>=CFG.TARGET_SCORE){ gameOver=true; } } }
+
+    // Dessin
+    safeZone.draw();
+    for (const b of boids) b.draw();
+    for (const s of sharks) s.draw();
+    for (const t of tokens) t.draw(now);
+
+    // Pulse visuel
+    if (pulseActive){ noFill(); stroke(120,190,255,map(pulseProg,0,1,180,0)); circle(pulsePos.x,pulsePos.y,pulseProg*CFG.PULSE_RADIUS*2); stroke(255,255,255,20); circle(pulsePos.x,pulsePos.y,pulseProg*CFG.PULSE_RADIUS*1.4); }
+
+    // Aura attracteur
+    if (attractCharge>0){ const a=map(ch,0,1,20,120); noFill(); stroke(160,220,255,a); circle(mouse.x,mouse.y,effR*2); const arcCount=6; const rot=frameCount*0.04; stroke(200,230,255,a*0.8); strokeWeight(2); for (let i=0;i<arcCount;i++){ const start=rot+i*(TWO_PI/arcCount); const end=start+0.3+ch*0.25; arc(mouse.x,mouse.y,effR*1.6,effR*1.6,start,end);} strokeWeight(1); }
+
+    if (showDebug){ noFill(); stroke(200,220,255,60); circle(mouse.x,mouse.y,effR*2); }
+
+    // HUD dyn
+    document.getElementById('score').textContent=String(score);
+    document.getElementById('time').textContent=String(timeLeft);
+
+    if (paused){ overlayMsg('PAUSE'); } else if (gameOver){ overlayMsg(score>=CFG.TARGET_SCORE?'VICTOIRE !':'TERMINÉ'); drawSubMsg('Appuie sur R pour recommencer'); }
+
+    updateActiveEffects(now);
+    drawToasts(now);
+  }
+
+  function overlayMsg(txt){ noStroke(); fill(14,15,18,200); rect(0,0,width,height); fill(235); textAlign(CENTER,CENTER); textSize(28); text(txt,width/2,height/2); }
+  function drawSubMsg(t){ fill(200); textAlign(CENTER,TOP); textSize(14); text(t,width/2,height/2+30); }
+
+  // ============ TOKENS: click handling ============
+  function mousePressed(){
+    // Collect token if clicked (dans l'aire de jeu seulement)
+    for (let i=tokens.length-1;i>=0;i--){
+      const tk=tokens[i];
+      if (dist(mouseX,mouseY,tk.pos.x,tk.pos.y)<=tk.r){
+        applyTokenEffect(tk.type, tk.pos);
+        tokens.splice(i,1);
+        renderEffectsBadges();
+        renderEventLog();
+        return false;
+      }
+    }
+  }
+
+  function applyTokenEffect(type, pos){
+    const def=TOKEN_TYPES[type]; const now=millis();
+    // Cooldown
+    const cdUntil = effectCooldownUntil[type] || 0;
+    if (now < cdUntil){
+      const left = Math.ceil((cdUntil - now)/1000);
+      showToast(`${def.name} (recharge ${left}s)`, def.good, (pos?pos.x:mouseX), (pos?pos.y:mouseY));
+      pushEventLog(`${def.name} (recharge)`, def.good);
+      return;
+    }
+
+    // Effets instantanés
+    if (!def.dur || def.dur === 0){
+      if (def.spawn){ spawnBoids(def.spawn); }
+      if (def.addShark){ spawnSharks(def.addShark); }
+      if (def.time){ timeLeft=Math.max(0, timeLeft+def.time); }
+      flashEffects.push({ text:def.name, good:def.good, until: now + EPHEMERAL_BADGE_MS });
+      showToast(def.name, def.good, (pos?pos.x:mouseX), (pos?pos.y:mouseY));
+      pushEventLog(def.name, def.good);
+      effectCooldownUntil[type] = now + (EFFECT_COOLDOWN_MS[type] || 2000);
+      return;
+    }
+
+    // Effets temporaires
+    const existing=activeEffects.find(e=>e.type===type);
+    if (existing){
+      // Ne pas empiler/étendre : afficher info et refuser
+      showToast(`${def.name} déjà actif`, def.good, (pos?pos.x:mouseX), (pos?pos.y:mouseY));
+      pushEventLog(`${def.name} déjà actif`, def.good);
+      return;
+    }
+    applyEffectState(type,true);
+    activeEffects.push({type, until: now + def.dur});
+    showToast(def.name, def.good, (pos?pos.x:mouseX), (pos?pos.y:mouseY));
+    pushEventLog(def.name, def.good);
+    // Cooldown commence après la fin de l'effet
+    effectCooldownUntil[type] = now + def.dur + (EFFECT_COOLDOWN_MS[type] || 3000);
+  }
+
+  function applyEffectState(type, enable){
+    switch(type){
+      case 'ATTR_BOOST':   if(enable){ attrRadiusMul=1.8; attrStrengthMul=2.0; } else { attrRadiusMul=1; attrStrengthMul=1; } break;
+      case 'SLOW_SHARKS':  if(enable){ sharksSpeedMul=0.5; } else { sharksSpeedMul=1; } break;
+      case 'ATTR_SHRINK':  if(enable){ attrRadiusMul=0.6; attrStrengthMul=0.5; } else { attrRadiusMul=1; attrStrengthMul=1; } break;
+      case 'INVERT_PULL':  if(enable){ invertAttractor=true; } else { invertAttractor=false; } break;
+      case 'NO_PULSE':     if(enable){ pulseDisabledUntil=millis()+TOKEN_TYPES.NO_PULSE.dur; } break;
+    }
+  }
+
+  function updateActiveEffects(now){
+    // Expiration des effets temporaires
+    for (let i=activeEffects.length-1;i>=0;i--){ const e=activeEffects[i]; if (now>=e.until){ applyEffectState(e.type,false); activeEffects.splice(i,1); } }
+    // Nettoyage des badges éphémères
+    for (let i=flashEffects.length-1;i>=0;i--){ if (now >= flashEffects[i].until) flashEffects.splice(i,1); }
+    renderEffectsBadges();
+  }
+
+  function renderEffectsBadges(){
+    const row = document.getElementById('effectsRow'); if (!row) return;
+    row.innerHTML = '';
+    const now = millis();
+    const haveTimed = activeEffects.length>0;
+    const haveFlash = flashEffects.length>0;
+    if (!haveTimed && !haveFlash){ row.innerHTML = '<span class="badge">Aucun effet actif</span>'; return; }
+
+    // Effets temporaires (avec compte à rebours)
+    for (const e of activeEffects){
+      const def = TOKEN_TYPES[e.type];
+      const secs = Math.max(0, Math.ceil((e.until - now)/1000));
+      const color = `rgb(${def.color[0]},${def.color[1]},${def.color[2]})`;
+      const span = document.createElement('span');
+      span.className = 'badge';
+      span.style.borderColor = color;
+      span.style.color = def.good ? 'rgb(160, 230, 190)' : 'rgb(255, 160, 160)';
+      span.textContent = `${def.name} — ${secs}s`;
+      row.appendChild(span);
+    }
+
+    // Effets instantanés (badges éphémères)
+    for (const f of flashEffects){
+      const color = f.good ? 'rgb(160, 230, 190)' : 'rgb(255, 160, 160)';
+      const secs = Math.max(0, Math.ceil((f.until - now)/1000));
+      const span = document.createElement('span');
+      span.className = 'badge';
+      span.style.color = color;
+      span.textContent = `${f.text} — ${secs}s`;
+      row.appendChild(span);
+    }
+  }
+
+  function pushEventLog(text, good){
+    const entry = { text, good, ts: millis() };
+    eventLog.unshift(entry);
+    if (eventLog.length > LOG_LIMIT) eventLog.pop();
+  }
+
+  function renderEventLog(){
+    const row = document.getElementById('logRow'); if (!row) return;
+    row.innerHTML = '';
+    if (eventLog.length === 0){ row.innerHTML = '<span class="badge">Aucun événement</span>'; return; }
+    for (const e of eventLog){
+      const span = document.createElement('span');
+      span.className = 'badge';
+      span.style.color = e.good ? 'rgb(160, 230, 190)' : 'rgb(255, 160, 160)';
+      span.textContent = e.text;
+      row.appendChild(span);
+    }
+  }
+
+  function showToast(text, good, x, y){
+    const color = good ? [160,230,190] : [255,160,160];
+    toasts.push({ x, y, text, color, until: millis() + TOAST_TTL });
+  }
+
+  function drawToasts(now){
+    push();
+    textSize(12); textAlign(LEFT, CENTER);
+    for (let i=toasts.length-1;i>=0;i--){
+      const t = toasts[i];
+      const life = (t.until - now) / TOAST_TTL; // 1..0
+      if (life <= 0){ toasts.splice(i,1); continue; }
+      const x = t.x; // défini
+      const y = t.y - (1-life) * 20; // monte légèrement
+      const alpha = 40 + 160 * life;
+      const padX = 8; const padY = 4; // padY réservé si besoin
+      const w = textWidth(t.text) + padX*2;
+      const h = 20;
+      const rx = Math.max(6, Math.min(width-6-w, x - w/2));
+      const ry = Math.max(12, Math.min(height-12-h, y - h/2));
+      noStroke(); fill(20,20,25, alpha);
+      rect(rx, ry, w, h, 6);
+      fill(t.color[0], t.color[1], t.color[2], alpha+30);
+      text(t.text, rx + padX, ry + h/2);
+    }
+    pop();
+  }
+
+  // ================= PULSE =================
+  function startPulse(){ if (millis()<pulseDisabledUntil) return; pulseActive=true; pulseStart=millis(); pulsePos=createVector(mouseX,mouseY); pulseProg=0; }
+  function updatePulse(){ if(!pulseActive) return; const dt=(millis()-pulseStart)/500; pulseProg=Math.min(dt,1); const r=CFG.PULSE_RADIUS*pulseProg; for (const b of boids){ const d=p5.Vector.dist(b.pos,pulsePos); if (d<r && d>1){ const push=p5.Vector.sub(b.pos,pulsePos).setMag(CFG.PULSE_STRENGTH/d); b.applyForce(push); } } if (dt>1){ pulseActive=false; } }
+
+  // ================= INPUT =================
+  function keyPressed(){ if (key==='p'||key==='P') paused=!paused; else if (key==='r'||key==='R') resetGame(); else if (key==='n'||key==='N') safeZone.relocate(); else if (key==='d'||key==='D') showDebug=!showDebug; else if (key===' ') startPulse(); else if (key==='1') applyDifficulty('Easy'); else if (key==='2') applyDifficulty('Normal'); else if (key==='3') applyDifficulty('Hard'); else if (key==='4') applyDifficulty('Insane'); }
+
+  function windowResized(){ resizeCanvas(window.innerWidth - SIDEBAR_W, window.innerHeight); }
+
+  // ================= TESTS =================
+  function runSelfTests(){
+    try{
+      console.group('[Tests] Berger de Poissons');
+      console.assert(typeof pulseProg==='number','pulseProg devrait être un nombre');
+      // Cooldown: activer puis ré-appliquer -> refus
+      effectCooldownUntil={}; activeEffects=[]; flashEffects=[];
+      applyTokenEffect('ATTR_BOOST', {x:100,y:100});
+      const active1 = activeEffects.length; applyTokenEffect('ATTR_BOOST', {x:100,y:100});
+      console.assert(activeEffects.length===active1, 'ATTR_BOOST ne doit pas se réempiler pendant cooldown/actif');
+      // Instantané: badge éphémère
+      const flashBefore = flashEffects.length; applyTokenEffect('FISH_SPAWN', {x:100,y:120});
+      console.assert(flashEffects.length===flashBefore+1, 'FISH_SPAWN doit créer un badge éphémère');
+      console.log('Tests rapides OK ✓');
+      console.groupEnd();
+    }catch(e){ console.error('Tests échoués:',e); }
+  }
+  </script>
+</body>
+</html>
