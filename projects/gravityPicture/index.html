@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Chamboule-tout 3D — destructible</title>
+<style>
+  :root{color-scheme:dark}
+  html,body{margin:0;height:100%;background:#0b0f13;color:#e6ebf0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,sans-serif;overflow:hidden}
+  #ui{
+    position:fixed;top:10px;left:10px;z-index:10;max-width:780px;padding:12px;
+    background:rgba(10,14,18,.76);border:1px solid rgba(255,255,255,.08);border-radius:12px;backdrop-filter:blur(6px)
+  }
+  #ui h2{margin:0 0 8px;font-size:16px}
+  .row{display:flex;gap:8px;align-items:center;margin:6px 0}
+  .row label{flex:0 0 190px;font-size:12px;color:#a9b3be}
+  .row input[type=range]{flex:1}
+  button,.file{padding:6px 10px;border-radius:8px;border:1px solid #263241;background:#10161d;color:#e6ebf0;cursor:pointer}
+  button:hover,.file:hover{background:#17212c}
+  input[type=file]{display:none}
+  kbd{background:#0d141b;border:1px solid #243041;border-radius:6px;padding:1px 5px;font-size:11px}
+  #drop{position:fixed;inset:0;display:none;place-items:center;background:rgba(90,160,255,.08);
+        border:2px dashed rgba(90,160,255,.5);color:#b8d7ff;font-weight:600;z-index:9}
+</style>
+</head>
+<body>
+  <div id="ui">
+    <h2>🎯 Chamboule-tout 3D (destructible, physique sélective)</h2>
+    <div class="row">
+      <label class="file"><input id="file" type="file" accept="image/*">Importer une image…</label>
+      <button id="btnReset">↺ Reset</button>
+      <button id="btnExport">⤓ Export PNG</button>
+      <button id="btnAllDynamic">⚠️ Tout rendre dynamique</button>
+    </div>
+    <div class="row"><label>Colonnes (résolution)</label><input id="cols" type="range" min="12" max="96" step="2" value="28"></div>
+    <div class="row"><label>Profondeur des cubes</label><input id="depth" type="range" min="0.2" max="2" step="0.05" value="0.7"></div>
+    <div class="row"><label>Force du tir</label><input id="power" type="range" min="30" max="260" step="1" value="140"></div>
+    <div class="row"><label>Masse de la boule</label><input id="ballMass" type="range" min="1" max="30" step="1" value="8"></div>
+    <div class="row"><label>Fragilité (propagation)</label><input id="fragility" type="range" min="0.5" max="2.0" step="0.05" value="1.2"></div>
+    <div class="row" style="font-size:12px;color:#93a1af">
+      Clic : tirer une boule • <kbd>R</kbd> reset • <kbd>G</kbd> gravité on/off • <kbd>Suppr</kbd> efface les boules •
+      Image par défaut : <b>default.png</b>
+    </div>
+  </div>
+  <div id="drop">Dépose ton image ici</div>
+
+  <!-- Import maps : Three local, OrbitControls local, cannon-es via CDN -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./libs/three.module.js",
+      "three/addons/": "./libs/addons/",
+      "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import * as CANNON from 'cannon-es';
+
+  // ---------- RENDERER / CAMERA / CONTROLS ----------
+  const renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio||1));
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b0f13);
+
+  const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 4000);
+  camera.position.set(0, 60, 160);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.minDistance = 60; controls.maxDistance = 600;
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const d1 = new THREE.DirectionalLight(0xffffff, 0.9); d1.position.set(120,180,80);
+  const d2 = new THREE.DirectionalLight(0xffffff, 0.3); d2.position.set(-120,60,-140);
+  scene.add(d1,d2);
+
+  // ---------- UI refs ----------
+  const ui = {
+    file: document.getElementById('file'),
+    btnReset: document.getElementById('btnReset'),
+    btnExport: document.getElementById('btnExport'),
+    btnAllDynamic: document.getElementById('btnAllDynamic'),
+    cols: document.getElementById('cols'),
+    depth: document.getElementById('depth'),
+    power: document.getElementById('power'),
+    ballMass: document.getElementById('ballMass'),
+    fragility: document.getElementById('fragility'),
+    drop: document.getElementById('drop')
+  };
+
+  // ---------- PHYSICS WORLD ----------
+  const world = new CANNON.World({ gravity: new CANNON.Vec3(0,-55,0) });
+  world.broadphase = new CANNON.SAPBroadphase(world);
+  world.allowSleep = true;
+  world.solver.iterations = 16;
+  world.solver.tolerance = 1e-3;
+
+  const matDefault = new CANNON.Material('default');
+  const contact = new CANNON.ContactMaterial(matDefault, matDefault, {
+    friction: 0.65, restitution: 0.03
+  });
+  world.addContactMaterial(contact);
+
+  // Static ground & walls
+  let groundBody, groundMesh, leftWallBody, rightWallBody, backWallBody;
+  function buildArena(sizeX, sizeY, wallZDepth){
+    if (groundMesh) scene.remove(groundMesh);
+    for (const b of [groundBody,leftWallBody,rightWallBody,backWallBody]){ if (b) world.removeBody(b); }
+
+    const groundY = -sizeY*0.5 - 0.001;
+
+    // Ground (plane Y+)
+    groundBody = new CANNON.Body({ type: CANNON.Body.STATIC, material: matDefault });
+    groundBody.addShape(new CANNON.Plane());
+    groundBody.position.set(0, groundY, 0);
+    groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
+    world.addBody(groundBody);
+
+    const ggeo = new THREE.PlaneGeometry(4000, 4000);
+    const gmat = new THREE.MeshStandardMaterial({ color:0x0e141b, roughness:0.95, metalness:0.0 });
+    groundMesh = new THREE.Mesh(ggeo, gmat);
+    groundMesh.rotation.x = -Math.PI/2;
+    groundMesh.position.y = groundY - 0.01;
+    scene.add(groundMesh);
+
+    // Side & back walls
+    const xL = -sizeX*0.5 - 1, xR = sizeX*0.5 + 1, zB = -wallZDepth;
+
+    leftWallBody  = new CANNON.Body({ type:CANNON.Body.STATIC, material: matDefault });
+    rightWallBody = new CANNON.Body({ type:CANNON.Body.STATIC, material: matDefault });
+    backWallBody  = new CANNON.Body({ type:CANNON.Body.STATIC, material: matDefault });
+
+    leftWallBody.addShape(new CANNON.Plane());
+    leftWallBody.position.set(xL, 0, 0);
+    leftWallBody.quaternion.setFromEuler(0,  Math.PI/2, 0);
+    world.addBody(leftWallBody);
+
+    rightWallBody.addShape(new CANNON.Plane());
+    rightWallBody.position.set(xR, 0, 0);
+    rightWallBody.quaternion.setFromEuler(0, -Math.PI/2, 0);
+    world.addBody(rightWallBody);
+
+    backWallBody.addShape(new CANNON.Plane());
+    backWallBody.position.set(0, 0, zB);
+    backWallBody.quaternion.setFromEuler(0, 0, 0);
+    world.addBody(backWallBody);
+  }
+
+  // ---------- TEXTURE ----------
+  const loader = new THREE.TextureLoader();
+  let texture = null, imgW=1, imgH=1;
+  function applyTextureFromURL(url){
+    loader.load(url, (tex)=>{
+      tex.flipY = true;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+      tex.generateMipmaps = false;
+
+      texture?.dispose();
+      texture = tex;
+
+      const img = texture.image;
+      imgW = img?.width || 1;
+      imgH = img?.height|| 1;
+      buildWall(); // rebuild with new image
+    });
+  }
+  function loadDefault(){ applyTextureFromURL('default.png'); }
+
+  // ---------- WALL ----------
+  let wallMesh=null, wallBodies=[], gridCols=28, gridRows=18;
+  let sizeX=120, sizeY=120, cellX=1, cellY=1, boxD=0.7;
+  const dynamicIndices = new Set();
+
+  function clearWall(){
+    if (wallMesh){ scene.remove(wallMesh); wallMesh.geometry.dispose(); wallMesh.material.dispose(); wallMesh=null; }
+    for (const rec of wallBodies){ world.removeBody(rec.body); }
+    wallBodies.length = 0;
+    dynamicIndices.clear();
+  }
+
+  function buildWall(){
+    if (!texture) return;
+    clearWall();
+
+    gridCols = parseInt(ui.cols.value);
+    gridRows = Math.max(2, Math.round(gridCols * (imgH/imgW)));
+
+    sizeX = 120;
+    sizeY = sizeX * (imgH/imgW);
+    cellX = sizeX / gridCols;
+    cellY = sizeY / gridRows;
+    boxD  = parseFloat(ui.depth.value) * Math.min(cellX, cellY);
+
+    buildArena(sizeX, sizeY, 60);
+
+    const gap = 0.03;
+    const boxW = Math.max(0.5, cellX - gap);
+    const boxH = Math.max(0.5, cellY - gap);
+    const geom  = new THREE.BoxGeometry(boxW, boxH, boxD);
+
+    const material = new THREE.ShaderMaterial({
+      uniforms:{ map:{ value:texture } },
+      vertexShader: `
+        attribute vec2 instanceOffset;
+        attribute vec2 instanceScaleUV;
+        varying vec2 vUvRemap;
+        void main(){
+          vUvRemap = instanceOffset + uv * instanceScaleUV;
+          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position,1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D map;
+        varying vec2 vUvRemap;
+        void main(){
+          vec4 tex = texture2D(map, vUvRemap);
+          gl_FragColor = vec4(tex.rgb, 1.0);
+        }
+      `
+    });
+
+    const count = gridCols * gridRows;
+    wallMesh = new THREE.InstancedMesh(geom, material, count);
+    scene.add(wallMesh);
+
+    // UV per instance
+    const offsets = new Float32Array(count*2);
+    const scales  = new Float32Array(count*2);
+    let ptr=0, idx=0;
+    for (let r=0;r<gridRows;r++){
+      for (let c=0;c<gridCols;c++,idx++){
+        offsets[ptr*2+0] = c / gridCols;
+        offsets[ptr*2+1] = r / gridRows;
+        scales[ptr*2+0]  = 1.0 / gridCols;
+        scales[ptr*2+1]  = 1.0 / gridRows;
+        ptr++;
+      }
+    }
+    wallMesh.geometry.setAttribute('instanceOffset', new THREE.InstancedBufferAttribute(offsets, 2));
+    wallMesh.geometry.setAttribute('instanceScaleUV', new THREE.InstancedBufferAttribute(scales, 2));
+
+    // Bodies Cannon (STATIC par défaut)
+    const half = new CANNON.Vec3(boxW*0.5, boxH*0.5, boxD*0.5);
+    const shape = new CANNON.Box(half);
+    const dummy = new THREE.Object3D();
+    idx=0;
+
+    for (let r=0;r<gridRows;r++){
+      for (let c=0;c<gridCols;c++,idx++){
+        const x = (c+0.5)*cellX - sizeX*0.5;
+        const y = (r+0.5)*cellY - sizeY*0.5;
+        const z = 0;
+
+        const body = new CANNON.Body({
+          mass: 0,  // STATIC
+          material: matDefault,
+          allowSleep: true,
+          sleepSpeedLimit: 0.15,
+          sleepTimeLimit: 0.5
+        });
+        body.addShape(shape);
+        body.position.set(x,y,z);
+        body.angularDamping = 0.6;
+        world.addBody(body);
+        wallBodies.push({ body, dynamic:false, r, c });
+
+        dummy.position.set(x,y,z);
+        dummy.rotation.set(0,0,0);
+        dummy.updateMatrix();
+        wallMesh.setMatrixAt(idx, dummy.matrix);
+      }
+    }
+    wallMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // Helpers: grid <-> index
+  function idxOf(r,c){ return r*gridCols + c; }
+  function clamp(v,a,b){ return v<a?a : v>b?b : v; }
+
+  // Passe une brique en dynamique (une seule fois), et lui donne un petit “kick”
+  function makeDynamic(index, kick=null){
+    const rec = wallBodies[index];
+    if (!rec || rec.dynamic) return;
+    const b = rec.body;
+    const shape = b.shapes[0];
+    const newBody = new CANNON.Body({
+      mass: 0.6,
+      material: matDefault,
+      allowSleep: true,
+      sleepSpeedLimit: 0.2,
+      sleepTimeLimit: 0.6,
+      linearDamping: 0.01,
+      angularDamping: 0.5
+    });
+    newBody.addShape(shape);
+    newBody.position.copy(b.position);
+    newBody.quaternion.copy(b.quaternion);
+    world.removeBody(b);
+    world.addBody(newBody);
+    // petit élan/rotation pour échapper aux contacts collés
+    if (kick){
+      newBody.velocity.set(kick.x, kick.y, kick.z);
+    } else {
+      newBody.velocity.set(
+        (Math.random()*2-1)*2,
+        (Math.random()*2-1)*2,
+        (Math.random()*2-1)*2
+      );
+    }
+    newBody.angularVelocity.set(
+      (Math.random()*2-1)*2,
+      (Math.random()*2-1)*2,
+      (Math.random()*2-1)*2
+    );
+
+    wallBodies[index] = { body:newBody, dynamic:true, r:rec.r, c:rec.c };
+    dynamicIndices.add(index);
+  }
+
+  // Activation autour d’un point monde (x,y) avec rayon en cellules
+  function activateAroundXY(x, y, radiusCells){
+    const rMin = clamp(Math.floor((y + sizeY*0.5)/cellY - radiusCells), 0, gridRows-1);
+    const rMax = clamp(Math.ceil ((y + sizeY*0.5)/cellY + radiusCells), 0, gridRows-1);
+    const cMin = clamp(Math.floor((x + sizeX*0.5)/cellX - radiusCells), 0, gridCols-1);
+    const cMax = clamp(Math.ceil ((x + sizeX*0.5)/cellX + radiusCells), 0, gridCols-1);
+    for (let r=rMin; r<=rMax; r++){
+      for (let c=cMin; c<=cMax; c++){
+        const i = idxOf(r,c);
+        makeDynamic(i);
+      }
+    }
+  }
+
+  // Propagation locale autour d’un index (voisinage)
+  function activateNeighbors(i, radiusCells=1){
+    const rec = wallBodies[i]; if (!rec) return;
+    const r0 = rec.r, c0 = rec.c;
+    for (let dr=-radiusCells; dr<=radiusCells; dr++){
+      for (let dc=-radiusCells; dc<=radiusCells; dc++){
+        const rr = r0+dr, cc = c0+dc;
+        if (rr<0||rr>=gridRows||cc<0||cc>=gridCols) continue;
+        const j = idxOf(rr,cc);
+        if (!wallBodies[j].dynamic) makeDynamic(j);
+      }
+    }
+  }
+
+  // ---------- SHOOTING ----------
+  const raycaster = new THREE.Raycaster();
+  const mouseNDC  = new THREE.Vector2();
+  const balls = []; // { mesh, body, radius }
+  function shootBall(clientX, clientY){
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouseNDC.x = ((clientX - rect.left)/rect.width)*2 - 1;
+    mouseNDC.y = -((clientY - rect.top)/rect.height)*2 + 1;
+    raycaster.setFromCamera(mouseNDC, camera);
+
+    const dir = raycaster.ray.direction.clone().normalize();
+    const start = raycaster.ray.origin.clone().add(dir.clone().multiplyScalar(5));
+
+    // taille de boule liée à la résolution pour un bon ressenti
+    const r = Math.min(cellX, cellY) * 0.95;
+    const sgeo = new THREE.SphereGeometry(r, 24, 18);
+    const smat = new THREE.MeshStandardMaterial({ color:0x89b4ff, metalness:0.2, roughness:0.4 });
+    const smesh = new THREE.Mesh(sgeo, smat);
+    scene.add(smesh);
+
+    const sshape = new CANNON.Sphere(r);
+    const body = new CANNON.Body({ mass: parseFloat(ui.ballMass.value), material: matDefault });
+    body.addShape(sshape);
+    body.position.set(start.x, start.y, start.z);
+    body.linearDamping = 0.01;
+    world.addBody(body);
+
+    const power = parseFloat(ui.power.value);
+    body.velocity.set(dir.x*power, dir.y*power, dir.z*power);
+
+    // Active déjà une “galette” de briques autour du point d’entrée
+    const Rcells = 1.8 * parseFloat(ui.fragility.value);
+    const hitX = start.x + dir.x*10; // un peu devant la caméra
+    const hitY = start.y + dir.y*10;
+    activateAroundXY(hitX, hitY, Rcells);
+
+    balls.push({ mesh:smesh, body, radius:r });
+  }
+
+  renderer.domElement.addEventListener('pointerdown', (e)=>{
+    controls.enabled = false;
+    shootBall(e.clientX, e.clientY);
+    setTimeout(()=>controls.enabled = true, 120);
+  });
+
+  // ---------- FILE / DROP ----------
+  ui.file.addEventListener('change', (e)=>{
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    const url = URL.createObjectURL(f);
+    applyTextureFromURL(url);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  });
+  window.addEventListener('dragenter', e=>{ e.preventDefault(); ui.drop.style.display='grid'; });
+  window.addEventListener('dragover', e=>{ e.preventDefault(); });
+  window.addEventListener('dragleave', e=>{ if(e.target===ui.drop) ui.drop.style.display='none'; });
+  window.addEventListener('drop', e=>{
+    e.preventDefault(); ui.drop.style.display='none';
+    const f = e.dataTransfer.files && e.dataTransfer.files[0]; if(!f) return;
+    const url = URL.createObjectURL(f);
+    applyTextureFromURL(url);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  });
+
+  // ---------- RESET / EXPORT / SLIDERS / KEYS ----------
+  function resetAll(){
+    for(const b of balls){ world.removeBody(b.body); scene.remove(b.mesh);} 
+    balls.length=0;
+    buildWall();
+  }
+  ui.btnReset.addEventListener('click', resetAll);
+  ui.btnExport.addEventListener('click', ()=>{
+    const a = document.createElement('a');
+    a.href = renderer.domElement.toDataURL('image/png');
+    a.download = 'chamboule_tout.png';
+    a.click();
+  });
+  ui.btnAllDynamic.addEventListener('click', ()=>{
+    for (let i=0;i<wallBodies.length;i++) makeDynamic(i);
+  });
+
+  ui.cols.addEventListener('input', ()=> resetAll());
+  ui.depth.addEventListener('input', ()=> resetAll());
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    if (k==='r') resetAll();
+    if (k==='g') world.gravity.y = (world.gravity.y===0 ? -55 : 0);
+    if (k==='delete'){ for(const b of balls){ world.removeBody(b.body); scene.remove(b.mesh);} balls.length=0; }
+  });
+
+  // ---------- RESIZE ----------
+  window.addEventListener('resize', ()=>{
+    renderer.setPixelRatio(Math.min(2, devicePixelRatio||1));
+    renderer.setSize(innerWidth, innerHeight);
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+  });
+
+  // ---------- ANIMATE ----------
+  const dummy = new THREE.Object3D();
+  let last = performance.now();
+  function animate(){
+    requestAnimationFrame(animate);
+    const now = performance.now();
+    let dt = Math.min(1/30, (now-last)/1000);
+    last = now;
+    world.step(1/60, dt, 3);
+
+    const frag = parseFloat(ui.fragility.value);
+
+    // 1) Autour de chaque boule : activer en dynamique ce qui est proche
+    for (const o of balls){
+      const p = o.body.position;
+      const Rcells = (1.6 + 0.8*frag); // rayon en cellules
+      activateAroundXY(p.x, p.y, Rcells);
+    }
+
+    // 2) Propagation : si une brique dynamique bouge vite => libère ses voisines
+    for (const i of Array.from(dynamicIndices)){
+      const b = wallBodies[i].body;
+      const speed = b.velocity.length();
+      if (speed > 4.5*frag){ // seuil
+        activateNeighbors(i, 1); // voisinage 3x3
+      }
+    }
+
+    // 3) Sync seulement les indices dynamiques (perf)
+    if (wallMesh){
+      for (const i of dynamicIndices){
+        const rec = wallBodies[i];
+        const b = rec.body;
+        dummy.position.set(b.position.x, b.position.y, b.position.z);
+        dummy.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+        dummy.updateMatrix();
+        wallMesh.setMatrixAt(i, dummy.matrix);
+      }
+      if (dynamicIndices.size) wallMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    // 4) Sync boules
+    for (const o of balls){
+      o.mesh.position.copy(o.body.position);
+      o.mesh.quaternion.copy(o.body.quaternion);
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  // ---------- GO ----------
+  loadDefault();
+  buildWall();
+  animate();
+  </script>
+</body>
+</html>
