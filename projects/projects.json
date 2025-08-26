@@ -63,5 +63,14 @@
     ],
     "thumbnail": "thumb.png",
     "date": "2025-08-26"
+  },
+        {
+    "title": "Chamboule tout",
+    "folder": "gravityPicture",
+    "description": "un simulation de chamboule tout avec les cube qui sont une image importee",
+    "tags": ["Three.js"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-27"
   }
 ]
