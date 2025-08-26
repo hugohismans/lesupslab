@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Flux Liquide Photographique — shader</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin:0; height:100%; background:#0b0f13; color:#e6ebf0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",sans-serif; }
+  #ui {
+    position: fixed; top: 10px; left: 10px; z-index: 10; padding: 12px; max-width: 520px;
+    background: rgba(10,14,18,.76); border:1px solid rgba(255,255,255,.08);
+    border-radius: 12px; backdrop-filter: blur(6px); user-select: none;
+  }
+  #ui h2 { margin:0 0 8px; font-size:16px; font-weight:650; letter-spacing:.2px }
+  .row { display:flex; gap:8px; align-items:center; margin:6px 0; }
+  .row label { flex:0 0 160px; font-size:12px; color:#a9b3be }
+  .row input[type=range] { flex: 1; }
+  button, .file {
+    padding:6px 10px; border-radius:8px; border:1px solid #263241; background:#10161d; color:#e6ebf0; cursor:pointer;
+  }
+  button:hover, .file:hover { background:#17212c }
+  input[type=file] { display:none; }
+  #canvas { width:100vw; height:100vh; display:block; }
+  #drop {
+    position:fixed; inset:0; display:none; place-items:center;
+    background:rgba(30,144,255,.08); border:2px dashed rgba(90,160,255,.6); color:#b8d7ff; font-weight:600; z-index:9;
+  }
+  .hint { font-size:11px; color:#93a1af; margin-top:6px; line-height:1.35 }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+</style>
+</head>
+<body>
+  <div id="ui">
+    <h2>🖼️ Flux liquide photographique</h2>
+    <div class="row">
+      <label class="file">
+        <input id="file" type="file" accept="image/*">
+        Importer une image…
+      </label>
+      <button id="btnPause">⏸ Pause</button>
+      <button id="btnExport">⤓ Export PNG</button>
+      <button id="btnRandom">🎲 Seed</button>
+    </div>
+
+    <div class="row"><label>Intensité (déformation)</label><input id="amp" type="range" min="0" max="0.25" step="0.001" value="0.10"></div>
+    <div class="row"><label>Réfraction (eau)</label><input id="refract" type="range" min="0" max="0.06" step="0.001" value="0.02"></div>
+    <div class="row"><label>Échelle du bruit</label><input id="scale" type="range" min="2" max="30" step="0.1" value="10"></div>
+    <div class="row"><label>Vitesse</label><input id="speed" type="range" min="0" max="3" step="0.01" value="0.6"></div>
+    <div class="grid2">
+      <div class="row"><label>Zoom image</label><input id="zoom" type="range" min="0.6" max="3" step="0.01" value="1.0"></div>
+      <div class="row"><label>Peinture (huile)</label><input id="oil" type="range" min="0" max="1" step="0.01" value="0.35"></div>
+    </div>
+
+    <div class="hint">
+      Astuces : montez un peu <b>Réfraction</b> pour l’effet “eau”, et <b>Peinture</b> ~0.3–0.6 pour un look “huile”.<br>
+      Drag & drop une image n’importe où dans la fenêtre. Pause/Play pour capturer un beau moment.
+    </div>
+  </div>
+
+  <div id="drop">Dépose ton image ici</div>
+  <canvas id="canvas"></canvas>
+
+<script>
+/* ===================== WebGL boot ===================== */
+const canvas = document.getElementById('canvas');
+const gl = canvas.getContext('webgl', {preserveDrawingBuffer:true});
+if(!gl){ alert('WebGL non disponible'); throw new Error('WebGL required'); }
+let W=0, H=0, DPR=Math.min(2, window.devicePixelRatio||1);
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio||1);
+  W = Math.floor(window.innerWidth * DPR);
+  H = Math.floor(window.innerHeight * DPR);
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = '100vw'; canvas.style.height = '100vh';
+  gl.viewport(0,0,W,H);
+}
+window.addEventListener('resize', resize);
+
+/* ===================== Shaders ===================== */
+const VERT = `
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main(){
+  v_uv = a_pos*0.5 + 0.5;
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+const FRAG = `
+precision mediump float;
+varying vec2 v_uv;
+uniform sampler2D u_img;
+uniform vec2 u_res;
+uniform vec2 u_imgRes;
+uniform vec2 u_coverScale; // cover transform
+uniform float u_zoom;
+uniform float u_time;
+uniform float u_speed;
+uniform float u_amp;
+uniform float u_refract;
+uniform float u_scale;
+uniform vec2  u_seed;
+uniform float u_oil;
+
+// --------- gradient noise + fbm ----------
+vec2 hash2(vec2 p){
+  p = vec2( dot(p, vec2(127.1, 311.7)),
+            dot(p, vec2(269.5, 183.3)) );
+  return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+}
+float noise(vec2 p){
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f*f*(3.0-2.0*f);
+  float n00 = dot(hash2(i+vec2(0.0,0.0)), f-vec2(0.0,0.0));
+  float n10 = dot(hash2(i+vec2(1.0,0.0)), f-vec2(1.0,0.0));
+  float n01 = dot(hash2(i+vec2(0.0,1.0)), f-vec2(0.0,1.0));
+  float n11 = dot(hash2(i+vec2(1.0,1.0)), f-vec2(1.0,1.0));
+  return mix(mix(n00,n10,u.x), mix(n01,n11,u.x), u.y)*0.5+0.5;
+}
+float fbm(vec2 p){
+  float v=0.0, a=0.5;
+  for(int i=0;i<5;i++){
+    v += a*noise(p);
+    p *= 2.02;
+    a *= 0.5;
+  }
+  return v;
+}
+
+// --------- cover mapping (centered, with zoom) ----------
+vec2 imgUV(vec2 uv){
+  vec2 uvC = (uv - 0.5) * (u_coverScale / max(u_zoom, 1e-6)) + 0.5;
+  return uvC;
+}
+
+// --------- Kuwahara (radius=2) ----------
+vec3 kuwahara(sampler2D tex, vec2 uv){
+  // step in texture UV (1 pixel)
+  vec2 ts = 1.0 / u_imgRes;
+  const int R = 2;
+  // 4 quadrants: accum mean & variance
+  vec3 m0=vec3(0.0), m1=vec3(0.0), m2=vec3(0.0), m3=vec3(0.0);
+  vec3 s0=vec3(0.0), s1=vec3(0.0), s2=vec3(0.0), s3=vec3(0.0);
+  float c0=0.0, c1=0.0, c2=0.0, c3=0.0;
+  for(int j=-R;j<=0;j++){
+    for(int i=-R;i<=0;i++){
+      vec3 c = texture2D(tex, clamp(uv + vec2(float(i),float(j))*ts, 0.0, 1.0)).rgb;
+      m0 += c; s0 += c*c; c0 += 1.0;
+    }
+  }
+  for(int j=-R;j<=0;j++){
+    for(int i=0;i<=R;i++){
+      vec3 c = texture2D(tex, clamp(uv + vec2(float(i),float(j))*ts, 0.0, 1.0)).rgb;
+      m1 += c; s1 += c*c; c1 += 1.0;
+    }
+  }
+  for(int j=0;j<=R;j++){
+    for(int i=-R;i<=0;i++){
+      vec3 c = texture2D(tex, clamp(uv + vec2(float(i),float(j))*ts, 0.0, 1.0)).rgb;
+      m2 += c; s2 += c*c; c2 += 1.0;
+    }
+  }
+  for(int j=0;j<=R;j++){
+    for(int i=0;i<=R;i++){
+      vec3 c = texture2D(tex, clamp(uv + vec2(float(i),float(j))*ts, 0.0, 1.0)).rgb;
+      m3 += c; s3 += c*c; c3 += 1.0;
+    }
+  }
+  m0/=c0; m1/=c1; m2/=c2; m3/=c3;
+  vec3 v0 = s0/c0 - m0*m0;
+  vec3 v1 = s1/c1 - m1*m1;
+  vec3 v2 = s2/c2 - m2*m2;
+  vec3 v3 = s3/c3 - m3*m3;
+  float k0 = (v0.r+v0.g+v0.b);
+  float k1 = (v1.r+v1.g+v1.b);
+  float k2 = (v2.r+v2.g+v2.b);
+  float k3 = (v3.r+v3.g+v3.b);
+  vec3 outc = m0; float kv = k0;
+  if(k1 < kv){ outc=m1; kv=k1; }
+  if(k2 < kv){ outc=m2; kv=k2; }
+  if(k3 < kv){ outc=m3; kv=k3; }
+  return outc;
+}
+
+void main(){
+  // base image uv (cover + zoom)
+  vec2 uv = imgUV(v_uv);
+
+  // noise coords in "image space" to make effect scale with zoom
+  float s = u_scale / max(u_zoom, 1e-6);
+  vec2 p = (v_uv + u_seed) * s + vec2(u_time*0.15*u_speed, u_time*0.11*u_speed);
+
+  // 2-channel displacement from decorrelated fbm fields
+  float n1 = fbm(p);
+  float n2 = fbm(p + 7.31);
+  vec2 disp = (vec2(n1, n2) - 0.5) * u_amp; // raw displacement (in UV units)
+
+  // gradient for refraction (pseudo-normal)
+  float e = 0.75 / s;
+  float nx1 = fbm(p + vec2(e,0.0));
+  float nx0 = fbm(p - vec2(e,0.0));
+  float ny1 = fbm(p + vec2(0.0,e));
+  float ny0 = fbm(p - vec2(0.0,e));
+  vec2 grad = vec2(nx1 - nx0, ny1 - ny0); // ~ dF/dx, dF/dy
+  vec2 refr = grad * u_refract;
+
+  vec2 uv2 = clamp(uv + disp + refr, 0.0, 1.0);
+  vec3 col = texture2D(u_img, uv2).rgb;
+
+  // oil paint (blend with Kuwahara)
+  if(u_oil > 0.001){
+    vec3 oilc = kuwahara(u_img, uv2);
+    col = mix(col, oilc, clamp(u_oil, 0.0, 1.0));
+  }
+
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+/* ===================== GL program ===================== */
+function compile(type, src){
+  const sh = gl.createShader(type);
+  gl.shaderSource(sh, src);
+  gl.compileShader(sh);
+  if(!gl.getShaderParameter(sh, gl.COMPILE_STATUS)){
+    console.error(gl.getShaderInfoLog(sh));
+    throw new Error('Shader compile error');
+  }
+  return sh;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+gl.linkProgram(prog);
+if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+  console.error(gl.getProgramInfoLog(prog));
+  throw new Error('Program link error');
+}
+gl.useProgram(prog);
+
+// fullscreen quad
+const quad = new Float32Array([
+  -1,-1,  1,-1,  -1, 1,
+  -1, 1,  1,-1,   1, 1
+]);
+const vbo = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+gl.bufferData(gl.ARRAY_BUFFER, quad, gl.STATIC_DRAW);
+const locPos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(locPos);
+gl.vertexAttribPointer(locPos, 2, gl.FLOAT, false, 0, 0);
+
+// uniforms
+const U = {
+  u_img: gl.getUniformLocation(prog, 'u_img'),
+  u_res: gl.getUniformLocation(prog, 'u_res'),
+  u_imgRes: gl.getUniformLocation(prog, 'u_imgRes'),
+  u_coverScale: gl.getUniformLocation(prog, 'u_coverScale'),
+  u_zoom: gl.getUniformLocation(prog, 'u_zoom'),
+  u_time: gl.getUniformLocation(prog, 'u_time'),
+  u_speed: gl.getUniformLocation(prog, 'u_speed'),
+  u_amp: gl.getUniformLocation(prog, 'u_amp'),
+  u_refract: gl.getUniformLocation(prog, 'u_refract'),
+  u_scale: gl.getUniformLocation(prog, 'u_scale'),
+  u_seed: gl.getUniformLocation(prog, 'u_seed'),
+  u_oil: gl.getUniformLocation(prog, 'u_oil'),
+};
+
+// texture
+let tex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+// tiny default (gradient) to start
+// Image par défaut : default.png à la racine
+let imgW=1, imgH=1;
+const defaultImg = new Image();
+defaultImg.onload = ()=>{ updateTexture(defaultImg); };
+defaultImg.onerror = ()=>{ console.warn("Impossible de charger default.jpg"); };
+defaultImg.src = 'default.jpg';
+
+function updateTexture(img){
+  imgW = img.width; imgH = img.height;
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+}
+
+/* ===================== UI ===================== */
+const ui = {
+  file: document.getElementById('file'),
+  btnPause: document.getElementById('btnPause'),
+  btnExport: document.getElementById('btnExport'),
+  btnRandom: document.getElementById('btnRandom'),
+  amp: document.getElementById('amp'),
+  refract: document.getElementById('refract'),
+  scale: document.getElementById('scale'),
+  speed: document.getElementById('speed'),
+  zoom: document.getElementById('zoom'),
+  oil: document.getElementById('oil'),
+  drop: document.getElementById('drop')
+};
+let playing = true;
+let t0 = performance.now();
+let seed = [Math.random()*1000, Math.random()*1000];
+
+ui.btnPause.addEventListener('click', ()=>{
+  playing = !playing;
+  ui.btnPause.textContent = playing ? '⏸ Pause' : '▶ Play';
+  if (playing) requestAnimationFrame(draw);
+});
+ui.btnRandom.addEventListener('click', ()=>{
+  seed = [Math.random()*1000, Math.random()*1000];
+});
+ui.file.addEventListener('change', e=>{
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = ()=>{ updateTexture(img); URL.revokeObjectURL(url); };
+  img.onerror = ()=>{ alert("Impossible de charger l'image."); };
+  img.src = url;
+});
+
+// drag & drop
+window.addEventListener('dragenter', e=>{ e.preventDefault(); ui.drop.style.display='grid'; });
+window.addEventListener('dragover', e=>{ e.preventDefault(); });
+window.addEventListener('dragleave', e=>{
+  if (e.target===ui.drop) ui.drop.style.display='none';
+});
+window.addEventListener('drop', e=>{
+  e.preventDefault();
+  ui.drop.style.display='none';
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = ()=>{ updateTexture(img); URL.revokeObjectURL(url); };
+  img.onerror = ()=>{ alert("Impossible de charger l'image."); };
+  img.src = url;
+});
+
+// export
+ui.btnExport.addEventListener('click', ()=>{
+  // exporte le canvas WebGL (préserve DrawingBuffer activé)
+  if (canvas.toBlob){
+    canvas.toBlob(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'flux_liquide.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  } else {
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a'); a.href=url; a.download='flux_liquide.png';
+    if (typeof a.download === 'undefined') window.open(url, '_blank'); else a.click();
+  }
+});
+
+/* ===================== Render ===================== */
+function draw(now){
+  if (!playing) return;
+  const time = (now ?? performance.now()) - t0;
+
+  gl.useProgram(prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.vertexAttribPointer(locPos, 2, gl.FLOAT, false, 0, 0);
+
+  // uniforms
+  gl.uniform2f(U.u_res, W, H);
+  gl.uniform2f(U.u_imgRes, imgW, imgH);
+
+  // compute cover scale (image cover canvas)
+  const arC = W / H;
+  const arI = imgW / imgH;
+  const sx = (arC > arI) ? (arC/arI) : 1.0;
+  const sy = (arC > arI) ? 1.0 : (arI/arC);
+  gl.uniform2f(U.u_coverScale, sx, sy);
+
+  gl.uniform1f(U.u_zoom, parseFloat(ui.zoom.value));
+  gl.uniform1f(U.u_time, time/1000.0);
+  gl.uniform1f(U.u_speed, parseFloat(ui.speed.value));
+  gl.uniform1f(U.u_amp, parseFloat(ui.amp.value));
+  gl.uniform1f(U.u_refract, parseFloat(ui.refract.value));
+  gl.uniform1f(U.u_scale, parseFloat(ui.scale.value));
+  gl.uniform2f(U.u_seed, seed[0], seed[1]);
+  gl.uniform1f(U.u_oil, parseFloat(ui.oil.value));
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.uniform1i(U.u_img, 0);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+  requestAnimationFrame(draw);
+}
+
+/* ===================== Boot ===================== */
+resize();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

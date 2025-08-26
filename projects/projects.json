@@ -54,5 +54,14 @@
     ],
     "thumbnail": "thumb.png",
     "date": "2025-08-26"
+  },
+      {
+    "title": "Liquid Picture",
+    "folder": "liquidPhoto",
+    "description": "Ajoute un effet liquide peinture a l'huile mouvant sur une photo",
+    "tags": [
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-26"
   }
 ]
