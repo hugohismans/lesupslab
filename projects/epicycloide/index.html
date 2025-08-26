@@ -2,323 +2,488 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Épicycles — Dessine puis Fourier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Épicycles — 2 Canvas (Dessin + Rendu)</title>
   <style>
     :root{--bg:#0b0f14;--panel:#121823;--text:#e6eef8;--muted:#9fb0c7;--accent:#64d2ff;}
     html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif}
-    #wrap{display:flex;gap:16px;align-items:flex-start;justify-content:center;padding:16px;box-sizing:border-box}
-    #panel{background:var(--panel);border-radius:12px;padding:12px 14px;min-width:280px;max-width:360px;box-shadow:0 8px 20px rgba(0,0,0,.35);position:sticky;top:16px}
-    h1{font-size:18px;margin:0 0 10px 0;color:var(--accent)}
-    .row{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
-    .row label{font-size:14px;color:var(--muted);margin-right:8px;flex:1}
+    #wrap{display:grid;grid-template-columns:minmax(320px,640px) 380px minmax(320px,640px);gap:14px;align-items:start;justify-content:center;padding:14px;box-sizing:border-box}
+    .card{background:#0f1520;border:1px solid #1e2a38;border-radius:12px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    h2{margin:6px 0 8px 0;font-size:16px;color:var(--accent)}
+    canvas{border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.45);touch-action:none}
+    #panel{background:var(--panel);border:1px solid #1e2a38;border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);position:sticky;top:14px}
+    .row{display:flex;align-items:center;gap:8px;margin:8px 0}
+    .row label{flex:1;color:var(--muted);font-size:14px}
     .row input[type=range]{flex:1}
-    .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-    button{background:#1a2332;color:var(--text);border:1px solid #243048;border-radius:8px;padding:8px 10px;cursor:pointer}
-    button:hover{background:#1e2a3d}
-    .small{font-size:12px;color:var(--muted);margin-top:4px}
-    canvas{border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.45);touch-action:none} /* <- crucial pour tactile */
-    .badge{display:inline-block;background:#1a2332;border:1px solid #243048;border-radius:20px;padding:3px 8px;font-size:12px;color:var(--muted);margin-right:6px}
+    .inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    button{background:#162136;color:var(--text);border:1px solid #223049;border-radius:8px;padding:8px 10px;cursor:pointer}
+    button:hover{background:#1b2942}
+    .small{font-size:12px;color:var(--muted)}
+    input[type=file]{width:100%}
+    #panel input[type=range]{touch-action: pan-x;}
+    .badge{display:inline-block;background:#162136;border:1px solid #223049;border-radius:16px;padding:3px 8px;font-size:12px;color:var(--muted)}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
 </head>
 <body>
 <div id="wrap">
-  <div id="sketch"></div>
+  <div class="card">
+    <h2>Canvas de dessin</h2>
+    <div id="sketchDraw"></div>
+    <div class="small" style="margin-top:6px">✍️ Dessine une silhouette fermée, ou importe une image puis « Extraire contours ».</div>
+  </div>
+
   <div id="panel">
-    <h1>Épicycles — Fourier de ton dessin</h1>
     <div class="badge" id="modeBadge">Mode: dessin</div>
+
     <div class="row">
       <label for="resPts">Échantillons (DFT): <span id="resPtsVal">512</span></label>
-      <input id="resPts" type="range" min="64" max="2048" step="64" value="512">
+      <input id="resPts" type="range" min="64" max="4096" step="64" value="512">
     </div>
     <div class="row">
-      <label for="harmonics">Harmoniques utilisées: <span id="harmonicsVal">50</span></label>
-      <input id="harmonics" type="range" min="1" max="400" step="1" value="50">
+      <label for="harmonics">Harmoniques: <span id="harmonicsVal">100</span></label>
+      <input id="harmonics" type="range" min="1" max="800" step="1" value="100">
     </div>
     <div class="row">
       <label for="speed">Vitesse (ω): <span id="speedVal">1.00</span></label>
       <input id="speed" type="range" min="0.1" max="3" step="0.01" value="1">
     </div>
-    <div class="row">
-      <label for="showGuides">Guides (cercles/bras)</label>
-      <input id="showGuides" type="checkbox" checked>
+
+    <div class="inline" style="margin:6px 0 2px">
+      <label for="showGuides" style="flex:none">Guides</label><input id="showGuides" type="checkbox" checked>
+      <label for="fitScale" style="flex:none">Ajuster au rendu</label><input id="fitScale" type="checkbox">
     </div>
+    <!-- NOUVEAU : slider de visibilité des cercles -->
+    <div class="row">
+      <label for="guidesGain">Visibilité des cercles: <span id="guidesGainVal">100%</span></label>
+      <input id="guidesGain" type="range" min="10" max="300" step="5" value="100">
+    </div>
+
     <div class="btns">
       <button id="clearBtn">Effacer</button>
       <button id="computeBtn">Lancer / Recalculer</button>
       <button id="toggleBtn">Pause</button>
-      <button id="modeBtn">Mode dessin</button>
     </div>
-    <div class="small">
-      Astuce : dessine une silhouette <b>fermée</b> puis clique « Lancer ».  
-      Si tu es au tactile, garde le doigt <b>dans</b> le canvas pour finir.
+
+    <hr style="border:0;border-top:1px solid #223049;opacity:.7;margin:12px 0">
+
+    <div class="row"><label>Importer une image (PNG/JPG/WebP)</label></div>
+    <div class="row"><input id="imgInput" type="file" accept="image/*"></div>
+    <div class="row">
+      <label for="imgMax">Taille max (px): <span id="imgMaxVal">512</span></label>
+      <input id="imgMax" type="range" min="256" max="1280" step="64" value="512">
     </div>
+
+    <div class="row"><label style="font-weight:600">Mode Canny</label></div>
+    <div class="row">
+      <label for="blurR">Flou (rayon): <span id="blurRVal">1</span></label>
+      <input id="blurR" type="range" min="0" max="5" step="1" value="1">
+    </div>
+    <div class="row">
+      <label for="lowT">Seuil bas: <span id="lowTVal">40</span></label>
+      <input id="lowT" type="range" min="0" max="255" step="1" value="40">
+    </div>
+    <div class="row">
+      <label for="highT">Seuil haut: <span id="highTVal">120</span></label>
+      <input id="highT" type="range" min="0" max="255" step="1" value="120">
+    </div>
+
+    <div class="row"><label style="font-weight:600">Mode Binaire (N&B)</label></div>
+    <div class="row">
+      <label for="binT">Seuil binaire: <span id="binTVal">128</span></label>
+      <input id="binT" type="range" min="0" max="255" step="1" value="128">
+    </div>
+    <div class="inline">
+      <label for="binAuto" style="flex:none">Auto (Otsu)</label><input id="binAuto" type="checkbox">
+      <label for="invert" style="flex:none">Inverser</label><input id="invert" type="checkbox">
+      <label for="clipBorder" style="flex:none">Ignorer marges</label><input id="clipBorder" type="checkbox" checked>
+      <label for="showEdges" style="flex:none">Prévisualiser bords</label><input id="showEdges" type="checkbox" checked>
+    </div>
+    <div class="btns">
+      <button id="extractCannyBtn">Extraire (Canny)</button>
+      <button id="extractBinBtn">Extraire (Binaire)</button>
+      <button id="useContourBtn">Utiliser ces points → Rendu</button>
+    </div>
+    <div class="small">Astuce : augmente « Visibilité des cercles » si ton fond est clair ou si les guides sont trop fins.</div>
+  </div>
+
+  <div class="card">
+    <h2>Canvas de rendu</h2>
+    <div id="sketchRender"></div>
+    <div class="small" style="margin-top:6px">🎞️ Ce canvas affiche uniquement l’animation par épicycles + le trait final.</div>
   </div>
 </div>
 
 <script>
-/* ===== Complex utils ===== */
+/* ===================== Utilitaires complexes ===================== */
 function cadd(a,b){ return {re:a.re+b.re, im:a.im+b.im}; }
 function cmul(a,b){ return {re:a.re*b.re - a.im*b.im, im:a.re*b.im + a.im*b.re}; }
 function cscale(a,s){ return {re:a.re*s, im:a.im*s}; }
 function cexp(theta){ return {re:Math.cos(theta), im:Math.sin(theta)}; }
 function cmag(a){ return Math.hypot(a.re, a.im); }
 function cphase(a){ return Math.atan2(a.im, a.re); }
+function clamp(v,min,max){ return v<min?min:(v>max?max:v); }
 
-/* ===== Global state ===== */
-let drawPoints = [];   // points bruts (pixels)
-let polyline = [];     // polyline simplifiée
-let resampled = [];    // N points (complexe centré)
-let coeffs = [];       // {freq, A, mag, phase}
-let order = [];        // indices triés par amplitude
-let history = [];      // trace reconstruite (pixels)
-let playing = false;
-let t = 0;
-let modeDraw = true;
-let center, pg, canvas;
-
-let scaleToCanvas = 1;
-const canvasW = 900, canvasH = 680;
-
-/* ===== UI refs ===== */
-const resPtsEl = document.getElementById('resPts');
-const resPtsVal = document.getElementById('resPtsVal');
-const harmonicsEl = document.getElementById('harmonics');
-const harmonicsVal = document.getElementById('harmonicsVal');
-const speedEl = document.getElementById('speed');
-const speedVal = document.getElementById('speedVal');
-const showGuidesEl = document.getElementById('showGuides');
-const clearBtn = document.getElementById('clearBtn');
-const computeBtn = document.getElementById('computeBtn');
-const toggleBtn = document.getElementById('toggleBtn');
-const modeBtn = document.getElementById('modeBtn');
-const modeBadge = document.getElementById('modeBadge');
-
-resPtsEl.oninput = () => resPtsVal.textContent = resPtsEl.value;
-harmonicsEl.oninput = () => harmonicsVal.textContent = harmonicsEl.value;
-speedEl.oninput = () => speedVal.textContent = (+speedEl.value).toFixed(2);
-function updateModeBadge(){ modeBadge.textContent = "Mode: " + (modeDraw ? "dessin" : "animation"); }
-
-/* ===== p5 setup/draw ===== */
-function setup(){
-  canvas = createCanvas(canvasW, canvasH);
-  canvas.parent('sketch');
-  center = createVector(width/2, height/2);
-  pg = createGraphics(width, height); pg.clear();
-  strokeJoin(ROUND); strokeCap(ROUND);
-  textFont('system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,"Helvetica Neue", Arial,"Noto Sans", sans-serif');
-
-  // Attacher les événements AU CANVAS uniquement (souris & tactile)
-  canvas.mousePressed(startStroke);
-  canvas.mouseReleased(endStroke);
-  canvas.mouseOut(endStroke); // si on sort du canvas pendant le trait
-  canvas.touchStarted(startStroke);
-  canvas.touchMoved(extendStroke);
-  canvas.touchEnded(endStroke);
-}
-function mouseDragged(){
-  if (!modeDraw) return false;
-  if (!withinCanvas(mouseX, mouseY)) return false;
-  // utilise exactement la même logique que extendStroke()
-  const p = createVector(mouseX, mouseY);
-  if (drawPoints.length===0 || p5.Vector.dist(drawPoints[drawPoints.length-1], p) > 1){
-    drawPoints.push(p);
-  }
-  return false; // empêche texte sélectionné / scroll
-}
-
-function draw(){
-  background(11,15,20);
-  drawGrid();
-
-  if (modeDraw){
-    // trait brut
-    noFill(); stroke(230,238,248,80); strokeWeight(4);
-    beginShape(); for (const p of drawPoints) vertex(p.x,p.y); endShape();
-    // preview simplifié
-    if (drawPoints.length>1){
-      const tmp = simplifyPath(drawPoints, 2.0);
-      noFill(); stroke(100,160,220,90); strokeWeight(2);
-      beginShape(); for (const p of tmp) vertex(p.x,p.y); endShape();
-    }
-    // UI hints
-    noStroke(); fill(159,176,199); textSize(13);
-    text("✍️  Dessine une silhouette fermée, puis clique « Lancer »", 16, height-16);
-    textSize(12); text(`Points capturés: ${drawPoints.length}`, 16, 36);
-  } else {
-    image(pg, 0, 0);
-    if (coeffs.length){
-      if (playing){
-        const omega = parseFloat(speedEl.value);
-        t += omega * (TWO_PI / 600);
-        if (t > TWO_PI) t -= TWO_PI;
-      }
-      const H = Math.min(parseInt(harmonicsEl.value,10), order.length);
-      const tip = drawEpicyclesAndGetTip(t, H, showGuidesEl.checked);
-      // tracer
-      pg.push(); pg.noFill(); pg.stroke(100,210,255,255); pg.strokeWeight(2);
-      if (history.length>0){ const last = history[history.length-1]; pg.line(last.x,last.y, tip.x,tip.y); }
-      pg.pop();
-      history.push(tip); if (history.length>4000) history.shift();
-      // progression
-      noStroke(); fill(159,176,199); textSize(12);
-      text(`t = ${(t/TWO_PI*100).toFixed(1)}% du tour`, 16, 20);
-    } else {
-      noStroke(); fill(159,176,199); textSize(14);
-      text("Aucun coefficient. Dessine et clique « Lancer / Recalculer ».", 16, 24);
-    }
-  }
-}
-
-/* ===== Handlers strictement liés au canvas ===== */
-function withinCanvas(mx,my){ return mx>=0 && mx<=width && my>=0 && my<=height; }
-
-function startStroke(){
-  if (!modeDraw) return false;
-  if (!withinCanvas(mouseX, mouseY)) return false;
-  // ne pas vider automatiquement — on commence/continue le trait
-  if (!Array.isArray(drawPoints)) drawPoints = [];
-  drawPoints._finished = false;
-  drawPoints.push(createVector(mouseX, mouseY));
-  return false;
-}
-
-function extendStroke(){
-  if (!modeDraw) return false;
-  if (!withinCanvas(mouseX, mouseY)) return false;
-  const p = createVector(mouseX, mouseY);
-  if (drawPoints.length===0 || p5.Vector.dist(drawPoints[drawPoints.length-1], p) > 1){
-    drawPoints.push(p);
-  }
-  return false;
-}
-
-function endStroke(){
-  if (!modeDraw) return false;
-  if (drawPoints.length>2){
-    polyline = simplifyPath(drawPoints, 1.5);
-    drawPoints._finished = true; // on marque seulement la fin
-  }
-  return false;
-}
-
-/* ===== Boutons ===== */
-clearBtn.onclick = (e) => {
-  e.stopPropagation(); e.preventDefault();
-  drawPoints = []; polyline = []; resampled = [];
-  coeffs = []; order = []; history = [];
-  t = 0; playing = false; modeDraw = true; updateModeBadge(); pg.clear();
+/* ===================== État partagé ===================== */
+const Shared = {
+  drawPoints: [], polyline: [], contourPoints: [],
+  imgCanvas: null,
+  edgesPreviewCanvas: null,
+  resampled: [], coeffs: [], order: [], history: [],
+  t: 0, playing: false, showGuides: true, fitScale: false,
+  guidesGain: 1.0,             // <-- NOUVEAU (x1 = 100%)
+  scaleToCanvas: 1,
+  W: 600, H: 600
 };
 
-computeBtn.onclick = (e) => {
-  e.stopPropagation(); e.preventDefault();
+/* ===================== UI ===================== */
+const $ = id => document.getElementById(id);
+const resPtsEl=$('resPts'), resPtsVal=$('resPtsVal');
+const harmonicsEl=$('harmonics'), harmonicsVal=$('harmonicsVal');
+const speedEl=$('speed'), speedVal=$('speedVal');
+const showGuidesEl=$('showGuides'), fitScaleEl=$('fitScale');
+const clearBtn=$('clearBtn'), computeBtn=$('computeBtn'), toggleBtn=$('toggleBtn'), modeBadge=$('modeBadge');
+const imgInput=$('imgInput'), imgMaxEl=$('imgMax'), imgMaxVal=$('imgMaxVal');
+const blurREl=$('blurR'), blurRVal=$('blurRVal'), lowTEl=$('lowT'), lowTVal=$('lowTVal'), highTEl=$('highT'), highTVal=$('highTVal');
+const binTEl=$('binT'), binTVal=$('binTVal'), binAutoEl=$('binAuto');
+const invertEl=$('invert'), clipBorderEl=$('clipBorder'), showEdgesEl=$('showEdges');
+const extractCannyBtn=$('extractCannyBtn'), extractBinBtn=$('extractBinBtn'), useContourBtn=$('useContourBtn');
+const guidesGainEl=$('guidesGain'), guidesGainVal=$('guidesGainVal');
 
-  // si pas de polyline (ex: on n'a pas "endStroke" sur mobile), la fabriquer
-  if (!polyline?.length && drawPoints?.length){ polyline = simplifyPath(drawPoints, 1.5); }
+resPtsEl.oninput=()=>resPtsVal.textContent=resPtsEl.value;
+harmonicsEl.oninput=()=>harmonicsVal.textContent=harmonicsEl.value;
+speedEl.oninput=()=>speedVal.textContent=(+speedEl.value).toFixed(2);
+imgMaxEl.oninput=()=>imgMaxVal.textContent=imgMaxEl.value;
+blurREl.oninput=()=>blurRVal.textContent=blurREl.value;
+lowTEl.oninput=()=>lowTVal.textContent=lowTEl.value;
+highTEl.oninput=()=>highTEl.value;
+binTEl.oninput=()=>binTVal.textContent=binTEl.value;
+showGuidesEl.onchange=()=>Shared.showGuides=showGuidesEl.checked;
+fitScaleEl.onchange=()=>Shared.fitScale=fitScaleEl.checked;
+// NOUVEAU
+guidesGainEl.oninput=()=>{
+  guidesGainVal.textContent = guidesGainEl.value + "%";
+  Shared.guidesGain = parseInt(guidesGainEl.value,10)/100;
+};
 
-  // 0) polyline exploitable ?
-  let working = (polyline && polyline.length >= 2) ? polyline.slice() : simplifyPath(drawPoints, 1.0);
-  if (!working || working.length < 2) { alert("Dessine d'abord une forme (au moins quelques points)."); return; }
+/* ===================== Canvas DESSIN ===================== */
+const drawSketch = p => {
+  let center, pgPreview;
+  p.setup = () => {
+    p.pixelDensity(1);
+    const c = p.createCanvas(Shared.W, Shared.H);
+    c.parent('sketchDraw');
+    center = p.createVector(p.width/2, p.height/2);
+    pgPreview = p.createGraphics(p.width, p.height); pgPreview.pixelDensity(1); pgPreview.clear();
+    p.strokeJoin(p.ROUND); p.strokeCap(p.ROUND);
+  };
+  const within = (mx,my)=> mx>=0 && mx<=p.width && my>=0 && my<=p.height;
 
-  // 1) fermer la boucle si proche + forcer fermeture sinon
+  p.mousePressed = () => {
+    if (!within(p.mouseX,p.mouseY)) return;
+    Shared.drawPoints = Shared.drawPoints || [];
+    Shared.drawPoints._finished = false;
+    Shared.drawPoints.push(p.createVector(p.mouseX, p.mouseY));
+  };
+  p.mouseDragged = () => {
+    if (!within(p.mouseX,p.mouseY)) return;
+    const v = p.createVector(p.mouseX, p.mouseY);
+    if (Shared.drawPoints.length===0 || p5.Vector.dist(Shared.drawPoints[Shared.drawPoints.length-1], v)>1) {
+      Shared.drawPoints.push(v);
+    }
+  };
+  p.mouseReleased = () => {
+    if (Shared.drawPoints.length>2){
+      Shared.polyline = simplifyPath(Shared.drawPoints, 1.5);
+      Shared.drawPoints._finished = true;
+    }
+  };
+
+  p.draw = () => {
+    p.background(11,15,20);
+    drawGrid(p, center);
+
+    // Aperçu raster (Canny / Binaire)
+    if (Shared.edgesPreviewCanvas && showEdgesEl.checked){
+      const off = Shared.edgesPreviewCanvas;
+      const dx = (p.width - off.width)/2;
+      const dy = (p.height - off.height)/2;
+      p.drawingContext.drawImage(off, dx, dy);
+    }
+
+    // Aperçu vectoriel (polyline)
+    p.image(pgPreview, 0, 0);
+
+    // Trait en cours
+    p.noFill(); p.stroke(230,238,248,80); p.strokeWeight(4);
+    p.beginShape(); for (const v of Shared.drawPoints) p.vertex(v.x, v.y); p.endShape();
+
+    if (Shared.drawPoints.length>1){
+      const simp = simplifyPath(Shared.drawPoints, 2.0);
+      p.noFill(); p.stroke(100,160,220,90); p.strokeWeight(2);
+      p.beginShape(); for (const v of simp) p.vertex(v.x, v.y); p.endShape();
+    }
+  };
+
+  drawSketch.updatePreview = (polyline) => {
+    pgPreview.clear();
+    if (!polyline?.length) return;
+    pgPreview.noFill(); pgPreview.stroke(230,238,248,220); pgPreview.strokeWeight(2);
+    pgPreview.beginShape(); for (const v of polyline) pgPreview.vertex(v.x, v.y); pgPreview.endShape();
+  };
+};
+
+/* ===================== Canvas RENDU ===================== */
+const renderSketch = p => {
+  let center, renderPG;
+  p.setup = () => {
+    p.pixelDensity(1);
+    const c = p.createCanvas(Shared.W, Shared.H);
+    c.parent('sketchRender');
+    center = p.createVector(p.width/2, p.height/2);
+    renderPG = p.createGraphics(p.width, p.height); renderPG.pixelDensity(1); renderPG.clear();
+    p.strokeJoin(p.ROUND); p.strokeCap(p.ROUND);
+  };
+
+  renderSketch.clearTrail = () => { if (renderPG) renderPG.clear(); };
+
+  p.draw = () => {
+    p.background(11,15,20);
+    drawGrid(p, center);
+
+    if (!Shared.coeffs.length){
+      p.noStroke(); p.fill(159,176,199); p.textSize(14);
+      p.text("Aucun coefficient. Dessine/extrait puis « Lancer ».", 16, 24);
+      return;
+    }
+
+    if (Shared.playing){
+      const omega = parseFloat(speedEl.value);
+      Shared.t += omega * (p.TWO_PI/600);
+      if (Shared.t > p.TWO_PI) Shared.t -= p.TWO_PI;
+    }
+    const H = Math.min(parseInt(harmonicsEl.value,10), Shared.order.length);
+    const tip = drawEpicyclesAndGetTip_p5(p, center, Shared.coeffs, Shared.order, Shared.t, H, Shared.showGuides, Shared.scaleToCanvas);
+
+    // Courbe persistante
+    renderPG.push(); renderPG.noFill(); renderPG.stroke(100,210,255,255); renderPG.strokeWeight(2);
+    if (Shared.history.length>0){
+      const last=Shared.history[Shared.history.length-1];
+      renderPG.line(last.x,last.y, tip.x,tip.y);
+    }
+    renderPG.pop();
+    Shared.history.push(tip);
+    if (Shared.history.length>12000) Shared.history.shift();
+
+    p.image(renderPG, 0, 0);
+
+    p.noStroke(); p.fill(159,176,199); p.textSize(12);
+    p.text(`t = ${(Shared.t/p.TWO_PI*100).toFixed(1)}% du tour`, 16, 20);
+  };
+};
+
+/* ===================== Helpers dessin/rendu communs ===================== */
+function drawGrid(p, center){
+  p.push();
+  p.stroke(255,255,255,18); p.strokeWeight(1);
+  for(let x=0;x<=p.width;x+=40) p.line(x,0,x,p.height);
+  for(let y=0;y<=p.height;y+=40) p.line(0,y,p.width,y);
+  p.stroke(100,160,220,90);
+  p.line(center.x,0,center.x,p.height); p.line(0,center.y,p.width,center.y);
+  p.pop();
+}
+function drawEpicyclesAndGetTip_p5(p, center, coeffs, order, theta, H, showGuides, scaleToCanvas){
+  let base = p.createVector(center.x, center.y);
+  const gain = clamp(Shared.guidesGain, 0.1, 3.0); // 0.1× à 3×
+
+  for (let m=0; m<H && m<order.length; m++){
+    const c = coeffs[order[m]];
+    const ang = c.freq*theta + c.phase;
+    const v = p5.Vector.fromAngle(ang, c.mag*scaleToCanvas);
+    const endX = base.x + v.x;
+    const endY = base.y - v.y; // inversion Y (haut positif)
+
+    if (showGuides){
+      // Cercles
+      p.noFill();
+      p.stroke(100,160,220, clamp(40*gain, 10, 255));
+      p.strokeWeight(clamp(1*gain, 0.5, 6));
+      p.circle(base.x, base.y, 2*c.mag*scaleToCanvas);
+
+      // Bras
+      p.stroke(100,210,255, clamp(140*gain, 20, 255));
+      p.strokeWeight(clamp(2*gain, 1, 8));
+      p.line(base.x, base.y, endX, endY);
+    }
+    base.set(endX, endY);
+  }
+  // Pointe
+  p.noStroke(); p.fill(100,210,255);
+  p.circle(base.x, base.y, clamp(4*gain, 3, 10));
+  return base.copy();
+}
+
+/* ===================== Boutons & logique ===================== */
+function updateModeBadge(){ modeBadge.textContent = Shared.playing ? "Mode: animation" : "Mode: dessin"; }
+
+clearBtn.onclick = ()=>{
+  Shared.drawPoints=[]; Shared.polyline=[]; Shared.contourPoints=[];
+  Shared.resampled=[]; Shared.coeffs=[]; Shared.order=[]; Shared.history=[];
+  Shared.imgCanvas=null; Shared.edgesPreviewCanvas=null;
+  Shared.t=0; Shared.playing=false; updateModeBadge();
+  if (drawSketch.updatePreview) drawSketch.updatePreview([]);
+  if (renderSketch.clearTrail) renderSketch.clearTrail();
+};
+
+computeBtn.onclick = ()=>{
+  if (!Shared.polyline?.length && Shared.drawPoints?.length) {
+    Shared.polyline = simplifyPath(Shared.drawPoints, 1.5);
+  }
+  let working = (Shared.polyline && Shared.polyline.length>=2) ? Shared.polyline.slice()
+               : simplifyPath(Shared.drawPoints, 1.0);
+  if (!working || working.length<2){ alert("Dessine ou extrais un contour d'abord."); return; }
   maybeClosePolyline(working, 30);
-  if (p5.Vector.dist(working[0], working[working.length-1]) > 1) working.push(working[0].copy());
+  if (Math.hypot(working[0].x-working[working.length-1].x, working[0].y-working[working.length-1].y)>1)
+    working.push({x:working[0].x, y:working[0].y});
 
-  // 2) ré-échantillonnage
   const N = parseInt(resPtsEl.value,10);
   const uniform = resampleUniform(working, N);
-  if (!uniform || uniform.length < 4) { alert("Forme trop courte après ré-échantillonnage."); return; }
+  if(!uniform || uniform.length<4){ alert("Forme trop courte après ré-échantillonnage."); return; }
+  const {zs, scale, ok} = toComplexCentered(uniform, fitScaleEl.checked);
+  if(!ok){ alert("Forme trop petite."); return; }
+  Shared.resampled = zs; Shared.scaleToCanvas = scale;
 
-  // 3) centrer / normaliser
-  const {zs, scale, ok} = toComplexCentered(uniform);
-  if (!ok) { alert("Le dessin est trop petit. Trace une forme plus grande."); return; }
-  resampled = zs; scaleToCanvas = scale;
+  Shared.coeffs = dftCentered(Shared.resampled);
+  Shared.order  = Shared.coeffs.map((c,i)=>i).sort((i,j)=>Shared.coeffs[j].mag - Shared.coeffs[i].mag);
+  const energy  = Shared.coeffs.reduce((s,c)=>s+c.mag,0);
+  if(!isFinite(energy) || energy<=1e-6){ alert("Pas assez d'énergie dans les coefficients."); return; }
 
-  // 4) DFT centrée
-  coeffs = dftCentered(resampled);
+  Shared.history=[]; Shared.t=0; Shared.playing=true; updateModeBadge();
+  if (renderSketch.clearTrail) renderSketch.clearTrail();
+};
 
-  // 5) tri et check énergie
-  order = coeffs.map((c,i)=>i).sort((i,j)=>coeffs[j].mag - coeffs[i].mag);
-  const energy = coeffs.reduce((s,c)=>s + c.mag, 0);
-  if (!isFinite(energy) || energy <= 1e-6) { alert("Impossible d’extraire des coefficients utiles."); return; }
+toggleBtn.onclick = ()=>{ Shared.playing = !Shared.playing; updateModeBadge(); };
 
-  // 6) préparation animation
-  pg.clear(); drawInitialOutline(uniform);
-  history = []; t = 0; playing = true; modeDraw = false; updateModeBadge(); toggleBtn.textContent = "Pause";
+/* ===================== Import image (canvas offscreen natif) ===================== */
+imgInput.onchange = e=>{
+  const file=e.target.files?.[0]; if(!file) return;
+  const maxDim=parseInt(imgMaxEl.value,10)||512;
+  const url=URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = ()=>{
+    const s = Math.min(1, maxDim/Math.max(img.naturalWidth,img.naturalHeight));
+    const w = Math.max(1, Math.round(img.naturalWidth*s));
+    const h = Math.max(1, Math.round(img.naturalHeight*s));
+    const off = document.createElement('canvas'); off.width=w; off.height=h;
+    const ctx = off.getContext('2d', {willReadFrequently:true});
+    ctx.drawImage(img, 0, 0, w, h);
+    Shared.imgCanvas = off;
+    const prev = document.createElement('canvas'); prev.width=w; prev.height=h;
+    prev.getContext('2d').drawImage(off,0,0);
+    Shared.edgesPreviewCanvas = prev;
+    URL.revokeObjectURL(url);
+  };
+  img.onerror = ()=>{ alert("Échec chargement image."); URL.revokeObjectURL(url); };
+  img.src = url;
+};
 
-  // prime: quelques pas
-  const H = Math.min(parseInt(harmonicsEl.value,10), order.length);
-  for (let k=0;k<30;k++){
-    const omega = parseFloat(speedEl.value);
-    t += omega * (TWO_PI / 600); if (t > TWO_PI) t -= TWO_PI;
-    const tip = drawEpicyclesAndGetTip(t, H, showGuidesEl.checked);
-    if (history.length>0){
-      const last = history[history.length-1];
-      pg.push(); pg.noFill(); pg.stroke(100,210,255); pg.strokeWeight(2);
-      pg.line(last.x,last.y, tip.x,tip.y); pg.pop();
-    }
-    history.push(tip);
+/* ===================== Extraction (Canny / Binaire) ===================== */
+extractCannyBtn.onclick = ()=>{
+  if(!Shared.imgCanvas){ alert("Importe d’abord une image."); return; }
+  const inv = invertEl.checked;
+  const blurR = parseInt(blurREl.value,10)||0;
+  const {gray, w, h, left, top} = getGrayscaleCentered_offscreen(Shared.imgCanvas, Shared.W, Shared.H, inv);
+  const blurred = blurR>0 ? boxBlur(gray, w, h, blurR) : gray;
+  const low = parseInt(lowTEl.value,10)||40;
+  const high = parseInt(highTEl.value,10)||120;
+  const can = cannyEdges(blurred, w, h, low, high);
+  if (clipBorderEl.checked){
+    const m = Math.max(2, Math.floor(Math.min(w,h)*0.01));
+    for (let x=0;x<w;x++){ can[x]=0; can[(h-1)*w+x]=0; }
+    for (let y=0;y<h;y++){ can[y*w]=0; can[y*w+(w-1)]=0; }
+    for (let y=1;y<m;y++){ for (let x=0;x<w;x++){ can[y*w+x]=0; can[(h-1-y)*w+x]=0; } }
+    for (let x=1;x<m;x++){ for (let y=0;y<h;y++){ can[y*w+x]=0; can[y*w+(w-1-x)]=0; } }
   }
+  Shared.edgesPreviewCanvas = makeEdgesPreviewCanvas(can, w, h);
+  const contour = longestContour(can, w, h);
+  if(!contour.length){ alert("Aucun contour utilisable (Canny). Ajuste flou & seuils."); return; }
+  Shared.contourPoints = contour.map(p => ({x: left + p.x, y: top + p.y}));
+  Shared.polyline = simplifyPath(Shared.contourPoints.map(v=>({x:v.x,y:v.y})), 1.5);
+  if (drawSketch.updatePreview) drawSketch.updatePreview(Shared.polyline);
 };
 
-toggleBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault();
-  playing = !playing; toggleBtn.textContent = playing ? "Pause" : "Reprendre";
+extractBinBtn.onclick = ()=>{
+  if(!Shared.imgCanvas){ alert("Importe d’abord une image."); return; }
+  const inv = invertEl.checked;
+  const {gray, w, h, left, top} = getGrayscaleCentered_offscreen(Shared.imgCanvas, Shared.W, Shared.H, inv);
+
+  let thr = parseInt(binTEl.value,10)||128;
+  if (binAutoEl.checked){ thr = otsuThreshold(gray, w, h); binTEl.value=thr; binTVal.textContent=thr; }
+
+  const bin = binarize(gray, w, h, thr);
+  const edge = maskToEdges(bin, w, h);
+  if (clipBorderEl.checked){
+    for (let x=0;x<w;x++){ edge[x]=0; edge[(h-1)*w+x]=0; }
+    for (let y=0;y<h;y++){ edge[y*w]=0; edge[y*w+(w-1)]=0; }
+  }
+  Shared.edgesPreviewCanvas = makeEdgesPreviewCanvas(edge, w, h);
+  const contour = longestContour(edge, w, h);
+  if(!contour.length){ alert("Aucun contour utilisable (binaire). Ajuste seuil / inverser."); return; }
+  Shared.contourPoints = contour.map(p => ({x: left + p.x, y: top + p.y}));
+  Shared.polyline = simplifyPath(Shared.contourPoints.map(v=>({x:v.x,y:v.y})), 1.0);
+  if (drawSketch.updatePreview) drawSketch.updatePreview(Shared.polyline);
 };
 
-modeBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault();
-  modeDraw = !modeDraw; updateModeBadge();
+useContourBtn.onclick = ()=>{
+  if(!Shared.polyline?.length){ alert("Aucun contour. Extrait d’abord ou dessine."); return; }
+  computeBtn.click();
 };
 
-/* ===== Géométrie & DFT ===== */
+/* ===================== Helpers géométrie & DFT ===================== */
 function simplifyPath(pts, minDist){
-  if (pts.length===0) return [];
-  const out=[pts[0].copy()];
-  for (let i=1;i<pts.length;i++)
-    if (p5.Vector.dist(pts[i], out[out.length-1])>=minDist) out.push(pts[i].copy());
+  if(!pts || !pts.length) return [];
+  const out=[{x:pts[0].x, y:pts[0].y}];
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i], b=out[out.length-1];
+    if (Math.hypot(a.x-b.x, a.y-b.y) >= minDist) out.push({x:a.x, y:a.y});
+  }
   return out;
 }
 function maybeClosePolyline(pts, thresh){
-  if (pts.length<3) return;
-  const d = p5.Vector.dist(pts[0], pts[pts.length-1]);
-  if (d < thresh) pts[pts.length-1] = pts[0].copy();
+  if(pts.length<3) return;
+  const a=pts[0], b=pts[pts.length-1];
+  const d=Math.hypot(a.x-b.x,a.y-b.y);
+  if(d<thresh) pts[pts.length-1]={x:a.x,y:a.y};
 }
 function resampleUniform(pts, N){
   const L=[0]; let total=0;
-  for (let i=1;i<pts.length;i++){ total+=p5.Vector.dist(pts[i-1],pts[i]); L.push(total); }
-  if (total===0) return pts.map(p=>p.copy());
-  const step = total/N, out=[]; let j=1;
-  for (let k=0;k<N;k++){
-    const target=k*step; while (j<L.length && L[j]<target) j++;
+  for(let i=1;i<pts.length;i++){ total+=Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y); L.push(total); }
+  if(total===0) return pts.slice();
+  const step=total/N, out=[]; let j=1;
+  for(let k=0;k<N;k++){
+    const target=k*step; while(j<L.length && L[j]<target) j++;
     const j0=Math.max(1, Math.min(j, L.length-1));
     const t=(target-L[j0-1])/(L[j0]-L[j0-1] || 1);
     const a=pts[j0-1], b=pts[j0] || pts[j0-1];
-    out.push(p5.Vector.lerp(a,b,constrain(t,0,1)));
+    out.push({x:a.x+(b.x-a.x)*t, y:a.y+(b.y-a.y)*t});
   }
   return out;
 }
-function toComplexCentered(pts){
-  // centre par la moyenne; on GARDE l'échelle d'origine
-  let cx = 0, cy = 0;
-  for (const p of pts){ cx += p.x; cy += p.y; }
-  cx /= pts.length; cy /= pts.length;
-
-  // y math positif vers le haut -> on met un moins ici (DFT),
-  // et on re-retournera le y à l'AFFICHAGE (patch 1)
-  const zs = pts.map(p => ({ re: (p.x - cx), im: -(p.y - cy) }));
-
-  // garde anti-forme quasi ponctuelle
-  let maxR = 0;
-  for (const z of zs) maxR = Math.max(maxR, Math.hypot(z.re, z.im));
-  const ok = isFinite(maxR) && maxR >= 3; // seuil plus doux
-
-  return { zs, scale: 1, shift: {cx, cy}, ok };
+function toComplexCentered(pts, fit=false){
+  let cx=0, cy=0; for(const p of pts){ cx+=p.x; cy+=p.y; } cx/=pts.length; cy/=pts.length;
+  const shifted=pts.map(p=>({re:(p.x-cx), im:-(p.y-cy)}));
+  let maxR=0; for(const z of shifted){ maxR=Math.max(maxR, Math.hypot(z.re,z.im)); }
+  if(!isFinite(maxR) || maxR<3) return {zs:[], scale:1, ok:false};
+  let s=1; if(fit){ const target=Math.min(Shared.W,Shared.H)*0.40; s=target/maxR; }
+  const zs=shifted.map(z=>({re:z.re*s, im:z.im*s}));
+  return {zs, scale:s, ok:true};
 }
 function dftCentered(zs){
   const N=zs.length, K=Math.floor(N/2), out=[];
-  for (let n=-K;n<=K;n++){
+  for(let n=-K;n<=K;n++){
     let sum={re:0,im:0};
-    for (let j=0;j<N;j++){
+    for(let j=0;j<N;j++){
       const angle=-2*Math.PI*n*j/N, ej=cexp(angle);
       sum=cadd(sum, cmul(zs[j], ej));
     }
@@ -328,51 +493,160 @@ function dftCentered(zs){
   return out;
 }
 
-/* ===== Épicycles & visuels ===== */
-function drawEpicyclesAndGetTip(theta, H, showGuides){
-  let base = createVector(center.x, center.y);
+/* ===================== Image & edges (offscreen) ===================== */
+function getGrayscaleCentered_offscreen(canvas, canvasW, canvasH, invert=false){
+  const w=canvas.width, h=canvas.height;
+  const ctx=canvas.getContext('2d', {willReadFrequently:true});
+  const data=ctx.getImageData(0,0,w,h).data;
 
-  for (let m = 0; m < H && m < order.length; m++){
-    const c = coeffs[ order[m] ];
-    const ang = c.freq * theta + c.phase;
-
-    // vecteur dans repère p5 (y vers le bas) -> on INVERSE le y ici
-    const v = p5.Vector.fromAngle(ang, c.mag * scaleToCanvas);
-    const endX = base.x + v.x;
-    const endY = base.y - v.y;          // <- inversion Y
-
-    if (showGuides){
-      // cercle guide
-      noFill(); stroke(100,160,220,40); strokeWeight(1);
-      circle(base.x, base.y, 2 * c.mag * scaleToCanvas);
-      // bras
-      stroke(100,210,255,140); strokeWeight(2);
-      line(base.x, base.y, endX, endY);
-    }
-
-    // avancer la base
-    base.set(endX, endY);
+  const gray=new Float32Array(w*h);
+  let min=255,max=0;
+  for(let i=0,j=0;i<w*h;i++,j+=4){
+    let v=0.299*data[j]+0.587*data[j+1]+0.114*data[j+2];
+    if(invert) v=255-v;
+    gray[i]=v; if(v<min)min=v; if(v>max)max=v;
   }
+  const range=Math.max(1,max-min);
+  for(let i=0;i<gray.length;i++) gray[i]=(gray[i]-min)*255/range;
 
-  // pointe
-  noStroke(); fill(100,210,255);
-  circle(base.x, base.y, 4);
-  return base.copy();
+  const left=Math.floor((canvasW - w)/2), top=Math.floor((canvasH - h)/2);
+  return {gray,w,h,left,top};
+}
+function boxBlur(src,w,h,r){
+  if(r<=0) return src;
+  const tmp=new Float32Array(w*h), dst=new Float32Array(w*h);
+  const win=2*r+1;
+  for(let y=0;y<h;y++){
+    let sum=0; for(let x=-r;x<=r;x++){ const xx=Math.min(w-1, Math.max(0,x)); sum+=src[y*w+xx]; }
+    for(let x=0;x<w;x++){
+      tmp[y*w+x]=sum/win;
+      const x0=Math.max(0,x-r), x1=Math.min(w-1,x+r+1);
+      sum += src[y*w+x1] - src[y*w+x0];
+    }
+  }
+  for(let x=0;x<w;x++){
+    let sum=0; for(let y=-r;y<=r;y++){ const yy=Math.min(h-1, Math.max(0,y)); sum+=tmp[yy*w+x]; }
+    for(let y=0;y<h;y++){
+      dst[y*w+x]=sum/win;
+      const y0=Math.max(0,y-r), y1=Math.min(h-1,y+r+1);
+      sum += tmp[y1*w+x] - tmp[y0*w+x];
+    }
+  }
+  return dst;
+}
+function cannyEdges(gray,w,h,lowT,highT){
+  const mag=new Float32Array(w*h), dir=new Float32Array(w*h);
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const i=y*w+x;
+      const a=gray[(y-1)*w+(x-1)], b=gray[(y-1)*w+x], c=gray[(y-1)*w+(x+1)];
+      const d=gray[y*w+(x-1)],     f=gray[y*w+(x+1)];
+      const g=gray[(y+1)*w+(x-1)], h0=gray[(y+1)*w+x], k=gray[(y+1)*w+(x+1)];
+      const sx = (-1*a + 1*c) + (-2*d + 2*f) + (-1*g + 1*k);
+      const sy = (-1*a - 2*b - 1*c) + (1*g + 2*h0 + 1*k);
+      const m=Math.hypot(sx,sy); mag[i]=m; dir[i]=Math.atan2(sy,sx);
+    }
+  }
+  const thin=new Float32Array(w*h);
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const i=y*w+x, a=((dir[i]*180/Math.PI)+180)%180, m=mag[i];
+      let m1=0,m2=0;
+      if ((a<22.5)||(a>=157.5)){ m1=mag[i-1]; m2=mag[i+1]; }
+      else if (a<67.5){ m1=mag[(y-1)*w+(x+1)]; m2=mag[(y+1)*w+(x-1)]; }
+      else if (a<112.5){ m1=mag[(y-1)*w+x]; m2=mag[(y+1)*w+x]; }
+      else { m1=mag[(y-1)*w+(x-1)]; m2=mag[(y+1)*w+(x+1)]; }
+      thin[i]=(m>=m1 && m>=m2)?m:0;
+    }
+  }
+  const strong=255, weak=80, out=new Uint8Array(w*h);
+  for(let i=0;i<w*h;i++){ const v=thin[i]; out[i]=(v>=highT)?strong: (v>=lowT?weak:0); }
+  let changed=true;
+  while(changed){
+    changed=false;
+    for(let y=1;y<h-1;y++){
+      for(let x=1;x<w-1;x++){
+        const i=y*w+x;
+        if (out[i]===weak){
+          let s=false;
+          for(let yy=-1;yy<=1;yy++){ for(let xx=-1;xx<=1;xx++){ if(xx||yy){ if(out[(y+yy)*w+(x+xx)]===strong){s=true;break;} } } if(s)break; }
+          out[i]=s?strong:0; changed|=s;
+        }
+      }
+    }
+  }
+  const bin=new Uint8Array(w*h); for(let i=0;i<w*h;i++) bin[i]=out[i]===strong?1:0;
+  return bin;
+}
+function binarize(gray,w,h,thr){ const out=new Uint8Array(w*h); for(let i=0;i<w*h;i++) out[i]=(gray[i]>=thr)?1:0; return out; }
+function otsuThreshold(gray,w,h){
+  const hist=new Uint32Array(256);
+  for(let i=0;i<w*h;i++) hist[Math.max(0,Math.min(255,gray[i]|0))]++;
+  const total=w*h; let sum=0; for(let t=0;t<256;t++) sum+=t*hist[t];
+  let sumB=0,wB=0,varMax=0,thr=128;
+  for(let t=0;t<256;t++){
+    wB+=hist[t]; if(!wB)continue;
+    const wF=total-wB; if(!wF)break;
+    sumB+=t*hist[t];
+    const mB=sumB/wB, mF=(sum-sumB)/wF;
+    const between=wB*wF*(mB-mF)*(mB-mF);
+    if(between>varMax){ varMax=between; thr=t; }
+  }
+  return thr;
+}
+function maskToEdges(bin,w,h){
+  const edge=new Uint8Array(w*h);
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+      const i=y*w+x; if(!bin[i])continue;
+      let e=false;
+      for(let yy=-1;yy<=1;yy++){ for(let xx=-1;xx<=1;xx++){ if(xx||yy){ if(!bin[(y+yy)*w+(x+xx)]){e=true;break;} } } if(e)break; }
+      if(e) edge[i]=1;
+    }
+  }
+  return edge;
+}
+function longestContour(bin,w,h){
+  const visited=new Uint8Array(w*h), contours=[];
+  const dirs=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+  function trace(sx,sy){
+    let cx=sx, cy=sy, prev=0, guard=0, max=w*h*4; const out=[];
+    while(guard++<max){
+      out.push({x:cx,y:cy}); visited[cy*w+cx]=1;
+      let found=false, start=(prev+6)%8;
+      for(let k=0;k<8;k++){
+        const d=(start+k)%8, nx=cx+dirs[d][0], ny=cy+dirs[d][1];
+        if(nx>=0&&nx<w&&ny>=0&&ny<h && bin[ny*w+nx]===1 && !visited[ny*w+nx]){ prev=d; cx=nx; cy=ny; found=true; break; }
+      }
+      if(!found){
+        for(let k=0;k<8;k++){ const d=(start+k)%8, nx=cx+dirs[d][0], ny=cy+dirs[d][1]; if(nx===sx && ny===sy){ out.push({x:sx,y:sy}); return out; } }
+        return out;
+      }
+      if(cx===sx && cy===sy){ out.push({x:sx,y:sy}); return out; }
+    }
+    return out;
+  }
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+    const i=y*w+x; if(bin[i]===1 && !visited[i]){ const c=trace(x,y); if(c.length>20) contours.push(c); }
+  }
+  if(!contours.length) return [];
+  contours.sort((a,b)=>b.length-a.length);
+  return contours[0];
+}
+function makeEdgesPreviewCanvas(bin, w, h){
+  const off=document.createElement('canvas'); off.width=w; off.height=h;
+  const ctx=off.getContext('2d'); const imgData=ctx.createImageData(w,h); const d=imgData.data;
+  for(let i=0;i<w*h;i++){
+    const v = bin[i]?255:0;
+    const j=4*i; d[j]=v; d[j+1]=v; d[j+2]=v; d[j+3]=180;
+  }
+  ctx.putImageData(imgData,0,0);
+  return off;
 }
 
-function drawInitialOutline(uniform){
-  pg.push(); pg.noFill(); pg.stroke(230,238,248,90); pg.strokeWeight(2);
-  pg.beginShape(); for (const p of uniform){ pg.vertex(p.x, p.y); } pg.endShape(); pg.pop();
-}
-function drawGrid(){
-  push();
-  stroke(255,255,255,18); strokeWeight(1);
-  for (let x=0; x<=width; x+=40) line(x,0,x,height);
-  for (let y=0; y<=height; y+=40) line(0,y,width,y);
-  stroke(100,160,220,90);
-  line(center.x,0,center.x,height); line(0,center.y,width,center.y);
-  pop();
-}
+/* ===================== Lancement des 2 instances ===================== */
+new p5(drawSketch);
+new p5(renderSketch);
 </script>
 </body>
 </html>
