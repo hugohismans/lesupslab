@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ensemble de Newton — rapide + minimap & zoom boîte</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin:0; height:100%; background:#0b0f13; color:#e6ebf0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  #ui {
+    position: fixed; top: 10px; left: 10px; z-index: 10; padding: 12px;
+    background: rgba(10,14,18,.7); border:1px solid rgba(255,255,255,.08);
+    border-radius: 12px; backdrop-filter: blur(6px); max-width: 520px; user-select: none;
+  }
+  #ui h2 { margin:0 0 8px; font-size: 16px; font-weight: 650; letter-spacing:.2px }
+  .row { display:flex; gap:8px; align-items:center; margin:6px 0; }
+  .row label { flex: 0 0 160px; font-size:12px; color:#a9b3be }
+  .row input[type=text] { flex:1; padding:6px 8px; border-radius:8px; border:1px solid #263241; background:#10161d; color:#e6ebf0; }
+  .row input[type=number] { width:120px; padding:4px 6px; border-radius:8px; border:1px solid #263241; background:#10161d; color:#e6ebf0; }
+  select, button {
+    padding:6px 10px; border-radius:8px; border:1px solid #263241; background:#10161d; color:#e6ebf0; cursor:pointer;
+  }
+  button:hover, select:hover { background:#17212c }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .grid3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; }
+  .sep { height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent); margin:8px 0; }
+  .pill { font-size:11px; padding:2px 8px; border:1px solid #263241; border-radius:999px; }
+  .hint { font-size:11px; color:#93a1af; margin-top:6px; line-height:1.35 }
+  canvas { display:block; width:100vw; height:100vh; }
+  #rubber {
+    position:fixed; left:0; top:0; width:0; height:0;
+    border:1.5px dashed #8ecbff; background:rgba(142,203,255,.08);
+    pointer-events:none; display:none; z-index:9;
+  }
+  /* minimap panel */
+  #miniWrap{
+    position:fixed; right:10px; bottom:10px; z-index:11;
+    background: rgba(10,14,18,.7); border:1px solid rgba(255,255,255,.08);
+    border-radius:10px; padding:8px; backdrop-filter: blur(6px);
+  }
+  #miniTitle { font-size:12px; color:#a9b3be; margin:0 0 6px 2px; }
+  #mini {
+    display:block; width:180px; height:180px; border-radius:8px; background:#0b0f13; border:1px solid #263241;
+    image-rendering: pixelated;
+  }
+  /* cadre de vue sur minimap */
+  #miniBox {
+    position:absolute; pointer-events:none; border:2px solid #8ecbff; border-radius:3px; box-shadow:0 0 0 1px rgba(0,0,0,.4);
+  }
+  #miniWrapInner { position:relative; }
+</style>
+</head>
+<body>
+  <div id="ui">
+    <h2>🧮 Ensemble de Newton — rapide</h2>
+    <div class="row">
+      <label>Presets</label>
+      <select id="preset">
+        <option value="z3-1">f(z)=z^3-1</option>
+        <option value="z4-1">f(z)=z^4-1</option>
+        <option value="z5-1">f(z)=z^5-1</option>
+        <option value="z3-2z+2">f(z)=z^3-2z+2</option>
+        <option value="roots-circle">Racines sur cercle (n=6)</option>
+        <option value="custom">— Personnalisé —</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Poly (a₀,…,aₙ)</label>
+      <input id="coeffs" type="text" value="-1,0,0,1" title="Ex: -1,0,0,1 → z^3-1 | 2,-2,0,1 → z^3-2z+2 | complexes: 1, 0, 1+2i, 1">
+    </div>
+
+    <div class="grid">
+      <div class="row">
+        <label>Qualité</label>
+        <select id="quality" title="Ajuste résolution & itérations">
+          <option value="preview">Préview (très rapide)</option>
+          <option value="medium" selected>Moyenne</option>
+          <option value="high">Haute</option>
+        </select>
+      </div>
+      <div class="row"><label>Max iters</label><input id="maxIter" type="number" min="5" max="400" step="1" value="60"></div>
+      <div class="row"><label>Tolérance</label><input id="tol" type="number" step="0.000001" value="0.00001"></div>
+      <div class="row"><label>Seuil racine</label><input id="rootEps" type="number" step="0.0001" value="0.0025"></div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="grid">
+      <div class="row">
+        <label>Palette</label>
+        <select id="palette">
+          <option value="hue">Teinte par racine</option>
+          <option value="pastel">Pastel</option>
+          <option value="fire">Feu (iters)</option>
+          <option value="ice">Glace (iters)</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Lissage</label>
+        <select id="smooth">
+          <option value="on" selected>On</option>
+          <option value="off">Off</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="grid3">
+      <button id="btnRender">⏵ Relancer</button>
+      <button id="btnStop">⏸ Pause</button>
+      <button id="btnReset">⟲ Reset vue</button>
+      <button id="btnExport">⤓ Export PNG</button>
+      <button id="btnBox">⬚ Zoom (2 clics)</button>
+      <button id="btnZoomOut">− Zoom arrière ×2</button>
+      <button id="btnUndo">↶ Zoom précédent</button>
+    </div>
+
+    <div class="hint">
+      <span class="pill">Drag</span> déplacer • <span class="pill">Molette</span> zoom •
+      <span class="pill">R</span> reset • <span class="pill">S</span> pause • <span class="pill">E</span> export •
+      <span class="pill">Shift</span> carré lors du zoom boîte
+    </div>
+  </div>
+
+  <canvas id="cnv"></canvas>
+  <div id="rubber"></div>
+
+  <!-- Minimap -->
+  <div id="miniWrap">
+    <div id="miniTitle">Minimap (clic pour recadrer)</div>
+    <div id="miniWrapInner">
+      <canvas id="mini"></canvas>
+      <div id="miniBox"></div>
+    </div>
+  </div>
+
+<script>
+/* ===========================
+   Canvas principal & vue
+   =========================== */
+const cnv = document.getElementById('cnv');
+const ctx = cnv.getContext('2d', { willReadFrequently: true });
+let DPR = Math.min(2, window.devicePixelRatio || 1);
+let W=0, H=0;
+function resize(){
+  W = Math.floor(window.innerWidth * DPR);
+  H = Math.floor(window.innerHeight * DPR);
+  cnv.width = W; cnv.height = H;
+  cnv.style.width = '100vw'; cnv.style.height = '100vh';
+  // resize minimap backing store
+  setupMinimap();
+  schedule(true);
+  scheduleMini(true);
+}
+window.addEventListener('resize', resize);
+
+let view = { cx:0, cy:0, scale:2.5 }; // scale = demi-largeur réelle
+
+function screenToComplex(px, py){
+  const x = view.cx + (px/W*2-1) * view.scale;
+  const y = view.cy + (py/H*2-1) * (view.scale * H/W);
+  return [x,y];
+}
+function copyView(v){ return {cx:v.cx, cy:v.cy, scale:v.scale}; }
+
+/* ===========================
+   Historique de vues (Undo)
+   =========================== */
+const viewHistory = [];
+const MAX_HISTORY = 64;
+function pushView(){ viewHistory.push(copyView(view)); if (viewHistory.length>MAX_HISTORY) viewHistory.shift(); }
+function popView(){ if (!viewHistory.length) return; const v=viewHistory.pop(); view.cx=v.cx; view.cy=v.cy; view.scale=v.scale; }
+
+/* ===========================
+   UI & paramètres
+   =========================== */
+const presetEl = document.getElementById('preset');
+const coeffsEl = document.getElementById('coeffs');
+const qualityEl = document.getElementById('quality');
+const maxIterEl = document.getElementById('maxIter');
+const tolEl = document.getElementById('tol');
+const rootEpsEl = document.getElementById('rootEps');
+const paletteEl = document.getElementById('palette');
+const smoothEl = document.getElementById('smooth');
+
+const btnRender = document.getElementById('btnRender');
+const btnStop   = document.getElementById('btnStop');
+const btnReset  = document.getElementById('btnReset');
+const btnExport = document.getElementById('btnExport');
+const btnBox    = document.getElementById('btnBox');
+const btnZoomOut= document.getElementById('btnZoomOut');
+const btnUndo   = document.getElementById('btnUndo');
+
+let A_re = [-1,0,0,1];
+let A_im = [ 0,0,0,0];
+let DEG = 3;
+
+let MAX_ITERS = 60;
+let TOL = 1e-5;
+let ROOT_EPS = 2.5e-3;
+let SMOOTH = true;
+let QUALITY = 'medium'; // 'preview' | 'medium' | 'high'
+
+presetEl.addEventListener('change', e => { applyPreset(e.target.value); });
+coeffsEl.addEventListener('change', compileCoeffs);
+qualityEl.addEventListener('change', ()=>{ QUALITY = qualityEl.value; schedule(true); });
+maxIterEl.addEventListener('change', ()=>{ MAX_ITERS = Math.max(5, parseInt(maxIterEl.value||60)); schedule(true); });
+tolEl.addEventListener('change', ()=>{ TOL = Math.max(1e-12, parseFloat(tolEl.value||1e-5)); schedule(true); });
+rootEpsEl.addEventListener('change', ()=>{ ROOT_EPS = Math.max(1e-6, parseFloat(rootEpsEl.value||0.0025)); schedule(true); });
+paletteEl.addEventListener('change', ()=>{ schedule(true); scheduleMini(true); });
+smoothEl.addEventListener('change', ()=>{ SMOOTH = (smoothEl.value==='on'); schedule(true); scheduleMini(true); });
+
+function applyPreset(name){
+  if (name==='z3-1'){ coeffsEl.value='-1,0,0,1'; }
+  else if (name==='z4-1'){ coeffsEl.value='-1,0,0,0,1'; }
+  else if (name==='z5-1'){ coeffsEl.value='-1,0,0,0,0,1'; }
+  else if (name==='z3-2z+2'){ coeffsEl.value='2,-2,0,1'; }
+  else if (name==='roots-circle'){
+    const n=6;
+    const roots = Array.from({length:n}, (_,k)=>{
+      const a = 2*Math.PI*k/n;
+      return [Math.cos(a), Math.sin(a)];
+    });
+    let cre=[1], cim=[0];
+    for (const [rr,ri] of roots){
+      const ncre = new Array(cre.length+1).fill(0);
+      const ncim = new Array(cim.length+1).fill(0);
+      for (let i=0;i<cre.length;i++){
+        ncre[i+1] += cre[i]; ncim[i+1] += cim[i];
+        ncre[i]   += -(cre[i]*rr - cim[i]*ri);
+        ncim[i]   += -(cre[i]*ri + cim[i]*rr);
+      }
+      cre = ncre; cim = ncim;
+    }
+    const str = cre.map((re,i)=>{
+      const im = cim[i];
+      if (Math.abs(im)<1e-12) return re.toFixed(6);
+      const s = im>=0?'+':'';
+      return `${re}${s}${im}i`;
+    }).join(',');
+    coeffsEl.value = str;
+  }
+  compileCoeffs();
+}
+
+function compileCoeffs(){
+  try{
+    const parts = coeffsEl.value.split(',').map(s=>s.trim()).filter(Boolean);
+    if (parts.length<1) throw new Error();
+    const n = parts.length-1;
+    A_re = new Array(parts.length);
+    A_im = new Array(parts.length);
+    for (let i=0;i<parts.length;i++){
+      const s = parts[i].replace(/\s+/g,'');
+      if (/^[+-]?\d+(\.\d+)?$/i.test(s)){
+        A_re[i] = parseFloat(s); A_im[i]=0;
+      } else {
+        const m = s.match(/^([+-]?\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)i$/i);
+        if (!m) throw new Error();
+        A_re[i] = parseFloat(m[1]);
+        A_im[i] = parseFloat(m[2]);
+      }
+    }
+    DEG = n;
+    schedule(true);
+    scheduleMini(true);
+  } catch{
+    alert("Coefficients invalides. Utilise des réels ou 'x+iy'.");
+  }
+}
+
+/* ===========================
+   Palette (pré-calcul RGB)
+   =========================== */
+function hslToRgb(h, s, l){
+  s/=100; l/=100;
+  const C = (1 - Math.abs(2*l-1))*s;
+  const X = C*(1-Math.abs(((h/60)%2)-1));
+  const m = l - C/2;
+  let r=0,g=0,b=0;
+  if (0<=h && h<60){ r=C; g=X; b=0; }
+  else if (60<=h&&h<120){ r=X; g=C; b=0; }
+  else if (120<=h&&h<180){ r=0; g=C; b=X; }
+  else if (180<=h&&h<240){ r=0; g=X; b=C; }
+  else if (240<=h&&h<300){ r=X; g=0; b=C; }
+  else { r=C; g=0; b=C; }
+  return [(r+m)*255, (g+m)*255, (b+m)*255];
+}
+function packRGBA(r,g,b,a=255){ return (a<<24) | (b<<16) | (g<<8) | (r); }
+function makePalette(kRoots=12){
+  const pal=[];
+  for (let k=0;k<kRoots;k++){
+    let rgb;
+    const mode = paletteEl.value;
+    if (mode==='hue'){
+      const h = (k*97)%360;
+      rgb = hslToRgb(h, 80, 65);
+    } else if (mode==='pastel'){
+      const h = (k*57)%360;
+      rgb = hslToRgb(h, 55, 78);
+    } else if (mode==='fire'){
+      rgb = hslToRgb(25,90,60);
+    } else {
+      rgb = hslToRgb(200,60,70);
+    }
+    pal[k] = [Math.round(rgb[0]), Math.round(rgb[1]), Math.round(rgb[2])];
+  }
+  return pal;
+}
+
+/* ===========================
+   Newton (inline float)
+   =========================== */
+function evalPolyAndDeriv(zr, zi){
+  let fr = A_re[DEG], fi = A_im[DEG];
+  let dr = DEG*A_re[DEG], di = DEG*A_im[DEG];
+  for (let k=DEG-1; k>=0; k--){
+    const fr2 = fr*zr - fi*zi + A_re[k];
+    const fi2 = fr*zi + fi*zr + A_im[k];
+    fr = fr2; fi = fi2;
+    if (k>0){
+      const kr = k*A_re[k], ki = k*A_im[k];
+      const dr2 = dr*zr - di*zi + kr;
+      const di2 = dr*zi + di*zr + ki;
+      dr = dr2; di = di2;
+    }
+  }
+  return [fr,fi,dr,di];
+}
+function newton(zr, zi){
+  let i=0, step=0;
+  for (; i<MAX_ITERS; i++){
+    const r = evalPolyAndDeriv(zr,zi);
+    const fr=r[0], fi=r[1], dr=r[2], di=r[3];
+    const denom = dr*dr + di*di;
+    if (denom < 1e-20) break;
+    const sr = (fr*dr + fi*di)/denom;
+    const si = (fi*dr - fr*di)/denom;
+    zr -= sr; zi -= si;
+    step = Math.hypot(sr, si);
+    if (step < TOL) break;
+    if (step < TOL*0.25) { i++; break; }
+  }
+  return [zr,zi,i,step];
+}
+
+/* ===========================
+   Rendu tuilé (principal) — sans auto-upgrade
+   =========================== */
+let stop=false, busy=false;
+function schedule(full=false){ if (full) stop = true; if (!busy) requestAnimationFrame(render); }
+async function render(){
+  busy=true; stop=false;
+
+  ctx.fillStyle = '#0b0f13';
+  ctx.fillRect(0,0,W,H);
+
+  let scaleFactor=1;
+  if (QUALITY==='preview'){ scaleFactor=0.5; }
+  else if (QUALITY==='medium'){ scaleFactor=0.75; }
+  else { scaleFactor=1.0; }
+
+  const w = Math.max(1, Math.floor(W*scaleFactor));
+  const h = Math.max(1, Math.floor(H*scaleFactor));
+  const img = ctx.createImageData(w, h);
+  const u32 = new Uint32Array(img.data.buffer);
+
+  const pal = makePalette(Math.max(12, DEG+2));
+  const roots=[];
+  const TS = 64;
+
+  for (let y0=0; y0<h; y0+=TS){
+    if (stop) break;
+    const y1 = Math.min(h, y0+TS);
+    for (let x0=0; x0<w; x0+=TS){
+      if (stop) break;
+      const x1 = Math.min(w, x0+TS);
+      for (let y=y0; y<y1; y++){
+        const py = (y+0.5)/scaleFactor;
+        for (let x=x0; x<x1; x++){
+          const px = (x+0.5)/scaleFactor;
+
+          const c = screenToComplex(px, py); let zr=c[0], zi=c[1];
+          const out = newton(zr, zi); zr=out[0]; zi=out[1]; const iter=out[2]; const step=out[3];
+
+          let idx=-1;
+          for (let r=0;r<roots.length;r++){
+            const dx = zr - roots[r][0], dy = zi - roots[r][1];
+            if ((dx*dx+dy*dy) < ROOT_EPS*ROOT_EPS){
+              roots[r][0] = (roots[r][0]+zr)*0.5;
+              roots[r][1] = (roots[r][1]+zi)*0.5;
+              idx = r; break;
+            }
+          }
+          if (idx<0){ roots.push([zr,zi]); idx = roots.length-1; }
+
+          let r,g,b;
+          const base = pal[idx % pal.length];
+          r = base[0]; g = base[1]; b = base[2];
+
+          if (paletteEl.value==='fire' || paletteEl.value==='ice'){
+            const t = Math.min(1, iter/(MAX_ITERS-1));
+            if (paletteEl.value==='fire'){
+              const rgb = hslToRgb(20+30*t, 90, 10+70*t);
+              r=rgb[0]; g=rgb[1]; b=rgb[2];
+            } else {
+              const rgb = hslToRgb(180+60*t, 60, 15+70*t);
+              r=rgb[0]; g=rgb[1]; b=rgb[2];
+            }
+          } else if (SMOOTH){
+            const f = Math.max(0, Math.min(1, Math.log10(1+1/(step+1e-16))/2 ));
+            const lmul = 0.65 + 0.35*(1-f);
+            r*=lmul; g*=lmul; b*=lmul;
+          }
+
+          u32[y*w + x] = packRGBA(r|0,g|0,b|0,255);
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    if (scaleFactor!==1){
+      ctx.imageSmoothingEnabled = true;
+      // upscale via un offscreen pour éviter tout artefact
+      const tmp = document.createElement('canvas');
+      tmp.width = w; tmp.height = h;
+      tmp.getContext('2d').putImageData(img,0,0);
+      ctx.drawImage(tmp, 0, 0, W, H);
+    }
+    await new Promise(r=>requestAnimationFrame(r));
+  }
+
+  // maj du cadre de vue sur minimap
+  updateMiniBox();
+
+  busy=false;
+}
+
+/* ===========================
+   Interactions: pan/zoom + raccourcis
+   =========================== */
+let dragging=false, lastX=0, lastY=0;
+cnv.addEventListener('pointerdown', e=>{
+  if (boxMode) return;
+  dragging=true; lastX=e.clientX; lastY=e.clientY;
+  cnv.setPointerCapture(e.pointerId);
+  pushView();
+});
+cnv.addEventListener('pointerup', e=>{ dragging=false; cnv.releasePointerCapture(e.pointerId); });
+cnv.addEventListener('pointermove', e=>{
+  if (!dragging || boxMode) return;
+  const dx = (e.clientX - lastX) * DPR;
+  const dy = (e.clientY - lastY) * DPR;
+  lastX = e.clientX; lastY = e.clientY;
+  view.cx -= dx/W * view.scale;
+  view.cy -= dy/H * (view.scale*H/W);
+  schedule(true);
+  updateMiniBox();
+});
+cnv.addEventListener('wheel', e=>{
+  if (boxMode) return;
+  e.preventDefault();
+  const zoom = Math.pow(1.1, e.deltaY>0 ? 1 : -1);
+  pushView();
+  const mx = e.clientX * DPR, my = e.clientY * DPR;
+  const before = screenToComplex(mx, my);
+  view.scale *= zoom;
+  const after = screenToComplex(mx, my);
+  view.cx += (before[0]-after[0]);
+  view.cy += (before[1]-after[1]);
+  schedule(true);
+  updateMiniBox();
+},{passive:false});
+
+document.addEventListener('keydown', e=>{
+  if (e.key==='r' || e.key==='R'){ pushView(); resetView(); }
+  if (e.key==='s' || e.key==='S'){ toggleStop(); }
+  if (e.key==='e' || e.key==='E'){ exportPNG(); }
+  if (e.key==='z' || e.key==='Z'){ zoomOut2x(); }
+  if (e.key==='u' || e.key==='U'){ undoView(); }
+});
+function resetView(){ view.cx=0; view.cy=0; view.scale=2.5; schedule(true); updateMiniBox(); }
+function toggleStop(){ if (busy){ stop=true; } else { schedule(true); } }
+
+/* ===========================
+   Export PNG (corrigé)
+   =========================== */
+function exportPNG(){
+  // copie dans un offscreen pour être sûr d’exporter l’image finale en pleine résolution
+  const out = document.createElement('canvas');
+  out.width = W; out.height = H;
+  const octx = out.getContext('2d');
+  octx.imageSmoothingEnabled = false;
+  octx.drawImage(cnv, 0, 0);
+
+  // toBlob (meilleure compat), fallback toDataURL
+  if (out.toBlob){
+    out.toBlob(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'newton_fractal.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  } else {
+    const url = out.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url; a.download = 'newton_fractal.png';
+    // iOS/Safari ne supporte pas toujours "download" → ouvre dans un nouvel onglet
+    if (typeof a.download === 'undefined') { window.open(url, '_blank'); }
+    else { a.click(); }
+  }
+}
+
+/* ===========================
+   Zoom boîte (2 clics) + boutons
+   =========================== */
+const rubber = document.getElementById('rubber');
+let boxMode = false;
+let boxStartCSS = null;
+
+btnBox.addEventListener('click', ()=>{
+  boxMode = !boxMode;
+  btnBox.textContent = boxMode ? '❎ Fin Zoom' : '⬚ Zoom (2 clics)';
+  rubber.style.display = 'none';
+  boxStartCSS = null;
+});
+
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape' && boxMode){
+    boxStartCSS = null;
+    rubber.style.display = 'none';
+  }
+});
+
+cnv.addEventListener('click', (e)=>{
+  if (!boxMode) return;
+  if (!boxStartCSS){
+    boxStartCSS = { x: e.clientX, y: e.clientY };
+    rubber.style.display = 'block';
+    rubber.style.left = `${boxStartCSS.x}px`;
+    rubber.style.top  = `${boxStartCSS.y}px`;
+    rubber.style.width = '0px';
+    rubber.style.height = '0px';
+  } else {
+    let x1 = boxStartCSS.x, y1 = boxStartCSS.y;
+    let x2 = e.clientX,     y2 = e.clientY;
+
+    if (e.shiftKey){
+      const dx = x2 - x1, dy = y2 - y1;
+      const s = Math.sign(dx||1) * Math.max(Math.abs(dx), Math.abs(dy));
+      x2 = x1 + s; y2 = y1 + Math.sign(dy||1) * Math.abs(s);
+    }
+    if (Math.abs(x2-x1)<2 || Math.abs(y2-y1)<2){
+      rubber.style.display = 'none'; boxStartCSS = null; return;
+    }
+    pushView();
+
+    const sx1 = Math.min(x1, x2) * DPR;
+    const sy1 = Math.min(y1, y2) * DPR;
+    const sx2 = Math.max(x1, x2) * DPR;
+    const sy2 = Math.max(y1, y2) * DPR;
+
+    const z1 = screenToComplex(sx1, sy1);
+    const z2 = screenToComplex(sx2, sy2);
+
+    const cx = (z1[0] + z2[0]) * 0.5;
+    const cy = (z1[1] + z2[1]) * 0.5;
+    const wx = Math.abs(z2[0] - z1[0]);
+    const hy = Math.abs(z2[1] - z1[1]);
+
+    const aspect = W / H;
+    const newScale = Math.max(wx * 0.5, hy * 0.5 * aspect);
+
+    view.cx = cx; view.cy = cy; view.scale = Math.max(newScale, 1e-12);
+
+    rubber.style.display = 'none';
+    boxStartCSS = null;
+
+    schedule(true);
+    updateMiniBox();
+  }
+});
+
+cnv.addEventListener('pointermove', (e)=>{
+  if (!boxMode || !boxStartCSS) return;
+  let x1 = boxStartCSS.x, y1 = boxStartCSS.y;
+  let x2 = e.clientX,     y2 = e.clientY;
+
+  if (e.shiftKey){
+    const dx = x2 - x1, dy = y2 - y1;
+    const s = Math.sign(dx||1) * Math.max(Math.abs(dx), Math.abs(dy));
+    x2 = x1 + s; y2 = y1 + Math.sign(dy||1) * Math.abs(s);
+  }
+  const left = Math.min(x1, x2), top = Math.min(y1, y2);
+  const w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+  rubber.style.display = 'block';
+  rubber.style.left = `${left}px`;
+  rubber.style.top  = `${top}px`;
+  rubber.style.width  = `${w}px`;
+  rubber.style.height = `${h}px`;
+});
+
+/* boutons zoom out & undo */
+btnZoomOut.addEventListener('click', ()=>{ zoomOut2x(); });
+btnUndo.addEventListener('click', ()=>{ undoView(); });
+function zoomOut2x(){ pushView(); view.scale *= 2.0; schedule(true); updateMiniBox(); }
+function undoView(){ if (!viewHistory.length) return; popView(); schedule(true); updateMiniBox(); }
+
+/* ===========================
+   Minimap (aperçu global + clic pour recadrer)
+   =========================== */
+const mini = document.getElementById('mini');
+const miniWrapInner = document.getElementById('miniWrapInner');
+const miniBox = document.getElementById('miniBox');
+let mDPR = Math.min(2, window.devicePixelRatio || 1);
+let mW=0, mH=0;
+const MINI_SCALE0 = 3.0; // demi-largeur réelle couverte par la minimap
+const miniView = { cx:0, cy:0, scale: MINI_SCALE0 };
+
+function setupMinimap(){
+  // CSS 180x180 → backing store avec DPR
+  mDPR = Math.min(2, window.devicePixelRatio || 1);
+  mW = Math.floor(180 * mDPR);
+  mH = Math.floor(180 * mDPR);
+  mini.width = mW; mini.height = mH;
+  mini.style.width = '180px'; mini.style.height = '180px';
+}
+
+function miniComplexToScreen(x, y){
+  const px = ((x - miniView.cx)/miniView.scale*0.5 + 0.5) * mW;
+  const py = ((y - miniView.cy)/(miniView.scale*mH/mW)*0.5 + 0.5) * mH;
+  return [px, py];
+}
+function screenToMiniComplex(px, py){
+  const x = miniView.cx + (px/mW*2-1) * miniView.scale;
+  const y = miniView.cy + (py/mH*2-1) * (miniView.scale * mH/mW);
+  return [x,y];
+}
+
+let miniBusy=false, miniStop=false;
+function scheduleMini(full=false){ if (full) miniStop=true; if (!miniBusy) requestAnimationFrame(renderMinimap); }
+
+async function renderMinimap(){
+  miniBusy=true; miniStop=false;
+  const mctx = mini.getContext('2d', { willReadFrequently: true });
+  mctx.fillStyle = '#0b0f13'; mctx.fillRect(0,0,mW,mH);
+
+  // rendu rapide (faible iters) pour l’aperçu
+  const itersMini = Math.min(MAX_ITERS, 30);
+  const oldMax = MAX_ITERS; MAX_ITERS = itersMini; // temporaire
+  const w = mW, h = mH;
+  const img = mctx.createImageData(w,h);
+  const u32 = new Uint32Array(img.data.buffer);
+  const pal = makePalette(Math.max(12, DEG+2));
+  const roots=[];
+  const TS=36;
+
+  for (let y0=0;y0<h;y0+=TS){
+    if (miniStop) break;
+    const y1=Math.min(h,y0+TS);
+    for (let x0=0;x0<w;x0+=TS){
+      if (miniStop) break;
+      const x1=Math.min(w,x0+TS);
+      for (let y=y0;y<y1;y++){
+        const py=y+0.5;
+        for (let x=x0;x<x1;x++){
+          const px=x+0.5;
+          // point complexe dans l'espace minimap
+          const z = screenToMiniComplex(px,py); let zr=z[0], zi=z[1];
+          const out = newton(zr,zi); zr=out[0]; zi=out[1]; const iter=out[2]; const step=out[3];
+
+          let idx=-1;
+          for (let r=0;r<roots.length;r++){
+            const dx=zr-roots[r][0], dy=zi-roots[r][1];
+            if ((dx*dx+dy*dy) < ROOT_EPS*ROOT_EPS){ roots[r][0]=(roots[r][0]+zr)*0.5; roots[r][1]=(roots[r][1]+zi)*0.5; idx=r; break; }
+          }
+          if (idx<0){ roots.push([zr,zi]); idx=roots.length-1; }
+
+          let r,g,b;
+          const base = pal[idx % pal.length];
+          r=base[0]; g=base[1]; b=base[2];
+
+          if (paletteEl.value==='fire' || paletteEl.value==='ice'){
+            const t = Math.min(1, iter/(itersMini-1));
+            if (paletteEl.value==='fire'){ const rgb=hslToRgb(20+30*t,90,10+70*t); r=rgb[0];g=rgb[1];b=rgb[2]; }
+            else { const rgb=hslToRgb(180+60*t,60,15+70*t); r=rgb[0];g=rgb[1];b=rgb[2]; }
+          } else if (SMOOTH){
+            const f = Math.max(0, Math.min(1, Math.log10(1+1/(step+1e-16))/2 ));
+            const lmul = 0.65 + 0.35*(1-f);
+            r*=lmul; g*=lmul; b*=lmul;
+          }
+
+          u32[y*w + x] = packRGBA(r|0,g|0,b|0,255);
+        }
+      }
+    }
+    mctx.putImageData(img,0,0);
+    await new Promise(r=>requestAnimationFrame(r));
+  }
+  MAX_ITERS = oldMax; // restore
+
+  updateMiniBox();
+  miniBusy=false;
+}
+
+// cadre de vue sur minimap
+function updateMiniBox(){
+  const [ax, ay] = miniComplexToScreen(view.cx - view.scale, view.cy - (view.scale*H/W));
+  const [bx, by] = miniComplexToScreen(view.cx + view.scale, view.cy + (view.scale*H/W));
+  const left = Math.min(ax,bx), top = Math.min(ay,by);
+  const w = Math.abs(bx-ax), h = Math.abs(by-ay);
+
+  // clamp & position
+  const cssW = mini.clientWidth;
+  const cssH = mini.clientHeight;
+  const fx = cssW / mW, fy = cssH / mH;
+
+  miniBox.style.left = (left*fx) + 'px';
+  miniBox.style.top  = (top *fy) + 'px';
+  miniBox.style.width  = (w*fx) + 'px';
+  miniBox.style.height = (h*fy) + 'px';
+}
+
+// clic dans la minimap → recadrer le centre
+mini.addEventListener('click', (e)=>{
+  const rect = mini.getBoundingClientRect();
+  const px = (e.clientX - rect.left) * mDPR;
+  const py = (e.clientY - rect.top ) * mDPR;
+  const z = screenToMiniComplex(px, py);
+  pushView();
+  view.cx = z[0];
+  view.cy = z[1];
+  schedule(true);
+  updateMiniBox();
+});
+
+/* ===========================
+   Boutons généraux
+   =========================== */
+btnRender.addEventListener('click', ()=>{ schedule(true); scheduleMini(true); });
+btnStop.addEventListener('click', ()=>toggleStop());
+btnReset.addEventListener('click', ()=>{ pushView(); resetView(); });
+btnExport.addEventListener('click', ()=>exportPNG());
+
+/* ===========================
+   Boot
+   =========================== */
+applyPreset('z3-1');
+setupMinimap();
+resize();
+schedule(true);
+scheduleMini(true);
+</script>
+</body>
+</html>

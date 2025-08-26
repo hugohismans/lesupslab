@@ -44,5 +44,15 @@
     ],
     "thumbnail": "thumb.png",
     "date": "2025-08-26"
+  },
+    {
+    "title": "Fractal de newton",
+    "folder": "fractalnewton",
+    "description": "Exploration de quelques fractale de newton",
+    "tags": [
+      "p5.js"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-26"
   }
 ]
