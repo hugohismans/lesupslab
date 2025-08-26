@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Épicycles — Dessine puis Fourier</title>
+  <style>
+    :root{--bg:#0b0f14;--panel:#121823;--text:#e6eef8;--muted:#9fb0c7;--accent:#64d2ff;}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif}
+    #wrap{display:flex;gap:16px;align-items:flex-start;justify-content:center;padding:16px;box-sizing:border-box}
+    #panel{background:var(--panel);border-radius:12px;padding:12px 14px;min-width:280px;max-width:360px;box-shadow:0 8px 20px rgba(0,0,0,.35);position:sticky;top:16px}
+    h1{font-size:18px;margin:0 0 10px 0;color:var(--accent)}
+    .row{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+    .row label{font-size:14px;color:var(--muted);margin-right:8px;flex:1}
+    .row input[type=range]{flex:1}
+    .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    button{background:#1a2332;color:var(--text);border:1px solid #243048;border-radius:8px;padding:8px 10px;cursor:pointer}
+    button:hover{background:#1e2a3d}
+    .small{font-size:12px;color:var(--muted);margin-top:4px}
+    canvas{border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.45);touch-action:none} /* <- crucial pour tactile */
+    .badge{display:inline-block;background:#1a2332;border:1px solid #243048;border-radius:20px;padding:3px 8px;font-size:12px;color:var(--muted);margin-right:6px}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+</head>
+<body>
+<div id="wrap">
+  <div id="sketch"></div>
+  <div id="panel">
+    <h1>Épicycles — Fourier de ton dessin</h1>
+    <div class="badge" id="modeBadge">Mode: dessin</div>
+    <div class="row">
+      <label for="resPts">Échantillons (DFT): <span id="resPtsVal">512</span></label>
+      <input id="resPts" type="range" min="64" max="2048" step="64" value="512">
+    </div>
+    <div class="row">
+      <label for="harmonics">Harmoniques utilisées: <span id="harmonicsVal">50</span></label>
+      <input id="harmonics" type="range" min="1" max="400" step="1" value="50">
+    </div>
+    <div class="row">
+      <label for="speed">Vitesse (ω): <span id="speedVal">1.00</span></label>
+      <input id="speed" type="range" min="0.1" max="3" step="0.01" value="1">
+    </div>
+    <div class="row">
+      <label for="showGuides">Guides (cercles/bras)</label>
+      <input id="showGuides" type="checkbox" checked>
+    </div>
+    <div class="btns">
+      <button id="clearBtn">Effacer</button>
+      <button id="computeBtn">Lancer / Recalculer</button>
+      <button id="toggleBtn">Pause</button>
+      <button id="modeBtn">Mode dessin</button>
+    </div>
+    <div class="small">
+      Astuce : dessine une silhouette <b>fermée</b> puis clique « Lancer ».  
+      Si tu es au tactile, garde le doigt <b>dans</b> le canvas pour finir.
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== Complex utils ===== */
+function cadd(a,b){ return {re:a.re+b.re, im:a.im+b.im}; }
+function cmul(a,b){ return {re:a.re*b.re - a.im*b.im, im:a.re*b.im + a.im*b.re}; }
+function cscale(a,s){ return {re:a.re*s, im:a.im*s}; }
+function cexp(theta){ return {re:Math.cos(theta), im:Math.sin(theta)}; }
+function cmag(a){ return Math.hypot(a.re, a.im); }
+function cphase(a){ return Math.atan2(a.im, a.re); }
+
+/* ===== Global state ===== */
+let drawPoints = [];   // points bruts (pixels)
+let polyline = [];     // polyline simplifiée
+let resampled = [];    // N points (complexe centré)
+let coeffs = [];       // {freq, A, mag, phase}
+let order = [];        // indices triés par amplitude
+let history = [];      // trace reconstruite (pixels)
+let playing = false;
+let t = 0;
+let modeDraw = true;
+let center, pg, canvas;
+
+let scaleToCanvas = 1;
+const canvasW = 900, canvasH = 680;
+
+/* ===== UI refs ===== */
+const resPtsEl = document.getElementById('resPts');
+const resPtsVal = document.getElementById('resPtsVal');
+const harmonicsEl = document.getElementById('harmonics');
+const harmonicsVal = document.getElementById('harmonicsVal');
+const speedEl = document.getElementById('speed');
+const speedVal = document.getElementById('speedVal');
+const showGuidesEl = document.getElementById('showGuides');
+const clearBtn = document.getElementById('clearBtn');
+const computeBtn = document.getElementById('computeBtn');
+const toggleBtn = document.getElementById('toggleBtn');
+const modeBtn = document.getElementById('modeBtn');
+const modeBadge = document.getElementById('modeBadge');
+
+resPtsEl.oninput = () => resPtsVal.textContent = resPtsEl.value;
+harmonicsEl.oninput = () => harmonicsVal.textContent = harmonicsEl.value;
+speedEl.oninput = () => speedVal.textContent = (+speedEl.value).toFixed(2);
+function updateModeBadge(){ modeBadge.textContent = "Mode: " + (modeDraw ? "dessin" : "animation"); }
+
+/* ===== p5 setup/draw ===== */
+function setup(){
+  canvas = createCanvas(canvasW, canvasH);
+  canvas.parent('sketch');
+  center = createVector(width/2, height/2);
+  pg = createGraphics(width, height); pg.clear();
+  strokeJoin(ROUND); strokeCap(ROUND);
+  textFont('system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,"Helvetica Neue", Arial,"Noto Sans", sans-serif');
+
+  // Attacher les événements AU CANVAS uniquement (souris & tactile)
+  canvas.mousePressed(startStroke);
+  canvas.mouseReleased(endStroke);
+  canvas.mouseOut(endStroke); // si on sort du canvas pendant le trait
+  canvas.touchStarted(startStroke);
+  canvas.touchMoved(extendStroke);
+  canvas.touchEnded(endStroke);
+}
+function mouseDragged(){
+  if (!modeDraw) return false;
+  if (!withinCanvas(mouseX, mouseY)) return false;
+  // utilise exactement la même logique que extendStroke()
+  const p = createVector(mouseX, mouseY);
+  if (drawPoints.length===0 || p5.Vector.dist(drawPoints[drawPoints.length-1], p) > 1){
+    drawPoints.push(p);
+  }
+  return false; // empêche texte sélectionné / scroll
+}
+
+function draw(){
+  background(11,15,20);
+  drawGrid();
+
+  if (modeDraw){
+    // trait brut
+    noFill(); stroke(230,238,248,80); strokeWeight(4);
+    beginShape(); for (const p of drawPoints) vertex(p.x,p.y); endShape();
+    // preview simplifié
+    if (drawPoints.length>1){
+      const tmp = simplifyPath(drawPoints, 2.0);
+      noFill(); stroke(100,160,220,90); strokeWeight(2);
+      beginShape(); for (const p of tmp) vertex(p.x,p.y); endShape();
+    }
+    // UI hints
+    noStroke(); fill(159,176,199); textSize(13);
+    text("✍️  Dessine une silhouette fermée, puis clique « Lancer »", 16, height-16);
+    textSize(12); text(`Points capturés: ${drawPoints.length}`, 16, 36);
+  } else {
+    image(pg, 0, 0);
+    if (coeffs.length){
+      if (playing){
+        const omega = parseFloat(speedEl.value);
+        t += omega * (TWO_PI / 600);
+        if (t > TWO_PI) t -= TWO_PI;
+      }
+      const H = Math.min(parseInt(harmonicsEl.value,10), order.length);
+      const tip = drawEpicyclesAndGetTip(t, H, showGuidesEl.checked);
+      // tracer
+      pg.push(); pg.noFill(); pg.stroke(100,210,255,255); pg.strokeWeight(2);
+      if (history.length>0){ const last = history[history.length-1]; pg.line(last.x,last.y, tip.x,tip.y); }
+      pg.pop();
+      history.push(tip); if (history.length>4000) history.shift();
+      // progression
+      noStroke(); fill(159,176,199); textSize(12);
+      text(`t = ${(t/TWO_PI*100).toFixed(1)}% du tour`, 16, 20);
+    } else {
+      noStroke(); fill(159,176,199); textSize(14);
+      text("Aucun coefficient. Dessine et clique « Lancer / Recalculer ».", 16, 24);
+    }
+  }
+}
+
+/* ===== Handlers strictement liés au canvas ===== */
+function withinCanvas(mx,my){ return mx>=0 && mx<=width && my>=0 && my<=height; }
+
+function startStroke(){
+  if (!modeDraw) return false;
+  if (!withinCanvas(mouseX, mouseY)) return false;
+  // ne pas vider automatiquement — on commence/continue le trait
+  if (!Array.isArray(drawPoints)) drawPoints = [];
+  drawPoints._finished = false;
+  drawPoints.push(createVector(mouseX, mouseY));
+  return false;
+}
+
+function extendStroke(){
+  if (!modeDraw) return false;
+  if (!withinCanvas(mouseX, mouseY)) return false;
+  const p = createVector(mouseX, mouseY);
+  if (drawPoints.length===0 || p5.Vector.dist(drawPoints[drawPoints.length-1], p) > 1){
+    drawPoints.push(p);
+  }
+  return false;
+}
+
+function endStroke(){
+  if (!modeDraw) return false;
+  if (drawPoints.length>2){
+    polyline = simplifyPath(drawPoints, 1.5);
+    drawPoints._finished = true; // on marque seulement la fin
+  }
+  return false;
+}
+
+/* ===== Boutons ===== */
+clearBtn.onclick = (e) => {
+  e.stopPropagation(); e.preventDefault();
+  drawPoints = []; polyline = []; resampled = [];
+  coeffs = []; order = []; history = [];
+  t = 0; playing = false; modeDraw = true; updateModeBadge(); pg.clear();
+};
+
+computeBtn.onclick = (e) => {
+  e.stopPropagation(); e.preventDefault();
+
+  // si pas de polyline (ex: on n'a pas "endStroke" sur mobile), la fabriquer
+  if (!polyline?.length && drawPoints?.length){ polyline = simplifyPath(drawPoints, 1.5); }
+
+  // 0) polyline exploitable ?
+  let working = (polyline && polyline.length >= 2) ? polyline.slice() : simplifyPath(drawPoints, 1.0);
+  if (!working || working.length < 2) { alert("Dessine d'abord une forme (au moins quelques points)."); return; }
+
+  // 1) fermer la boucle si proche + forcer fermeture sinon
+  maybeClosePolyline(working, 30);
+  if (p5.Vector.dist(working[0], working[working.length-1]) > 1) working.push(working[0].copy());
+
+  // 2) ré-échantillonnage
+  const N = parseInt(resPtsEl.value,10);
+  const uniform = resampleUniform(working, N);
+  if (!uniform || uniform.length < 4) { alert("Forme trop courte après ré-échantillonnage."); return; }
+
+  // 3) centrer / normaliser
+  const {zs, scale, ok} = toComplexCentered(uniform);
+  if (!ok) { alert("Le dessin est trop petit. Trace une forme plus grande."); return; }
+  resampled = zs; scaleToCanvas = scale;
+
+  // 4) DFT centrée
+  coeffs = dftCentered(resampled);
+
+  // 5) tri et check énergie
+  order = coeffs.map((c,i)=>i).sort((i,j)=>coeffs[j].mag - coeffs[i].mag);
+  const energy = coeffs.reduce((s,c)=>s + c.mag, 0);
+  if (!isFinite(energy) || energy <= 1e-6) { alert("Impossible d’extraire des coefficients utiles."); return; }
+
+  // 6) préparation animation
+  pg.clear(); drawInitialOutline(uniform);
+  history = []; t = 0; playing = true; modeDraw = false; updateModeBadge(); toggleBtn.textContent = "Pause";
+
+  // prime: quelques pas
+  const H = Math.min(parseInt(harmonicsEl.value,10), order.length);
+  for (let k=0;k<30;k++){
+    const omega = parseFloat(speedEl.value);
+    t += omega * (TWO_PI / 600); if (t > TWO_PI) t -= TWO_PI;
+    const tip = drawEpicyclesAndGetTip(t, H, showGuidesEl.checked);
+    if (history.length>0){
+      const last = history[history.length-1];
+      pg.push(); pg.noFill(); pg.stroke(100,210,255); pg.strokeWeight(2);
+      pg.line(last.x,last.y, tip.x,tip.y); pg.pop();
+    }
+    history.push(tip);
+  }
+};
+
+toggleBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault();
+  playing = !playing; toggleBtn.textContent = playing ? "Pause" : "Reprendre";
+};
+
+modeBtn.onclick = (e) => { e.stopPropagation(); e.preventDefault();
+  modeDraw = !modeDraw; updateModeBadge();
+};
+
+/* ===== Géométrie & DFT ===== */
+function simplifyPath(pts, minDist){
+  if (pts.length===0) return [];
+  const out=[pts[0].copy()];
+  for (let i=1;i<pts.length;i++)
+    if (p5.Vector.dist(pts[i], out[out.length-1])>=minDist) out.push(pts[i].copy());
+  return out;
+}
+function maybeClosePolyline(pts, thresh){
+  if (pts.length<3) return;
+  const d = p5.Vector.dist(pts[0], pts[pts.length-1]);
+  if (d < thresh) pts[pts.length-1] = pts[0].copy();
+}
+function resampleUniform(pts, N){
+  const L=[0]; let total=0;
+  for (let i=1;i<pts.length;i++){ total+=p5.Vector.dist(pts[i-1],pts[i]); L.push(total); }
+  if (total===0) return pts.map(p=>p.copy());
+  const step = total/N, out=[]; let j=1;
+  for (let k=0;k<N;k++){
+    const target=k*step; while (j<L.length && L[j]<target) j++;
+    const j0=Math.max(1, Math.min(j, L.length-1));
+    const t=(target-L[j0-1])/(L[j0]-L[j0-1] || 1);
+    const a=pts[j0-1], b=pts[j0] || pts[j0-1];
+    out.push(p5.Vector.lerp(a,b,constrain(t,0,1)));
+  }
+  return out;
+}
+function toComplexCentered(pts){
+  // centre par la moyenne; on GARDE l'échelle d'origine
+  let cx = 0, cy = 0;
+  for (const p of pts){ cx += p.x; cy += p.y; }
+  cx /= pts.length; cy /= pts.length;
+
+  // y math positif vers le haut -> on met un moins ici (DFT),
+  // et on re-retournera le y à l'AFFICHAGE (patch 1)
+  const zs = pts.map(p => ({ re: (p.x - cx), im: -(p.y - cy) }));
+
+  // garde anti-forme quasi ponctuelle
+  let maxR = 0;
+  for (const z of zs) maxR = Math.max(maxR, Math.hypot(z.re, z.im));
+  const ok = isFinite(maxR) && maxR >= 3; // seuil plus doux
+
+  return { zs, scale: 1, shift: {cx, cy}, ok };
+}
+function dftCentered(zs){
+  const N=zs.length, K=Math.floor(N/2), out=[];
+  for (let n=-K;n<=K;n++){
+    let sum={re:0,im:0};
+    for (let j=0;j<N;j++){
+      const angle=-2*Math.PI*n*j/N, ej=cexp(angle);
+      sum=cadd(sum, cmul(zs[j], ej));
+    }
+    sum=cscale(sum,1/N);
+    out.push({freq:n, A:sum, mag:cmag(sum), phase:cphase(sum)});
+  }
+  return out;
+}
+
+/* ===== Épicycles & visuels ===== */
+function drawEpicyclesAndGetTip(theta, H, showGuides){
+  let base = createVector(center.x, center.y);
+
+  for (let m = 0; m < H && m < order.length; m++){
+    const c = coeffs[ order[m] ];
+    const ang = c.freq * theta + c.phase;
+
+    // vecteur dans repère p5 (y vers le bas) -> on INVERSE le y ici
+    const v = p5.Vector.fromAngle(ang, c.mag * scaleToCanvas);
+    const endX = base.x + v.x;
+    const endY = base.y - v.y;          // <- inversion Y
+
+    if (showGuides){
+      // cercle guide
+      noFill(); stroke(100,160,220,40); strokeWeight(1);
+      circle(base.x, base.y, 2 * c.mag * scaleToCanvas);
+      // bras
+      stroke(100,210,255,140); strokeWeight(2);
+      line(base.x, base.y, endX, endY);
+    }
+
+    // avancer la base
+    base.set(endX, endY);
+  }
+
+  // pointe
+  noStroke(); fill(100,210,255);
+  circle(base.x, base.y, 4);
+  return base.copy();
+}
+
+function drawInitialOutline(uniform){
+  pg.push(); pg.noFill(); pg.stroke(230,238,248,90); pg.strokeWeight(2);
+  pg.beginShape(); for (const p of uniform){ pg.vertex(p.x, p.y); } pg.endShape(); pg.pop();
+}
+function drawGrid(){
+  push();
+  stroke(255,255,255,18); strokeWeight(1);
+  for (let x=0; x<=width; x+=40) line(x,0,x,height);
+  for (let y=0; y<=height; y+=40) line(0,y,width,y);
+  stroke(100,160,220,90);
+  line(center.x,0,center.x,height); line(0,center.y,width,center.y);
+  pop();
+}
+</script>
+</body>
+</html>
