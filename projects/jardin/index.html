@@ -258,6 +258,9 @@ const firebaseConfig = {
 
     let meRef = null;
     const lookAxes = { x: 0, y: 0 };
+    let movePointerId = null;  // joystick gauche (déplacement)
+let lookPointerId = null;  // joystick droit (regard)
+function anyStickActive(){ return movePointerId !== null || lookPointerId !== null; }
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
     function toHexColor(input, fallback="#88e5ff"){
@@ -513,23 +516,54 @@ const firebaseConfig = {
       axes.y = -ny;   // bas(+) / haut(-) → inversé dans animate()
     }
     if (IS_MOBILE){
-      const R = 75;
-      stickArea.addEventListener('pointerdown', (e)=>{
-        if (e.pointerType !== 'touch') return; stickActive = true;
-        const rect = stickArea.getBoundingClientRect(); const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
-        const dx=e.clientX-cx, dy=e.clientY-cy; const dist=Math.min(R, Math.hypot(dx,dy)); const ang=Math.atan2(dy,dx);
-        const px=Math.cos(ang)*dist, py=Math.sin(ang)*dist; stick.style.transform=`translate(${px}px, ${py}px)`;
-        sx=px/R; sy=py/R; setMoveFromStick(sx,sy);
-      });
-      addEventListener('pointermove', (e)=>{
-        if (!stickActive || e.pointerType!=='touch') return;
-        const rect = stickArea.getBoundingClientRect(); const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
-        const dx=e.clientX-cx, dy=e.clientY-cy; const dist=Math.min(R, Math.hypot(dx,dy)); const ang=Math.atan2(dy,dx);
-        const px=Math.cos(ang)*dist, py=Math.sin(ang)*dist; stick.style.transform=`translate(${px}px, ${py}px)`;
-        sx=px/R; sy=py/R; setMoveFromStick(sx,sy);
-      });
-      addEventListener('pointerup', ()=>{ if (!stickActive) return; stickActive=false; sx=sy=0; stick.style.transform=`translate(0,0)`; setMoveFromStick(0,0); });
-      addEventListener('pointercancel', ()=>{ if (!stickActive) return; stickActive=false; sx=sy=0; stick.style.transform=`translate(0,0)`; setMoveFromStick(0,0); });
+      const R = 75; // rayon joystick
+stickArea.addEventListener('pointerdown', (e)=>{
+  if (e.pointerType !== 'touch') return;
+  if (movePointerId !== null) return;     // déjà utilisé
+  movePointerId = e.pointerId;
+  stickArea.setPointerCapture(movePointerId);
+  e.preventDefault();
+
+  const rect = stickArea.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const dx = e.clientX - cx, dy = e.clientY - cy;
+  const dist = Math.min(R, Math.hypot(dx,dy));
+  const ang  = Math.atan2(dy, dx);
+  const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+  stick.style.transform = `translate(${px}px, ${py}px)`;
+  setMoveFromStick(px/R, py/R);
+}, { passive:false });
+
+stickArea.addEventListener('pointermove', (e)=>{
+  if (e.pointerId !== movePointerId) return;
+  e.preventDefault();
+  const rect = stickArea.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const dx = e.clientX - cx, dy = e.clientY - cy;
+  const dist = Math.min(R, Math.hypot(dx,dy));
+  const ang  = Math.atan2(dy, dx);
+  const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+  stick.style.transform = `translate(${px}px, ${py}px)`;
+  setMoveFromStick(px/R, py/R);
+}, { passive:false });
+
+function resetMoveStick(){
+  stick.style.transform = 'translate(0,0)';
+  setMoveFromStick(0,0);
+}
+
+stickArea.addEventListener('pointerup', (e)=>{
+  if (e.pointerId !== movePointerId) return;
+  stickArea.releasePointerCapture(movePointerId);
+  movePointerId = null;
+  resetMoveStick();
+});
+
+stickArea.addEventListener('pointercancel', (e)=>{
+  if (e.pointerId !== movePointerId) return;
+  movePointerId = null;
+  resetMoveStick();
+});
     }
 
     /************ Joystick droit (caméra) ************/
@@ -553,36 +587,55 @@ function setLookFromStick(x, y){
 }
 
 if (IS_MOBILE){
-  const R = 75; // rayon en px
-  lookArea.addEventListener('pointerdown', (e)=>{
-    if (e.pointerType !== 'touch') return;
-    lookActive = true;
-    const rect = lookArea.getBoundingClientRect();
-    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-    const dx = e.clientX - cx, dy = e.clientY - cy;
-    const dist = Math.min(R, Math.hypot(dx,dy));
-    const ang = Math.atan2(dy, dx);
-    const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
-    lookKnob.style.transform = `translate(${px}px, ${py}px)`;
-    setLookFromStick(px/R, py/R);
-  });
-  addEventListener('pointermove', (e)=>{
-    if (!lookActive || e.pointerType !== 'touch') return;
-    const rect = lookArea.getBoundingClientRect();
-    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-    const dx = e.clientX - cx, dy = e.clientY - cy;
-    const dist = Math.min(R, Math.hypot(dx,dy));
-    const ang = Math.atan2(dy, dx);
-    const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
-    lookKnob.style.transform = `translate(${px}px, ${py}px)`;
-    setLookFromStick(px/R, py/R);
-  });
-  addEventListener('pointerup', ()=>{
-    if (!lookActive) return;
-    lookActive = false;
-    lookKnob.style.transform = `translate(0,0)`;
-    lookAxes.x = 0; lookAxes.y = 0;
-  });
+const Rlook = 75;
+lookArea.addEventListener('pointerdown', (e)=>{
+  if (anyStickActive()) return;
+  if (e.pointerType !== 'touch') return;
+  if (lookPointerId !== null) return;
+  lookPointerId = e.pointerId;
+  lookArea.setPointerCapture(lookPointerId);
+  e.preventDefault();
+
+  const rect = lookArea.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const dx = e.clientX - cx, dy = e.clientY - cy;
+  const dist = Math.min(Rlook, Math.hypot(dx,dy));
+  const ang  = Math.atan2(dy, dx);
+  const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+  look.style.transform = `translate(${px}px, ${py}px)`;
+  setLookFromStick(px/Rlook, py/Rlook);
+}, { passive:false });
+
+lookArea.addEventListener('pointermove', (e)=>{
+  if (e.pointerId !== lookPointerId) return;
+  e.preventDefault();
+  const rect = lookArea.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  const dx = e.clientX - cx, dy = e.clientY - cy;
+  const dist = Math.min(Rlook, Math.hypot(dx,dy));
+  const ang  = Math.atan2(dy, dx);
+  const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+  look.style.transform = `translate(${px}px, ${py}px)`;
+  setLookFromStick(px/Rlook, py/Rlook);
+}, { passive:false });
+
+function resetLookStick(){
+  look.style.transform = 'translate(0,0)';
+  lookAxes.x = 0; lookAxes.y = 0;
+}
+
+lookArea.addEventListener('pointerup', (e)=>{
+  if (e.pointerId !== lookPointerId) return;
+  lookArea.releasePointerCapture(lookPointerId);
+  lookPointerId = null;
+  resetLookStick();
+});
+
+lookArea.addEventListener('pointercancel', (e)=>{
+  if (e.pointerId !== lookPointerId) return;
+  lookPointerId = null;
+  resetLookStick();
+});
 }
 
     /************ Boutons actions (mobile) ************/
