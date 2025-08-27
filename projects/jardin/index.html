@@ -305,6 +305,18 @@ const firebaseConfig = {
 
   // ... le reste de ta scène / listeners / onValue etc.
 })();
+
+async function serverNowMs(db){
+  try {
+    const snap = await get(dbRef(db, "/.info/serverTimeOffset"));
+    const offset = snap.val() || 0;
+    return Date.now() + offset; // ms
+  } catch {
+    return Date.now(); // fallback
+  }
+}
+
+
 function anyStickActive(){ return movePointerId !== null || lookPointerId !== null; }
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
@@ -972,27 +984,47 @@ async function plantTree(){
     }
   }
 }
+async function ensureReady(){
+  // Vérifie si on est déjà connecté
+  if (!auth.currentUser) {
+    // Si non, on attend la connexion
+    await new Promise((res) => {
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (u) {
+          unsub(); // on arrête d'écouter
+          res();   // on sort de la fonction
+        }
+      });
+    });
+  }
+  
+  // Ici, auth.currentUser est garanti défini.
+  
+  // (Optionnel) Si tu as App Check en "Enforce", vérifier qu'il est prêt aussi.
+}
 async function plantFlower(){
   const { proceed, msg } = await askFlowerMessage();
   if (!proceed) return;
 
+  await ensureReady(); // ← attend auth (et App Check si tu le gères ici)
+
   const p = controls.getObject().position;
-  const now = Date.now();
+  const now = await serverNowMs(db); // ← heure serveur
+
   const payload = {
-    uid:  self.uid,
-    name: (self.name || ("Fée#" + self.uid.slice(0,4))).toString().slice(0,16), // ≤ 16
+    uid:  auth.currentUser.uid,
+    name: (self.name || ("Fée#" + auth.currentUser.uid.slice(0,4))).toString().slice(0,16),
     x: +p.x.toFixed(2),
     z: +p.z.toFixed(2),
-    color: toHexColor(self.color, "#a0ffcc"), // string
-    ts: now,                                   // Number
-    seed: Math.floor(Math.random()*1e9)        // Number
+    color: toHexColor(self.color, "#a0ffcc"),
+    ts: now,
+    seed: Math.floor(Math.random() * 1e9)
   };
   if (msg && msg.trim()) payload.msg = msg.trim().slice(0,140);
 
-  // debug: vois ce qui part réellement
   console.log("PLANT FLOWER payload =>", payload);
 
-  await push(ref(db, '/garden'), payload);
+  await push(dbRef(db, "/garden"), payload);
 }
     onChildAdded(query(spellsRef, limitToLast(40)), snap=>{
       const ev = snap.val(); if (!ev) return; if (Date.now() - (ev.ts || 0) > 15_000) return;
