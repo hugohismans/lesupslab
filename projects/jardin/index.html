@@ -984,33 +984,30 @@ async function plantTree(){
     }
   }
 }
+// Attend que Firebase Auth soit prêt (évite les permission_denied)
 async function ensureReady(){
-  // Vérifie si on est déjà connecté
   if (!auth.currentUser) {
-    // Si non, on attend la connexion
-    await new Promise((res) => {
-      const unsub = onAuthStateChanged(auth, (u) => {
-        if (u) {
-          unsub(); // on arrête d'écouter
-          res();   // on sort de la fonction
-        }
+    await new Promise((resolve) => {
+      const unsub = onAuthStateChanged(auth, (u)=>{
+        if (u) { unsub(); resolve(); }
       });
     });
   }
-  
-  // Ici, auth.currentUser est garanti défini.
-  
-  // (Optionnel) Si tu as App Check en "Enforce", vérifier qu'il est prêt aussi.
 }
+
 async function plantFlower(){
+  // demande message (ta fonction existante)
   const { proceed, msg } = await askFlowerMessage();
   if (!proceed) return;
 
-  await ensureReady(); // ← attend auth (et App Check si tu le gères ici)
+  // s'assure que l'utilisateur est authentifié
+  await ensureReady();
 
-  const p = controls.getObject().position;
-  const now = await serverNowMs(db); // ← heure serveur
+  // position & temps serveur
+  const p   = controls.getObject().position;
+  const now = await serverNowMs(db);
 
+  // payload conforme aux règles RTDB (types/longueurs)
   const payload = {
     uid:  auth.currentUser.uid,
     name: (self.name || ("Fée#" + auth.currentUser.uid.slice(0,4))).toString().slice(0,16),
@@ -1018,13 +1015,25 @@ async function plantFlower(){
     z: +p.z.toFixed(2),
     color: toHexColor(self.color, "#a0ffcc"),
     ts: now,
-    seed: Math.floor(Math.random() * 1e9)
+    seed: Math.floor(Math.random()*1e9)
   };
   if (msg && msg.trim()) payload.msg = msg.trim().slice(0,140);
 
   console.log("PLANT FLOWER payload =>", payload);
 
-  await push(dbRef(db, "/garden"), payload);
+  try {
+    await push(ref(db, "/garden"), payload);
+    // petit feedback optionnel
+    tint(1400, 0.16);
+  } catch (err) {
+    console.error("plantFlower error:", err);
+    const m = String(err?.code || err?.message || err);
+    if (m.includes("PERMISSION_DENIED")) {
+      alert("Impossible de planter maintenant (permissions). Vérifie App Check/horloge ou réessaie dans un instant.");
+    } else {
+      alert("Oups, échec de la plantation. Réessaie plus tard.");
+    }
+  }
 }
     onChildAdded(query(spellsRef, limitToLast(40)), snap=>{
       const ev = snap.val(); if (!ev) return; if (Date.now() - (ev.ts || 0) > 15_000) return;
