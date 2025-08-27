@@ -996,47 +996,26 @@ async function ensureReady(){
 }
 
 async function plantFlower(){
-  // demande message (ta fonction existante)
   const { proceed, msg } = await askFlowerMessage();
   if (!proceed) return;
 
-  // s'assure que l'utilisateur est authentifié
-  await ensureReady();
+  await ensureReady(); // ta fonction d'attente d'auth
 
-  // position & temps serveur
-  const p   = controls.getObject().position;
-  const now = await serverNowMs(db);
+  const p = controls.getObject().position;
+  const uid = auth.currentUser.uid;
 
-  // payload conforme aux règles RTDB (types/longueurs)
   const payload = {
-    uid:  auth.currentUser.uid,
-    name: (self.name || ("Fée#" + auth.currentUser.uid.slice(0,4))).toString().slice(0,16),
+    uid,
+    name: (self.name || ("Fée#" + uid.slice(0,4))).toString().slice(0,16),
     x: +p.x.toFixed(2),
     z: +p.z.toFixed(2),
     color: toHexColor(self.color, "#a0ffcc"),
-    ts: now,
+    ts: serverTimestamp(),                // ⬅️ horloge serveur RTDB
     seed: Math.floor(Math.random()*1e9)
   };
   if (msg && msg.trim()) payload.msg = msg.trim().slice(0,140);
 
-  console.log("PLANT FLOWER payload =>", payload);
-
-  try {
-    console.log("auth.uid =", auth?.currentUser?.uid);
-console.log("payload.uid =", payload.uid);
-console.log("serverNow =", payload.ts, "localNow =", Date.now());
-    await push(ref(db, "/garden"), payload);
-    // petit feedback optionnel
-    tint(1400, 0.16);
-  } catch (err) {
-    console.error("plantFlower error:", err);
-    const m = String(err?.code || err?.message || err);
-    if (m.includes("PERMISSION_DENIED")) {
-      alert("Impossible de planter maintenant (permissions). Vérifie App Check/horloge ou réessaie dans un instant.");
-    } else {
-      alert("Oups, échec de la plantation. Réessaie plus tard.");
-    }
-  }
+  await push(ref(db, "/garden"), payload);
 }
     onChildAdded(query(spellsRef, limitToLast(40)), snap=>{
       const ev = snap.val(); if (!ev) return; if (Date.now() - (ev.ts || 0) > 15_000) return;
