@@ -62,6 +62,7 @@
 
     /* MOBILE UI (deux joysticks) */
     #mobileUI { position:fixed; inset:0; pointer-events:none; display:none; z-index:6; }
+    
     #stickArea, #lookArea {
       width:150px; height:150px; border-radius:50%;
       background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
@@ -114,6 +115,21 @@
       #toggleHUD, #toggleChat { opacity:.7; }
       #toggleHUD:hover, #toggleChat:hover { opacity:1; }
     }
+
+    /* Joystick droit (regard) */
+#lookArea{
+  position:absolute; right:96px; bottom:14px; width:150px; height:150px; border-radius:50%;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
+  pointer-events:auto; touch-action:none; display:none; /* visible que sur mobile */
+}
+#look{
+  position:absolute; left:50%; top:50%; width:72px; height:72px; margin:-36px 0 0 -36px; border-radius:50%;
+  background:rgba(180,160,255,.25); border:1px solid rgba(180,160,255,.7); box-shadow:0 0 12px rgba(180,160,255,.5) inset;
+  transform: translate(0,0);
+}
+@media (hover:none) and (pointer:coarse){
+  #lookArea{ display:block; }
+}
   </style>
 </head>
 <body>
@@ -183,7 +199,8 @@
   <!-- MOBILE CONTROLS (deux joysticks + actions) -->
   <div id="mobileUI">
     <div id="stickArea"><div id="stick"></div></div>
-    <div id="lookArea"><div id="lookStick"></div></div>
+    <!-- <div id="lookArea"><div id="lookStick"></div></div> -->
+    <div id="lookArea"><div id="look"></div></div>
     <div id="actionArea">
       <button id="btnE" class="act">✨</button>
       <button id="btnF" class="act">🌸</button>
@@ -240,7 +257,7 @@ const firebaseConfig = {
     await signInAnonymously(auth);
 
     let meRef = null;
-
+    const lookAxes = { x: 0, y: 0 };
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
     function toHexColor(input, fallback="#88e5ff"){
@@ -302,7 +319,7 @@ const firebaseConfig = {
 
     const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1200);
     camera.position.set(0, 1.6, 6);
-
+    camera.rotation.order = 'YXZ';
     const renderer = new THREE.WebGLRenderer({ antialias:true });
     renderer.setSize(innerWidth, innerHeight);
     renderer.setPixelRatio( IS_MOBILE ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio, 2) );
@@ -516,48 +533,57 @@ const firebaseConfig = {
     }
 
     /************ Joystick droit (caméra) ************/
-    const lookArea  = document.getElementById('lookArea');
-    const lookStick = document.getElementById('lookStick');
-    const look = { x:0, y:0 }; // x yaw, y pitch
-    let lookActive=false;
-    function setLookFromStick(x, y){
-      const r = Math.hypot(x,y), DZ = 0.20;
-      const k = r <= DZ ? 0 : ( (r - DZ) / (1 - DZ) );
-      const curve = Math.pow(k, 1.7);
-      const nx = r ? (x/r)*curve : 0;
-      const ny = r ? (y/r)*curve : 0;
-      look.x = nx;      // gauche(-) / droite(+)
-      look.y = ny;      // bas(+) / haut(-)
-    }
-    if (IS_MOBILE){
-      const R = 75;
-      lookArea.addEventListener('pointerdown', (e)=>{
-        if (e.pointerType !== 'touch') return; lookActive = true;
-        const rect = lookArea.getBoundingClientRect();
-        const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-        const dx = e.clientX - cx, dy = e.clientY - cy;
-        const dist = Math.min(R, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
-        const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
-        lookStick.style.transform = `translate(${px}px, ${py}px)`;
-        setLookFromStick(px/R, py/R);
-      });
-      addEventListener('pointermove', (e)=>{
-        if (!lookActive || e.pointerType!=='touch') return;
-        const rect = lookArea.getBoundingClientRect();
-        const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-        const dx = e.clientX - cx, dy = e.clientY - cy;
-        const dist = Math.min(R, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
-        const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
-        lookStick.style.transform = `translate(${px}px, ${py}px)`;
-        setLookFromStick(px/R, py/R);
-      });
-      addEventListener('pointerup', ()=>{
-        if (!lookActive) return; lookActive=false; lookStick.style.transform = `translate(0,0)`; setLookFromStick(0,0);
-      });
-      addEventListener('pointercancel', ()=>{
-        if (!lookActive) return; lookActive=false; lookStick.style.transform = `translate(0,0)`; setLookFromStick(0,0);
-      });
-    }
+    const lookArea = document.getElementById('lookArea');
+const lookKnob = document.getElementById('look');
+let lookActive = false;
+
+function setLookFromStick(x, y){
+  // x,y dans [-1..1]
+  // Deadzone + courbe douce (plus stable)
+  const r = Math.hypot(x,y);
+  const DZ = 0.16;
+  const k = r <= DZ ? 0 : ( (r - DZ) / (1 - DZ) ); // 0..1
+  const curve = Math.pow(k, 1.4);
+  const nx = (r ? x/r : 0) * curve;
+  const ny = (r ? y/r : 0) * curve;
+
+  // Convention : droite positive => regarde à droite ; haut positif => regarde vers le haut
+  lookAxes.x = nx;        // yaw
+  lookAxes.y = -ny;       // pitch (vers le haut si on pousse le stick vers le haut)
+}
+
+if (IS_MOBILE){
+  const R = 75; // rayon en px
+  lookArea.addEventListener('pointerdown', (e)=>{
+    if (e.pointerType !== 'touch') return;
+    lookActive = true;
+    const rect = lookArea.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    const dx = e.clientX - cx, dy = e.clientY - cy;
+    const dist = Math.min(R, Math.hypot(dx,dy));
+    const ang = Math.atan2(dy, dx);
+    const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+    lookKnob.style.transform = `translate(${px}px, ${py}px)`;
+    setLookFromStick(px/R, py/R);
+  });
+  addEventListener('pointermove', (e)=>{
+    if (!lookActive || e.pointerType !== 'touch') return;
+    const rect = lookArea.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    const dx = e.clientX - cx, dy = e.clientY - cy;
+    const dist = Math.min(R, Math.hypot(dx,dy));
+    const ang = Math.atan2(dy, dx);
+    const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+    lookKnob.style.transform = `translate(${px}px, ${py}px)`;
+    setLookFromStick(px/R, py/R);
+  });
+  addEventListener('pointerup', ()=>{
+    if (!lookActive) return;
+    lookActive = false;
+    lookKnob.style.transform = `translate(0,0)`;
+    lookAxes.x = 0; lookAxes.y = 0;
+  });
+}
 
     /************ Boutons actions (mobile) ************/
     if (IS_MOBILE){
@@ -874,14 +900,20 @@ const firebaseConfig = {
       );
 
       // vitesses
-      const baseSpeed = IS_MOBILE ? 3.0 : 6.0;
+      const baseSpeed = IS_MOBILE ? 0.8 : 1.0;
       const speed = baseSpeed * Math.min(1, Math.hypot(direction.x, direction.z) || 0.0001);
 
       velocity.x -= velocity.x * 10 * dt;
       velocity.z -= velocity.z * 10 * dt;
+      if (IS_MOBILE){
       velocity.x += direction.x * speed * dt;
       velocity.z += direction.z * speed * dt;
-
+      }
+      else
+      {
+        velocity.x += direction.x * speed * dt;
+        velocity.z -= direction.z * speed * dt;
+      }
       const obj = controls.getObject();
       obj.translateX( velocity.x);
       obj.translateZ( velocity.z);
@@ -889,17 +921,41 @@ const firebaseConfig = {
       obj.position.y = yHere + 1.6;
 
       // Caméra par joystick droit (yaw/pitch), lissée, sans roll
-      if (IS_MOBILE){
-        const LSM = 0.25, YAW_SENS = 1.2, PITCH_SENS = 1.0;
-        const yawObj = controls.getObject();
-        const dYaw   = THREE.MathUtils.lerp(0, look.x * YAW_SENS, LSM) * dt;
-        yawObj.rotation.y -= dYaw;
-        const pitchObj = yawObj.children[0] || camera;
-        const dPitch = THREE.MathUtils.lerp(0, -look.y * PITCH_SENS, LSM) * dt;
-        const minPitch = -Math.PI/2 + 0.2, maxPitch = Math.PI/2 - 0.2;
-        pitchObj.rotation.x = THREE.MathUtils.clamp(pitchObj.rotation.x + dPitch, minPitch, maxPitch);
-        pitchObj.rotation.z = 0; camera.rotation.z = 0;
-      }
+camera.rotation.order = 'YXZ'; // évite tout roll implicite
+
+const yawObj   = controls.getObject();            // yaw (Y)
+const pitchObj = yawObj.children[0] || camera;    // pitch (X)
+
+function clamp(x, min, max){ return Math.max(min, Math.min(max, x)); }
+
+//IS_MOBILE = matchMedia('(hover:none) and (pointer:coarse)').matches;
+
+let touchLookActive = false;
+let lastX = 0, lastY = 0;
+let vx = 0, vy = 0;
+
+const SENS_YAW   = 0.0018;
+const SENS_PITCH = 0.0018;
+const SMOOTH     = 0.25;   // 0 = brut, 1 = très lissé
+
+// On ne touche pas au PC ; uniquement si mobile :
+if (IS_MOBILE){
+  const SENS_YAW = -1.8;    // sensibilité yaw (valeur “par seconde”)
+  const SENS_PITCH = -1.8;  // sensibilité pitch
+  // On applique proportionnellement au dt pour être framerate-indépendant
+  const yawObj   = controls.getObject();
+  const pitchObj = yawObj.children[0] || camera;
+
+  yawObj.rotation.y += lookAxes.x * SENS_YAW * dt;
+
+  const minPitch = -Math.PI/2 + 0.2;
+  const maxPitch =  Math.PI/2 - 0.2;
+  pitchObj.rotation.x = Math.max(minPitch, Math.min(maxPitch, pitchObj.rotation.x - lookAxes.y * SENS_PITCH * dt));
+
+  // pas de roll
+  pitchObj.rotation.z = 0;
+  yawObj.rotation.z   = 0;
+}
 
       selfHalo.color = new THREE.Color(self.color || "#88e5ff"); selfHalo.position.copy(obj.position); self.sendPose(obj.position.x, obj.position.z);
 
