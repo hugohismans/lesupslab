@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Jardin Féerique — Mobile + Stable</title>
+  <title>Jardin Féerique — Mobile + Stable (Dual Sticks)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
   <style>
     :root{
@@ -60,20 +60,25 @@
     #flowerModal .card { width:min(92vw, 420px); background:#0b1020; border:1px solid rgba(255,255,255,.1); border-radius:12px; padding:14px; }
     #flowerMsg{ width:100%; resize:vertical; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#fff; border-radius:8px; padding:8px; margin-bottom:10px; }
 
-    /* MOBILE UI */
+    /* MOBILE UI (deux joysticks) */
     #mobileUI { position:fixed; inset:0; pointer-events:none; display:none; z-index:6; }
-    #stickArea {
-      position:absolute; left:14px; bottom:14px; width:150px; height:150px; border-radius:50%;
+    #stickArea, #lookArea {
+      width:150px; height:150px; border-radius:50%;
       background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12);
       pointer-events:auto; touch-action:none;
     }
-    #stick {
+    #stickArea { position:absolute; left:14px; bottom:14px; }
+    #lookArea  { position:absolute; right:14px; bottom:14px; }
+    #stick, #lookStick {
       position:absolute; left:50%; top:50%; width:72px; height:72px; margin:-36px 0 0 -36px; border-radius:50%;
-      background:rgba(125,211,252,.25); border:1px solid rgba(125,211,252,.7); box-shadow:0 0 12px rgba(125,211,252,.5) inset;
       transform: translate(0,0);
     }
+    #stick    { background:rgba(125,211,252,.25); border:1px solid rgba(125,211,252,.7); box-shadow:0 0 12px rgba(125,211,252,.5) inset; }
+    #lookStick{ background:rgba(180,160,255,.25); border:1px solid rgba(180,160,255,.7); box-shadow:0 0 12px rgba(180,160,255,.5) inset; }
+
+    /* Boutons actions au-dessus du joystick droit */
     #actionArea {
-      position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:12px; pointer-events:auto;
+      position:absolute; right:14px; bottom:180px; display:flex; flex-direction:column; gap:12px; pointer-events:auto;
     }
     #actionArea .act {
       width:64px; height:64px; border-radius:16px; border:1px solid rgba(255,255,255,.2);
@@ -81,49 +86,41 @@
       touch-action:none;
     }
 
+    /* Boutons flottants pliage */
+    #toggleHUD, #toggleChat {
+      position:fixed; z-index:10; width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
+      background:rgba(0,0,0,.5); color:#fff; font-weight:800;
+    }
+    #toggleHUD { right:12px; top:12px; }
+    #toggleChat{ left:12px; bottom:12px; }
+
+    /* États pliés */
+    #hud.collapsed    { display:none !important; }
+    #chat.collapsed   { display:none !important; }
+
     /* ————— Responsive ————— */
     @media (hover:none) and (pointer:coarse){
       :root{ --hud-w: 92vw; }
       #mobileUI { display:block; }
-      #chat { width: 92vw; left: 4vw; bottom: 10px; max-height: 32vh; }
+      #chat { width: 86vw; left: 7vw; bottom: 10px; max-height: 26vh; }
+      #messages { font-size:13px; }
       #hud  { right: 4vw; top: 8px; font-size:12px; padding:8px 10px; gap:6px; }
       #hud .row { gap:6px; }
       #who { max-height: 30vh; overflow:auto; }
       #overlay p { font-size: 13px; }
       input[type="range"]{ width:100px; }
     }
-    #hud.collapsed    { display:none !important; }
-#chat.collapsed   { display:none !important; }
-
-/* Sur mobile : par défaut, HUD et chat sont pliés */
-@media (hover:none) and (pointer:coarse){
-  #toggleHUD, #toggleChat { display:block; }
-}
-/* Sur desktop : on garde visible, mais les boutons restent utiles */
-@media (hover:hover) and (pointer:fine){
-  #toggleHUD, #toggleChat { opacity:.7; }
-  #toggleHUD:hover, #toggleChat:hover { opacity:1; }
-}
-@media (hover:none) and (pointer:coarse){
-  #chat { width: 86vw; left: 7vw; bottom: 10px; max-height: 26vh; }
-  #messages { font-size:13px; }
-}
+    @media (hover:hover) and (pointer:fine){
+      #toggleHUD, #toggleChat { opacity:.7; }
+      #toggleHUD:hover, #toggleChat:hover { opacity:1; }
+    }
   </style>
 </head>
-<button id="toggleHUD" aria-label="HUD" style="
-  position:fixed; right:12px; top:12px; z-index:7;
-  width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
-  background:rgba(0,0,0,.5); color:#fff; font-weight:800;">≡</button>
-
-<button id="toggleChat" aria-label="Chat" style="
-  position:fixed; left:12px; bottom:12px; z-index:7;
-  width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
-  background:rgba(0,0,0,.5); color:#fff; font-weight:800;">💬</button>
 <body>
   <!-- Overlay entrée -->
   <div id="overlay">
     <h1>Jardin Féerique — Salon Global</h1>
-    <p>Choisis ton pseudo et ta couleur • ZQSD = bouger • Souris/Glisser = regarder • Entrée = chat</p>
+    <p>Choisis ton pseudo et ta couleur • ZQSD = bouger • Souris = regarder (desktop) • Joysticks (mobile) • Entrée = chat</p>
     <label style="display:block; margin:6px 0;">
       Pseudo : <input id="pseudo" type="text" maxlength="16" placeholder="Ton nom" />
     </label>
@@ -183,14 +180,19 @@
     </div>
   </div>
 
-  <!-- MOBILE CONTROLS -->
+  <!-- MOBILE CONTROLS (deux joysticks + actions) -->
   <div id="mobileUI">
     <div id="stickArea"><div id="stick"></div></div>
+    <div id="lookArea"><div id="lookStick"></div></div>
     <div id="actionArea">
       <button id="btnE" class="act">✨</button>
       <button id="btnF" class="act">🌸</button>
     </div>
   </div>
+
+  <!-- Boutons pliage -->
+  <button id="toggleHUD" aria-label="HUD">≡</button>
+  <button id="toggleChat" aria-label="Chat">💬</button>
 
   <!-- Three.js & Controls en LOCAL -->
   <script src="./three.min.js"></script>
@@ -198,8 +200,9 @@
 
   <!-- App + Firebase -->
   <script type="module">
-    /************ Firebase ************/
+    /************ Imports Firebase ************/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js";
     import {
       getAuth, signInAnonymously, onAuthStateChanged,
       setPersistence, inMemoryPersistence, signOut
@@ -221,11 +224,14 @@ const firebaseConfig = {
   measurementId: "G-YCZ4XC9PQ1"
 };
     const appFB = initializeApp(firebaseConfig);
-    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js";
-    const appCheck = initializeAppCheck(appFB, {
-  provider: new ReCaptchaV3Provider('6LcI9LMrAAAAAF6biBHZG20s55PAE24lsPyAwSwZ'), // 🔹 Mets ta clé site ici
-  isTokenAutoRefreshEnabled: true
-});
+
+    // 🛡️ App Check (reCAPTCHA v3) — mets ta "SITE KEY"
+    // self.FIREBASE_APPCHECK_DEBUG_TOKEN = true; // (optionnel dev)
+    initializeAppCheck(appFB, {
+      provider: new ReCaptchaV3Provider('6LcI9LMrAAAAAF6biBHZG20s55PAE24lsPyAwSwZ'), // ← remplace ici
+      isTokenAutoRefreshEnabled: true
+    });
+
     const auth = getAuth(appFB);
     const db = getDatabase(appFB);
 
@@ -234,6 +240,7 @@ const firebaseConfig = {
     await signInAnonymously(auth);
 
     let meRef = null;
+
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
     function toHexColor(input, fallback="#88e5ff"){
@@ -241,6 +248,7 @@ const firebaseConfig = {
       catch(e){ return fallback; }
     }
     const LS_NAME="jf_name", LS_COLOR="jf_color", LS_GRASS="jf_grass";
+    const IS_MOBILE = matchMedia('(hover:none) and (pointer:coarse)').matches;
 
     /************ Audio douce (OFF par défaut) ************/
     let AudioCtx = null, ctx = null, windGain = null, masterGain = null, ambOn = false;
@@ -288,11 +296,9 @@ const firebaseConfig = {
     audioVol.addEventListener('input', ()=> setMasterVolume(parseFloat(audioVol.value)));
 
     /************ THREE scène ************/
-    const IS_MOBILE = matchMedia('(hover:none) and (pointer:coarse)').matches;
-
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x05060a);
-    scene.fog = new THREE.FogExp2(0x0a1022, 0.009); // un peu plus léger
+    scene.fog = new THREE.FogExp2(0x0a1022, 0.009);
 
     const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1200);
     camera.position.set(0, 1.6, 6);
@@ -444,26 +450,27 @@ const firebaseConfig = {
       return modalOpen || typing;
     }
 
-    /************ Déplacements ************/
+    /************ Déplacements analogiques ************/
     const velocity = new THREE.Vector3(), direction = new THREE.Vector3();
-    const move = { forward:false, backward:false, left:false, right:false };
+    // Axes analogiques: -1..1 (x = strafe, y = forward)
+    const axes = { x: 0, y: 0 };
 
     addEventListener('keydown', (e)=>{
       if (isTyping()) return;
       if (e.code === 'Enter') { e.preventDefault(); document.getElementById('msg').focus(); return; }
-      if (e.code === 'KeyW' || e.code === 'KeyZ') { e.preventDefault(); move.forward = true; }
-      if (e.code === 'KeyS') { e.preventDefault(); move.backward = true; }
-      if (e.code === 'KeyA' || e.code === 'KeyQ') { e.preventDefault(); move.left = true; }
-      if (e.code === 'KeyD') { e.preventDefault(); move.right = true; }
+      if (e.code === 'KeyW' || e.code === 'KeyZ') { e.preventDefault(); axes.y = -1; }
+      if (e.code === 'KeyS')                       { e.preventDefault(); axes.y =  1; }
+      if (e.code === 'KeyA' || e.code === 'KeyQ') { e.preventDefault(); axes.x = -1; }
+      if (e.code === 'KeyD')                       { e.preventDefault(); axes.x =  1; }
       if (e.code === 'KeyE') { e.preventDefault(); castAurora(); tint(1300,0.12); }
       if (e.code === 'KeyF') { e.preventDefault(); if (controls.isLocked) controls.unlock(); plantFlower(); }
     });
     addEventListener('keyup', (e)=>{
       if (isTyping()) return;
-      if (e.code === 'KeyW' || e.code === 'KeyZ') move.forward = false;
-      if (e.code === 'KeyS') move.backward = false;
-      if (e.code === 'KeyA' || e.code === 'KeyQ') move.left = false;
-      if (e.code === 'KeyD') move.right = false;
+      if (e.code === 'KeyW' || e.code === 'KeyZ') { if (axes.y < 0) axes.y = 0; }
+      if (e.code === 'KeyS')                       { if (axes.y > 0) axes.y = 0; }
+      if (e.code === 'KeyA' || e.code === 'KeyQ') { if (axes.x < 0) axes.x = 0; }
+      if (e.code === 'KeyD')                       { if (axes.x > 0) axes.x = 0; }
     });
 
     // Empêcher les touches de sortir des inputs
@@ -475,33 +482,18 @@ const firebaseConfig = {
       ['keydown','keyup','keypress','click'].forEach(ev=> el.addEventListener(ev, (e)=> e.stopPropagation()));
     });
 
-    /************ Touch look (mobile) ************/
-    const yawObj = controls.getObject();
-    const pitchObj = yawObj.children[0] || camera;
-    let touchLookActive = false, lastX=0, lastY=0;
-    function clamp(x, min, max){ return Math.max(min, Math.min(max, x)); }
-    if (IS_MOBILE) {
-      document.getElementById('hint').style.display = 'none';
-      renderer.domElement.addEventListener('pointerdown', (e)=>{ if (e.pointerType!=='touch') return; touchLookActive=true; lastX=e.clientX; lastY=e.clientY; });
-      addEventListener('pointermove', (e)=>{ if (!touchLookActive || e.pointerType!=='touch') return;
-        const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
-        const SENS=0.0018; yawObj.rotation.y -= dx*SENS; const minPitch=-Math.PI/2+0.2, maxPitch=Math.PI/2-0.2;
-        pitchObj.rotation.x = clamp(pitchObj.rotation.x - dy*SENS, minPitch, maxPitch);
-      });
-      addEventListener('pointerup', ()=>{ touchLookActive=false; });
-      addEventListener('pointercancel', ()=>{ touchLookActive=false; });
-    }
-
-    /************ Joystick virtuel ************/
+    /************ Joystick gauche (mouvement) ************/
     const stickArea = document.getElementById('stickArea'), stick = document.getElementById('stick');
     let stickActive=false, sx=0, sy=0;
     function setMoveFromStick(x, y){
-      const L = Math.hypot(x,y) || 1; const nx=x/Math.min(1,L), ny=y/Math.min(1,L);
-      const DZ = 0.18;
-      move.forward  = (ny < -DZ);
-      move.backward = (ny >  DZ);
-      move.left     = (nx < -DZ);
-      move.right    = (nx >  DZ);
+      const r = Math.hypot(x,y);
+      const DZ = 0.20; // deadzone
+      const k = r <= DZ ? 0 : ( (r - DZ) / (1 - DZ) );
+      const curve = Math.pow(k, 1.7);
+      const nx = r ? (x / r) * curve : 0;
+      const ny = r ? (y / r) * curve : 0;
+      axes.x = nx;   // gauche(-) / droite(+)
+      axes.y = -ny;   // bas(+) / haut(-) → inversé dans animate()
     }
     if (IS_MOBILE){
       const R = 75;
@@ -520,13 +512,84 @@ const firebaseConfig = {
         sx=px/R; sy=py/R; setMoveFromStick(sx,sy);
       });
       addEventListener('pointerup', ()=>{ if (!stickActive) return; stickActive=false; sx=sy=0; stick.style.transform=`translate(0,0)`; setMoveFromStick(0,0); });
+      addEventListener('pointercancel', ()=>{ if (!stickActive) return; stickActive=false; sx=sy=0; stick.style.transform=`translate(0,0)`; setMoveFromStick(0,0); });
     }
 
-    /************ Boutons actions ************/
+    /************ Joystick droit (caméra) ************/
+    const lookArea  = document.getElementById('lookArea');
+    const lookStick = document.getElementById('lookStick');
+    const look = { x:0, y:0 }; // x yaw, y pitch
+    let lookActive=false;
+    function setLookFromStick(x, y){
+      const r = Math.hypot(x,y), DZ = 0.20;
+      const k = r <= DZ ? 0 : ( (r - DZ) / (1 - DZ) );
+      const curve = Math.pow(k, 1.7);
+      const nx = r ? (x/r)*curve : 0;
+      const ny = r ? (y/r)*curve : 0;
+      look.x = nx;      // gauche(-) / droite(+)
+      look.y = ny;      // bas(+) / haut(-)
+    }
+    if (IS_MOBILE){
+      const R = 75;
+      lookArea.addEventListener('pointerdown', (e)=>{
+        if (e.pointerType !== 'touch') return; lookActive = true;
+        const rect = lookArea.getBoundingClientRect();
+        const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
+        const dist = Math.min(R, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
+        const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+        lookStick.style.transform = `translate(${px}px, ${py}px)`;
+        setLookFromStick(px/R, py/R);
+      });
+      addEventListener('pointermove', (e)=>{
+        if (!lookActive || e.pointerType!=='touch') return;
+        const rect = lookArea.getBoundingClientRect();
+        const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
+        const dist = Math.min(R, Math.hypot(dx,dy)), ang = Math.atan2(dy,dx);
+        const px = Math.cos(ang)*dist, py = Math.sin(ang)*dist;
+        lookStick.style.transform = `translate(${px}px, ${py}px)`;
+        setLookFromStick(px/R, py/R);
+      });
+      addEventListener('pointerup', ()=>{
+        if (!lookActive) return; lookActive=false; lookStick.style.transform = `translate(0,0)`; setLookFromStick(0,0);
+      });
+      addEventListener('pointercancel', ()=>{
+        if (!lookActive) return; lookActive=false; lookStick.style.transform = `translate(0,0)`; setLookFromStick(0,0);
+      });
+    }
+
+    /************ Boutons actions (mobile) ************/
     if (IS_MOBILE){
       document.getElementById('btnE').addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); castAurora(); });
       document.getElementById('btnF').addEventListener('click', async (e)=>{ e.preventDefault(); e.stopPropagation(); await plantFlower(); });
     }
+
+    /************ Toggles HUD/Chat ************/
+    const LS_HUD = 'jf_hud_open', LS_CHAT = 'jf_chat_open';
+    const hud = document.getElementById('hud');
+    const chatBox = document.getElementById('chat');
+    const btnHUD = document.getElementById('toggleHUD');
+    const btnChat = document.getElementById('toggleChat');
+
+    function setHUD(open){
+      hud.classList.toggle('collapsed', !open);
+      localStorage.setItem(LS_HUD, open ? '1' : '0');
+      btnHUD.textContent = open ? '×' : '≡';
+    }
+    function setChat(open){
+      chatBox.classList.toggle('collapsed', !open);
+      localStorage.setItem(LS_CHAT, open ? '1' : '0');
+      btnChat.textContent = open ? '×' : '💬';
+    }
+    btnHUD.addEventListener('click', (e)=>{ e.stopPropagation(); setHUD(hud.classList.contains('collapsed')); });
+    btnChat.addEventListener('click', (e)=>{ e.stopPropagation(); setChat(chatBox.classList.contains('collapsed')); });
+    const hudPref  = localStorage.getItem(LS_HUD);
+    const chatPref = localStorage.getItem(LS_CHAT);
+    const defaultOpenHUD  = IS_MOBILE ? false : true;
+    const defaultOpenChat = IS_MOBILE ? false : true;
+    setHUD(hudPref  === null ? defaultOpenHUD  : hudPref  === '1');
+    setChat(chatPref === null ? defaultOpenChat : chatPref === '1');
 
     /************ Chat ************/
     const messagesList = document.getElementById('messages');
@@ -538,7 +601,8 @@ const firebaseConfig = {
     });
     chatForm.addEventListener('submit', (e)=>{
       e.preventDefault(); const text = (msgInput.value || "").trim(); if (!text) return;
-      push(chatRef, { name: self.name || "Fée", text, ts: Date.now() }); msgInput.value = "";if (IS_MOBILE) setChat(false);
+      push(chatRef, { name: self.name || "Fée", text, ts: Date.now() }); msgInput.value = "";
+      if (IS_MOBILE) setChat(false);
     });
 
     /************ Avatars + labels ************/
@@ -801,26 +865,58 @@ const firebaseConfig = {
       requestAnimationFrame(animate);
       const dt = clock.getDelta(), t = performance.now() / 1000;
 
-      velocity.x -= velocity.x * 10 * dt; velocity.z -= velocity.z * 10 * dt;
-      direction.set(0,0,0); direction.z = Number(move.forward) - Number(move.backward); direction.x = Number(move.right) - Number(move.left);
-      if (direction.lengthSq() > 0) direction.normalize();
-      const speed = IS_MOBILE ? 4.2 : 6;
-      if (move.forward || move.backward) velocity.z -= direction.z * speed * dt;
-      if (move.left || move.right)       velocity.x -= direction.x * speed * dt;
+      // Lissage axes → direction (z avant+, x droite+)
+      const LERP = 0.25;
+      direction.set(
+        THREE.MathUtils.lerp(direction.x, axes.x, LERP),
+        0,
+        THREE.MathUtils.lerp(direction.z || 0, -axes.y, LERP) // y joystick bas(+) → reculé
+      );
+
+      // vitesses
+      const baseSpeed = IS_MOBILE ? 3.0 : 6.0;
+      const speed = baseSpeed * Math.min(1, Math.hypot(direction.x, direction.z) || 0.0001);
+
+      velocity.x -= velocity.x * 10 * dt;
+      velocity.z -= velocity.z * 10 * dt;
+      velocity.x += direction.x * speed * dt;
+      velocity.z += direction.z * speed * dt;
 
       const obj = controls.getObject();
-      obj.translateX(-velocity.x); obj.translateZ( velocity.z);
-      const yHere = heightFn(obj.position.x, obj.position.z); obj.position.y = yHere + 1.6;
+      obj.translateX( velocity.x);
+      obj.translateZ( velocity.z);
+      const yHere = heightFn(obj.position.x, obj.position.z);
+      obj.position.y = yHere + 1.6;
+
+      // Caméra par joystick droit (yaw/pitch), lissée, sans roll
+      if (IS_MOBILE){
+        const LSM = 0.25, YAW_SENS = 1.2, PITCH_SENS = 1.0;
+        const yawObj = controls.getObject();
+        const dYaw   = THREE.MathUtils.lerp(0, look.x * YAW_SENS, LSM) * dt;
+        yawObj.rotation.y -= dYaw;
+        const pitchObj = yawObj.children[0] || camera;
+        const dPitch = THREE.MathUtils.lerp(0, -look.y * PITCH_SENS, LSM) * dt;
+        const minPitch = -Math.PI/2 + 0.2, maxPitch = Math.PI/2 - 0.2;
+        pitchObj.rotation.x = THREE.MathUtils.clamp(pitchObj.rotation.x + dPitch, minPitch, maxPitch);
+        pitchObj.rotation.z = 0; camera.rotation.z = 0;
+      }
 
       selfHalo.color = new THREE.Color(self.color || "#88e5ff"); selfHalo.position.copy(obj.position); self.sendPose(obj.position.x, obj.position.z);
 
+      // avatars
       for (const a of avatars.values()){
         a.group.position.x += (a.target.x - a.group.position.x) * 0.15;
         a.group.position.z += (a.target.z - a.group.position.z) * 0.15;
         a.group.position.y = heightFn(a.group.position.x, a.group.position.z);
       }
+
+      // fx
       for (const fx of Array.from(liveFx)){ if (fx.userData?.tick){ fx.userData.tick(dt); if (!fx.parent) liveFx.delete(fx); } }
+
+      // herbe
       if (grass?.tick) grass.tick(t);
+
+      // lucioles
       tickFireflies(fireflies, dt);
 
       // créatures
@@ -844,37 +940,8 @@ const firebaseConfig = {
       camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
     });
 
-    // ----- HUD & Chat Toggle -----
-// ----- HUD & Chat Toggle -----
-const LS_HUD = 'jf_hud_open', LS_CHAT = 'jf_chat_open';
-const hud = document.getElementById('hud');
-const chatBox = document.getElementById('chat');
-const btnHUD = document.getElementById('toggleHUD');
-const btnChat = document.getElementById('toggleChat');
-
-function setHUD(open){
-  hud.classList.toggle('collapsed', !open);
-  localStorage.setItem(LS_HUD, open ? '1' : '0');
-  btnHUD.textContent = open ? '×' : '≡';
-}
-function setChat(open){
-  chatBox.classList.toggle('collapsed', !open);
-  localStorage.setItem(LS_CHAT, open ? '1' : '0');
-  btnChat.textContent = open ? '×' : '💬';
-}
-
-btnHUD.addEventListener('click', (e)=>{ e.stopPropagation(); setHUD(hud.classList.contains('collapsed')); });
-btnChat.addEventListener('click', (e)=>{ e.stopPropagation(); setChat(chatBox.classList.contains('collapsed')); });
-
-// État initial : si aucune préférence, par défaut fermé sur mobile, ouvert sur desktop
-const hudPref  = localStorage.getItem(LS_HUD);
-const chatPref = localStorage.getItem(LS_CHAT);
-const defaultOpenHUD  = IS_MOBILE ? false : true;
-const defaultOpenChat = IS_MOBILE ? false : true;
-
-setHUD(hudPref  === null ? defaultOpenHUD  : hudPref  === '1');
-setChat(chatPref === null ? defaultOpenChat : chatPref === '1');
-
+    /************ Chat data hooks ************/
+    const messagesListEl = document.getElementById('messages');
   </script>
 
   <!--
