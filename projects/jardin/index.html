@@ -980,11 +980,11 @@ async function plantTree(){
     seed: Math.floor(Math.random()*1e9)
   };
 
-  const updates = {};
-  updates["/trees/" + id] = tree;
-  updates["/meta/lastTree/" + uid] = now;
-
-  await update(ref(db, "/"), updates);
+const updates = {};
+updates[`/trees/${id}`] = tree;
+updates[`/meta/lastTree/${uid}`] = now;
+  await update(ref(db), updates);
+  //await update(ref(db, "/"), updates);
 }
 // Attend que Firebase Auth soit prêt (évite les permission_denied)
 async function ensureReady(){
