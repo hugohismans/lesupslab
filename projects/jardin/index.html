@@ -732,24 +732,75 @@ lookArea.addEventListener('pointercancel', (e)=>{
     function roundRect(ctx, x, y, w, h, r) { r = Math.min(r, w/2, h/2); ctx.beginPath(); ctx.moveTo(x+r, y);
       ctx.arcTo(x+w, y,   x+w, y+h, r); ctx.arcTo(x+w, y+h, x,   y+h, r);
       ctx.arcTo(x,   y+h, x,   y,   r); ctx.arcTo(x,   y,   x+w, y,   r); ctx.closePath(); }
-    function makeLabelSprite(text, color, maxW=240, fs=28, scale=0.012) {
-      const lines = []; const words = String(text).split(/\s+/).filter(Boolean);
-      const cvs = document.createElement('canvas'); const ctx = cvs.getContext('2d');
-      const padX = 10, padY = 8; ctx.font = `700 ${fs}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
-      let line = ''; for (const w of words) { const test = line ? (line + ' ' + w) : w;
-        if (ctx.measureText(test).width + padX*2 > maxW) { if (line) lines.push(line); line = w; } else { line = test; } }
-      if (line) lines.push(line); if (lines.length === 0) lines.push(' ');
-      const w = Math.ceil(Math.max(...lines.map(l => ctx.measureText(l).width))) + padX*2;
-      const lineH = fs + 4; const h = lineH*lines.length + padY*2;
-      cvs.width = Math.max(64, w); cvs.height = Math.max(32, h);
-      ctx.fillStyle = 'rgba(0,0,0,0.55)'; roundRect(ctx, 0, 0, cvs.width, cvs.height, 10); ctx.fill();
-      const col = (color?.getStyle ? color.getStyle() : (typeof color === 'string' ? color : '#ffffff'));
-      ctx.fillStyle = col; ctx.textBaseline = 'middle';
-      lines.forEach((l, i)=> ctx.fillText(l, padX, Math.floor(padY + lineH*i + lineH/2)));
-      const tex = new THREE.CanvasTexture(cvs); tex.minFilter = THREE.LinearFilter;
-      const mat = new THREE.SpriteMaterial({ map: tex, transparent:true, depthTest:false, depthWrite:false });
-      const spr = new THREE.Sprite(mat); spr.scale.set(cvs.width*scale, cvs.height*scale, 1); spr.renderOrder = 999; return spr;
+function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
+  // Cap le DPR pour éviter des textures géantes
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  // Canvas & contexte
+  const cvs = document.createElement('canvas');
+  const ctx = cvs.getContext('2d');
+
+  // Mesures en "CSS px" (avant scale)
+  const padX = 10, padY = 8;
+  ctx.font = `700 ${fs}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+
+  // Wrap du texte
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  for (const w of words.length ? words : [' ']) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width + padX * 2 > maxW) {
+      if (line) lines.push(line);
+      line = w;
+    } else {
+      line = test;
     }
+  }
+  if (line) lines.push(line);
+
+  // Dimensions en CSS px
+  const cssW = Math.ceil(Math.max(64, Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2));
+  const lineH = fs + 4;
+  const cssH = Math.ceil(Math.max(32, lineH * lines.length + padY * 2));
+
+  // Dimensions réelles du canvas en px physiques
+  cvs.width  = Math.ceil(cssW * dpr);
+  cvs.height = Math.ceil(cssH * dpr);
+
+  // Recalage du contexte pour dessiner en unités CSS px
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.font = `400 ${fs}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  // BG arrondi
+  roundRect(ctx, 0, 0, cssW, cssH, 10);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fill();
+
+  // Couleur du texte
+  const col = (color?.getStyle ? color.getStyle() : (typeof color === 'string' ? color : '#ffffff'));
+  ctx.fillStyle = col;
+
+  // Texte
+  lines.forEach((l, i) => {
+    ctx.fillText(l, padX, Math.floor(padY + lineH * i + lineH / 2));
+  });
+
+  // Texture & sprite
+  const tex = new THREE.CanvasTexture(cvs);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
+  const spr = new THREE.Sprite(mat);
+
+  // ⚠️ Échelle basée sur la taille CSS, pas sur canvas.width
+  spr.scale.set(cssW * scale, cssH * scale, 1);
+  spr.renderOrder = 999;
+
+  return spr;
+}
     function spawnAvatar(uid, data){
       if (avatars.has(uid)) return;
       const name = (data?.name ?? ("Fée#" + uid.slice(0,4)));
