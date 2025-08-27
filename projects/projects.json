@@ -72,5 +72,14 @@
     ],
     "thumbnail": "thumb.png",
     "date": "2025-08-27"
+  },
+          {
+    "title": "Jardin enchante",
+    "folder": "jardin",
+    "description": "Un jardin persistant ou vous pouvez poser vos fleur et chatter",
+    "tags": ["Three.js"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-27"
   }
 ]

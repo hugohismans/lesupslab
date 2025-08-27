@@ -1,0 +1,10 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyBUiGGKBssQ_wTrz5uYBkHRKeMk0GNWeFI",
+  authDomain: "jardin-feerique.firebaseapp.com",
+  databaseURL: "https://jardin-feerique-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "jardin-feerique",
+  storageBucket: "jardin-feerique.firebasestorage.app",
+  messagingSenderId: "240867851823",
+  appId: "1:240867851823:web:43529ae5008fe9dcd910da",
+  measurementId: "G-YCZ4XC9PQ1"
+};
