@@ -92,8 +92,34 @@
       #overlay p { font-size: 13px; }
       input[type="range"]{ width:100px; }
     }
+    #hud.collapsed    { display:none !important; }
+#chat.collapsed   { display:none !important; }
+
+/* Sur mobile : par défaut, HUD et chat sont pliés */
+@media (hover:none) and (pointer:coarse){
+  #hud.autoCollapse, #chat.autoCollapse { display:none !important; }
+  #toggleHUD, #toggleChat { display:block; }
+}
+/* Sur desktop : on garde visible, mais les boutons restent utiles */
+@media (hover:hover) and (pointer:fine){
+  #toggleHUD, #toggleChat { opacity:.7; }
+  #toggleHUD:hover, #toggleChat:hover { opacity:1; }
+}
+@media (hover:none) and (pointer:coarse){
+  #chat { width: 86vw; left: 7vw; bottom: 10px; max-height: 26vh; }
+  #messages { font-size:13px; }
+}
   </style>
 </head>
+<button id="toggleHUD" aria-label="HUD" style="
+  position:fixed; right:12px; top:12px; z-index:7;
+  width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
+  background:rgba(0,0,0,.5); color:#fff; font-weight:800;">≡</button>
+
+<button id="toggleChat" aria-label="Chat" style="
+  position:fixed; left:12px; bottom:12px; z-index:7;
+  width:44px; height:44px; border-radius:12px; border:1px solid rgba(255,255,255,.2);
+  background:rgba(0,0,0,.5); color:#fff; font-weight:800;">💬</button>
 <body>
   <!-- Overlay entrée -->
   <div id="overlay">
@@ -209,7 +235,40 @@ const firebaseConfig = {
     await signInAnonymously(auth);
 
     let meRef = null;
+// ----- HUD & Chat Toggle -----
+const LS_HUD = 'jf_hud_open', LS_CHAT = 'jf_chat_open';
+const hud = document.getElementById('hud');
+const chatBox = document.getElementById('chat');
+const btnHUD = document.getElementById('toggleHUD');
+const btnChat = document.getElementById('toggleChat');
 
+function setHUD(open){
+  hud.classList.toggle('collapsed', !open);
+  localStorage.setItem(LS_HUD, open ? '1' : '0');
+  btnHUD.textContent = open ? '×' : '≡';
+}
+function setChat(open){
+  chatBox.classList.toggle('collapsed', !open);
+  localStorage.setItem(LS_CHAT, open ? '1' : '0');
+  btnChat.textContent = open ? '×' : '💬';
+}
+
+btnHUD.addEventListener('click', (e)=>{ e.stopPropagation(); setHUD(hud.classList.contains('collapsed')); });
+btnChat.addEventListener('click', (e)=>{ e.stopPropagation(); setChat(chatBox.classList.contains('collapsed')); });
+
+// État initial : sur mobile, auto-plié si pas de préférence enregistrée
+const hudPref = localStorage.getItem(LS_HUD);
+const chatPref = localStorage.getItem(LS_CHAT);
+
+if (IS_MOBILE){
+  hud.classList.add('autoCollapse');
+  chatBox.classList.add('autoCollapse');
+  setHUD(hudPref ? hudPref === '1' : false);
+  setChat(chatPref ? chatPref === '1' : false);
+} else {
+  setHUD(hudPref ? hudPref === '1' : true);
+  setChat(chatPref ? chatPref === '1' : true);
+}
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
     function toHexColor(input, fallback="#88e5ff"){
@@ -461,7 +520,7 @@ const firebaseConfig = {
       renderer.domElement.addEventListener('pointerdown', (e)=>{ if (e.pointerType!=='touch') return; touchLookActive=true; lastX=e.clientX; lastY=e.clientY; });
       addEventListener('pointermove', (e)=>{ if (!touchLookActive || e.pointerType!=='touch') return;
         const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
-        const SENS=0.0025; yawObj.rotation.y -= dx*SENS; const minPitch=-Math.PI/2+0.2, maxPitch=Math.PI/2-0.2;
+        const SENS=0.0018; yawObj.rotation.y -= dx*SENS; const minPitch=-Math.PI/2+0.2, maxPitch=Math.PI/2-0.2;
         pitchObj.rotation.x = clamp(pitchObj.rotation.x - dy*SENS, minPitch, maxPitch);
       });
       addEventListener('pointerup', ()=>{ touchLookActive=false; });
@@ -473,7 +532,7 @@ const firebaseConfig = {
     let stickActive=false, sx=0, sy=0;
     function setMoveFromStick(x, y){
       const L = Math.hypot(x,y) || 1; const nx=x/Math.min(1,L), ny=y/Math.min(1,L);
-      const DZ = 0.12;
+      const DZ = 0.18;
       move.forward  = (ny < -DZ);
       move.backward = (ny >  DZ);
       move.left     = (nx < -DZ);
@@ -514,7 +573,7 @@ const firebaseConfig = {
     });
     chatForm.addEventListener('submit', (e)=>{
       e.preventDefault(); const text = (msgInput.value || "").trim(); if (!text) return;
-      push(chatRef, { name: self.name || "Fée", text, ts: Date.now() }); msgInput.value = "";
+      push(chatRef, { name: self.name || "Fée", text, ts: Date.now() }); msgInput.value = "";if (IS_MOBILE) setChat(false);
     });
 
     /************ Avatars + labels ************/
@@ -780,7 +839,7 @@ const firebaseConfig = {
       velocity.x -= velocity.x * 10 * dt; velocity.z -= velocity.z * 10 * dt;
       direction.set(0,0,0); direction.z = Number(move.forward) - Number(move.backward); direction.x = Number(move.right) - Number(move.left);
       if (direction.lengthSq() > 0) direction.normalize();
-      const speed = IS_MOBILE ? 4.8 : 6;
+      const speed = IS_MOBILE ? 4.2 : 6;
       if (move.forward || move.backward) velocity.z -= direction.z * speed * dt;
       if (move.left || move.right)       velocity.x -= direction.x * speed * dt;
 
