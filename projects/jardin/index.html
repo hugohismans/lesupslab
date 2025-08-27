@@ -175,7 +175,7 @@
       </select>
     </div>
     <ul id="who"></ul>
-    <div style="opacity:.8; font-size:12px;">E = ✨ Aurore • F = 🌸 Fleur</div>
+    <div style="opacity:.8; font-size:12px;">E = ✨ Aurore • F = 🌸 Fleur • T = 🌳 Arbre</div>
   </div>
 
   <div id="hint" class="hint">Clique dans la scène pour reprendre le contrôle</div>
@@ -204,6 +204,7 @@
     <div id="actionArea">
       <button id="btnE" class="act">✨</button>
       <button id="btnF" class="act">🌸</button>
+      <button id="btnT" class="act">🌳</button>
     </div>
   </div>
 
@@ -224,6 +225,7 @@
 
   const name  = (pseudoEl.value || '').trim().slice(0,16) || 'Fée';
   const color = colorEl.value || '#88e5ff';
+  const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
 
   // Sauvegarde locale immédiate
   localStorage.setItem('jf_name',  name);
@@ -527,6 +529,7 @@ function anyStickActive(){ return movePointerId !== null || lookPointerId !== nu
       if (e.code === 'KeyD')                       { e.preventDefault(); axes.x =  1; }
       if (e.code === 'KeyE') { e.preventDefault(); castAurora(); tint(1300,0.12); }
       if (e.code === 'KeyF') { e.preventDefault(); if (controls.isLocked) controls.unlock(); plantFlower(); }
+      if (e.code === 'KeyT') { e.preventDefault(); if (controls.isLocked) controls.unlock(); plantTree(); }
     });
     addEventListener('keyup', (e)=>{
       if (isTyping()) return;
@@ -685,6 +688,7 @@ lookArea.addEventListener('pointercancel', (e)=>{
     if (IS_MOBILE){
       document.getElementById('btnE').addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); castAurora(); });
       document.getElementById('btnF').addEventListener('click', async (e)=>{ e.preventDefault(); e.stopPropagation(); await plantFlower(); });
+      document.getElementById('btnT').addEventListener('click', async (e)=>{ e.preventDefault(); e.stopPropagation(); await plantTree(); });
     }
 
     /************ Toggles HUD/Chat ************/
@@ -924,12 +928,50 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
     /************ Events & Garden ************/
     const spellsRef  = ref(db, '/events/spells');
     const gardenRef  = ref(db, '/garden');
+    const treesRef = ref(db, '/trees');
 
+    const TREE_GROW_MS = 2 * 24 * 60 * 60 * 1000; // 2 jours
+    //window.GROW_DEBUG_MULT = 1;
+//function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+function smoothstep(t){ return t*t*(3-2*t); } // interpolation douce 0..1
     function castAurora(){
       const p = controls.getObject().position;
       const colorHex = toHexColor(self.color, "#88e5ff");
       push(spellsRef, { uid:self.uid, x:+p.x.toFixed(2), z:+p.z.toFixed(2), color:colorHex, ts: Date.now() });
     }
+async function plantTree(){
+  const ok = confirm("Planter un arbre ? La pousse deviendra un bel arbre d'ici ~2 jours.");
+  if (!ok) return;
+
+  const p  = controls.getObject().position;
+  const ts = Date.now();
+  const uid = self.uid;
+  const id  = push(ref(db, '/trees')).key;      // on génère la clé SANS écrire
+
+  const tree = {
+    uid, name: self.name || ("Fée#" + uid.slice(0,4)),
+    x:+p.x.toFixed(2), z:+p.z.toFixed(2),
+    color: toHexColor(self.color, "#88e5ff"),
+    ts, seed: Math.floor(Math.random()*1e9)
+  };
+
+  // 🔒 Écriture atomique : arbre + compteur "lastTree"
+  const updates = {};
+  updates['/trees/'+id] = tree;
+  updates['/meta/lastTree/'+uid] = ts;
+
+  try {
+    await update(ref(db), updates);
+    // succès → petits FX si tu veux
+  } catch (err) {
+    if (String(err?.code||err?.message).includes('PERMISSION_DENIED')) {
+      alert("Tu as déjà planté un arbre récemment. Réessaie dans 2 jours 🌱");
+    } else {
+      console.error(err);
+      alert("Oups, impossible de planter maintenant. Réessaie plus tard.");
+    }
+  }
+}
     async function plantFlower(){
       const { proceed, msg } = await askFlowerMessage(); if (!proceed) return;
       requestAnimationFrame(()=>{ const p = controls.getObject().position; const colorHex = toHexColor(self.color, "#a0ffcc");
@@ -946,6 +988,181 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
     onChildAdded(query(gardenRef, limitToLast(2000)), snap=>{
       const f = snap.val(); if (!f) return; flowers.set(snap.key, f); spawnFlowerFancy(f, snap.key);
     });
+
+    //function rng(seed){ return ()=> (seed = (seed*1664525 + 1013904223) >>> 0) / 4294967296; }
+function makeTreeMesh(seed, baseColor = "#88e5ff"){
+  const r = rng(seed || 1);
+
+  // --- Tronc + canopée (taille finale) ---
+  const trunkH   = 1.2 + r()*0.6;
+  const trunkTop = 0.08 + r()*0.04;
+  const trunkBot = 0.12 + r()*0.05;
+  const trunkGeo = new THREE.CylinderGeometry(trunkTop, trunkBot, trunkH, 8);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5b3a1c, roughness: 0.9 });
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = trunkH/2;
+
+  const canopyR   = 0.9 + r()*0.6;
+  const canopyGeo = new THREE.IcosahedronGeometry(canopyR, 1);
+  const leafCol   = new THREE.Color(baseColor);
+  const canopyMat = new THREE.MeshStandardMaterial({ color: leafCol, roughness: 0.8, metalness: 0.0 });
+  const canopy = new THREE.Mesh(canopyGeo, canopyMat);
+  canopy.position.y = trunkH + canopyR*0.6;
+
+  // --- Pousse (créée AVANT de toucher à .visible !) ---
+  const sproutGroup = new THREE.Group();
+
+  const segH = 0.11;
+  const segGeo = new THREE.CylinderGeometry(0.012, 0.016, segH, 6);
+  const segMat = new THREE.MeshStandardMaterial({ color: 0x2a7a39, roughness: 0.9 });
+  for (let i=0;i<3;i++){
+    const seg = new THREE.Mesh(segGeo, segMat);
+    seg.position.y = (i+0.5)*segH;
+    seg.rotation.z = (i===0? 0.10 : i===1? 0.07 : 0.04);
+    sproutGroup.add(seg);
+  }
+  const bud = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0x3aa45c, roughness:0.8, emissive:0x123d20, emissiveIntensity:0.2 }));
+  bud.position.y = segH*3 + 0.02;
+  sproutGroup.add(bud);
+  const leafGeo = new THREE.PlaneGeometry(0.14, 0.08);
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x4ec06a, side: THREE.DoubleSide, roughness:0.8 });
+  const l1 = new THREE.Mesh(leafGeo, leafMat), l2 = new THREE.Mesh(leafGeo, leafMat);
+  l1.position.set( 0.05, segH*2.1, 0); l1.rotation.set(0,  Math.PI*0.25,  Math.PI*0.45);
+  l2.position.set(-0.05, segH*1.6, 0); l2.rotation.set(0, -Math.PI*0.25, -Math.PI*0.45);
+  sproutGroup.add(l1, l2);
+  sproutGroup.position.y = 0.01;
+
+  // --- Groupe global + ÉTAT INITIAL (après création de sproutGroup) ---
+  const g = new THREE.Group();
+  g.add(trunk, canopy, sproutGroup);
+
+  // état initial : uniquement la pousse
+ const s0 = 0.0001; // quasi nul
+trunk.visible = false;
+canopy.visible = false;
+sproutGroup.visible = true;
+
+trunk.scale.set(s0, s0, s0);
+canopy.scale.set(s0, s0, s0);
+
+// 🔧 positionne les centres pour garder la base à y=0
+trunk.position.y  = (trunkH * s0) / 2;
+canopy.position.y = trunk.position.y + (trunkH * s0) + (canopyR * 0.6 * s0);
+  // metadata pour updateTreeGrowth + label
+  g.userData = { trunk, canopy, sproutGroup, trunkH, canopyR, treeLabel: null };
+
+  return g;
+}
+
+
+// Mise à l’échelle selon l’âge
+//const TREE_GROW_MS = 2 * 24 * 60 * 60 * 1000; // 2 jours
+const CROSS_FADE_FRAC  = 0.20;  // 20% suivant = transition pousse->arbre
+const SPROUT_ONLY_FRAC = 0.20;  // 20% du temps = pousse seule
+//function smoothstep(t){ return t*t*(3-2*t); }
+//function clamp01(v){ return Math.max(0, Math.min(1, v)); }
+
+function updateTreeGrowth(group, ts){
+  const age = (Date.now() - ts) * (window.GROW_DEBUG_MULT || 1);
+  const t   = clamp01(age / TREE_GROW_MS);               // 0..1 de la croissance totale
+  const u = group.userData; if (!u) return;
+
+  // --- Phases d'affichage ---
+  if (t < SPROUT_ONLY_FRAC) {
+    // Pousse seule
+    u.sproutGroup.visible = true;
+    u.trunk.visible = false;
+    u.canopy.visible = false;
+
+    // Tag bas pendant la pousse
+    if (u.treeLabel) u.treeLabel.position.y = 0.6;
+  } else {
+    // Arbre visible + croissance
+    u.trunk.visible = true;
+    u.canopy.visible = true;
+
+    // progression d'arbre (hors phase "pousse seule")
+    const tGrow = (t - SPROUT_ONLY_FRAC) / (1 - SPROUT_ONLY_FRAC);
+    const k = smoothstep(clamp01(tGrow));               // 0..1 adouci
+
+    // Échelle uniforme (0.2 → 1.0)
+    const base = 0.2 + 0.8 * k;
+
+    // --- Ancrage : base du tronc au sol ---
+    u.trunk.scale.set(base, base, base);
+    const trunkTopY = ((u.trunkH || 1.5) * base);       // hauteur totale du tronc à l'échelle
+    u.trunk.position.y = trunkTopY / 2;                 // centre du tronc
+
+    // --- Canopée posée sur le tronc ---
+    u.canopy.scale.set(base, base, base);
+    const R = (u.canopyR || 1.2) * base;                // "rayon" effectif de la canopée
+    const overlap = 0.03;                                // petit chevauchement pour éviter le jour
+    u.canopy.position.y = (u.trunk.position.y + trunkTopY/2) + (R - overlap);
+    // explication : centre canopée = sommet tronc + R - overlap
+    // (bas de canopée = centre - R ≈ sommet du tronc avec un léger chevauchement)
+
+    // Transition de la pousse (s'efface progressivement)
+    const tFade = (t - SPROUT_ONLY_FRAC) / CROSS_FADE_FRAC;
+    u.sproutGroup.visible = (t < SPROUT_ONLY_FRAC) || (tFade < 1);
+
+    // Tag au-dessus de la cime
+    if (u.treeLabel) u.treeLabel.position.y = u.canopy.position.y + 0.6;
+  }
+
+  // --- Tag : "Arbre de (pseudo) — XX%" ---
+  // Pourcentage global 0..100 (depuis la plantation)
+  const pct = Math.max(0, Math.min(100, Math.round(t * 100)));
+  if (u.ownerName && u.treeLabel) {
+    if (u._lastPct !== pct) {
+      u._lastPct = pct;
+      // Reconstruit un sprite propre (texte + %) — nécessite ownerName/labelColor stockés au spawn
+      const text = `Arbre de ${u.ownerName} — ${pct}%`;
+      const color = new THREE.Color(u.labelColor || "#88e5ff");
+      const newLabel = makeLabelSprite(text, color, 220, 16, 0.009);
+      newLabel.position.copy(u.treeLabel.position);
+      // Remplace proprement
+      group.remove(u.treeLabel);
+      u.treeLabel.material.map?.dispose?.();
+      u.treeLabel.material?.dispose?.();
+      u.treeLabel = newLabel;
+      group.add(newLabel);
+    }
+  }
+}
+
+
+
+const treeNodes = new Map();
+
+onChildAdded(query(treesRef, limitToLast(1000)), snap => {
+  const d = snap.val(); if (!d) return;
+  const key = snap.key;
+  const seed = (d.seed ?? d.ts ?? 1) ^ (key ? key.length*2654435761 : 0);
+
+  const x = d.x || 0, z = d.z || 0, y = heightFn(x, z);
+  const g = makeTreeMesh(seed, d.color || "#88e5ff");
+  g.position.set(x, y, z);
+
+  // --- Création du label avec pseudo et 0% au départ ---
+  const treeLabel = makeLabelSprite(
+    `Arbre de ${d.name || "Fée"} — 0%`,
+    d.color || "#88e5ff",
+    200,   // largeur max
+    16,    // taille police
+    0.009  // scale
+  );
+  treeLabel.position.set(0, 1.6, 0);
+  g.add(treeLabel);
+
+  // --- Infos stockées pour updateTreeGrowth ---
+  g.userData.treeLabel  = treeLabel;
+  g.userData.ownerName  = d.name || "Fée";
+  g.userData.labelColor = d.color || "#88e5ff";
+
+  scene.add(g);
+  treeNodes.set(key, { group: g, ts: d.ts || Date.now() });
+});
 
     /************ Bestiaire léger ************/
     const MAX_CREATURES = 16;
@@ -1133,7 +1350,9 @@ if (IS_MOBILE){
         mesh.position.set(ax + (bx-ax)*tt, ay + (by-ay)*tt + Math.sin((t01+id.length)*Math.PI*2)*0.12, az + (bz-az)*tt);
         if (c.type === "butterfly" && mesh.userData?.wL && mesh.userData?.wR){ const flap = Math.sin(now/120) * 0.9; mesh.userData.wL.rotation.z =  flap; mesh.userData.wR.rotation.z = -flap; }
       }
-
+      for (const { group, ts } of treeNodes.values()){
+        updateTreeGrowth(group, ts);
+      }
       renderer.render(scene, camera);
     }
     animate();
