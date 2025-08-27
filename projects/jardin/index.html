@@ -249,10 +249,10 @@ startBtn.addEventListener('touchend',(e)=>{ e.preventDefault(); startGame(); }, 
     /************ Imports Firebase ************/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
     import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js";
-    import {
-      getAuth, signInAnonymously, onAuthStateChanged,browserLocalPersistence,
-      setPersistence, inMemoryPersistence, signOut
-    } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+import {
+  getAuth, onAuthStateChanged, signInAnonymously,
+  setPersistence, browserLocalPersistence, browserSessionPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
     import {
       getDatabase, ref, set, update, onValue, onDisconnect,
       push, query, limitToLast, onChildAdded, serverTimestamp, get
@@ -956,22 +956,22 @@ function smoothstep(t){ return t*t*(3-2*t); } // interpolation douce 0..1
     }
 async function plantTree(){
   await ensureReady();
-
-  const now = await serverNowMs(db); // ← renvoie un nombre serveur
-  const p = controls.getObject().position;
+  
   const uid = auth.currentUser.uid;
+  const p   = controls.getObject().position;
+  const now = await serverNowMs(db);
 
-    // ⛔️ Vérif côté client : limite 1 arbre / 2 jours
-  const lastTreeSnap = await get(ref(db, `/meta/lastTree/${uid}`));
-  const lastTs = lastTreeSnap.val() || 0;
-  const remain = 172800000 - (now - lastTs);      // 2 jours en ms
-  if (remain > 0) {
-    const h = Math.floor(remain / 3600000);
-    const m = Math.floor((remain % 3600000) / 60000);
-    alert(`Vous pourrez planter un nouvel arbre dans ${h}h ${m}min`);
-    return;                                       // on sort : pas d’écriture
+  // Garde-fou client (affiche le temps restant)
+  const lastSnap = await get(ref(db, `/meta/lastTree/${uid}`));
+  const last = lastSnap.val() || 0;
+  const remain = 172800000 - (now - last);
+  if (remain > 0){
+    const h = Math.floor(remain/3600000), m = Math.floor((remain%3600000)/60000);
+    alert(`Prochain arbre dans ${h}h ${m}min`);
+    return;
   }
-  const id  = push(ref(db, "/trees")).key;
+
+  const id = push(ref(db, "/trees")).key;
 
   const tree = {
     uid,
@@ -979,15 +979,18 @@ async function plantTree(){
     x: +p.x.toFixed(2),
     z: +p.z.toFixed(2),
     color: toHexColor(self.color, "#88e5ff"),
-    ts: now,  // ← nombre serveur
+    ts: now,                         // nombre (pas serverTimestamp)
     seed: Math.floor(Math.random()*1e9)
   };
 
-const updates = {};
-updates[`/trees/${id}`] = tree;
-updates[`/meta/lastTree/${uid}`] = now;
+  const updates = {};
+  updates[`/trees/${id}`] = tree;
+  updates[`/meta/lastTree/${uid}`] = now;
+
+  // 👇 Très important: update à la RACINE pour que la règle lise l’ANCIENNE valeur
   await update(ref(db), updates);
-  //await update(ref(db, "/"), updates);
+
+  console.log("[TREE] planted by", uid, "set lastTree =", now);
 }
 // Attend que Firebase Auth soit prêt (évite les permission_denied)
 async function ensureReady(){
