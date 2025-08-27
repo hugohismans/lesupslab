@@ -97,7 +97,6 @@
 
 /* Sur mobile : par défaut, HUD et chat sont pliés */
 @media (hover:none) and (pointer:coarse){
-  #hud.autoCollapse, #chat.autoCollapse { display:none !important; }
   #toggleHUD, #toggleChat { display:block; }
 }
 /* Sur desktop : on garde visible, mais les boutons restent utiles */
@@ -846,6 +845,7 @@ const firebaseConfig = {
     });
 
     // ----- HUD & Chat Toggle -----
+// ----- HUD & Chat Toggle -----
 const LS_HUD = 'jf_hud_open', LS_CHAT = 'jf_chat_open';
 const hud = document.getElementById('hud');
 const chatBox = document.getElementById('chat');
@@ -866,19 +866,15 @@ function setChat(open){
 btnHUD.addEventListener('click', (e)=>{ e.stopPropagation(); setHUD(hud.classList.contains('collapsed')); });
 btnChat.addEventListener('click', (e)=>{ e.stopPropagation(); setChat(chatBox.classList.contains('collapsed')); });
 
-// État initial : sur mobile, auto-plié si pas de préférence enregistrée
-const hudPref = localStorage.getItem(LS_HUD);
+// État initial : si aucune préférence, par défaut fermé sur mobile, ouvert sur desktop
+const hudPref  = localStorage.getItem(LS_HUD);
 const chatPref = localStorage.getItem(LS_CHAT);
+const defaultOpenHUD  = IS_MOBILE ? false : true;
+const defaultOpenChat = IS_MOBILE ? false : true;
 
-if (IS_MOBILE){
-  hud.classList.add('autoCollapse');
-  chatBox.classList.add('autoCollapse');
-  setHUD(hudPref ? hudPref === '1' : false);
-  setChat(chatPref ? chatPref === '1' : false);
-} else {
-  setHUD(hudPref ? hudPref === '1' : true);
-  setChat(chatPref ? chatPref === '1' : true);
-}
+setHUD(hudPref  === null ? defaultOpenHUD  : hudPref  === '1');
+setChat(chatPref === null ? defaultOpenChat : chatPref === '1');
+
   </script>
 
   <!--
