@@ -1022,6 +1022,9 @@ async function plantFlower(){
   console.log("PLANT FLOWER payload =>", payload);
 
   try {
+    console.log("auth.uid =", auth?.currentUser?.uid);
+console.log("payload.uid =", payload.uid);
+console.log("serverNow =", payload.ts, "localNow =", Date.now());
     await push(ref(db, "/garden"), payload);
     // petit feedback optionnel
     tint(1400, 0.16);
