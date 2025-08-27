@@ -952,37 +952,29 @@ function smoothstep(t){ return t*t*(3-2*t); } // interpolation douce 0..1
       push(spellsRef, { uid:self.uid, x:+p.x.toFixed(2), z:+p.z.toFixed(2), color:colorHex, ts: Date.now() });
     }
 async function plantTree(){
-  const ok = confirm("Planter un arbre ? La pousse deviendra un bel arbre d'ici ~2 jours.");
-  if (!ok) return;
+  await ensureReady();
 
-  const p  = controls.getObject().position;
-  const ts = Date.now();
-  const uid = self.uid;
-  const id  = push(ref(db, '/trees')).key;      // on génère la clé SANS écrire
+  const p = controls.getObject().position;
+  const uid = auth.currentUser.uid;
+  const id  = push(ref(db, "/trees")).key;
+
+  const ts = serverTimestamp(); // ⬅️
 
   const tree = {
-    uid, name: self.name || ("Fée#" + uid.slice(0,4)),
-    x:+p.x.toFixed(2), z:+p.z.toFixed(2),
+    uid,
+    name: (self.name || ("Fée#" + uid.slice(0,4))).toString().slice(0,16),
+    x: +p.x.toFixed(2),
+    z: +p.z.toFixed(2),
     color: toHexColor(self.color, "#88e5ff"),
-    ts, seed: Math.floor(Math.random()*1e9)
+    ts,                                   // ⬅️
+    seed: Math.floor(Math.random()*1e9)
   };
 
-  // 🔒 Écriture atomique : arbre + compteur "lastTree"
   const updates = {};
-  updates['/trees/'+id] = tree;
-  updates['/meta/lastTree/'+uid] = ts;
+  updates["/trees/" + id] = tree;
+  updates["/meta/lastTree/" + uid] = ts;  // ⬅️ compteur basé serveur
 
-  try {
-    await update(ref(db), updates);
-    // succès → petits FX si tu veux
-  } catch (err) {
-    if (String(err?.code||err?.message).includes('PERMISSION_DENIED')) {
-      alert("Tu as déjà planté un arbre récemment. Réessaie dans 2 jours 🌱");
-    } else {
-      console.error(err);
-      alert("Oups, impossible de planter maintenant. Réessaie plus tard.");
-    }
-  }
+  await update(ref(db, "/"), updates);
 }
 // Attend que Firebase Auth soit prêt (évite les permission_denied)
 async function ensureReady(){
