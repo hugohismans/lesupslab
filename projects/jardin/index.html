@@ -972,13 +972,28 @@ async function plantTree(){
     }
   }
 }
-    async function plantFlower(){
-      const { proceed, msg } = await askFlowerMessage(); if (!proceed) return;
-      requestAnimationFrame(()=>{ const p = controls.getObject().position; const colorHex = toHexColor(self.color, "#a0ffcc");
-        push(gardenRef, { uid:self.uid, name:self.name || ("Fée#" + self.uid.slice(0,4)), x:+p.x.toFixed(2), z:+p.z.toFixed(2), color: colorHex, ts: Date.now(), seed: Math.floor(Math.random()*1e9), ...(msg?{msg}: {}) });
-        tint(1400, 0.16); trySpawnCreatureNear(p.x, p.z, colorHex);
-      });
-    }
+async function plantFlower(){
+  const { proceed, msg } = await askFlowerMessage();
+  if (!proceed) return;
+
+  const p = controls.getObject().position;
+  const now = Date.now();
+  const payload = {
+    uid:  self.uid,
+    name: (self.name || ("Fée#" + self.uid.slice(0,4))).toString().slice(0,16), // ≤ 16
+    x: +p.x.toFixed(2),
+    z: +p.z.toFixed(2),
+    color: toHexColor(self.color, "#a0ffcc"), // string
+    ts: now,                                   // Number
+    seed: Math.floor(Math.random()*1e9)        // Number
+  };
+  if (msg && msg.trim()) payload.msg = msg.trim().slice(0,140);
+
+  // debug: vois ce qui part réellement
+  console.log("PLANT FLOWER payload =>", payload);
+
+  await push(ref(db, '/garden'), payload);
+}
     onChildAdded(query(spellsRef, limitToLast(40)), snap=>{
       const ev = snap.val(); if (!ev) return; if (Date.now() - (ev.ts || 0) > 15_000) return;
       const color = ev.color || "#88e5ff"; const ring = spawnRing(ev.x, ev.z, color); const sparks = spawnSparks(ev.x, ev.z, color);
