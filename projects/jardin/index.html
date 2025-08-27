@@ -235,40 +235,6 @@ const firebaseConfig = {
     await signInAnonymously(auth);
 
     let meRef = null;
-// ----- HUD & Chat Toggle -----
-const LS_HUD = 'jf_hud_open', LS_CHAT = 'jf_chat_open';
-const hud = document.getElementById('hud');
-const chatBox = document.getElementById('chat');
-const btnHUD = document.getElementById('toggleHUD');
-const btnChat = document.getElementById('toggleChat');
-
-function setHUD(open){
-  hud.classList.toggle('collapsed', !open);
-  localStorage.setItem(LS_HUD, open ? '1' : '0');
-  btnHUD.textContent = open ? '×' : '≡';
-}
-function setChat(open){
-  chatBox.classList.toggle('collapsed', !open);
-  localStorage.setItem(LS_CHAT, open ? '1' : '0');
-  btnChat.textContent = open ? '×' : '💬';
-}
-
-btnHUD.addEventListener('click', (e)=>{ e.stopPropagation(); setHUD(hud.classList.contains('collapsed')); });
-btnChat.addEventListener('click', (e)=>{ e.stopPropagation(); setChat(chatBox.classList.contains('collapsed')); });
-
-// État initial : sur mobile, auto-plié si pas de préférence enregistrée
-const hudPref = localStorage.getItem(LS_HUD);
-const chatPref = localStorage.getItem(LS_CHAT);
-
-if (IS_MOBILE){
-  hud.classList.add('autoCollapse');
-  chatBox.classList.add('autoCollapse');
-  setHUD(hudPref ? hudPref === '1' : false);
-  setChat(chatPref ? chatPref === '1' : false);
-} else {
-  setHUD(hudPref ? hudPref === '1' : true);
-  setChat(chatPref ? chatPref === '1' : true);
-}
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
     function toHexColor(input, fallback="#88e5ff"){
@@ -878,6 +844,41 @@ if (IS_MOBILE){
     addEventListener('resize', ()=>{
       camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
     });
+
+    // ----- HUD & Chat Toggle -----
+const LS_HUD = 'jf_hud_open', LS_CHAT = 'jf_chat_open';
+const hud = document.getElementById('hud');
+const chatBox = document.getElementById('chat');
+const btnHUD = document.getElementById('toggleHUD');
+const btnChat = document.getElementById('toggleChat');
+
+function setHUD(open){
+  hud.classList.toggle('collapsed', !open);
+  localStorage.setItem(LS_HUD, open ? '1' : '0');
+  btnHUD.textContent = open ? '×' : '≡';
+}
+function setChat(open){
+  chatBox.classList.toggle('collapsed', !open);
+  localStorage.setItem(LS_CHAT, open ? '1' : '0');
+  btnChat.textContent = open ? '×' : '💬';
+}
+
+btnHUD.addEventListener('click', (e)=>{ e.stopPropagation(); setHUD(hud.classList.contains('collapsed')); });
+btnChat.addEventListener('click', (e)=>{ e.stopPropagation(); setChat(chatBox.classList.contains('collapsed')); });
+
+// État initial : sur mobile, auto-plié si pas de préférence enregistrée
+const hudPref = localStorage.getItem(LS_HUD);
+const chatPref = localStorage.getItem(LS_CHAT);
+
+if (IS_MOBILE){
+  hud.classList.add('autoCollapse');
+  chatBox.classList.add('autoCollapse');
+  setHUD(hudPref ? hudPref === '1' : false);
+  setChat(chatPref ? chatPref === '1' : false);
+} else {
+  setHUD(hudPref ? hudPref === '1' : true);
+  setChat(chatPref ? chatPref === '1' : true);
+}
   </script>
 
   <!--
