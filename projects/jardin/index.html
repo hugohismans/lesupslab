@@ -285,19 +285,28 @@ const firebaseConfig = {
     let lookPointerId = null;  // joystick droit (regard)
     let meRef = null;
 (async function initFirebaseAndScene(){
-    await setPersistence(auth, inMemoryPersistence);
-    //if (auth.currentUser) await signOut(auth);
-    if (!auth.currentUser) {
-  await signInAnonymously(auth);
-    }
-    //await signInAnonymously(auth);
- onAuthStateChanged(auth, async (user)=>{
+  // Persistance locale (stockée sur disque)
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+  } catch {
+    // Si impossible (ex: Safari privé), fallback session (perd UID à fermeture onglet)
+    await setPersistence(auth, browserSessionPersistence);
+  }
+
+  // Ne plus se déconnecter à chaque refresh
+  if (!auth.currentUser) {
+    await signInAnonymously(auth);
+  }
+
+  onAuthStateChanged(auth, async (user) => {
     if (!user) return;
+
     self.uid = user.uid;
     const name  = window.__JF_NAME__  || localStorage.getItem('jf_name')  || ('Fée#'+user.uid.slice(0,4));
     const color = window.__JF_COLOR__ || localStorage.getItem('jf_color') || '#88e5ff';
 
-    self.name = name; self.color = color;
+    self.name = name;
+    self.color = color;
 
     meRef = ref(db, `/presence/${self.uid}`);
     await set(meRef, { name, color, x:0, z:0, last: Date.now() });
@@ -956,7 +965,7 @@ function smoothstep(t){ return t*t*(3-2*t); } // interpolation douce 0..1
     }
 async function plantTree(){
   await ensureReady();
-  
+
   const uid = auth.currentUser.uid;
   const p   = controls.getObject().position;
   const now = await serverNowMs(db);
