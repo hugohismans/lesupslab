@@ -352,18 +352,89 @@ const firebaseConfig = {
     });
 
     /************ Etoiles (safe) ************/
-    {
-      const starGeo = new THREE.BufferGeometry();
-      const starPos = new Float32Array(1200*3);
-      for (let i=0;i<starPos.length;i+=3){
-        starPos[i]   = (Math.random()-0.5)*1000;
-        starPos[i+1] = Math.random()*600 + 120;
-        starPos[i+2] = (Math.random()-0.5)*1000;
-      }
-      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
-      scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ size:0.9, color:0xffffff, transparent:true, opacity:0.8 })));
-    }
+   let stars = null;
+function buildStars(count = 1400) {
+  if (stars) { scene.remove(stars); stars.geometry?.dispose?.(); stars.material?.dispose?.(); stars = null; }
 
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = new Float32Array(count * 3);
+  for (let i = 0; i < starPos.length; i += 3) {
+    starPos[i]   = (Math.random() - 0.5) * 1200;       // x
+    starPos[i+1] = Math.random() * 600 + 160;          // y haut au-dessus du fog
+    starPos[i+2] = (Math.random() - 0.5) * 1200;       // z
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+
+  const starMat = new THREE.PointsMaterial({
+    size: 1.6,              // plus grand
+    transparent: true,
+    opacity: 0.95,
+    depthWrite: false,      // évite d’être “masqué”
+    blending: THREE.AdditiveBlending,
+    color: 0xffffff,
+    fog: false              // ignorent le fog
+  });
+
+  stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
+}
+// appelle une fois après la création de la scène :
+buildStars();
+
+
+let fireflies = null;
+function buildFireflies(count = 280, radius = 180) {
+  if (fireflies) { scene.remove(fireflies); fireflies.geometry?.dispose?.(); fireflies.material?.dispose?.(); fireflies = null; }
+
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const vel = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    pos[i*3+0] = x;
+    pos[i*3+2] = z;
+    pos[i*3+1] = heightFn(x, z) + 0.8 + Math.random() * 3;
+    vel[i*3+0] = (Math.random() - 0.5) * 0.06;
+    vel[i*3+1] = (Math.random() - 0.5) * 0.03;
+    vel[i*3+2] = (Math.random() - 0.5) * 0.06;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.10,
+    transparent: true,
+    opacity: 1.0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    color: 0xfff7b1,  // un peu doré
+    fog: false
+  });
+
+  fireflies = new THREE.Points(geo, mat);
+  fireflies.userData = { vel, radius };
+  scene.add(fireflies);
+}
+function tickFireflies(pp, dt){
+  if (!pp) return;
+  const p = pp.geometry.attributes.position.array;
+  const v = pp.userData.vel;
+  for (let i = 0; i < v.length; i += 3) {
+    v[i+0] += (Math.random()-0.5)*0.002;
+    v[i+1] += (Math.random()-0.5)*0.002;
+    v[i+2] += (Math.random()-0.5)*0.002;
+    p[i+0] += v[i+0]*dt*60;
+    p[i+1] += v[i+1]*dt*60;
+    p[i+2] += v[i+2]*dt*60;
+    const x = p[i+0], z = p[i+2];
+    const h = heightFn(x, z) + 0.5;
+    if (p[i+1] < h) p[i+1] = h;
+    if (p[i+1] > h + 4.0) p[i+1] = h + 4.0;
+  }
+  pp.geometry.attributes.position.needsUpdate = true;
+}
+// appelle une fois après la création du terrain :
+buildFireflies();
     /************ Overlay (pseudo/couleur) ************/
     const pseudoEl = document.getElementById('pseudo');
     const colorEl  = document.getElementById('color');
@@ -905,7 +976,7 @@ const firebaseConfig = {
       const speed = 6;
       if (move.forward || move.backward) velocity.z -= direction.z * speed * dt;
       if (move.left || move.right)       velocity.x -= direction.x * speed * dt;
-
+        if (fireflies) tickFireflies(fireflies, dt);
       const obj = controls.getObject();
       obj.translateX(-velocity.x);
       obj.translateZ( velocity.z);
