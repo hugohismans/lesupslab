@@ -742,7 +742,7 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
 
   // Mesures en "CSS px" (avant scale)
   const padX = 10, padY = 8;
-  ctx.font = `700 ${fs}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+  ctx.font = `400 ${fs}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
 
   // Wrap du texte
   const words = String(text || '').split(/\s+/).filter(Boolean);
@@ -875,7 +875,7 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
     function makeLabelSpriteFlower(name, ts, color, msg){
       const date = new Date(ts || Date.now()), dd=String(date.getDate()).padStart(2,'0'), mm=String(date.getMonth()+1).padStart(2,'0'), yyyy=date.getFullYear();
       let text = `${name} • ${dd}/${mm}/${yyyy}`; if (msg && (msg=msg.trim())) text += " — " + msg.slice(0,140);
-      return makeLabelSprite(text, color, 260, 24, 0.0105);
+      return makeLabelSprite(text, color, 260, 16, 0.0105);
     }
     function spawnFlowerFancy(f, key){
       const seed = ((f.seed ?? f.ts ?? 1) ^ (key ? key.length*2654435761 : 0)) >>> 0, rnd = rng(seed);
