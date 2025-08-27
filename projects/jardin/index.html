@@ -217,6 +217,33 @@
 
   <!-- App + Firebase -->
   <script type="module">
+    function startGame() {
+  const pseudoEl = document.getElementById('pseudo');
+  const colorEl  = document.getElementById('color');
+  const overlay  = document.getElementById('overlay');
+
+  const name  = (pseudoEl.value || '').trim().slice(0,16) || 'Fée';
+  const color = colorEl.value || '#88e5ff';
+
+  // Sauvegarde locale immédiate
+  localStorage.setItem('jf_name',  name);
+  localStorage.setItem('jf_color', color);
+
+  // Cache l’overlay tout de suite (sans attendre Firebase)
+  overlay.style.display = 'none';
+
+  // Flag : si l’auth arrive après, on poussera name/color
+  window.__JF_STARTED__ = true;
+  window.__JF_NAME__ = name;
+  window.__JF_COLOR__ = color;
+}
+document.getElementById('overlay').addEventListener('keyup', (e)=>{
+  if (e.key === 'Enter') startGame();
+});
+const startBtn = document.getElementById('startBtn');
+// Android peut “perdre” le click : on écoute click + touchend
+startBtn.addEventListener('click',   (e)=>{ e.preventDefault(); startGame(); });
+startBtn.addEventListener('touchend',(e)=>{ e.preventDefault(); startGame(); }, {passive:false});
     /************ Imports Firebase ************/
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
     import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js";
@@ -251,15 +278,31 @@ const firebaseConfig = {
 
     const auth = getAuth(appFB);
     const db = getDatabase(appFB);
-
+        const lookAxes = { x: 0, y: 0 };
+    let movePointerId = null;  // joystick gauche (déplacement)
+    let lookPointerId = null;  // joystick droit (regard)
+    let meRef = null;
+(async function initFirebaseAndScene(){
     await setPersistence(auth, inMemoryPersistence);
     if (auth.currentUser) await signOut(auth);
     await signInAnonymously(auth);
+ onAuthStateChanged(auth, async (user)=>{
+    if (!user) return;
+    self.uid = user.uid;
+    const name  = window.__JF_NAME__  || localStorage.getItem('jf_name')  || ('Fée#'+user.uid.slice(0,4));
+    const color = window.__JF_COLOR__ || localStorage.getItem('jf_color') || '#88e5ff';
 
-    let meRef = null;
-    const lookAxes = { x: 0, y: 0 };
-    let movePointerId = null;  // joystick gauche (déplacement)
-let lookPointerId = null;  // joystick droit (regard)
+    self.name = name; self.color = color;
+
+    meRef = ref(db, `/presence/${self.uid}`);
+    await set(meRef, { name, color, x:0, z:0, last: Date.now() });
+    onDisconnect(meRef).remove();
+
+    // si l’overlay a déjà été fermé par l’utilisateur, pas besoin d’attendre ici
+  });
+
+  // ... le reste de ta scène / listeners / onValue etc.
+})();
 function anyStickActive(){ return movePointerId !== null || lookPointerId !== null; }
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
@@ -1051,6 +1094,7 @@ if (IS_MOBILE){
 
     /************ Chat data hooks ************/
     const messagesListEl = document.getElementById('messages');
+    
   </script>
 
   <!--
