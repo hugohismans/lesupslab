@@ -250,7 +250,7 @@ startBtn.addEventListener('touchend',(e)=>{ e.preventDefault(); startGame(); }, 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
     import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js";
     import {
-      getAuth, signInAnonymously, onAuthStateChanged,
+      getAuth, signInAnonymously, onAuthStateChanged,browserLocalPersistence,
       setPersistence, inMemoryPersistence, signOut
     } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
     import {
@@ -286,8 +286,11 @@ const firebaseConfig = {
     let meRef = null;
 (async function initFirebaseAndScene(){
     await setPersistence(auth, inMemoryPersistence);
-    if (auth.currentUser) await signOut(auth);
-    await signInAnonymously(auth);
+    //if (auth.currentUser) await signOut(auth);
+    if (!auth.currentUser) {
+  await signInAnonymously(auth);
+    }
+    //await signInAnonymously(auth);
  onAuthStateChanged(auth, async (user)=>{
     if (!user) return;
     self.uid = user.uid;
