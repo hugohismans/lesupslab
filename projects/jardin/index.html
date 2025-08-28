@@ -229,9 +229,13 @@ const BIOMES = { SPRING:'printemps', SUMMER:'ete', AUTUMN:'automne', WINTER:'hiv
 function biomeAt(x, z){
   const r = Math.hypot(x, z);
   const ang = Math.atan2(z, x); // -PI..PI  (x=Est, z=Nord)
-  if (r < 150) return BIOMES.SPRING;         // centre vert
+    if (r < 30)  return BIOMES.SPRING; // centre
+  if (r < 60)  return BIOMES.SUMMER;
+  if (r < 100) return BIOMES.AUTUMN;
+/*  if (r < 150) return BIOMES.SPRING;         // centre vert
   if (r < 350) return BIOMES.SUMMER;         // anneau été
-  if (r < 650) return BIOMES.AUTUMN;         // anneau automne
+  if (r < 650) return BIOMES.AUTUMN;         // anneau automne */
+
   // très loin : hiver partout, sauf « ouest » (angle proche de ±PI) en désert
   if (ang > Math.PI*0.75 || ang < -Math.PI*0.75) return BIOMES.DESERT;
   return BIOMES.WINTER;
@@ -258,11 +262,6 @@ let ambienceEl;         // <audio id="ambience"> (si tu as un lecteur son global
     [BIOMES.DESERT]: 0xd9c58a
   }[biome] || 0x3da85b;
 
-  if (ground?.material?.color) {
-    ground.material.color.setHex(col);
-    ground.material.roughness = (biome===BIOMES.WINTER || biome===BIOMES.DESERT) ? 0.9 : 0.8;
-    ground.material.needsUpdate = true;
-  }
 
   // --- Herbe (si tu as un système d’herbe) ---
   setGrassPresetForBiome?.(biome);
@@ -279,6 +278,57 @@ let ambienceEl;         // <audio id="ambience"> (si tu as un lecteur son global
   // --- HUD (petit chip discret) ---
   const chip = document.getElementById('hudBiome');
   if (chip) chip.textContent = biomeLabel(biome);
+}
+
+function registerGround(mesh){
+  if (mesh && mesh.isMesh){
+    ground = mesh;         // 👈 variable utilisée par applyBiome()
+    window.ground = mesh;  // (pratique pour la console)
+    console.log("[biomes] ground set to:", mesh.name || mesh.uuid);
+  }
+}
+
+function detectGroundMesh(){
+  let best = null, bestScore = -1;
+
+  scene.updateMatrixWorld(true);
+
+  const q = new THREE.Quaternion();
+  const upWorld = new THREE.Vector3();
+  const size = new THREE.Vector3();
+
+  scene.traverse(obj=>{
+    if (!obj.isMesh || !obj.geometry) return;
+
+    // bbox -> taille au sol (x,z) en unités monde
+    obj.geometry.computeBoundingBox?.();
+    const bb = obj.geometry.boundingBox;
+    if (!bb) return;
+
+    // taille locale
+    bb.getSize(size);
+    // approx surface “projetée” au sol
+    const area = Math.abs(size.x * size.z);
+
+    // normal "up" en monde (on projette (0,1,0) avec la rotation de l'objet)
+    obj.getWorldQuaternion(q);
+    upWorld.set(0,1,0).applyQuaternion(q);
+
+    // score = grand + à plat (|up.y|≈1)
+    const flatness = Math.abs(upWorld.y); // 1 = parfaitement horizontal
+    const score = area * flatness;
+
+    if (score > bestScore){
+      bestScore = score;
+      best = obj;
+    }
+  });
+
+  if (best){
+    registerGround(best);
+  } else {
+    console.warn("[biomes] No ground mesh detected.");
+  }
 }
 function biomePalette(b){
   // couleurs douces par biome (tu peux ajuster)
@@ -473,7 +523,7 @@ const firebaseConfig = {
 
 async function serverNowMs(db){
   try {
-    const snap = await get(dbRef(db, "/.info/serverTimeOffset"));
+    const snap = await get(ref(db, "/.info/serverTimeOffset"));
     const offset = snap.val() || 0;
     return Date.now() + offset; // ms
   } catch {
@@ -542,6 +592,9 @@ function anyStickActive(){ return movePointerId !== null || lookPointerId !== nu
     scene.background = new THREE.Color(0x05060a);
     scene.fog = new THREE.FogExp2(0x0a1022, 0.009);
 
+    let SKY_TARGET = new THREE.Color(0xa8e6cf);
+
+
     const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1200);
     camera.position.set(0, 1.6, 6);
     camera.rotation.order = 'YXZ';
@@ -550,7 +603,9 @@ function anyStickActive(){ return movePointerId !== null || lookPointerId !== nu
     renderer.setPixelRatio( IS_MOBILE ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio, 2) );
     renderer.domElement.style.touchAction = 'none';
     document.body.appendChild(renderer.domElement);
-
+window.scene = scene;
+window.THREE = THREE;
+console.log("[biomes] scene ready, children =", scene.children.length);
     const controls = new THREE.PointerLockControls(camera, renderer.domElement);
     scene.add(controls.getObject());
 
@@ -567,26 +622,97 @@ function anyStickActive(){ return movePointerId !== null || lookPointerId !== nu
     function heightFn(x,z){ return 0.6*Math.sin(x*0.04)*Math.cos(z*0.035) + 0.25*Math.sin((x+z)*0.06); }
     function noise2(x, z){ return Math.sin(x*0.11 + Math.cos(z*0.07)*2.1) * 0.5 + Math.cos(z*0.13 + Math.sin(x*0.05)*1.7) * 0.5; }
 
-    const SIZE = 280, SEG = 140;
-    const terrainGeo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
-    { // push Z, color
-      const pos = terrainGeo.attributes.position;
-      const colors = new Float32Array(pos.count * 3);
-      const c1 = new THREE.Color(0x104f33), c2 = new THREE.Color(0x2e8b57);
-      for (let i=0;i<pos.count;i++){
-        const x = pos.getX(i), z = pos.getY(i), h = heightFn(x, z);
-        pos.setZ(i, h);
-        const shade = THREE.MathUtils.clamp(0.55 + h*0.08 + noise2(x,z)*0.08, 0.35, 0.9);
-        const col = c1.clone().lerp(c2, shade);
-        colors[i*3+0] = col.r; colors[i*3+1] = col.g; colors[i*3+2] = col.b;
-      }
-      terrainGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-      pos.needsUpdate = true;
-    }
-    terrainGeo.rotateX(-Math.PI/2); terrainGeo.computeVertexNormals();
-    const groundE = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0.0 }));
-    groundE.receiveShadow = true; scene.add(groundE);
+// --- TERRAIN multi-biomes (couleurs de sommets lissées) ---
+const SIZE = 280, SEG = 140;
+const terrainGeo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
 
+// petits helpers de fondu
+function smoothstep(a, b, x){ const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); }
+function mixColor(out, a, b, t){ out.copy(a).lerp(b, t); return out; }
+
+// mêmes seuils que biomeAt()
+const ring1 = 30, ring2 = 60, ring3 = 100;
+const feather = 12; // largeur de transition
+
+const pal = {
+  [BIOMES.SPRING]: new THREE.Color(0x3da85b),
+  [BIOMES.SUMMER]: new THREE.Color(0xb9c16a),
+  [BIOMES.AUTUMN]: new THREE.Color(0x8a5e2e),
+  [BIOMES.WINTER]: new THREE.Color(0xdfe8f0),
+  [BIOMES.DESERT]: new THREE.Color(0xd9c58a),
+};
+
+{
+  const pos = terrainGeo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const c  = new THREE.Color();
+  const cA = new THREE.Color();
+
+  for (let i = 0; i < pos.count; i++){
+    const x = pos.getX(i);
+    const z = pos.getY(i);
+
+    // hauteur
+    const h = heightFn(x, z);
+    pos.setZ(i, h);
+
+    // couleur radiale Spring→Summer→Autumn puis Winter au-delà
+    const r = Math.hypot(x, z);
+    let base;
+    if (r < ring1){
+      base = pal[BIOMES.SPRING].clone();
+    } else if (r < ring2){
+      const t = smoothstep(ring1 - feather, ring1 + feather, r);
+      base = mixColor(c, pal[BIOMES.SPRING], pal[BIOMES.SUMMER], t).clone();
+    } else if (r < ring3){
+      const t = smoothstep(ring2 - feather, ring2 + feather, r);
+      base = mixColor(c, pal[BIOMES.SUMMER], pal[BIOMES.AUTUMN], t).clone();
+    } else {
+      base = pal[BIOMES.WINTER].clone();
+    }
+
+    // coin désert (ouest) avec fondu angulaire + radial
+    const ang = Math.atan2(z, x); // -PI..PI
+    const isDesertSide = (ang > Math.PI*0.75 || ang < -Math.PI*0.75);
+    if (isDesertSide){
+      const tR = smoothstep(ring2, ring3 + 80, r);
+      base.lerp(pal[BIOMES.DESERT], tR * 0.9);
+    }
+
+    // légère modulation avec la hauteur pour le relief
+    const shade = THREE.MathUtils.clamp(0.55 + h*0.08, 0.35, 0.9);
+    base.lerp(cA.set(0xffffff), 1 - shade);
+
+    colors[i*3+0] = base.r;
+    colors[i*3+1] = base.g;
+    colors[i*3+2] = base.b;
+  }
+
+  terrainGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  pos.needsUpdate = true;
+}
+
+terrainGeo.rotateX(-Math.PI/2);
+terrainGeo.computeVertexNormals();
+
+// ✅ Matériau qui lit les couleurs de sommets
+const groundMat = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  roughness: 0.85
+});
+
+const terrainMesh = new THREE.Mesh(terrainGeo, groundMat);
+terrainMesh.receiveShadow = true;
+scene.add(terrainMesh);
+registerGround(terrainMesh);
+detectGroundMesh();
+
+Object.assign(window, {
+  BIOMES,          // enums des biomes
+  applyBiome,      // pour tester depuis la console
+  biomeAt,         // utile en debug
+  ground           // ton mesh de sol (assure-toi de l’avoir fait plus haut: window.ground = terrainMesh;)
+});
     /************ Herbe procédurale ************/
 function setGrassPresetForBiome(b){
   if (!window.GRASS) return; // si tu as un objet global pour l'herbe
@@ -612,10 +738,19 @@ function setSkyFogForBiome(b){
     [BIOMES.WINTER]: 0xe9f2f7,
     [BIOMES.DESERT]: 0xf4e6c0
   }[b] || 0xa8e6cf;
-  scene.fog?.color?.setHex(fogCol);
-  scene.background?.set?.(new THREE.Color(fogCol));
-  // Option : ajuster hemisphereLight si tu l'utilises
-//  hemiLight?.color?.setHex(fogCol);
+
+  // on ne change plus direct ; on met à jour la "cible" vers laquelle on va lisser
+  SKY_TARGET.setHex(fogCol);
+}
+function updateSkyAndFog(dt){
+  if (!scene.fog || !(scene.background instanceof THREE.Color)) return;
+
+  // coefficient de lissage frame-indépendant (demi-vie ≈ 0,25 s)
+  const k = 1 - Math.pow(0.001, dt); // entre 0 et 1, ~0.25 quand dt~0.016*15
+
+  // lerp progressif vers la cible
+  scene.fog.color.lerp(SKY_TARGET, k);
+  scene.background.lerp(SKY_TARGET, k);
 }
 function setAmbienceForBiome(b){
   // suppose <audio id="ambience" loop autoplay> existe
@@ -705,7 +840,7 @@ function setAmbienceForBiome(b){
     buildStars();
 
     let fireflies = null;
-    function buildFireflies(count = IS_MOBILE ? 220 : 280, radius = 180) {
+    function buildFireflies(count = IS_MOBILE ? 220 : 280, radius = 60) {
       if (fireflies) { scene.remove(fireflies); fireflies.geometry?.dispose?.(); fireflies.material?.dispose?.(); fireflies = null; }
       const geo = new THREE.BufferGeometry();
       const pos = new Float32Array(count * 3);
@@ -720,17 +855,57 @@ function setAmbienceForBiome(b){
       const mat = new THREE.PointsMaterial({ size: 0.10, transparent: true, opacity: 1.0, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xfff7b1, fog: false });
       fireflies = new THREE.Points(geo, mat); fireflies.userData = { vel, radius }; scene.add(fireflies);
     }
-    function tickFireflies(pp, dt){
-      if (!pp) return;
-      const p = pp.geometry.attributes.position.array, v = pp.userData.vel;
-      for (let i=0;i<v.length;i+=3){
-        v[i+0] += (Math.random()-0.5)*0.002; v[i+1] += (Math.random()-0.5)*0.002; v[i+2] += (Math.random()-0.5)*0.002;
-        p[i+0] += v[i+0]*dt*60; p[i+1] += v[i+1]*dt*60; p[i+2] += v[i+2]*dt*60;
-        const x = p[i+0], z = p[i+2], h = heightFn(x, z) + 0.5;
-        if (p[i+1] < h) p[i+1] = h; if (p[i+1] > h + 4.0) p[i+1] = h + 4.0;
-      }
-      pp.geometry.attributes.position.needsUpdate = true;
+function tickFireflies(pp, dt){
+  if (!pp) return;
+
+  const pos = pp.geometry.attributes.position.array;
+  const vel = pp.userData.vel;
+  const R   = pp.userData.radius || 60;     // rayon cible
+  const kH  = 0.6;                           // “ressort” horizontal (recentre doucement)
+  const kY  = 1.8;                           // “ressort” vertical vers la hauteur cible
+  const damp= 0.96;                          // amortissement de la vitesse
+  const jitter = 0.002;                      // agitation aléatoire douce
+
+  for (let i=0; i<vel.length; i+=3){
+    const x = pos[i+0], y = pos[i+1], z = pos[i+2];
+
+    // Hauteur sol + plafond doux
+    const h = heightFn(x, z) + 0.9;         // base un peu au-dessus du sol
+    const yTarget = h + 1.6;                 // altitude moyenne des lucioles
+
+    // Agitation random légère
+    vel[i+0] += (Math.random()-0.5) * jitter;
+    vel[i+1] += (Math.random()-0.5) * jitter * 0.6;
+    vel[i+2] += (Math.random()-0.5) * jitter;
+
+    // Ressort vertical vers yTarget
+    vel[i+1] += (yTarget - y) * kY * dt;
+
+    // Ressort horizontal vers le centre (0,0) si on s’éloigne trop
+    const dist = Math.hypot(x, z);
+    if (dist > R){
+      const pull = (dist - R) / dist;       // seulement au-delà du rayon
+      vel[i+0] += (-x) * kH * pull * dt;
+      vel[i+2] += (-z) * kH * pull * dt;
     }
+
+    // Amortissement
+    vel[i+0] *= damp;
+    vel[i+1] *= damp;
+    vel[i+2] *= damp;
+
+    // Intégration
+    pos[i+0] += vel[i+0] * dt * 60;
+    pos[i+1] += vel[i+1] * dt * 60;
+    pos[i+2] += vel[i+2] * dt * 60;
+
+    // Garde-fous verticaux
+    if (pos[i+1] < h)            pos[i+1] = h;
+    if (pos[i+1] > h + 3.2)      pos[i+1] = h + 3.2;
+  }
+
+  pp.geometry.attributes.position.needsUpdate = true;
+}
     buildFireflies();
 
     /************ Overlay pseudo/couleur ************/
@@ -1122,21 +1297,70 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
       const stemMat = new THREE.MeshStandardMaterial({ color: colors.stem });
       const stem = new THREE.Group(); for (let i=0;i<3;i++){ const seg=new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, height/3, 10), stemMat); seg.position.y=(i+0.5)*(height/3); stem.add(seg); }
       stem.rotation.z = lean; g.add(stem);
+// ---- TÊTE AU SOMMET DE LA TIGE (hérite de l'inclinaison) ----
+
+      const label = makeLabelSpriteFlower(f.name || ("Fée#" + String(f.uid||"").slice(0,4)), f.ts || Date.now(), new THREE.Color(colors.petal), f.msg || "");
+
+const head = new THREE.Group();
+// le sommet de la tige, en local de "stem"
+head.position.y = height;
+stem.add(head);
+
+// --- PÉTALES autour de y=0 (dans le repère de "head") ---
+const petalsGroup = new THREE.Group();
+const petMat = new THREE.MeshStandardMaterial({
+  color: colors.petal,
+  emissive: colors.petal.clone().multiplyScalar(0.10),
+  side: THREE.DoubleSide
+});
+const petGeo = petalGeometry(variant, rnd, radius, length, thickness);
+
+for (let i = 0; i < petals; i++){
+  const p = new THREE.Mesh(petGeo, petMat);
+  const a = (i / petals) * Math.PI * 2;
+  // autour de la tige, au niveau y≈0 (repère "head")
+  p.position.set(Math.cos(a)*radius*0.15, 0.0, Math.sin(a)*radius*0.15);
+  p.rotation.y = a;
+  p.rotation.x = -Math.PI/2;
+  p.rotation.z = lerp(-0.08, 0.08, rnd());
+  petalsGroup.add(p);
+}
+head.add(petalsGroup);
+
+// --- PISTIL au centre, légèrement ENFONCÉ dans la corolle ---
+const pistilRadius = THREE.MathUtils.lerp(0.075, 0.095, rnd());
+const pistil = new THREE.Mesh(
+  new THREE.SphereGeometry(pistilRadius, 18, 14),
+  new THREE.MeshStandardMaterial({
+    color: colors.pistil,
+    emissive: colors.pistil.clone().multiplyScalar(0.22)
+  })
+);
+// enfoncé vers le bas (négatif) pour éviter l'effet "posé au-dessus"
+pistil.position.set(0, -pistilRadius * 0.35, 0);
+head.add(pistil);
+
+// --- (Optionnel) Label ancré à la tête ---
+if (label) {
+  // si tu crées "label" plus bas, déplace sa création ici, sinon adapte :
+  // const label = makeLabelSpriteFlower(...);
+  label.position.set(0, length * 0.65 + 0.5, 0);
+  head.add(label);
+}
+
       const leafGeo = new THREE.PlaneGeometry(0.26, 0.16, 1, 4), leafMat = new THREE.MeshStandardMaterial({ color: colors.stem, side: THREE.DoubleSide });
       const leaf1 = new THREE.Mesh(leafGeo, leafMat), leaf2 = new THREE.Mesh(leafGeo, leafMat);
       leaf1.position.set(0.08, height*0.45, 0); leaf1.rotation.set(0, Math.PI*0.15, -Math.PI*0.35);
       leaf2.position.set(-0.08, height*0.3, 0);  leaf2.rotation.set(0, -Math.PI*0.15, Math.PI*0.35);
       g.add(leaf1, leaf2);
-      const pistil = new THREE.Mesh(new THREE.SphereGeometry(0.085, 14, 10), new THREE.MeshStandardMaterial({ color: colors.pistil, emissive: colors.pistil.clone().multiplyScalar(0.22) }));
-      pistil.position.y = height + length*0.5; g.add(pistil);
-      const petalsGroup = new THREE.Group(), petMat = new THREE.MeshStandardMaterial({ color: colors.petal, emissive: colors.petal.clone().multiplyScalar(0.1), side: THREE.DoubleSide });
-      const petGeo = petalGeometry(variant, rnd, radius, length, thickness);
-      for (let i=0;i<petals;i++){ const p = new THREE.Mesh(petGeo, petMat); const a=(i/petals)*Math.PI*2;
-        p.position.set(Math.cos(a)*radius*0.15, height + length*0.35, Math.sin(a)*radius*0.15);
-        p.rotation.y = a; p.rotation.x = -Math.PI/2; p.rotation.z = lerp(-0.08,0.08,rnd()); petalsGroup.add(p); }
-      g.add(petalsGroup);
-      const label = makeLabelSpriteFlower(f.name || ("Fée#" + String(f.uid||"").slice(0,4)), f.ts || Date.now(), new THREE.Color(colors.petal), f.msg || "");
-      label.position.set(0, height + length + 0.7, 0); g.add(label);
+
+// Hauteur où se trouvent les pétales
+const crownY = height + length * 0.32; // hauteur de la corolle (plus bas qu'avant pour éviter le "flottement")
+
+
+   //   const label = makeLabelSpriteFlower(f.name || ("Fée#" + String(f.uid||"").slice(0,4)), f.ts || Date.now(), new THREE.Color(colors.petal), f.msg || "");
+   // label.position.set(0, crownY + length * 0.45 + 0.5, 0);
+     //  g.add(label);
       scene.add(g); return g;
     }
 
@@ -1163,13 +1387,13 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
 
     const TREE_GROW_MS = 2 * 24 * 60 * 60 * 1000; // 2 jours
     //window.GROW_DEBUG_MULT = 1;
-//function clamp01(v){ return Math.max(0, Math.min(1, v)); }
-function smoothstep(t){ return t*t*(3-2*t); } // interpolation douce 0..1
+//function clamp01(v){ return Math.max(0, Math.min(1, v)); }// interpolation douce 0..1
     function castAurora(){
       const p = controls.getObject().position;
       const colorHex = toHexColor(self.color, "#88e5ff");
       push(spellsRef, { uid:self.uid, x:+p.x.toFixed(2), z:+p.z.toFixed(2), color:colorHex, ts: Date.now() });
     }
+   // function mixColor(out, a, b, t){ out.copy(a).lerp(b, t); return out; }
 async function plantTree(){
   await ensureReady();
 
@@ -1250,7 +1474,8 @@ function toTHREEColor(c){ return (c instanceof THREE.Color) ? c : new THREE.Colo
 function makeFlowerMesh3D({ petal = '#ffc9e6', center = '#ffd166', stem = '#2f8f3b', leaf = '#49b36a', seed = 1 } = {}){
   const R = rng(seed);
   const group = new THREE.Group();
-
+  const stemH = 0.45 + R()*0.15;
+  const BLOOM_Y = stemH - 0.05; // la tête de fleur est posée au sommet de la tige
   // --- Pétale: forme 2D puis extrusion pour obtenir de l'épaisseur ---
   const s = new THREE.Shape();
   const w = 0.24, h = 0.42; // largeur/hauteur du pétale
@@ -1284,7 +1509,7 @@ function makeFlowerMesh3D({ petal = '#ffc9e6', center = '#ffd166', stem = '#2f8f
     const ang = (i / petalsCount) * Math.PI*2;
     const radius = 0.22 + R()*0.06;
 
-    m.position.set(Math.cos(ang)*radius, 0.24, Math.sin(ang)*radius);
+    m.position.set(Math.cos(ang)*radius, BLOOM_Y, Math.sin(ang)*radius);
     m.rotation.set(-Math.PI/2 + (R()*0.12 - 0.06), ang, R()*0.2 - 0.1);
     const sPet = 0.8 + R()*0.3;
     m.scale.set(sPet, sPet, sPet);
@@ -1305,12 +1530,11 @@ function makeFlowerMesh3D({ petal = '#ffc9e6', center = '#ffd166', stem = '#2f8f
     emissiveIntensity: 0.35
   });
   const core = new THREE.Mesh(coreGeo, coreMat);
-  core.position.y = 0.24 + 0.07;
+  core.position.y = BLOOM_Y + 0.07;
   core.castShadow = true;
   group.add(core);
 
   // --- Tige ---
-  const stemH = 0.45 + R()*0.15;
   const stemGeo = new THREE.CylinderGeometry(0.02, 0.025, stemH, 8);
   const stemMat = new THREE.MeshStandardMaterial({ color: toTHREEColor(stem), roughness: 0.9 });
   const stemMesh = new THREE.Mesh(stemGeo, stemMat);
@@ -1334,6 +1558,7 @@ function makeFlowerMesh3D({ petal = '#ffc9e6', center = '#ffd166', stem = '#2f8f
   // Pose la fleur sur le sol (plan XZ)
   group.rotation.x = 0; // face vers le haut
   group.position.y = 0; // base au niveau du sol
+  group.rotation.z = (R()*0.2 - 0.1);
   return group;
 }
 function makeFlowerMesh(opts){
@@ -1365,7 +1590,35 @@ function makeFlowerMesh(opts){
     });
     const flowers = new Map();
 // Assure-toi d'avoir gardenRef = ref(db, "/garden")
+
 onChildAdded(query(gardenRef, limitToLast(2000)), snap => {
+  const d = snap.val();
+  if (!d) return;
+  const key = snap.key;
+
+  const x = d.x || 0;
+  const z = d.z || 0;
+  const y = heightFn(x, z);
+
+  // Biome du point de plantation
+  const b   = d.biome || biomeAt(x, z);
+  const pal = biomePalette ? biomePalette(b) : { leaf: 0x49b36a, petal: 0xffc9e6 };
+
+  // Version "belle" : on passe par spawnFlowerFancy
+  const f = {
+    ...d,
+    color: d.color || `#${pal.petal.toString(16)}`, // pétales cohérents au biome
+  };
+  const flower = spawnFlowerFancy(f, key);
+  flower.position.set(x, y, z);
+
+  // Ajout dans la scène et stockage
+  scene.add(flower);
+  flowerNodes.set(key, flower);
+});
+
+
+/*onChildAdded(query(gardenRef, limitToLast(2000)), snap => {
   const d = snap.val(); if (!d) return;
   const key = snap.key;
 
@@ -1405,7 +1658,7 @@ onChildAdded(query(gardenRef, limitToLast(2000)), snap => {
 
   scene.add(flower);
   flowerNodes.set(key, flower);
-});
+});*/
 onChildChanged(gardenRef, snap => {
   const d = snap.val(); if (!d) return;
   const key = snap.key;
@@ -1749,6 +2002,16 @@ onChildAdded(query(treesRef, limitToLast(1000)), snap => {
       const yHere = heightFn(obj.position.x, obj.position.z);
       obj.position.y = yHere + 1.6;
 
+        const p = controls.getObject().position;
+  const b = biomeAt(p.x, p.z);
+  applyBiome(b);
+
+  // Particules liées au biome dans la boucle
+  const nowTime = performance.now();
+  const dtPart = (nowTime - (window._lastFrameTime || nowTime)) / 1000;
+  window._lastFrameTime = nowTime;
+  updateParticles(dtPart);
+     updateSkyAndFog(dt);
       // Caméra par joystick droit (yaw/pitch), lissée, sans roll
 camera.rotation.order = 'YXZ'; // évite tout roll implicite
 
@@ -1819,15 +2082,10 @@ if (IS_MOBILE){
         updateTreeGrowth(group, ts);
       }
       renderer.render(scene, camera);
+
     }
-      const p = controls.getObject().position;
-  const b = biomeAt(p.x, p.z);
-  applyBiome(b);
-const nowTime = performance.now();
-const dt = (nowTime - (window._lastFrameTime || nowTime)) / 1000; // en secondes
-window._lastFrameTime = nowTime;
-updateParticles(dt);
     animate();
+
 
     /************ Resize ************/
     addEventListener('resize', ()=>{
