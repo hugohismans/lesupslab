@@ -1915,9 +1915,11 @@ onChildAdded(query(treesRef, limitToLast(1000)), snap => {
     }
     onChildAdded(query(creaturesRef, limitToLast(200)), snap=>{ const c = snap.val(); if (!c) return; spawnCreatureNode(snap.key, c); });
     function pickFlowerKeyForStep(creatureId, seed, step){
-      const keys = Array.from(flowers.keys()); if (keys.length === 0) return null;
-      let s = (seed ^ (step*2654435761) ^ (creatureId.length*97531)) >>> 0; const rnd = ()=> (s = (s*1664525 + 1013904223) >>> 0) / 4294967296;
-      const idx = Math.floor(rnd() * keys.length); return keys[idx];
+  const keys = Array.from(flowerNodes.keys());
+  if (keys.length === 0) return null;
+  let s = (seed ^ (step*2654435761) ^ (creatureId.length*97531)) >>> 0;
+  const rnd = ()=> (s = (s*1664525 + 1013904223) >>> 0) / 4294967296;
+  return keys[Math.floor(rnd() * keys.length)];
     }
 
     /************ Présence + HUD ************/
@@ -2072,11 +2074,26 @@ if (IS_MOBILE){
       const now = Date.now(), CYCLE_MS = 8000;
       for (const [id, c] of creatures.entries()){
         const mesh = c.mesh; const step = Math.floor((now - c.ts) / CYCLE_MS); const t01 = ((now - c.ts) % CYCLE_MS) / CYCLE_MS;
-        const keyA = pickFlowerKeyForStep(id, c.seed, Math.max(0, step-1)), keyB = pickFlowerKeyForStep(id, c.seed, step);
-        const fa = keyA && flowers.get(keyA), fb = keyB && flowers.get(keyB);
-        const ax = (fa?.x ?? c.x0), az = (fa?.z ?? c.z0), bx = (fb?.x ?? ax), bz = (fb?.z ?? az);
-        const ay = heightFn(ax, az) + 1.0, by = heightFn(bx, bz) + 1.0, tt = t01*t01*(3-2*t01);
-        mesh.position.set(ax + (bx-ax)*tt, ay + (by-ay)*tt + Math.sin((t01+id.length)*Math.PI*2)*0.12, az + (bz-az)*tt);
+const keyA = pickFlowerKeyForStep(id, c.seed, Math.max(0, step-1));
+const keyB = pickFlowerKeyForStep(id, c.seed, step);
+
+const fa = keyA && flowerNodes.get(keyA);
+const fb = keyB && flowerNodes.get(keyB);
+
+const ax = (fa ? fa.position.x : c.x0);
+const az = (fa ? fa.position.z : c.z0);
+const bx = (fb ? fb.position.x : ax);
+const bz = (fb ? fb.position.z : az);
+
+const ay = heightFn(ax, az) + 1.0;
+const by = heightFn(bx, bz) + 1.0;
+const tt = t01*t01*(3-2*t01);
+
+mesh.position.set(
+  ax + (bx-ax)*tt,
+  ay + (by-ay)*tt + Math.sin((t01+id.length)*Math.PI*2)*0.12,
+  az + (bz-az)*tt
+);
         if (c.type === "butterfly" && mesh.userData?.wL && mesh.userData?.wR){ const flap = Math.sin(now/120) * 0.9; mesh.userData.wL.rotation.z =  flap; mesh.userData.wR.rotation.z = -flap; }
       }
       for (const { group, ts } of treeNodes.values()){
