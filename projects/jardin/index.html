@@ -1243,6 +1243,28 @@ tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
 
   await push(ref(db, "/garden"), payload);
 }
+function makeFlowerMesh(opts){
+  const group = new THREE.Group();
+
+  // pétales
+  const petalGeo = new THREE.CircleGeometry(0.15, 6);
+  const petalMat = new THREE.MeshStandardMaterial({ color: opts.petal, side: THREE.DoubleSide });
+  for (let i = 0; i < 6; i++){
+    const petal = new THREE.Mesh(petalGeo, petalMat);
+    petal.position.set(Math.cos(i*Math.PI/3)*0.2, 0, Math.sin(i*Math.PI/3)*0.2);
+    petal.rotation.x = -Math.PI/2;
+    group.add(petal);
+  }
+
+  // centre
+  const centerGeo = new THREE.CircleGeometry(0.1, 16);
+  const centerMat = new THREE.MeshStandardMaterial({ color: opts.center, side: THREE.DoubleSide });
+  const center = new THREE.Mesh(centerGeo, centerMat);
+  center.rotation.x = -Math.PI/2;
+  group.add(center);
+
+  return group;
+}
     onChildAdded(query(spellsRef, limitToLast(40)), snap=>{
       const ev = snap.val(); if (!ev) return; if (Date.now() - (ev.ts || 0) > 15_000) return;
       const color = ev.color || "#88e5ff"; const ring = spawnRing(ev.x, ev.z, color); const sparks = spawnSparks(ev.x, ev.z, color);
@@ -1264,8 +1286,8 @@ tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
   const centerCol  = pal.leaf;
 
   // Ta fonction de création de fleur : adapte les params couleur si besoin
-  const flower = makeFlower(d.seed, d.color);
-  //const flower = makeFlowerMesh({ petal: petalColor, center: centerCol, seed: d.seed || 1 });
+  //const flower = makeFlower(d.seed, d.color);
+  const flower = makeFlowerMesh({ petal: petalColor, center: centerCol, seed: d.seed || 1 });
   flower.position.set(x, y, z);
 
   // Label message/pseudo si tu l’as
