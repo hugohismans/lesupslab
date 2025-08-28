@@ -288,7 +288,7 @@ function applyBiome(biome){
   // Lucioles : recentrer/afficher le bon essaim
   if (typeof controls !== 'undefined' && controls.getObject){
     const p = controls.getObject().position;
-    ensureFirefliesForBiome(biome, p.x, p.z);
+    //ensureFirefliesForBiome(biome, p.x, p.z);
   }
 
   // 🔸 PARTICULES : respawn si (a) biome change OU (b) le groupe a disparu / est vide / pas le bon biome
@@ -2288,7 +2288,7 @@ if (b !== currentBiome && (nowMs - _biomeSince) > 300){
 
   // --- Lucioles (tous les essaims, seuls les visibles sont animés) ---
   for (const sw of Object.values(FIREFLY_SWARMS)){
-    if (sw.visible) tickFireflies(sw, dt);
+    //if (sw.visible) tickFireflies(sw, dt);
   }
 
   // --- Créatures (papillons/esprits) ---
