@@ -1243,6 +1243,96 @@ tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
 
   await push(ref(db, "/garden"), payload);
 }
+function toTHREEColor(c){ return (c instanceof THREE.Color) ? c : new THREE.Color(c); }
+function makeFlowerMesh3D({ petal = '#ffc9e6', center = '#ffd166', stem = '#2f8f3b', leaf = '#49b36a', seed = 1 } = {}){
+  const R = rng(seed);
+  const group = new THREE.Group();
+
+  // --- Pétale: forme 2D puis extrusion pour obtenir de l'épaisseur ---
+  const s = new THREE.Shape();
+  const w = 0.24, h = 0.42; // largeur/hauteur du pétale
+  s.moveTo(0, 0);
+  s.bezierCurveTo(+w*0.35, +h*0.10,  +w*0.55, +h*0.50,  0, h);
+  s.bezierCurveTo(-w*0.55, +h*0.50,  -w*0.35, +h*0.10,  0, 0);
+
+  const extrude = new THREE.ExtrudeGeometry(s, {
+    depth: 0.04,
+    bevelEnabled: true,
+    bevelThickness: 0.02,
+    bevelSize: 0.018,
+    bevelSegments: 2,
+    steps: 1
+  });
+  extrude.center();
+
+  // léger bombé via scale non uniforme
+  extrude.computeVertexNormals();
+
+  const petalMat = new THREE.MeshStandardMaterial({
+    color: toTHREEColor(petal),
+    roughness: 0.75,
+    metalness: 0.05
+  });
+
+  const petals = new THREE.Group();
+  const petalsCount = 6 + Math.floor(R()*3); // 6..8
+  for (let i=0;i<petalsCount;i++){
+    const m = new THREE.Mesh(extrude, petalMat);
+    const ang = (i / petalsCount) * Math.PI*2;
+    const radius = 0.22 + R()*0.06;
+
+    m.position.set(Math.cos(ang)*radius, 0.24, Math.sin(ang)*radius);
+    m.rotation.set(-Math.PI/2 + (R()*0.12 - 0.06), ang, R()*0.2 - 0.1);
+    const sPet = 0.8 + R()*0.3;
+    m.scale.set(sPet, sPet, sPet);
+
+    m.castShadow = true;
+    m.receiveShadow = false;
+    petals.add(m);
+  }
+  group.add(petals);
+
+  // --- Cœur (dôme) ---
+  const coreGeo = new THREE.SphereGeometry(0.14, 24, 16, 0, Math.PI*2, 0, Math.PI/2); // demi-sphère
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: toTHREEColor(center),
+    roughness: 0.5,
+    metalness: 0.2,
+    emissive: new THREE.Color(center).multiplyScalar(0.15),
+    emissiveIntensity: 0.35
+  });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.y = 0.24 + 0.07;
+  core.castShadow = true;
+  group.add(core);
+
+  // --- Tige ---
+  const stemH = 0.45 + R()*0.15;
+  const stemGeo = new THREE.CylinderGeometry(0.02, 0.025, stemH, 8);
+  const stemMat = new THREE.MeshStandardMaterial({ color: toTHREEColor(stem), roughness: 0.9 });
+  const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+  stemMesh.position.y = stemH/2;
+  stemMesh.castShadow = true;
+  stemMesh.receiveShadow = true;
+  group.add(stemMesh);
+
+  // --- Feuilles (deux petites) ---
+  const leafGeo = new THREE.PlaneGeometry(0.26, 0.14);
+  const leafMat = new THREE.MeshStandardMaterial({ color: toTHREEColor(leaf), side: THREE.DoubleSide, roughness: 0.85 });
+  const l1 = new THREE.Mesh(leafGeo, leafMat);
+  const l2 = new THREE.Mesh(leafGeo, leafMat);
+  l1.position.set( 0.12, stemH*0.45, 0.02);
+  l1.rotation.set(0,  Math.PI*0.25,  Math.PI*0.35);
+  l2.position.set(-0.12, stemH*0.32, -0.02);
+  l2.rotation.set(0, -Math.PI*0.25, -Math.PI*0.35);
+  l1.castShadow = l2.castShadow = true;
+  group.add(l1, l2);
+
+  // Pose la fleur sur le sol (plan XZ)
+  group.rotation.x = 0; // face vers le haut
+  group.position.y = 0; // base au niveau du sol
+  return group;
+}
 function makeFlowerMesh(opts){
   const group = new THREE.Group();
 
@@ -1287,7 +1377,13 @@ function makeFlowerMesh(opts){
 
   // Ta fonction de création de fleur : adapte les params couleur si besoin
   //const flower = makeFlower(d.seed, d.color);
-  const flower = makeFlowerMesh({ petal: petalColor, center: centerCol, seed: d.seed || 1 });
+  const flower = makeFlowerMesh3D({
+  petal: d.color || `#${pal.petal.toString(16)}`,
+  center: '#ffd166',
+  stem:   '#2f8f3b',
+  leaf:   `#${pal.leaf.toString(16)}`,
+  seed:   d.seed || 1
+});
   flower.position.set(x, y, z);
 
   // Label message/pseudo si tu l’as
