@@ -391,11 +391,7 @@ function spawnParticles(type, density = 1, origin = _playerXZ()){
   if (type === 'none') return;
 
   const group = new THREE.Group();
-  group.userData = { type, radius: 12, forBiome: currentBiome };
-  group.position.set(origin.x, 0, origin.z);
-
-  // 🔸 jamais 0 particule à cause d’une densité trop basse
-  const safeDensity = Math.max(0.05, density);
+  group.position.set(origin.x || 0, 0, origin.z || 0);
 
   let mat;
   const baseN =
@@ -403,70 +399,130 @@ function spawnParticles(type, density = 1, origin = _playerXZ()){
     type === 'leaves' ? 140 :
     type === 'dust'   ? 120 :
                         160; // pollen
-  const N = Math.max(8, Math.floor(baseN * safeDensity * (IS_MOBILE ? 0.7 : 1)));
-
+  const N = Math.max(0, Math.floor(baseN * density * (IS_MOBILE ? 0.7 : 1)));
   const R = 12;
 
-  for (let i=0; i<N; i++){
+  for (let i = 0; i < N; i++){
     let sprite;
     if (type === 'snow'){
-  mat = mat || new THREE.SpriteMaterial({
-  color: 0xffffff, opacity: 0.9, transparent:true,
-  depthWrite:false, depthTest:false, fog:false, blending: THREE.AdditiveBlending
-});      sprite = new THREE.Sprite(mat);
+      mat = mat || new THREE.SpriteMaterial({ color: 0xffffff, opacity: 0.9, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
       sprite.scale.setScalar(0.06 + Math.random()*0.06);
     } else if (type === 'leaves'){
-// feuilles (autumn)
-mat = mat || new THREE.SpriteMaterial({
-  color: 0xffa54a, opacity: 0.95, transparent:true,
-  depthWrite:false, depthTest:false, fog:false
-});      sprite = new THREE.Sprite(mat);
+      mat = mat || new THREE.SpriteMaterial({ color: 0xffa54a, opacity: 0.9, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
       sprite.scale.set(0.12, 0.16, 1);
     } else if (type === 'dust'){
-mat = mat || new THREE.SpriteMaterial({
-  color: 0xd2b48c, opacity: 0.55, transparent:true,
-  depthWrite:false, depthTest:false, fog:false, blending: THREE.AdditiveBlending
-});      sprite = new THREE.Sprite(mat);
+      mat = mat || new THREE.SpriteMaterial({ color: 0xd2b48c, opacity: 0.45, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
       sprite.scale.setScalar(0.08 + Math.random()*0.08);
-} else { // pollen
-  const pollenColor = (currentBiome === BIOMES.SUMMER) ? 0xffd85c : 0xfff2a8;
-  mat = new THREE.SpriteMaterial({ 
-    color: pollenColor,
-    opacity: 0.6,
-    transparent:true,
-    depthWrite:false
-  });
-  sprite = new THREE.Sprite(mat);
-  sprite.scale.setScalar(0.05 + Math.random()*0.05);
-}
+    } else { // pollen
+      mat = mat || new THREE.SpriteMaterial({ color: 0xffe98a, opacity: 0.65, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
+      sprite.scale.setScalar(0.05 + Math.random()*0.05);
+    }
 
-    // position ABSOLUTE around the group center
-const lx = (Math.random()-0.5) * (R*2);
-const lz = (Math.random()-0.5) * (R*2);
-const wx = group.position.x + lx;
-const wz = group.position.z + lz;
-sprite.position.set(
-  lx,
-  heightFn(wx, wz) + 0.8 + Math.random()*2.5,
-  lz
-);
+    // offsets RELATIFS au groupe
+    const rx = (Math.random()-0.5) * (R*2);
+    const rz = (Math.random()-0.5) * (R*2);
 
+    // hauteur de spawn selon le type (utilise coordonnées MONDE pour heightFn)
+    const hBase = heightFn(group.position.x + rx, group.position.z + rz);
+    const yStart =
+      type === 'snow'   ? hBase + 6 + Math.random()*3   :
+      type === 'leaves' ? hBase + 4 + Math.random()*2.5 :
+      type === 'dust'   ? hBase + 1 + Math.random()*1.2 :
+                          hBase + 1.2 + Math.random()*1.6; // pollen
+
+    sprite.position.set(rx, yStart, rz); // 👈 local au groupe
+
+    // vitesses
     sprite.userData.vy = (type==='snow') ? -(0.1 + Math.random()*0.15)
                       : (type==='leaves' ? -(0.05 + Math.random()*0.08)
                       : (type==='dust'   ?  0.02
                                           :  0.03));
     sprite.userData.vx = (type==='dust') ? (Math.random()*0.06) : ((Math.random()-0.5)*0.04);
     sprite.userData.vz = (type==='dust') ? (Math.random()*0.04) : ((Math.random()-0.5)*0.04);
-group.userData = { type, radius: 12, forBiome: currentBiome }; // pour vérif dans animate()
-  activeParticles = group;
+
     group.add(sprite);
   }
 
-  group.userData = { type, radius: 12 }; // used by updateParticles
+  group.userData = { type, radius: 12 };
   activeParticles = group;
   scene.add(group);
 }
 
+function updateParticles(dt){
+  if (!activeParticles) return;
+
+  const group    = activeParticles;
+  const children = group.children;
+  const R        = group.userData?.radius ?? 12;
+  const type     = group.userData?.type   ?? 'pollen';
+
+  // le centre du nuage suit le joueur (LERP vers la position du joueur)
+  const target = _playerXZ();
+  group.position.x += (target.x - group.position.x) * 0.10;
+  group.position.z += (target.z - group.position.z) * 0.10;
+
+  for (let i = 0; i < children.length; i++){
+    const s = children[i];
+
+    // mouvement local
+    s.position.x += s.userData.vx * dt * 60;
+    s.position.y += s.userData.vy * dt * 60;
+    s.position.z += s.userData.vz * dt * 60;
+
+    // hauteur sol sous la particule (coordonnées MONDE = groupe + local)
+    const worldX = group.position.x + s.position.x;
+    const worldZ = group.position.z + s.position.z;
+    const h = heightFn(worldX, worldZ) + 0.1;
+
+    // bornes
+    const tooFar  = (Math.abs(s.position.x) > R) || (Math.abs(s.position.z) > R);
+    const tooLow  = (s.position.y < h);
+    const topY =
+      type === 'snow'   ? h + 10 :
+      type === 'leaves' ? h + 8  :
+      type === 'dust'   ? h + 3  :
+                          h + 3.5;
+    const tooHigh = (s.position.y > topY);
+
+    if (tooFar || tooLow || tooHigh){
+      // nouveau point RELATIF autour du centre du groupe
+      const rx = (Math.random()-0.5) * (R*2);
+      const rz = (Math.random()-0.5) * (R*2);
+      const hBase = heightFn(group.position.x + rx, group.position.z + rz);
+      const yStart =
+        type === 'snow'   ? hBase + 6 + Math.random()*3   :
+        type === 'leaves' ? hBase + 4 + Math.random()*2.5 :
+        type === 'dust'   ? hBase + 1 + Math.random()*1.2 :
+                            hBase + 1.2 + Math.random()*1.6;
+
+      s.position.set(rx, yStart, rz); // 👈 local (pas de + group.position)
+
+      // petit ré-jitter
+      if (type === 'snow'){
+        s.userData.vy = -(0.1 + Math.random()*0.15);
+        s.userData.vx = (Math.random()-0.5)*0.04;
+        s.userData.vz = (Math.random()-0.5)*0.04;
+      } else if (type === 'leaves'){
+        s.userData.vy = -(0.05 + Math.random()*0.08);
+        s.userData.vx = (Math.random()-0.5)*0.04;
+        s.userData.vz = (Math.random()-0.5)*0.04;
+      } else if (type === 'dust'){
+        s.userData.vy = 0.02;
+        s.userData.vx = Math.random()*0.06;
+        s.userData.vz = Math.random()*0.04;
+      } else { // pollen
+        s.userData.vy = 0.03;
+        s.userData.vx = (Math.random()-0.5)*0.04;
+        s.userData.vz = (Math.random()-0.5)*0.04;
+      }
+    }
+  }
+}
+/*
 // --- UPDATE: wrap particles around the group's center (near player) ---
 function updateParticles(dt){
   if (!activeParticles) return;
@@ -495,19 +551,52 @@ const h  = heightFn(wx, wz) + 0.1;
 // distance au centre du nuage EN LOCAL
 const tooFar  = (Math.abs(s.position.x) > R) || (Math.abs(s.position.z) > R);
 const tooLow  = (s.position.y < h);
-const tooHigh = (s.position.y > h + 3.5);
+const t = group.userData?.type || 'pollen';
+
+// plafond selon le type (plus haut pour neige/feuilles)
+const top =
+  t === 'snow'   ? h + 10 :
+  t === 'leaves' ? h + 8  :
+  t === 'dust'   ? h + 3  :
+                   h + 3.5;
+
+const tooHigh = (s.position.y > top);
+
+//const tooHigh = (s.position.y > h + 3.5);
 
 // respawn en LOCAL + hauteur calculée avec (group + local)
 if (tooFar || tooLow || tooHigh){
-  const lx = (Math.random()-0.5) * (R*2);
-  const lz = (Math.random()-0.5) * (R*2);
-  const wx2 = group.position.x + lx;
-  const wz2 = group.position.z + lz;
-  const hy  = heightFn(wx2, wz2) + 0.8 + Math.random()*2.0;
-  s.position.set(lx, hy, lz);
-}
+  const rx = (Math.random()-0.5) * (R*2);
+  const rz = (Math.random()-0.5) * (R*2);
+  const hx = heightFn(group.position.x + rx, group.position.z + rz);
+
+  let yStart;
+  if (t === 'snow') {
+    yStart = hx + 6 + Math.random()*3;
+  } else if (t === 'leaves') {
+    yStart = hx + 4 + Math.random()*2.5;
+  } else if (t === 'dust') {
+    yStart = hx + 1 + Math.random()*1.2;
+  } else { // pollen
+    yStart = hx + 1.2 + Math.random()*1.6;
   }
+
+  s.position.set(
+    group.position.x + rx,
+    yStart,
+    group.position.z + rz
+  );
 }
+//if (tooFar || tooLow || tooHigh){
+ // const lx = (Math.random()-0.5) * (R*2);
+ // const lz = (Math.random()-0.5) * (R*2);
+ // const wx2 = group.position.x + lx;
+ // const wz2 = group.position.z + lz;
+ // const hy  = heightFn(wx2, wz2) + 0.8 + Math.random()*2.0;
+  //s.position.set(lx, hy, lz);
+//}
+  }
+}*/
 /*function setFirefliesForBiome(b){
   // biomes avec lucioles (change la liste si tu veux)
   const ON = (b === BIOMES.SPRING || b === BIOMES.SUMMER || b === BIOMES.AUTUMN);
@@ -725,7 +814,32 @@ console.log("[biomes] scene ready, children =", scene.children.length);
     // Lumières
     scene.add(new THREE.HemisphereLight(0x7dd3fc, 0x1e293b, 0.9));
     const sun = new THREE.DirectionalLight(0xffffff, 0.15); sun.position.set(30,60,20); scene.add(sun);
+    // ——— Jour/Nuit (GMT+1) ———
+const DAY_SKY   = new THREE.Color(0x8ec5ff);
+const NIGHT_SKY = new THREE.Color(0x0a1022);
+const GOLDEN    = new THREE.Color(0xffb36b);
 
+const moon = new THREE.DirectionalLight(0xdde7ff, 0.05);
+moon.position.set(-30, 20, -20);
+scene.add(moon);
+
+// petits “corps” visibles pour repérer soleil/lune
+const sunVis  = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff2a8 }));
+const moonVis = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12), new THREE.MeshBasicMaterial({ color: 0xcfe6ff }));
+sunVis.renderOrder = 2; moonVis.renderOrder = 2;
+scene.add(sunVis, moonVis);
+
+// helper utilitaires
+function clamp01(v){ return Math.max(0, Math.min(1, v)); } // si pas déjà défini
+function smooth01(x, a=0.0, b=1.0){ return clamp01((x-a)/(b-a)); }
+function sin01(rad){ return (Math.sin(rad)+1)/2; } // 0..1
+function hourGMT1(){
+  const now = new Date();
+  const utc = now.getUTCHours() + now.getUTCMinutes()/60 + now.getUTCSeconds()/3600;
+  let h = (utc + 1) % 24; // GMT+1
+  if (h < 0) h += 24;
+  return h;
+}
     /************ Terrain ************/
     function heightFn(x,z){ return 0.6*Math.sin(x*0.04)*Math.cos(z*0.035) + 0.25*Math.sin((x+z)*0.06); }
     function noise2(x, z){ return Math.sin(x*0.11 + Math.cos(z*0.07)*2.1) * 0.5 + Math.cos(z*0.13 + Math.sin(x*0.05)*1.7) * 0.5; }
@@ -860,6 +974,57 @@ function updateSkyAndFog(dt){
   scene.fog.color.lerp(SKY_TARGET, k);
   scene.background.lerp(SKY_TARGET, k);
 }
+
+function updateDayNight(dt){
+  const h = hourGMT1();            // 0..24
+  // Soleil : 6h horizon Est → 12h zénith → 18h horizon Ouest
+  const tSun = (h - 6) / 12 * Math.PI;   // 6→0rad, 12→π/2, 18→π
+  const R = 180;
+
+  // trajectoire simple dans le plan YZ
+  const sunY = Math.max(0, Math.sin(tSun)) * R;  // < 0 = sous l’horizon
+  const sunZ = Math.cos(tSun) * R;
+  sun.position.set(60, sunY + 20, sunZ);
+  sunVis.position.copy(sun.position);
+
+  // Lune décalée de 12h
+  const tMoon = tSun + Math.PI;
+  const moonY = Math.max(0, Math.sin(tMoon)) * R;
+  const moonZ = Math.cos(tMoon) * R;
+  moon.position.set(-60, moonY + 20, moonZ);
+  moonVis.position.copy(moon.position);
+
+  // intensités (lissage doux)
+  const dayAmt   = clamp01(Math.sin(tSun));      // 0..1 (≥0 au-dessus de l’horizon)
+  const nightAmt = clamp01(Math.sin(tMoon));
+
+  sun.intensity  = THREE.MathUtils.lerp(sun.intensity, 0.15 * dayAmt, 1 - Math.pow(0.001, dt*60));
+  moon.intensity = THREE.MathUtils.lerp(moon.intensity, 0.06 * nightAmt, 1 - Math.pow(0.001, dt*60));
+
+  // teinte du ciel/fog : nuit→jour + golden hours (≈6-7h et 18-19h)
+  const baseSky = NIGHT_SKY.clone().lerp(DAY_SKY, dayAmt);
+
+  const goldenMorning = clamp01(1 - Math.abs(h - 6.5) / 1.2);   // pic ~06:30
+  const goldenEvening = clamp01(1 - Math.abs(h - 18.5) / 1.2);  // pic ~18:30
+  const goldenAmt = Math.max(goldenMorning, goldenEvening) * 0.65;
+
+  const skyTarget = baseSky.clone().lerp(GOLDEN, goldenAmt);
+  SKY_TARGET.copy(skyTarget); // ta boucle existante `updateSkyAndFog(dt)` fera le lerp progressif
+
+  // étoiles visibles surtout la nuit
+  if (stars){
+    stars.visible = nightAmt > 0.05;
+    if (stars.material && 'opacity' in stars.material){
+      stars.material.opacity = 0.4 + 0.6 * nightAmt; // un peu plus denses la nuit noire
+      stars.material.needsUpdate = true;
+    }
+  }
+
+  // visibilité des billes (esthétique)
+  sunVis.visible  = dayAmt  > 0.02;
+  moonVis.visible = nightAmt> 0.02;
+}
+
 function setAmbienceForBiome(b){
   // suppose <audio id="ambience" loop autoplay> existe
   const el = ambienceEl || document.getElementById('ambience');
@@ -1484,7 +1649,7 @@ function makeLabelSprite(text, color, maxW = 240, fs = 28, scale = 0.012) {
     /************ Fleurs ************/
     function rng(seed){ return ()=> (seed = (seed*1664525 + 1013904223) >>> 0) / 4294967296; }
     function lerp(a,b,t){ return a+(b-a)*t; }
-    function clamp01(x){ return Math.min(1, Math.max(0, x)); }
+    //function clamp01(x){ return Math.min(1, Math.max(0, x)); }
     function harmonizeColor(baseHex, r01){
       const c = new THREE.Color(baseHex); const hsl = { h:0,s:0,l:0 }; c.getHSL(hsl);
       const petal = new THREE.Color().setHSL(hsl.h + lerp(-0.03,0.03,r01()), clamp01(hsl.s*0.8 + 0.15), clamp01(lerp(0.55,0.75,r01())));
@@ -2245,6 +2410,8 @@ if (b !== currentBiome && (nowMs - _biomeSince) > 300){
 
   // Ciel / brouillard vers la target du biome
   updateSkyAndFog(dt);
+  updateDayNight(dt);
+
 
   // --- Caméra mobile (joystick droit) ---
   if (IS_MOBILE){
