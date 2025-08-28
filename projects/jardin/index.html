@@ -1264,7 +1264,8 @@ tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
   const centerCol  = pal.leaf;
 
   // Ta fonction de création de fleur : adapte les params couleur si besoin
-  const flower = makeFlowerMesh({ petal: petalColor, center: centerCol, seed: d.seed || 1 });
+  const flower = makeFlower(d.seed, d.color);
+  //const flower = makeFlowerMesh({ petal: petalColor, center: centerCol, seed: d.seed || 1 });
   flower.position.set(x, y, z);
 
   // Label message/pseudo si tu l’as
