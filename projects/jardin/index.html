@@ -1220,15 +1220,16 @@ async function ensureReady(){
 }
 
 async function plantFlower(){
-  const b = biomeAt(p.x, p.z);
-payload.biome = b;     // pour les fleurs (push /garden)
-tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
+  await ensureReady(); // garantit auth.currentUser
+
+  // position du joueur d'abord
+  const p = controls.getObject().position;
+  const b = biomeAt(p.x, p.z);        // OK: p est défini
+
+  // demande (optionnelle) du message
   const { proceed, msg } = await askFlowerMessage();
   if (!proceed) return;
 
-  await ensureReady(); // ta fonction d'attente d'auth
-
-  const p = controls.getObject().position;
   const uid = auth.currentUser.uid;
 
   const payload = {
@@ -1237,8 +1238,9 @@ tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
     x: +p.x.toFixed(2),
     z: +p.z.toFixed(2),
     color: toHexColor(self.color, "#a0ffcc"),
-    ts: serverTimestamp(),                // ⬅️ horloge serveur RTDB
-    seed: Math.floor(Math.random()*1e9)
+    ts: serverTimestamp(),            // timestamp serveur
+    seed: Math.floor(Math.random()*1e9),
+    biome: b                          // ✅ on stocke le biome ici
   };
   if (msg && msg.trim()) payload.msg = msg.trim().slice(0,140);
 
