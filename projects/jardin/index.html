@@ -242,44 +242,68 @@ function biomeAt(x, z){
 }
 
 let currentBiome = null;
+let _biomeCandidate = null;
+let _biomeSince = 0;
 
 // hooks si tu as déjà ces objets ; sinon adapte les noms :
 let ground;             // ton mesh de sol
 let activeParticles;    // groupe THREE.Group des particules biome
 let ambienceEl;         // <audio id="ambience"> (si tu as un lecteur son global)
 
+// --- PICK particle set per biome (and spawn near player) ---
+function setParticlesForBiome(b, origin){
+  const choice = {
+    [BIOMES.WINTER]:  ['snow',   0.8],
+    [BIOMES.AUTUMN]:  ['leaves', 0.25],
+    [BIOMES.DESERT]:  ['dust',   0.6],
+    [BIOMES.SUMMER]:  ['pollen', 0.7],
+    [BIOMES.SPRING]:  ['pollen', 1.0]
+  }[b];
 
-  function applyBiome(biome){
-  if (biome === currentBiome) return;
-  currentBiome = biome;
+  const fallback = { x: 0, z: 0 };
+  const o = (origin && Number.isFinite(origin.x) && Number.isFinite(origin.z))
+    ? origin
+    : (_playerXZ() || fallback);
 
-  // --- Sol (couleur simple ; adapte si tu utilises un shader) ---
-  const col = {
-    [BIOMES.SPRING]: 0x3da85b,
-    [BIOMES.SUMMER]: 0xb9c16a,
-    [BIOMES.AUTUMN]: 0x8a5e2e,
-    [BIOMES.WINTER]: 0xdfe8f0,
-    [BIOMES.DESERT]: 0xd9c58a
-  }[biome] || 0x3da85b;
-
-
-  // --- Herbe (si tu as un système d’herbe) ---
-  setGrassPresetForBiome?.(biome);
-
-  // --- Particules d’ambiance (feuilles / neige / poussière / pollen) ---
-  setParticlesForBiome(biome);
-
-  // --- Ambiance sonore douce ---
-  setAmbienceForBiome(biome);
-
-  // --- Ciel / brouillard / lumière ---
-  setSkyFogForBiome(biome);
-
-  // --- HUD (petit chip discret) ---
-  const chip = document.getElementById('hudBiome');
-  if (chip) chip.textContent = biomeLabel(biome);
+  if (!choice){
+    console.warn('[particles] Biome inconnu:', b);
+    return spawnParticles('pollen', 0.8, o);
+  }
+  return spawnParticles(choice[0], choice[1], o);
 }
 
+function applyBiome(biome){
+  const biomeChanged = (biome !== currentBiome);
+  if (biomeChanged) currentBiome = biome;
+
+  // Herbe / son / ciel
+  setGrassPresetForBiome?.(biome);
+  setAmbienceForBiome(biome);
+  setSkyFogForBiome(biome);
+
+  // HUD
+  const chip = document.getElementById('hudBiome');
+  if (chip) chip.textContent = biomeLabel(biome);
+
+  // Lucioles : recentrer/afficher le bon essaim
+  if (typeof controls !== 'undefined' && controls.getObject){
+    const p = controls.getObject().position;
+    ensureFirefliesForBiome(biome, p.x, p.z);
+  }
+
+  // 🔸 PARTICULES : respawn si (a) biome change OU (b) le groupe a disparu / est vide / pas le bon biome
+  const needsRespawn =
+    biomeChanged ||
+    !activeParticles ||
+    !activeParticles.children ||
+    activeParticles.children.length === 0 ||
+    activeParticles.userData?.forBiome !== biome;
+
+  if (needsRespawn){
+    const p = controls.getObject().position;
+    setParticlesForBiome(biome, { x: p.x, z: p.z });
+  }
+}
 function registerGround(mesh){
   if (mesh && mesh.isMesh){
     ground = mesh;         // 👈 variable utilisée par applyBiome()
@@ -357,68 +381,151 @@ function clearParticles(){
   activeParticles.traverse?.(o=>{ if (o.material?.dispose) o.material.dispose(); if (o.geometry?.dispose) o.geometry.dispose(); });
   activeParticles = null;
 }
-
-function spawnParticles(type){
-  // type: 'leaves' | 'snow' | 'dust' | 'pollen' | 'none'
+// Helper to get player XZ
+function _playerXZ(){
+  const p = controls.getObject().position;
+  return { x: p.x, z: p.z };
+}
+function spawnParticles(type, density = 1, origin = _playerXZ()){
   clearParticles();
-  if (type==='none') return;
+  if (type === 'none') return;
 
   const group = new THREE.Group();
-  const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3), 3));
-  let mat;
+  group.userData = { type, radius: 12, forBiome: currentBiome };
+  group.position.set(origin.x, 0, origin.z);
 
-  const N = (type==='snow') ? 200 : (type==='leaves' ? 140 : (type==='dust' ? 120 : 160));
-  for (let i=0;i<N;i++){
+  // 🔸 jamais 0 particule à cause d’une densité trop basse
+  const safeDensity = Math.max(0.05, density);
+
+  let mat;
+  const baseN =
+    type === 'snow'   ? 200 :
+    type === 'leaves' ? 140 :
+    type === 'dust'   ? 120 :
+                        160; // pollen
+  const N = Math.max(8, Math.floor(baseN * safeDensity * (IS_MOBILE ? 0.7 : 1)));
+
+  const R = 12;
+
+  for (let i=0; i<N; i++){
     let sprite;
-    if (type==='snow'){
-      mat = mat || new THREE.SpriteMaterial({ color: 0xffffff, opacity: 0.9, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
+    if (type === 'snow'){
+  mat = mat || new THREE.SpriteMaterial({
+  color: 0xffffff, opacity: 0.9, transparent:true,
+  depthWrite:false, depthTest:false, fog:false, blending: THREE.AdditiveBlending
+});      sprite = new THREE.Sprite(mat);
       sprite.scale.setScalar(0.06 + Math.random()*0.06);
-    } else if (type==='leaves'){
-      mat = mat || new THREE.SpriteMaterial({ color: 0xffa54a, opacity: 0.9, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
+    } else if (type === 'leaves'){
+// feuilles (autumn)
+mat = mat || new THREE.SpriteMaterial({
+  color: 0xffa54a, opacity: 0.95, transparent:true,
+  depthWrite:false, depthTest:false, fog:false
+});      sprite = new THREE.Sprite(mat);
       sprite.scale.set(0.12, 0.16, 1);
-    } else if (type==='dust'){
-      mat = mat || new THREE.SpriteMaterial({ color: 0xd2b48c, opacity: 0.45, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
+    } else if (type === 'dust'){
+mat = mat || new THREE.SpriteMaterial({
+  color: 0xd2b48c, opacity: 0.55, transparent:true,
+  depthWrite:false, depthTest:false, fog:false, blending: THREE.AdditiveBlending
+});      sprite = new THREE.Sprite(mat);
       sprite.scale.setScalar(0.08 + Math.random()*0.08);
-    } else { // pollen (printemps/été)
-      mat = mat || new THREE.SpriteMaterial({ color: 0xfff2a8, opacity: 0.6, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
-      sprite.scale.setScalar(0.05 + Math.random()*0.05);
-    }
-    sprite.position.set( (Math.random()-0.5)*12, 0.8 + Math.random()*2.5, (Math.random()-0.5)*12 );
-    sprite.userData.vy = (type==='snow') ? -(0.1 + Math.random()*0.15) : (type==='leaves' ? -(0.05 + Math.random()*0.08) : (type==='dust' ? 0.02 : 0.03));
+} else { // pollen
+  const pollenColor = (currentBiome === BIOMES.SUMMER) ? 0xffd85c : 0xfff2a8;
+  mat = new THREE.SpriteMaterial({ 
+    color: pollenColor,
+    opacity: 0.6,
+    transparent:true,
+    depthWrite:false
+  });
+  sprite = new THREE.Sprite(mat);
+  sprite.scale.setScalar(0.05 + Math.random()*0.05);
+}
+
+    // position ABSOLUTE around the group center
+const lx = (Math.random()-0.5) * (R*2);
+const lz = (Math.random()-0.5) * (R*2);
+const wx = group.position.x + lx;
+const wz = group.position.z + lz;
+sprite.position.set(
+  lx,
+  heightFn(wx, wz) + 0.8 + Math.random()*2.5,
+  lz
+);
+
+    sprite.userData.vy = (type==='snow') ? -(0.1 + Math.random()*0.15)
+                      : (type==='leaves' ? -(0.05 + Math.random()*0.08)
+                      : (type==='dust'   ?  0.02
+                                          :  0.03));
     sprite.userData.vx = (type==='dust') ? (Math.random()*0.06) : ((Math.random()-0.5)*0.04);
     sprite.userData.vz = (type==='dust') ? (Math.random()*0.04) : ((Math.random()-0.5)*0.04);
+group.userData = { type, radius: 12, forBiome: currentBiome }; // pour vérif dans animate()
+  activeParticles = group;
     group.add(sprite);
   }
+
+  group.userData = { type, radius: 12 }; // used by updateParticles
   activeParticles = group;
   scene.add(group);
 }
 
+// --- UPDATE: wrap particles around the group's center (near player) ---
 function updateParticles(dt){
   if (!activeParticles) return;
-  const children = activeParticles.children;
+  const group = activeParticles;
+  const children = group.children;
+  const R = group.userData?.radius || 12;
+
+  const gx = group.position.x, gz = group.position.z;
+
+  // keep the whole cloud loosely following the player
+  const target = _playerXZ();
+  group.position.x += (target.x - gx) * 0.02;
+  group.position.z += (target.z - gz) * 0.02;
+
   for (let i=0;i<children.length;i++){
     const s = children[i];
     s.position.x += s.userData.vx * dt * 60;
     s.position.y += s.userData.vy * dt * 60;
     s.position.z += s.userData.vz * dt * 60;
-    if (s.position.y < 0.1 || Math.abs(s.position.x) > 10 || Math.abs(s.position.z) > 10){
-      s.position.set( (Math.random()-0.5)*12, 1.2 + Math.random()*2.0, (Math.random()-0.5)*12 );
-    }
+
+    // ground height under this sprite
+const wx = group.position.x + s.position.x;
+const wz = group.position.z + s.position.z;
+const h  = heightFn(wx, wz) + 0.1;
+
+// distance au centre du nuage EN LOCAL
+const tooFar  = (Math.abs(s.position.x) > R) || (Math.abs(s.position.z) > R);
+const tooLow  = (s.position.y < h);
+const tooHigh = (s.position.y > h + 3.5);
+
+// respawn en LOCAL + hauteur calculée avec (group + local)
+if (tooFar || tooLow || tooHigh){
+  const lx = (Math.random()-0.5) * (R*2);
+  const lz = (Math.random()-0.5) * (R*2);
+  const wx2 = group.position.x + lx;
+  const wz2 = group.position.z + lz;
+  const hy  = heightFn(wx2, wz2) + 0.8 + Math.random()*2.0;
+  s.position.set(lx, hy, lz);
+}
   }
 }
+/*function setFirefliesForBiome(b){
+  // biomes avec lucioles (change la liste si tu veux)
+  const ON = (b === BIOMES.SPRING || b === BIOMES.SUMMER || b === BIOMES.AUTUMN);
 
-function setParticlesForBiome(b){
-  if (b===BIOMES.WINTER)      return spawnParticles('snow');
-  if (b===BIOMES.AUTUMN)      return spawnParticles('leaves');
-  if (b===BIOMES.DESERT)      return spawnParticles('dust');
-  if (b===BIOMES.SUMMER)      return spawnParticles('pollen');
-  return spawnParticles('pollen'); // printemps
-}
+  if (!ON){
+    if (fireflies) fireflies.visible = false;
+    return;
+  }
 
+  // crée si absent
+  if (!fireflies) buildFireflies(IS_MOBILE ? 200 : 260, 70);
+
+  fireflies.visible = true;
+
+  // recentre autour du joueur (position actuelle)
+  const p = controls.getObject().position;
+  centerFirefliesAt(p.x, p.z);
+}*/
 const flowerNodes = new Map();
     function startGame() {
   const pseudoEl = document.getElementById('pseudo');
@@ -840,8 +947,8 @@ function setAmbienceForBiome(b){
     }
     buildStars();
 
-    let fireflies = null;
-    function buildFireflies(count = IS_MOBILE ? 220 : 280, radius = 60) {
+    //let fireflies = null;
+    /*function buildFireflies(count = IS_MOBILE ? 220 : 280, radius = 60) {
       if (fireflies) { scene.remove(fireflies); fireflies.geometry?.dispose?.(); fireflies.material?.dispose?.(); fireflies = null; }
       const geo = new THREE.BufferGeometry();
       const pos = new Float32Array(count * 3);
@@ -855,7 +962,22 @@ function setAmbienceForBiome(b){
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       const mat = new THREE.PointsMaterial({ size: 0.10, transparent: true, opacity: 1.0, depthWrite: false, blending: THREE.AdditiveBlending, color: 0xfff7b1, fog: false });
       fireflies = new THREE.Points(geo, mat); fireflies.userData = { vel, radius }; scene.add(fireflies);
-    }
+    }*/
+  /*  function centerFirefliesAt(x, z){
+  if (!fireflies) return;
+  const pos = fireflies.geometry.attributes.position.array;
+  const cx = fireflies.userData.cx || 0;
+  const cz = fireflies.userData.cz || 0;
+  const dx = x - cx;
+  const dz = z - cz;
+  for (let i=0;i<pos.length;i+=3){
+    pos[i+0] += dx;
+    pos[i+2] += dz;
+  }
+  fireflies.userData.cx = x;
+  fireflies.userData.cz = z;
+  fireflies.geometry.attributes.position.needsUpdate = true;
+}*/
 function tickFireflies(pp, dt){
   if (!pp) return;
 
@@ -907,7 +1029,100 @@ function tickFireflies(pp, dt){
 
   pp.geometry.attributes.position.needsUpdate = true;
 }
-    buildFireflies();
+// ==== Lucioles multi-essaims, un par biome ====
+const FIREFLY_SWARMS = {};
+const BIOME_WITH_FIREFLIES = new Set([BIOMES.SPRING, BIOMES.SUMMER, BIOMES.AUTUMN]); // ajuste si tu veux
+
+function spawnFireflySwarmAt(cx, cz, count = (IS_MOBILE ? 120 : 180), radius = 60){
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const vel = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius;
+    const x = cx + Math.cos(a) * r;
+    const z = cz + Math.sin(a) * r;
+    pos[i*3+0] = x;
+    pos[i*3+2] = z;
+    pos[i*3+1] = heightFn(x, z) + 0.8 + Math.random() * 3;
+
+    vel[i*3+0] = (Math.random() - 0.5) * 0.06;
+    vel[i*3+1] = (Math.random() - 0.5) * 0.03;
+    vel[i*3+2] = (Math.random() - 0.5) * 0.06;
+  }
+
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat =  new THREE.PointsMaterial({
+  size: 0.10,
+  transparent: true,
+  opacity: 0.6,               // 🔉 moins “flash”
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  color: 0xfff7b1,
+  fog: false
+});
+
+  const swarm = new THREE.Points(geo, mat);
+  swarm.userData = { vel, radius, cx, cz };
+  return swarm;
+}
+
+function moveFireflySwarmTo(swarm, x, z){
+  const pos = swarm.geometry.attributes.position.array;
+  const cx  = swarm.userData.cx;
+  const cz  = swarm.userData.cz;
+  const dx  = x - cx;
+  const dz  = z - cz;
+
+  for (let i=0; i<pos.length; i+=3){
+    pos[i+0] += dx;
+    pos[i+2] += dz;
+
+    // petit garde-fou : ne pas passer sous le sol après le recentrage
+    const yGround = heightFn(pos[i+0], pos[i+2]) + 0.8;
+    if (pos[i+1] < yGround) pos[i+1] = yGround;
+  }
+
+  swarm.userData.cx = x;
+  swarm.userData.cz = z;
+  swarm.geometry.attributes.position.needsUpdate = true;
+}
+//const FIREFLY_SWARMS = {};
+//const BIOME_WITH_FIREFLIES = new Set([BIOMES.SPRING, BIOMES.SUMMER, BIOMES.AUTUMN]); // ajoute WINTER/DESERT si tu veux
+function colorForBiome(b){
+  switch (b){
+    case BIOMES.DESERT: return 0xffe6a1;
+    case BIOMES.WINTER: return 0xdff6ff;
+    case BIOMES.AUTUMN: return 0xffd39e;
+    case BIOMES.SUMMER: return 0xfff6b5;
+    case BIOMES.SPRING:
+    default:            return 0xfff7b1;
+  }
+}
+
+// Appelé quand le biome CHANGE, pour afficher/cacher/créer l’essaim du biome courant
+function ensureFirefliesForBiome(biome, px, pz){
+  // cacher tous les essaims
+  for (const sw of Object.values(FIREFLY_SWARMS)) sw.visible = false;
+
+  // ce biome n’a pas de lucioles ? on s’arrête là
+  if (!BIOME_WITH_FIREFLIES.has(biome)) return;
+
+  let sw = FIREFLY_SWARMS[biome];
+   //console.log(FIREFLY_SWARMS);
+  if (!sw){
+    sw = FIREFLY_SWARMS[biome] = spawnFireflySwarmAt(px, pz);
+    if (sw.material && sw.material.color){
+      sw.material.color.setHex(colorForBiome(biome));
+    }
+    scene.add(sw);
+  } else {
+    //console.log('changerment de biuome');
+    moveFireflySwarmTo(sw, px, pz); // recoller autour du joueur à l’entrée du biome
+  }
+  sw.visible = true;
+}
+    //buildFireflies();
 
     /************ Overlay pseudo/couleur ************/
     const pseudoEl = document.getElementById('pseudo'), colorEl  = document.getElementById('color');
@@ -1971,138 +2186,156 @@ onChildAdded(query(treesRef, limitToLast(1000)), snap => {
     colorEl.addEventListener('change', async ()=>{ const v = toHexColor(colorEl.value); localStorage.setItem(LS_COLOR, v); self._pendingColor = self.color = v; if (meRef && self.uid) { try { await update(meRef, { color:v }); } catch{} } });
 
     /************ Boucle ************/
-    const clock = new THREE.Clock();
-    function animate(){
-      requestAnimationFrame(animate);
-      const dt = clock.getDelta(), t = performance.now() / 1000;
+// Boucle propre : respawn particules UNIQUEMENT quand le biome change,
+// puis on les fait suivre le joueur via updateParticles(dt)
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
 
-      // Lissage axes → direction (z avant+, x droite+)
-      const LERP = 0.25;
-      direction.set(
-        THREE.MathUtils.lerp(direction.x, axes.x, LERP),
-        0,
-        THREE.MathUtils.lerp(direction.z || 0, -axes.y, LERP) // y joystick bas(+) → reculé
-      );
+  const dt = clock.getDelta();
+  const t  = performance.now() / 1000;
 
-      // vitesses
-      const baseSpeed = IS_MOBILE ? 0.8 : 1.0;
-      const speed = baseSpeed * Math.min(1, Math.hypot(direction.x, direction.z) || 0.0001);
+  // --- Déplacements (axes → direction lissée) ---
+  const LERP = 0.25;
+  direction.set(
+    THREE.MathUtils.lerp(direction.x, axes.x, LERP),
+    0,
+    THREE.MathUtils.lerp(direction.z || 0, -axes.y, LERP) // y joystick bas(+) → reculé
+  );
 
-      velocity.x -= velocity.x * 10 * dt;
-      velocity.z -= velocity.z * 10 * dt;
-      if (IS_MOBILE){
-      velocity.x += direction.x * speed * dt;
-      velocity.z += direction.z * speed * dt;
-      }
-      else
-      {
-        velocity.x += direction.x * speed * dt;
-        velocity.z -= direction.z * speed * dt;
-      }
-      const obj = controls.getObject();
-      obj.translateX( velocity.x);
-      obj.translateZ( velocity.z);
-      const yHere = heightFn(obj.position.x, obj.position.z);
-      obj.position.y = yHere + 1.6;
+  // Vitesse & inertie
+  const baseSpeed = IS_MOBILE ? 0.8 : 1.0;
+  const speed = baseSpeed * Math.min(1, Math.hypot(direction.x, direction.z) || 0.0001);
 
-        const p = controls.getObject().position;
-  const b = biomeAt(p.x, p.z);
-  applyBiome(b);
+  velocity.x -= velocity.x * 10 * dt;
+  velocity.z -= velocity.z * 10 * dt;
 
-  // Particules liées au biome dans la boucle
-  const nowTime = performance.now();
-  const dtPart = (nowTime - (window._lastFrameTime || nowTime)) / 1000;
-  window._lastFrameTime = nowTime;
-  updateParticles(dtPart);
-     updateSkyAndFog(dt);
-      // Caméra par joystick droit (yaw/pitch), lissée, sans roll
-camera.rotation.order = 'YXZ'; // évite tout roll implicite
+  if (IS_MOBILE){
+    velocity.x += direction.x * speed * dt;
+    velocity.z += direction.z * speed * dt;
+  } else {
+    velocity.x += direction.x * speed * dt;
+    velocity.z -= direction.z * speed * dt; // (repère clavier)
+  }
 
-const yawObj   = controls.getObject();            // yaw (Y)
-const pitchObj = yawObj.children[0] || camera;    // pitch (X)
+  const obj = controls.getObject();
+  obj.translateX(velocity.x);
+  obj.translateZ(velocity.z);
 
-function clamp(x, min, max){ return Math.max(min, Math.min(max, x)); }
+  // Accroche au sol
+  const yHere = heightFn(obj.position.x, obj.position.z);
+  obj.position.y = yHere + 1.6;
 
-//IS_MOBILE = matchMedia('(hover:none) and (pointer:coarse)').matches;
+  // --- Biome & ambiance ---
+  const p = controls.getObject().position;
+const nowMs = performance.now();
+const b = biomeAt(p.x, p.z);
 
-let touchLookActive = false;
-let lastX = 0, lastY = 0;
-let vx = 0, vy = 0;
-
-const SENS_YAW   = 0.0018;
-const SENS_PITCH = 0.0018;
-const SMOOTH     = 0.25;   // 0 = brut, 1 = très lissé
-
-// On ne touche pas au PC ; uniquement si mobile :
-if (IS_MOBILE){
-  const SENS_YAW = -1.8;    // sensibilité yaw (valeur “par seconde”)
-  const SENS_PITCH = -1.8;  // sensibilité pitch
-  // On applique proportionnellement au dt pour être framerate-indépendant
-  const yawObj   = controls.getObject();
-  const pitchObj = yawObj.children[0] || camera;
-
-  yawObj.rotation.y += lookAxes.x * SENS_YAW * dt;
-
-  const minPitch = -Math.PI/2 + 0.2;
-  const maxPitch =  Math.PI/2 - 0.2;
-  pitchObj.rotation.x = Math.max(minPitch, Math.min(maxPitch, pitchObj.rotation.x - lookAxes.y * SENS_PITCH * dt));
-
-  // pas de roll
-  pitchObj.rotation.z = 0;
-  yawObj.rotation.z   = 0;
+// on demande une stabilité de 300 ms avant de basculer
+if (b !== _biomeCandidate){ 
+  _biomeCandidate = b; 
+  _biomeSince = nowMs; 
+}
+if (b !== currentBiome && (nowMs - _biomeSince) > 300){
+  applyBiome(b); // setParticlesForBiome() sera appelé ici, UNE seule fois
 }
 
-      selfHalo.color = new THREE.Color(self.color || "#88e5ff"); selfHalo.position.copy(obj.position); self.sendPose(obj.position.x, obj.position.z);
+  // Particules : on met à jour la physique (le nuage suit déjà le joueur dans updateParticles)
+  updateParticles(dt);
 
-      // avatars
-      for (const a of avatars.values()){
-        a.group.position.x += (a.target.x - a.group.position.x) * 0.15;
-        a.group.position.z += (a.target.z - a.group.position.z) * 0.15;
-        a.group.position.y = heightFn(a.group.position.x, a.group.position.z);
-      }
+  // Ciel / brouillard vers la target du biome
+  updateSkyAndFog(dt);
 
-      // fx
-      for (const fx of Array.from(liveFx)){ if (fx.userData?.tick){ fx.userData.tick(dt); if (!fx.parent) liveFx.delete(fx); } }
+  // --- Caméra mobile (joystick droit) ---
+  if (IS_MOBILE){
+    const SENS_YAW = -1.8;
+    const SENS_PITCH = -1.8;
+    const yawObj   = controls.getObject();               // yaw (Y)
+    const pitchObj = yawObj.children[0] || camera;       // pitch (X)
 
-      // herbe
-      if (grass?.tick) grass.tick(t);
+    yawObj.rotation.y += lookAxes.x * SENS_YAW * dt;
 
-      // lucioles
-      tickFireflies(fireflies, dt);
+    const minPitch = -Math.PI/2 + 0.2;
+    const maxPitch =  Math.PI/2 - 0.2;
+    pitchObj.rotation.x = Math.max(minPitch, Math.min(maxPitch, pitchObj.rotation.x - lookAxes.y * SENS_PITCH * dt));
 
-      // créatures
-      const now = Date.now(), CYCLE_MS = 8000;
-      for (const [id, c] of creatures.entries()){
-        const mesh = c.mesh; const step = Math.floor((now - c.ts) / CYCLE_MS); const t01 = ((now - c.ts) % CYCLE_MS) / CYCLE_MS;
-const keyA = pickFlowerKeyForStep(id, c.seed, Math.max(0, step-1));
-const keyB = pickFlowerKeyForStep(id, c.seed, step);
+    pitchObj.rotation.z = 0;
+    yawObj.rotation.z   = 0;
+  }
 
-const fa = keyA && flowerNodes.get(keyA);
-const fb = keyB && flowerNodes.get(keyB);
+  // --- Présence / halo ---
+  selfHalo.color = new THREE.Color(self.color || "#88e5ff");
+  selfHalo.position.copy(obj.position);
+  self.sendPose(obj.position.x, obj.position.z);
 
-const ax = (fa ? fa.position.x : c.x0);
-const az = (fa ? fa.position.z : c.z0);
-const bx = (fb ? fb.position.x : ax);
-const bz = (fb ? fb.position.z : az);
+  // --- Avatars lissés ---
+  for (const a of avatars.values()){
+    a.group.position.x += (a.target.x - a.group.position.x) * 0.15;
+    a.group.position.z += (a.target.z - a.group.position.z) * 0.15;
+    a.group.position.y  = heightFn(a.group.position.x, a.group.position.z);
+  }
 
-const ay = heightFn(ax, az) + 1.0;
-const by = heightFn(bx, bz) + 1.0;
-const tt = t01*t01*(3-2*t01);
-
-mesh.position.set(
-  ax + (bx-ax)*tt,
-  ay + (by-ay)*tt + Math.sin((t01+id.length)*Math.PI*2)*0.12,
-  az + (bz-az)*tt
-);
-        if (c.type === "butterfly" && mesh.userData?.wL && mesh.userData?.wR){ const flap = Math.sin(now/120) * 0.9; mesh.userData.wL.rotation.z =  flap; mesh.userData.wR.rotation.z = -flap; }
-      }
-      for (const { group, ts } of treeNodes.values()){
-        updateTreeGrowth(group, ts);
-      }
-      renderer.render(scene, camera);
-
+  // --- FX éphémères ---
+  for (const fx of Array.from(liveFx)){
+    if (fx.userData?.tick){
+      fx.userData.tick(dt);
+      if (!fx.parent) liveFx.delete(fx);
     }
-    animate();
+  }
+
+  // --- Herbe ---
+  if (grass?.tick) grass.tick(t);
+
+  // --- Lucioles (tous les essaims, seuls les visibles sont animés) ---
+  for (const sw of Object.values(FIREFLY_SWARMS)){
+    if (sw.visible) tickFireflies(sw, dt);
+  }
+
+  // --- Créatures (papillons/esprits) ---
+  const now = Date.now(), CYCLE_MS = 8000;
+  for (const [id, c] of creatures.entries()){
+    const mesh = c.mesh;
+    const step = Math.floor((now - c.ts) / CYCLE_MS);
+    const t01  = ((now - c.ts) % CYCLE_MS) / CYCLE_MS;
+
+    const keyA = pickFlowerKeyForStep(id, c.seed, Math.max(0, step-1));
+    const keyB = pickFlowerKeyForStep(id, c.seed, step);
+
+    const fa = keyA && flowerNodes.get(keyA);
+    const fb = keyB && flowerNodes.get(keyB);
+
+    const ax = (fa ? fa.position.x : c.x0);
+    const az = (fa ? fa.position.z : c.z0);
+    const bx = (fb ? fb.position.x : ax);
+    const bz = (fb ? fb.position.z : az);
+
+    const ay = heightFn(ax, az) + 1.0;
+    const by = heightFn(bx, bz) + 1.0;
+    const tt = t01*t01*(3-2*t01);
+
+    mesh.position.set(
+      ax + (bx-ax)*tt,
+      ay + (by-ay)*tt + Math.sin((t01+id.length)*Math.PI*2)*0.12,
+      az + (bz-az)*tt
+    );
+
+    if (c.type === "butterfly" && mesh.userData?.wL && mesh.userData?.wR){
+      const flap = Math.sin(now/120) * 0.9;
+      mesh.userData.wL.rotation.z =  flap;
+      mesh.userData.wR.rotation.z = -flap;
+    }
+  }
+
+  // --- Arbres (croissance) ---
+  for (const { group, ts } of treeNodes.values()){
+    updateTreeGrowth(group, ts);
+  }
+
+  // --- Render ---
+  renderer.render(scene, camera);
+}
+animate();
+
 
 
     /************ Resize ************/
