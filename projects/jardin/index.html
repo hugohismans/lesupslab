@@ -369,7 +369,7 @@ function setParticlesForBiome(b){
   return spawnParticles('pollen'); // printemps
 }
 
-
+const flowerNodes = new Map();
     function startGame() {
   const pseudoEl = document.getElementById('pseudo');
   const colorEl  = document.getElementById('color');
@@ -1361,48 +1361,86 @@ function makeFlowerMesh(opts){
       liveFx.add(ring); liveFx.add(sparks);
     });
     const flowers = new Map();
-    onChildAdded(query(gardenRef, limitToLast(2000)), snap => {
+// Assure-toi d'avoir gardenRef = ref(db, "/garden")
+onChildAdded(query(gardenRef, limitToLast(2000)), snap => {
   const d = snap.val(); if (!d) return;
   const key = snap.key;
 
   const x = d.x || 0, z = d.z || 0, y = heightFn(x, z);
 
-  // ✅ Biome DB ou calcul
+  // Biome (si tu l'utilises)
   const b   = d.biome || biomeAt(x, z);
-  const pal = biomePalette(b);
+  const pal = biomePalette ? biomePalette(b) : { leaf: 0x49b36a, petal: 0xffc9e6 };
 
-  // Petals/center tints (mix avec la couleur joueur si tu veux)
-  const petalColor = d.color || `#${pal.petal.toString(16)}`;
-  const centerCol  = pal.leaf;
+  // ⚠️ Utilise TA fabrique de fleurs. Si tu as `makeFlowerMesh3D`, garde-le.
+  const flower = (typeof makeFlowerMesh3D === 'function')
+    ? makeFlowerMesh3D({
+        petal: d.color || `#${pal.petal.toString(16)}`,
+        center: '#ffd166',
+        stem:   '#2f8f3b',
+        leaf:   `#${pal.leaf.toString(16)}`,
+        seed:   d.seed || 1
+      })
+    : new THREE.Mesh( // fallback ultra simple si besoin
+        new THREE.SphereGeometry(0.15, 12, 10),
+        new THREE.MeshStandardMaterial({ color: d.color || 0xffc9e6 })
+      );
 
-  // Ta fonction de création de fleur : adapte les params couleur si besoin
-  //const flower = makeFlower(d.seed, d.color);
-  const flower = makeFlowerMesh3D({
-  petal: d.color || `#${pal.petal.toString(16)}`,
-  center: '#ffd166',
-  stem:   '#2f8f3b',
-  leaf:   `#${pal.leaf.toString(16)}`,
-  seed:   d.seed || 1
-});
   flower.position.set(x, y, z);
 
-  // Label message/pseudo si tu l’as
-  if (d.name || d.msg){
+  // Label (pseudo/msg) si présent
+  if (typeof makeLabelSprite === 'function' && (d.name || d.msg)) {
     const text = d.msg ? `${d.name || "Fée"}: ${d.msg}` : `${d.name || "Fée"}`;
-    const lbl  = makeLabelSprite(text, petalColor, 220, 16, 0.009);
+    const lbl  = makeLabelSprite(text, d.color || "#ffc9e6", 220, 16, 0.009);
     lbl.position.set(0, 0.9, 0);
     flower.add(lbl);
+    flower.userData.label = lbl;
   }
 
-  flower.userData.biome = b; // 👈 mémorise le biome
+  flower.userData.data = d;
+  flower.userData.biome = b;
 
   scene.add(flower);
   flowerNodes.set(key, flower);
+});
+onChildChanged(gardenRef, snap => {
+  const d = snap.val(); if (!d) return;
+  const key = snap.key;
+  const node = flowerNodes.get(key);
+  if (!node) return; // pas encore chargé
 
-  // (facultatif) Backfill du biome manquant
-  if (!d.biome){
-    try { update(ref(db, `/garden/${key}`), { biome: b }); } catch {}
+  // exemple : si seul le message/pseudo change
+  if (typeof makeLabelSprite === 'function') {
+    const old = node.userData.label;
+    if (old) {
+      node.remove(old);
+      old.material.map?.dispose?.();
+      old.material?.dispose?.();
+    }
+    if (d.name || d.msg) {
+      const text = d.msg ? `${d.name || "Fée"}: ${d.msg}` : `${d.name || "Fée"}`;
+      const lbl  = makeLabelSprite(text, d.color || "#ffc9e6", 220, 16, 0.009);
+      lbl.position.set(0, 0.9, 0);
+      node.add(lbl);
+      node.userData.label = lbl;
+    }
   }
+
+  node.userData.data = d;
+});
+
+onChildRemoved(gardenRef, snap => {
+  const key = snap.key;
+  const node = flowerNodes.get(key);
+  if (!node) return;
+  // cleanup GPU
+  node.traverse(o=>{
+    if (o.material?.map?.dispose) o.material.map.dispose();
+    if (o.material?.dispose) o.material.dispose();
+    if (o.geometry?.dispose) o.geometry.dispose();
+  });
+  scene.remove(node);
+  flowerNodes.delete(key);
 });
 
     //function rng(seed){ return ()=> (seed = (seed*1664525 + 1013904223) >>> 0) / 4294967296; }
