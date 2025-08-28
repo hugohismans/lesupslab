@@ -176,6 +176,10 @@
     </div>
     <ul id="who"></ul>
     <div style="opacity:.8; font-size:12px;">E = ✨ Aurore • F = 🌸 Fleur • T = 🌳 Arbre</div>
+    <div id="hudBiome" style="
+  position:fixed; top:10px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.45); color:#fff; padding:4px 10px; border-radius:999px;
+  font-size:12px; letter-spacing:.3px; z-index:6;">Printemps</div>
   </div>
 
   <div id="hint" class="hint">Clique dans la scène pour reprendre le contrôle</div>
@@ -218,6 +222,154 @@
 
   <!-- App + Firebase -->
   <script type="module">
+
+    // ---- BIOMES ----
+const BIOMES = { SPRING:'printemps', SUMMER:'ete', AUTUMN:'automne', WINTER:'hiver', DESERT:'desert' };
+
+function biomeAt(x, z){
+  const r = Math.hypot(x, z);
+  const ang = Math.atan2(z, x); // -PI..PI  (x=Est, z=Nord)
+  if (r < 150) return BIOMES.SPRING;         // centre vert
+  if (r < 350) return BIOMES.SUMMER;         // anneau été
+  if (r < 650) return BIOMES.AUTUMN;         // anneau automne
+  // très loin : hiver partout, sauf « ouest » (angle proche de ±PI) en désert
+  if (ang > Math.PI*0.75 || ang < -Math.PI*0.75) return BIOMES.DESERT;
+  return BIOMES.WINTER;
+}
+
+let currentBiome = null;
+
+// hooks si tu as déjà ces objets ; sinon adapte les noms :
+let ground;             // ton mesh de sol
+let activeParticles;    // groupe THREE.Group des particules biome
+let ambienceEl;         // <audio id="ambience"> (si tu as un lecteur son global)
+
+
+  function applyBiome(biome){
+  if (biome === currentBiome) return;
+  currentBiome = biome;
+
+  // --- Sol (couleur simple ; adapte si tu utilises un shader) ---
+  const col = {
+    [BIOMES.SPRING]: 0x3da85b,
+    [BIOMES.SUMMER]: 0xb9c16a,
+    [BIOMES.AUTUMN]: 0x8a5e2e,
+    [BIOMES.WINTER]: 0xdfe8f0,
+    [BIOMES.DESERT]: 0xd9c58a
+  }[biome] || 0x3da85b;
+
+  if (ground?.material?.color) {
+    ground.material.color.setHex(col);
+    ground.material.roughness = (biome===BIOMES.WINTER || biome===BIOMES.DESERT) ? 0.9 : 0.8;
+    ground.material.needsUpdate = true;
+  }
+
+  // --- Herbe (si tu as un système d’herbe) ---
+  setGrassPresetForBiome?.(biome);
+
+  // --- Particules d’ambiance (feuilles / neige / poussière / pollen) ---
+  setParticlesForBiome(biome);
+
+  // --- Ambiance sonore douce ---
+  setAmbienceForBiome(biome);
+
+  // --- Ciel / brouillard / lumière ---
+  setSkyFogForBiome(biome);
+
+  // --- HUD (petit chip discret) ---
+  const chip = document.getElementById('hudBiome');
+  if (chip) chip.textContent = biomeLabel(biome);
+}
+function biomePalette(b){
+  // couleurs douces par biome (tu peux ajuster)
+  switch (b){
+    case BIOMES.DESERT:  return { leaf: 0xc9b970, petal: 0xf2c97a };
+    case BIOMES.WINTER:  return { leaf: 0xcfe6f3, petal: 0xeaf4fb };
+    case BIOMES.AUTUMN:  return { leaf: 0xa5642a, petal: 0xff9c5c };
+    case BIOMES.SUMMER:  return { leaf: 0xa7c66b, petal: 0xffea86 };
+    case BIOMES.SPRING:
+    default:             return { leaf: 0x5ac275, petal: 0xffc9e6 };
+  }
+}
+function biomeLabel(b){
+  return ({
+    [BIOMES.SPRING]:'Printemps',
+    [BIOMES.SUMMER]:'Été',
+    [BIOMES.AUTUMN]:'Automne',
+    [BIOMES.WINTER]:'Hiver',
+    [BIOMES.DESERT]:'Désert'
+  })[b] || '—';
+}
+
+function clearParticles(){
+  if (!activeParticles) return;
+  activeParticles.parent?.remove(activeParticles);
+  activeParticles.traverse?.(o=>{ if (o.material?.dispose) o.material.dispose(); if (o.geometry?.dispose) o.geometry.dispose(); });
+  activeParticles = null;
+}
+
+function spawnParticles(type){
+  // type: 'leaves' | 'snow' | 'dust' | 'pollen' | 'none'
+  clearParticles();
+  if (type==='none') return;
+
+  const group = new THREE.Group();
+  const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3), 3));
+  let mat;
+
+  const N = (type==='snow') ? 200 : (type==='leaves' ? 140 : (type==='dust' ? 120 : 160));
+  for (let i=0;i<N;i++){
+    let sprite;
+    if (type==='snow'){
+      mat = mat || new THREE.SpriteMaterial({ color: 0xffffff, opacity: 0.9, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
+      sprite.scale.setScalar(0.06 + Math.random()*0.06);
+    } else if (type==='leaves'){
+      mat = mat || new THREE.SpriteMaterial({ color: 0xffa54a, opacity: 0.9, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
+      sprite.scale.set(0.12, 0.16, 1);
+    } else if (type==='dust'){
+      mat = mat || new THREE.SpriteMaterial({ color: 0xd2b48c, opacity: 0.45, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
+      sprite.scale.setScalar(0.08 + Math.random()*0.08);
+    } else { // pollen (printemps/été)
+      mat = mat || new THREE.SpriteMaterial({ color: 0xfff2a8, opacity: 0.6, transparent:true, depthWrite:false });
+      sprite = new THREE.Sprite(mat);
+      sprite.scale.setScalar(0.05 + Math.random()*0.05);
+    }
+    sprite.position.set( (Math.random()-0.5)*12, 0.8 + Math.random()*2.5, (Math.random()-0.5)*12 );
+    sprite.userData.vy = (type==='snow') ? -(0.1 + Math.random()*0.15) : (type==='leaves' ? -(0.05 + Math.random()*0.08) : (type==='dust' ? 0.02 : 0.03));
+    sprite.userData.vx = (type==='dust') ? (Math.random()*0.06) : ((Math.random()-0.5)*0.04);
+    sprite.userData.vz = (type==='dust') ? (Math.random()*0.04) : ((Math.random()-0.5)*0.04);
+    group.add(sprite);
+  }
+  activeParticles = group;
+  scene.add(group);
+}
+
+function updateParticles(dt){
+  if (!activeParticles) return;
+  const children = activeParticles.children;
+  for (let i=0;i<children.length;i++){
+    const s = children[i];
+    s.position.x += s.userData.vx * dt * 60;
+    s.position.y += s.userData.vy * dt * 60;
+    s.position.z += s.userData.vz * dt * 60;
+    if (s.position.y < 0.1 || Math.abs(s.position.x) > 10 || Math.abs(s.position.z) > 10){
+      s.position.set( (Math.random()-0.5)*12, 1.2 + Math.random()*2.0, (Math.random()-0.5)*12 );
+    }
+  }
+}
+
+function setParticlesForBiome(b){
+  if (b===BIOMES.WINTER)      return spawnParticles('snow');
+  if (b===BIOMES.AUTUMN)      return spawnParticles('leaves');
+  if (b===BIOMES.DESERT)      return spawnParticles('dust');
+  if (b===BIOMES.SUMMER)      return spawnParticles('pollen');
+  return spawnParticles('pollen'); // printemps
+}
+
+
     function startGame() {
   const pseudoEl = document.getElementById('pseudo');
   const colorEl  = document.getElementById('color');
@@ -431,10 +583,64 @@ function anyStickActive(){ return movePointerId !== null || lookPointerId !== nu
       pos.needsUpdate = true;
     }
     terrainGeo.rotateX(-Math.PI/2); terrainGeo.computeVertexNormals();
-    const ground = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0.0 }));
-    ground.receiveShadow = true; scene.add(ground);
+    const groundE = new THREE.Mesh(terrainGeo, new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0.0 }));
+    groundE.receiveShadow = true; scene.add(groundE);
 
     /************ Herbe procédurale ************/
+function setGrassPresetForBiome(b){
+  if (!window.GRASS) return; // si tu as un objet global pour l'herbe
+  const g = window.GRASS;
+  if (b===BIOMES.DESERT){
+    g.setDensity?.(0.2); g.setColor?.(0xc8b78a); g.setWind?.(0.05);
+  } else if (b===BIOMES.WINTER){
+    g.setDensity?.(0.15); g.setColor?.(0xe7efe9); g.setWind?.(0.02);
+  } else if (b===BIOMES.AUTUMN){
+    g.setDensity?.(0.7); g.setColor?.(0x9b6b34); g.setWind?.(0.12);
+  } else if (b===BIOMES.SUMMER){
+    g.setDensity?.(0.9); g.setColor?.(0xb5c36b); g.setWind?.(0.08);
+  } else { // printemps
+    g.setDensity?.(1.0); g.setColor?.(0x4fb36a); g.setWind?.(0.10);
+  }
+}
+
+function setSkyFogForBiome(b){
+  const fogCol = {
+    [BIOMES.SPRING]: 0xa8e6cf,
+    [BIOMES.SUMMER]: 0xcfe8a9,
+    [BIOMES.AUTUMN]: 0xd9c2a6,
+    [BIOMES.WINTER]: 0xe9f2f7,
+    [BIOMES.DESERT]: 0xf4e6c0
+  }[b] || 0xa8e6cf;
+  scene.fog?.color?.setHex(fogCol);
+  scene.background?.set?.(new THREE.Color(fogCol));
+  // Option : ajuster hemisphereLight si tu l'utilises
+//  hemiLight?.color?.setHex(fogCol);
+}
+function setAmbienceForBiome(b){
+  // suppose <audio id="ambience" loop autoplay> existe
+  const el = ambienceEl || document.getElementById('ambience');
+  if (!el) return;
+  const src = {
+    [BIOMES.SPRING]: 'sounds/amb_birds_soft.mp3',
+    [BIOMES.SUMMER]: 'sounds/amb_cicadas_soft.mp3',
+    [BIOMES.AUTUMN]: 'sounds/amb_wind_leaves.mp3',
+    [BIOMES.WINTER]: 'sounds/amb_snow_muffle.mp3',
+    [BIOMES.DESERT]: 'sounds/amb_desert_wind.mp3'
+  }[b];
+  if (!src) return;
+  if (el.dataset.src === src) return;
+
+  const oldVol = el.volume;
+  let t = 0;
+  const fadeOut = setInterval(()=>{
+    t+=0.05; el.volume = Math.max(0, oldVol*(1-t));
+    if (t>=1){ clearInterval(fadeOut); el.src = src; el.dataset.src = src; el.load(); el.play().catch(()=>{}); 
+      let u=0; const fadeIn=setInterval(()=>{ u+=0.05; el.volume = Math.min(oldVol, oldVol*u); if (u>=1) clearInterval(fadeIn); }, 50);
+    }
+  }, 50);
+}
+
+
     const grassSelect = document.getElementById('grassQuality');
     const savedGrass = localStorage.getItem(LS_GRASS);
     if (savedGrass && grassSelect.querySelector(`option[value="${savedGrass}"]`)) grassSelect.value = savedGrass;
@@ -1013,6 +1219,9 @@ async function ensureReady(){
 }
 
 async function plantFlower(){
+  const b = biomeAt(p.x, p.z);
+payload.biome = b;     // pour les fleurs (push /garden)
+tree.biome    = b;     // pour les arbres (update /trees + /meta/lastTree)
   const { proceed, msg } = await askFlowerMessage();
   if (!proceed) return;
 
@@ -1040,9 +1249,42 @@ async function plantFlower(){
       liveFx.add(ring); liveFx.add(sparks);
     });
     const flowers = new Map();
-    onChildAdded(query(gardenRef, limitToLast(2000)), snap=>{
-      const f = snap.val(); if (!f) return; flowers.set(snap.key, f); spawnFlowerFancy(f, snap.key);
-    });
+    onChildAdded(query(gardenRef, limitToLast(2000)), snap => {
+  const d = snap.val(); if (!d) return;
+  const key = snap.key;
+
+  const x = d.x || 0, z = d.z || 0, y = heightFn(x, z);
+
+  // ✅ Biome DB ou calcul
+  const b   = d.biome || biomeAt(x, z);
+  const pal = biomePalette(b);
+
+  // Petals/center tints (mix avec la couleur joueur si tu veux)
+  const petalColor = d.color || `#${pal.petal.toString(16)}`;
+  const centerCol  = pal.leaf;
+
+  // Ta fonction de création de fleur : adapte les params couleur si besoin
+  const flower = makeFlowerMesh({ petal: petalColor, center: centerCol, seed: d.seed || 1 });
+  flower.position.set(x, y, z);
+
+  // Label message/pseudo si tu l’as
+  if (d.name || d.msg){
+    const text = d.msg ? `${d.name || "Fée"}: ${d.msg}` : `${d.name || "Fée"}`;
+    const lbl  = makeLabelSprite(text, petalColor, 220, 16, 0.009);
+    lbl.position.set(0, 0.9, 0);
+    flower.add(lbl);
+  }
+
+  flower.userData.biome = b; // 👈 mémorise le biome
+
+  scene.add(flower);
+  flowerNodes.set(key, flower);
+
+  // (facultatif) Backfill du biome manquant
+  if (!d.biome){
+    try { update(ref(db, `/garden/${key}`), { biome: b }); } catch {}
+  }
+});
 
     //function rng(seed){ return ()=> (seed = (seed*1664525 + 1013904223) >>> 0) / 4294967296; }
 function makeTreeMesh(seed, baseColor = "#88e5ff"){
@@ -1193,30 +1435,38 @@ const treeNodes = new Map();
 onChildAdded(query(treesRef, limitToLast(1000)), snap => {
   const d = snap.val(); if (!d) return;
   const key = snap.key;
-  const seed = (d.seed ?? d.ts ?? 1) ^ (key ? key.length*2654435761 : 0);
 
   const x = d.x || 0, z = d.z || 0, y = heightFn(x, z);
-  const g = makeTreeMesh(seed, d.color || "#88e5ff");
+
+  // ✅ Biome depuis la DB, sinon calculé
+  const b = d.biome || biomeAt(x, z);
+
+  // Couleur de base (ta couleur joueur) + palette de biome
+  const seed = (d.seed ?? d.ts ?? 1) ^ (key ? key.length*2654435761 : 0);
+  const pal  = biomePalette(b);
+
+  // 👇 passe la couleur “leaf” du biome (ou mixe avec d.color si tu veux)
+  const g = makeTreeMesh(seed, d.color || `#${pal.leaf.toString(16)}`);
   g.position.set(x, y, z);
 
-  // --- Création du label avec pseudo et 0% au départ ---
-  const treeLabel = makeLabelSprite(
-    `Arbre de ${d.name || "Fée"} — 0%`,
-    d.color || "#88e5ff",
-    200,   // largeur max
-    16,    // taille police
-    0.009  // scale
-  );
+  // Label “Arbre de … — 0%”
+  const treeLabel = makeLabelSprite(`Arbre de ${d.name || "Fée"} — 0%`, d.color || "#88e5ff", 200, 16, 0.009);
   treeLabel.position.set(0, 1.6, 0);
   g.add(treeLabel);
 
-  // --- Infos stockées pour updateTreeGrowth ---
+  // Infos pour l’update
   g.userData.treeLabel  = treeLabel;
   g.userData.ownerName  = d.name || "Fée";
   g.userData.labelColor = d.color || "#88e5ff";
+  g.userData.biome      = b;               // 👈 on garde le biome sur le node
 
   scene.add(g);
   treeNodes.set(key, { group: g, ts: d.ts || Date.now() });
+
+  // (facultatif) Backfill du champ biome si absent dans la DB
+  if (!d.biome){
+    try { update(ref(db, `/trees/${key}`), { biome: b }); } catch {}
+  }
 });
 
     /************ Bestiaire léger ************/
@@ -1410,6 +1660,13 @@ if (IS_MOBILE){
       }
       renderer.render(scene, camera);
     }
+      const p = controls.getObject().position;
+  const b = biomeAt(p.x, p.z);
+  applyBiome(b);
+const nowTime = performance.now();
+const dt = (nowTime - (window._lastFrameTime || nowTime)) / 1000; // en secondes
+window._lastFrameTime = nowTime;
+updateParticles(dt);
     animate();
 
     /************ Resize ************/
