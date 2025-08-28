@@ -523,7 +523,8 @@ const firebaseConfig = {
 
 async function serverNowMs(db){
   try {
-    const snap = await get(ref(db, "/.info/serverTimeOffset"));
+    // ✅ utiliser ref(db, ".info/serverTimeOffset")
+    const snap = await get(ref(db, ".info/serverTimeOffset"));
     const offset = snap.val() || 0;
     return Date.now() + offset; // ms
   } catch {
@@ -1794,7 +1795,7 @@ function updateTreeGrowth(group, ts){
 
     // progression d'arbre (hors phase "pousse seule")
     const tGrow = (t - SPROUT_ONLY_FRAC) / (1 - SPROUT_ONLY_FRAC);
-    const k = smoothstep(clamp01(tGrow));               // 0..1 adouci
+    const k = THREE.MathUtils.smoothstep(tGrow, 0, 1);        // 0..1 adouci
 
     // Échelle uniforme (0.2 → 1.0)
     const base = 0.2 + 0.8 * k;
