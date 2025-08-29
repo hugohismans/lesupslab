@@ -279,7 +279,7 @@ function applyBiome(biome){
   // Herbe / son / ciel
   setGrassPresetForBiome?.(biome);
   setAmbienceForBiome(biome);
-  setSkyFogForBiome(biome);
+  //setSkyFogForBiome(biome);
 
   // HUD
   const chip = document.getElementById('hudBiome');
@@ -311,7 +311,16 @@ function registerGround(mesh){
     console.log("[biomes] ground set to:", mesh.name || mesh.uuid);
   }
 }
+let __DN_inited = false;
+let dayLight = null;   // “soleil”
+let nightLight = null; // “lune”
 
+function testConsole()
+{
+  console.log("ehy");
+}
+let hemiLight = null;     // ta lumière hémisphère (jour/nuit)
+let ambLight  = null;     // un léger remplissage ambiant pour éviter le noir total
 function detectGroundMesh(){
   let best = null, bestScore = -1;
 
@@ -728,7 +737,47 @@ async function serverNowMs(db){
   }
 }
 
+let DAYNIGHT = {
+  rig: null,
+  sunLight: null,
+  moonLight: null,
+  sun: null,     // Sprite glow
+  sunHalo: null, // grand halo doux
+  moon: null,    // Sprite glow
+  moonHalo: null,
+  R: 900
+};
+function makeGlowSprite(name, color = '#ffffff', size = 40, alpha = 1){
+  const cvs = document.createElement('canvas');
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const S = Math.max(128, Math.floor(size*8)); // texture bien lisse
+  cvs.width = cvs.height = Math.floor(S*dpr);
+  const ctx = cvs.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const r = S/2;
+  const g = ctx.createRadialGradient(r, r, 0, r, r, r);
+  // noyau lumineux + dégradé → transparent
+  g.addColorStop(0.0, `${color}ee`);
+  g.addColorStop(0.4, `${color}77`);
+  g.addColorStop(1.0, `${color}00`);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(r, r, r, 0, Math.PI*2); ctx.fill();
 
+  const tex = new THREE.CanvasTexture(cvs);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+
+  const mat = new THREE.SpriteMaterial({
+    map: tex, transparent:true, opacity: alpha,
+    depthWrite:false, depthTest:true, blending:THREE.AdditiveBlending
+  });
+  const spr = new THREE.Sprite(mat);
+  spr.name = name;
+  // taille écran maîtrisée (pas énorme)
+  spr.scale.set(size, size, 1);
+  spr.renderOrder = 5;
+  return spr;
+}
 function anyStickActive(){ return movePointerId !== null || lookPointerId !== null; }
     /************ Utils ************/
     function sanitizeName(s){ return (s || "").toString().trim().slice(0,16) || "Fée"; }
@@ -790,13 +839,24 @@ function anyStickActive(){ return movePointerId !== null || lookPointerId !== nu
     scene.fog = new THREE.FogExp2(0x0a1022, 0.009);
 
     let SKY_TARGET = new THREE.Color(0xa8e6cf);
-
-
+let skyRig, sunLight, moonLight, sunDisc, moonDisc;
+const SKY_RADIUS = 800;
     const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1200);
     camera.position.set(0, 1.6, 6);
     camera.rotation.order = 'YXZ';
     const renderer = new THREE.WebGLRenderer({ antialias:true });
     renderer.setSize(innerWidth, innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.6;     // ↓ expo par défaut (était trop haute)
+renderer.physicallyCorrectLights = true; // rend les intensités plus réalistes
+    // — Safety renderer color pipeline —
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+if ('outputColorSpace' in renderer) {
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+} else {
+  renderer.outputEncoding = THREE.sRGBEncoding; // anciens three.js
+}
     renderer.setPixelRatio( IS_MOBILE ? Math.min(devicePixelRatio, 1.5) : Math.min(devicePixelRatio, 2) );
     renderer.domElement.style.touchAction = 'none';
     document.body.appendChild(renderer.domElement);
@@ -811,9 +871,171 @@ console.log("[biomes] scene ready, children =", scene.children.length);
     controls.addEventListener('lock',   ()=>{ if (!IS_MOBILE) hint.style.display = 'none'; });
     renderer.domElement.addEventListener('click', ()=>{ if (!IS_MOBILE && !controls.isLocked) controls.lock(); });
 
+  function ensureDayNightRig(){
+  if (!window.DAYNIGHT) window.DAYNIGHT = {};
+  const D = window.DAYNIGHT;
+
+  if (!D.sunLight){
+    D.sunLight  = new THREE.DirectionalLight(0xfff0cc, 0.0);
+    D.sunLight.name = 'SunLight';
+    D.sunLight.castShadow = false; // (laisse off si tu n’utilises pas les ombres)
+    scene.add(D.sunLight); scene.add(D.sunLight.target);
+  }
+  if (!D.moonLight){
+    D.moonLight = new THREE.DirectionalLight(0xcfe6ff, 0.0);
+    D.moonLight.name = 'MoonLight';
+    scene.add(D.moonLight); scene.add(D.moonLight.target);
+  }
+
+  // Rig + sprites (inchangé si déjà fait)
+  if (!D.rig){ D.rig = new THREE.Group(); D.rig.name = 'SkyRig'; scene.add(D.rig); }
+  if (!D.sun)      { D.sun      = makeGlowSprite('SkySun',  '#fff2a8', 28, 1);      D.rig.add(D.sun); }
+  if (!D.sunHalo)  { D.sunHalo  = makeGlowSprite('SkySunH', '#ffd27a', 120, 0.35); D.rig.add(D.sunHalo); }
+  if (!D.moon)     { D.moon     = makeGlowSprite('SkyMoon', '#dff0ff', 22, 0.85);  D.rig.add(D.moon); }
+  if (!D.moonHalo) { D.moonHalo = makeGlowSprite('SkyMoonH','#bcd8ff', 90, 0.25);  D.rig.add(D.moonHalo); }
+  D.R = D.R || 900;
+
+  // 🔧 garde une ref sur l’hemi existante et baisse son plafond
+  if (!D.hemi){
+    D.hemi = scene.children.find(o => o.isHemisphereLight) || null;
+  }
+  if (D.hemi) D.hemi.intensity =Math.min(D.hemi.intensity, 0.2);
+  // Tone mapping raisonnable
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = Math.min(renderer.toneMappingExposure || 1, 0.6);
+}
+
+function createDayNightRig(){
+  if (skyRig) return;
+  skyRig = new THREE.Group();
+  skyRig.name = 'SkyRig';
+  scene.add(skyRig);
+
+  // --- LUMIÈRES ---
+  if (!sunLight){
+    sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    sunLight.name = 'SunLight';
+    sunLight.castShadow = false;
+    scene.add(sunLight);
+  }
+  if (!moonLight){
+    moonLight = new THREE.DirectionalLight(0x99bbff, 0.22);
+    moonLight.name = 'MoonLight';
+    moonLight.castShadow = false;
+    scene.add(moonLight);
+  }
+
+  // --- SPRITES (disques visibles) ---
+  const sunMat  = new THREE.SpriteMaterial({ color: 0xfff2a8, transparent:true, opacity:1, depthWrite:false });
+  const moonMat = new THREE.SpriteMaterial({ color: 0xcfe6ff, transparent:true, opacity:0.9, depthWrite:false });
+
+  sunDisc  = new THREE.Sprite(sunMat);
+  moonDisc = new THREE.Sprite(moonMat);
+  sunDisc.name  = 'SkySunDisc';
+  moonDisc.name = 'SkyMoonDisc';
+
+  // Taille (en pixels écran, car Sprite) — ajuste si tu veux
+  const sunSize  = 180;
+  const moonSize = 140;
+  sunDisc.scale.set(sunSize,  sunSize,  1);
+  moonDisc.scale.set(moonSize, moonSize, 1);
+
+  // on parent les sprites au rig (il sera déplacé au niveau de la caméra)
+  skyRig.add(sunDisc, moonDisc);
+}
+
+function purgeSunMoonVisuals(){
+  const suspects = [];
+  const nameRGX = /(sun|moon|soleil|lune|sundisc|moondisc|sunvis|moonvis)/i;
+
+  scene.traverse(o=>{
+    // on ne garde que ce qui est dessiné (Mesh/Sprite)
+    if (!(o.isMesh || o.type === 'Sprite')) return;
+
+    // proche du centre ? (les boules à l’origine)
+    const nearOrigin = o.position.length() < 5;
+
+    // heuristique “très lumineux/blanc”
+    let brightish = false;
+    const m = o.material;
+    if (m){
+      const col = m.color?.getHex?.() ?? 0;
+      const em  = m.emissive?.getHex?.() ?? 0;
+      // blancs/jaunes/bleutés “étoile”
+      const WHITEISH = [0xffffff, 0xfff2a8, 0xcfe6ff, 0xfff7b1];
+      brightish = WHITEISH.includes(col) || WHITEISH.includes(em) ||
+                  (m.type === 'MeshBasicMaterial'); // souvent utilisé pour des billboards
+    }
+
+    if (nearOrigin && (nameRGX.test(o.name||'') || brightish)){
+      suspects.push(o);
+    }
+  });
+
+  for (const o of suspects){
+    o.parent?.remove(o);
+    disposeNode(o);
+    // console.log('[purge] removed', o.name || o.type);
+  }
+}
+
+    function ensureDayNightLights(){
+  if (__DN_inited) return;
+
+  // Soleil (directional)
+  dayLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dayLight.position.set(0, 300, 0);
+  dayLight.target.position.set(0, 0, -200);
+  //scene.add(dayLight);
+  //scene.add(dayLight.target);
+
+  // Lune (directional, bleutée)
+  nightLight = new THREE.DirectionalLight(0xaecbff, 0.2);
+  nightLight.position.set(0, -300, 0);
+  nightLight.target.position.set(0, 0, 200);
+  //scene.add(nightLight);
+  //scene.add(nightLight.target);
+
+  // Fond de ciel “sûr”
+  if (!(scene.background instanceof THREE.Color)) {
+    scene.background = new THREE.Color(0x0b1024);
+  }
+
+  __DN_inited = true;
+  }
+  ensureDayNightLights();
+  purgeSunMoonVisuals();
+    function setupBaseLights(){
+  // récupérer l’Hemisphere existant, sinon en créer une
+  hemiLight = null;
+  scene.traverse(o => {
+    if (o.isHemisphereLight && !hemiLight) hemiLight = o;
+  });
+  if (!hemiLight){
+    hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x1e293b, 0.8);
+    scene.add(hemiLight);
+  }
+
+  // petite Ambient pour que le sol ne soit JAMAIS noir
+  if (!ambLight){
+    ambLight = new THREE.AmbientLight(0xffffff, 0.04);
+    scene.add(ambLight);
+  }
+
+  // s’assurer que le background/fog sont des couleurs simples
+  if (!(scene.background instanceof THREE.Color)) scene.background = new THREE.Color(0x0b1020);
+  if (!scene.fog) scene.fog = new THREE.FogExp2(0x0b1020, 0.008);
+}
+setupBaseLights();
+ensureDayNightRig();
+
     // Lumières
-    scene.add(new THREE.HemisphereLight(0x7dd3fc, 0x1e293b, 0.9));
-    const sun = new THREE.DirectionalLight(0xffffff, 0.15); sun.position.set(30,60,20); scene.add(sun);
+    //createDayNightRig();
+    //const hemi = new THREE.HemisphereLight(0x7dd3fc, 0x1e293b, 0.18);
+    //scene.add(hemi);
+    //const sun = new THREE.DirectionalLight(0xffffff, 0.15); 
+    //sun.position.set(30,60,20);
+    //scene.add(sun);
     // ——— Jour/Nuit (GMT+1) ———
 const DAY_SKY   = new THREE.Color(0x8ec5ff);
 const NIGHT_SKY = new THREE.Color(0x0a1022);
@@ -821,13 +1043,111 @@ const GOLDEN    = new THREE.Color(0xffb36b);
 
 const moon = new THREE.DirectionalLight(0xdde7ff, 0.05);
 moon.position.set(-30, 20, -20);
-scene.add(moon);
+//scene.add(moon);
 
+
+// soleil et lune 
+
+//scene.add(new THREE.HemisphereLight(0x7dd3fc, 0x1e293b, 0.9));
+//const sunLight = new THREE.DirectionalLight(0xffffff, 0.6);
+//sunLight.position.set(30,60,20);
+//scene.add(sunLight);
+
+// 👇 Disques visibles (sprites non affectés par le fog)
+const skySprites = new THREE.Group(); scene.add(skySprites);
+
+function makeDisc(hex, size){
+  const m = new THREE.SpriteMaterial({
+    color: hex, transparent:true, opacity: 1,
+    depthWrite:false, depthTest:true, fog:false
+  });
+  const s = new THREE.Sprite(m);
+  s.scale.setScalar(size);
+  return s;
+}
+//const sunDisc  = makeDisc(0xfff4b3, 18);  // soleil doux
+//const moonDisc = makeDisc(0xcfe6ff, 14);  // lune froide
+//skySprites.add(sunDisc, moonDisc);
+function safetyVisualReset(){
+  // Fog & background toujours valides (pas noir complet)
+  if (!(scene.background instanceof THREE.Color)) scene.background = new THREE.Color(0x0b1020);
+  if (!scene.fog || !(scene.fog instanceof THREE.FogExp2)) {
+    scene.fog = new THREE.FogExp2(0x0b1020, 0.0035); // léger par défaut
+  } else {
+    scene.fog.color.set(0x0b1020);
+    scene.fog.density = 0.0035;
+  }
+
+  // Récupère l’HemisphereLight existant ou crée-en une
+  hemiLight = null;
+  scene.traverse(o => { if (o.isHemisphereLight && !hemiLight) hemiLight = o; });
+  if (!hemiLight){
+    hemiLight = new THREE.HemisphereLight(0x9fd7ff, 0x1b2433, 0.7);
+    scene.add(hemiLight);
+  } else {
+    hemiLight.color.set(0x9fd7ff);
+    hemiLight.groundColor.set(0x1b2433);
+    hemiLight.intensity = Math.max(hemiLight.intensity, 0.5);
+  }
+
+  // Petite Ambient pour que le sol ne soit JAMAIS noir
+  if (!ambLight){
+    ambLight = new THREE.AmbientLight(0xffffff, 0.10);
+    scene.add(ambLight);
+  } else {
+    ambLight.intensity = Math.max(ambLight.intensity, 0.10);
+  }
+}
+
+// ⚠️ appelle-le une fois après avoir créé la scène/lumières
+safetyVisualReset();
+let __panicAmb = null, __panicHemi = null;
+function panicVisualResetOnce(){
+  // fond + fog safe
+  scene.background = new THREE.Color(0x22334a);
+  scene.fog = null; // coupe toute brume qui rend noir
+
+  // Ambient pour que TOUT soit visible
+  if (!__panicAmb){ __panicAmb = new THREE.AmbientLight(0xffffff, 0.35); scene.add(__panicAmb); }
+  else            { __panicAmb.intensity = 0.35; }
+
+  // Hemi pour donner du modelé
+  if (!__panicHemi){
+    __panicHemi = new THREE.HemisphereLight(0xbfdcff, 0x1a2433, 0.6);
+    scene.add(__panicHemi);
+  } else {
+    __panicHemi.color.set(0xbfdcff);
+    __panicHemi.groundColor.set(0x1a2433);
+    __panicHemi.intensity = 0.6;
+  }
+
+  // Renderer en mode “normal”
+  if (renderer){
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+    else renderer.outputEncoding = THREE.sRGBEncoding;
+  }
+
+  // Si tes lights soleil/lune existent, leur imposer un minimum + position dans le ciel
+  if (window.sunLight){
+    sunLight.intensity = Math.max(sunLight.intensity || 0, 0.7);
+    sunLight.position.set(0, 300, 0);
+  }
+  if (window.moonLight){
+    moonLight.intensity = Math.max(moonLight.intensity || 0, 0.15);
+    moonLight.position.set(0, -300, 0);
+  }
+
+  // Bloque toute fonction externe qui tenterait de réécrire le ciel/fog cette frame
+  window.__LOCK_SKY__ = true;
+}
+//panicVisualResetOnce();
 // petits “corps” visibles pour repérer soleil/lune
-const sunVis  = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff2a8 }));
-const moonVis = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12), new THREE.MeshBasicMaterial({ color: 0xcfe6ff }));
-sunVis.renderOrder = 2; moonVis.renderOrder = 2;
-scene.add(sunVis, moonVis);
+//const sunVis  = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff2a8 }));
+//const moonVis = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12), new THREE.MeshBasicMaterial({ color: 0xcfe6ff }));
+//sunVis.renderOrder = 2; moonVis.renderOrder = 2;
+//scene.add(sunVis, moonVis);
 
 // helper utilitaires
 function clamp01(v){ return Math.max(0, Math.min(1, v)); } // si pas déjà défini
@@ -920,9 +1240,10 @@ terrainGeo.computeVertexNormals();
 // ✅ Matériau qui lit les couleurs de sommets
 const groundMat = new THREE.MeshStandardMaterial({
   vertexColors: true,
-  roughness: 0.85
+  roughness: 0.95,
+  metalness: 0.0
 });
-
+groundMat.color.setScalar(0.72);
 const terrainMesh = new THREE.Mesh(terrainGeo, groundMat);
 terrainMesh.receiveShadow = true;
 scene.add(terrainMesh);
@@ -951,7 +1272,34 @@ function setGrassPresetForBiome(b){
     g.setDensity?.(1.0); g.setColor?.(0x4fb36a); g.setWind?.(0.10);
   }
 }
+//sunDisc.name   = 'SunDisc';
+//moonDisc.name  = 'MoonDisc';
+//sunLight.name  = 'SunLight';
+//moonLight.name = 'MoonLight';
+function ensureSunMoonNotOrigin(){
+  const isAtOrigin = (o)=> o && o.position && o.position.lengthSq() < 1e-2; // proche de (0,0,0)
+  let fixed = false;
 
+  // Si un des 4 est revenu à l'origine, on recalcule les positions du cycle
+  if (isAtOrigin(window.sunDisc)   ||
+      isAtOrigin(window.moonDisc)  ||
+      isAtOrigin(window.sunLight)  ||
+      isAtOrigin(window.moonLight)) {
+    // recalcule immédiatement la frame actuelle (dt=0)
+    updateDayAndNight(0,null);
+    fixed = true;
+  }
+
+  // Optionnel: si quelqu’un les a détachés, on les rattache au rig/scene
+  if (window.DAY_NIGHT_RIG && !DAY_NIGHT_RIG.parent) scene.add(DAY_NIGHT_RIG);
+
+  // (debug) log soft une seule fois
+  if (fixed && !ensureSunMoonNotOrigin._logged){
+    console.warn('[day-night] Sun/Moon étaient à l’origine → positions restaurées.');
+    ensureSunMoonNotOrigin._logged = true;
+    setTimeout(()=> ensureSunMoonNotOrigin._logged = false, 3000);
+  }
+}
 function setSkyFogForBiome(b){
   const fogCol = {
     [BIOMES.SPRING]: 0xa8e6cf,
@@ -974,56 +1322,166 @@ function updateSkyAndFog(dt){
   scene.fog.color.lerp(SKY_TARGET, k);
   scene.background.lerp(SKY_TARGET, k);
 }
-
-function updateDayNight(dt){
-  const h = hourGMT1();            // 0..24
-  // Soleil : 6h horizon Est → 12h zénith → 18h horizon Ouest
-  const tSun = (h - 6) / 12 * Math.PI;   // 6→0rad, 12→π/2, 18→π
-  const R = 180;
-
-  // trajectoire simple dans le plan YZ
-  const sunY = Math.max(0, Math.sin(tSun)) * R;  // < 0 = sous l’horizon
-  const sunZ = Math.cos(tSun) * R;
-  sun.position.set(60, sunY + 20, sunZ);
-  sunVis.position.copy(sun.position);
-
-  // Lune décalée de 12h
-  const tMoon = tSun + Math.PI;
-  const moonY = Math.max(0, Math.sin(tMoon)) * R;
-  const moonZ = Math.cos(tMoon) * R;
-  moon.position.set(-60, moonY + 20, moonZ);
-  moonVis.position.copy(moon.position);
-
-  // intensités (lissage doux)
-  const dayAmt   = clamp01(Math.sin(tSun));      // 0..1 (≥0 au-dessus de l’horizon)
-  const nightAmt = clamp01(Math.sin(tMoon));
-
-  sun.intensity  = THREE.MathUtils.lerp(sun.intensity, 0.15 * dayAmt, 1 - Math.pow(0.001, dt*60));
-  moon.intensity = THREE.MathUtils.lerp(moon.intensity, 0.06 * nightAmt, 1 - Math.pow(0.001, dt*60));
-
-  // teinte du ciel/fog : nuit→jour + golden hours (≈6-7h et 18-19h)
-  const baseSky = NIGHT_SKY.clone().lerp(DAY_SKY, dayAmt);
-
-  const goldenMorning = clamp01(1 - Math.abs(h - 6.5) / 1.2);   // pic ~06:30
-  const goldenEvening = clamp01(1 - Math.abs(h - 18.5) / 1.2);  // pic ~18:30
-  const goldenAmt = Math.max(goldenMorning, goldenEvening) * 0.65;
-
-  const skyTarget = baseSky.clone().lerp(GOLDEN, goldenAmt);
-  SKY_TARGET.copy(skyTarget); // ta boucle existante `updateSkyAndFog(dt)` fera le lerp progressif
-
-  // étoiles visibles surtout la nuit
-  if (stars){
-    stars.visible = nightAmt > 0.05;
-    if (stars.material && 'opacity' in stars.material){
-      stars.material.opacity = 0.4 + 0.6 * nightAmt; // un peu plus denses la nuit noire
-      stars.material.needsUpdate = true;
-    }
-  }
-
-  // visibilité des billes (esthétique)
-  sunVis.visible  = dayAmt  > 0.02;
-  moonVis.visible = nightAmt> 0.02;
+function nowFracDay_GMTp1(){
+  const now = new Date();
+  // UTC + 1h (GMT+1 fixe demandé)
+  const h = (now.getUTCHours() + 1 + 24) % 24;
+  const m = now.getUTCMinutes();
+  const s = now.getUTCSeconds();
+  return (h + m/60 + s/3600) / 24; // 0..1
 }
+
+// place les astres & règle l’éclairage/couleurs
+
+
+function _nowFracDay_GMTp1(){
+  const now = new Date();
+  const h = (now.getUTCHours() + 1 + 24) % 24;
+  return (h + now.getUTCMinutes()/60 + now.getUTCSeconds()/3600) / 24; // 0..1
+}
+// Appelle ça UNE FOIS après avoir créé scene/camera/controls
+function makeGlowTex(hex){
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(64,64,0, 64,64,64);
+  const col = new THREE.Color(hex).getStyle();
+  g.addColorStop(0, col);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,128,128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  return tex;
+}
+window.testTime = null;
+// --- 2) construction (appelle-la UNE FOIS après avoir créé scene/camera/lumières de base)
+/*function createDayNightRig(){
+  // nettoie si déjà présent
+  [sunLight, moonLight, sunDisc, moonDisc].forEach(o=> o?.parent?.remove(o));
+
+  // lumières
+  sunLight  = new THREE.DirectionalLight(0xffffff, 0.75);
+  sunLight.name = 'SunLight';
+  moonLight = new THREE.DirectionalLight(0xcfe6ff, 0.12);
+  moonLight.name = 'MoonLight';
+  scene.add(sunLight, moonLight);
+
+  // disques (sprites) — pas affectés par le fog
+  const tl = new THREE.TextureLoader();
+  const mSun = new THREE.SpriteMaterial({
+    map: tl.load('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><circle cx="64" cy="64" r="58" fill="%23ffe08a"/></svg>'),
+    transparent:true, depthWrite:false, depthTest:false, fog:false
+  });
+  const mMoon = new THREE.SpriteMaterial({
+    map: tl.load('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><circle cx="64" cy="64" r="50" fill="%23dfeaff"/></svg>'),
+    transparent:true, depthWrite:false, depthTest:false, fog:false
+  });
+
+  //sunDisc  = new THREE.Sprite(mSun);  sunDisc.name  = 'SunDisc';  sunDisc.scale.setScalar(40);
+//  moonDisc = new THREE.Sprite(mMoon); moonDisc.name = 'MoonDisc'; moonDisc.scale.setScalar(34);
+
+ // sunDisc.renderOrder = 1000; moonDisc.renderOrder = 1000;
+  //sunDisc.frustumCulled = false; moonDisc.frustumCulled = false;
+
+ // scene.add(sunDisc, moonDisc);
+}*/
+
+// --- heure locale (TEST_TIME pour debug) ---
+function getLocalHourFloat(){
+  if (typeof window.TEST_TIME === 'number') return ((window.TEST_TIME%24)+24)%24;
+  try {
+    const now = new Date();
+    const tz  = 'Europe/Paris';
+    const h   = Number(new Intl.DateTimeFormat('fr-FR',{hour:'numeric',hour12:false,timeZone:tz}).format(now));
+    return h + now.getMinutes()/60 + now.getSeconds()/3600;
+  } catch {
+    const now = new Date();
+    const h = (now.getUTCHours()+1+24)%24;
+    return h + now.getUTCMinutes()/60 + now.getUTCSeconds()/3600;
+  }
+}
+
+function smooth02(x){ x = Math.min(1, Math.max(0, x)); return x*x*(3-2*x); }
+
+function updateDayAndNight(dt, testTime = null){
+  const D = window.DAYNIGHT; if (!D || !D.rig) return;
+
+  const now  = new Date();
+  const hour = (testTime != null)
+    ? testTime
+    : now.getHours() + now.getMinutes()/60 + now.getSeconds()/3600;
+
+  // Soleil: 06h lever, 12h zénith, 18h coucher
+  const theta = 2*Math.PI * ((hour - 6) / 24);
+  const az0   = Math.PI * 0.25;
+  const y  = Math.sin(theta);
+  const r  = Math.cos(theta);
+  const sunDir  = new THREE.Vector3(r*Math.cos(az0), y, r*Math.sin(az0)).normalize();
+  const moonDir = sunDir.clone().multiplyScalar(-1);
+
+  const camPos = (typeof controls !== 'undefined' && controls.getObject)
+    ? controls.getObject().position
+    : camera.position;
+  D.rig.position.copy(camPos);
+
+  const R = D.R;
+  const faceCam = (spr, dir, d)=>{ spr.position.set(dir.x*d, dir.y*d, dir.z*d); spr.quaternion.copy(camera.quaternion); };
+  faceCam(D.sun,      sunDir,  R);
+  faceCam(D.sunHalo,  sunDir,  R*0.98);
+  faceCam(D.moon,     moonDir, R);
+  faceCam(D.moonHalo, moonDir, R*0.98);
+
+  const L = 1200;
+  D.sunLight.position.set(sunDir.x*L,  sunDir.y*L,  sunDir.z*L);
+  D.sunLight.target.position.copy(camPos);
+  D.moonLight.position.set(moonDir.x*L, moonDir.y*L, moonDir.z*L);
+  D.moonLight.target.position.copy(camPos);
+
+  const sunUp  = Math.max(0,  sunDir.y);
+  const moonUp = Math.max(0,  moonDir.y);
+  const smooth = x => { x = Math.min(1, Math.max(0, x)); return x*x*(3-2*x); };
+  const sunI   = smooth(sunUp);
+  const moonI  = smooth(moonUp);
+
+  // 💡 Intensités calmées (plafonds plus bas)
+D.sunLight.intensity  = 0.28 * sunI;  // max soleil plus bas
+D.moonLight.intensity = 0.10 * moonI; 
+
+  // 🌤️ Hemi suit la journée (bas la nuit)
+if (D.hemi){
+  const hemiDay   = 0.18;
+  const hemiNight = 0.06;
+  D.hemi.intensity = hemiNight + (hemiDay - hemiNight) * sunI;
+}
+
+  // 👁️ Expo tonemapping selon le jour
+  // un peu plus sombre à midi pour éviter le “cramé”
+  const expDay   = 0.58;
+const expNight = 0.50;
+const targetExposure = expNight + (expDay - expNight) * sunI;
+renderer.toneMappingExposure += (targetExposure - renderer.toneMappingExposure) * (1 - Math.pow(0.001, dt));
+  // Visibilité + opacités des astres
+  const sunVis  = sunUp  > 0.02;
+  const moonVis = moonUp > 0.02;
+  D.sun.visible = D.sunHalo.visible = sunVis;
+  D.moon.visible = D.moonHalo.visible = moonVis;
+  if (sunVis){  D.sun.material.opacity = 0.5 + 0.4*sunI;   D.sunHalo.material.opacity = 0.12 + 0.22*sunI; }
+  if (moonVis){ D.moon.material.opacity = 0.45 + 0.4*moonI; D.moonHalo.material.opacity = 0.10 + 0.25*moonI; }
+
+  // Ciel/fog
+  const dayCol   = new THREE.Color(0x87b6ff);
+  const duskCol  = new THREE.Color(0x2b3d66);
+  const nightCol = new THREE.Color(0x0b1224);
+  const duskWeight = Math.max(0, 1 - Math.abs(hour - 18.5)/2.0);
+  const skyTarget = nightCol.clone().lerp(dayCol, sunI).lerp(duskCol, 0.55*duskWeight);
+
+  const k = 1 - Math.pow(0.001, dt);
+  if (scene.fog) scene.fog.color.lerp(skyTarget, k);
+  if (scene.background && scene.background.isColor) scene.background.lerp(skyTarget, k);
+}
+
 
 function setAmbienceForBiome(b){
   // suppose <audio id="ambience" loop autoplay> existe
@@ -2353,6 +2811,27 @@ onChildAdded(query(treesRef, limitToLast(1000)), snap => {
     /************ Boucle ************/
 // Boucle propre : respawn particules UNIQUEMENT quand le biome change,
 // puis on les fait suivre le joueur via updateParticles(dt)
+
+function panicGuardPerFrame(){
+  // Empêche qu’un autre code remette de la fog noire ou coupe la lumière
+  if (scene.fog) scene.fog = null;
+
+  if (__panicAmb)  __panicAmb.intensity  = Math.max(__panicAmb.intensity, 0.30);
+  if (__panicHemi) __panicHemi.intensity = Math.max(__panicHemi.intensity, 0.55);
+
+  if (window.sunLight){
+    // minimum garanti
+    sunLight.intensity = Math.max(sunLight.intensity, 0.6);
+    if (sunLight.position.y < 80) sunLight.position.y = 300;
+  }
+  if (window.moonLight){
+    moonLight.intensity = Math.max(moonLight.intensity, 0.12);
+  }
+
+  if (renderer){
+    renderer.toneMappingExposure = Math.max(renderer.toneMappingExposure, 1.0);
+  }
+}
 const clock = new THREE.Clock();
 function animate(){
   requestAnimationFrame(animate);
@@ -2409,9 +2888,10 @@ if (b !== currentBiome && (nowMs - _biomeSince) > 300){
   updateParticles(dt);
 
   // Ciel / brouillard vers la target du biome
-  updateSkyAndFog(dt);
-  updateDayNight(dt);
-
+  //setSkyFogForBiome(currentBiome);
+  //updateSkyAndFog(dt);
+  updateDayAndNight(dt,12);
+//ensureSunMoonNotOrigin();
 
   // --- Caméra mobile (joystick droit) ---
   if (IS_MOBILE){
@@ -2497,14 +2977,50 @@ if (b !== currentBiome && (nowMs - _biomeSince) > 300){
   for (const { group, ts } of treeNodes.values()){
     updateTreeGrowth(group, ts);
   }
-
+//updateDayNight(); 
   // --- Render ---
+  panicGuardPerFrame();
   renderer.render(scene, camera);
 }
+/*function cleanupStraySuns(){
+  // Désactive toute autre DirectionalLight non nommée 'SunLight' / 'MoonLight'
+  scene.traverse(o=>{
+    if (o.isDirectionalLight && o.name !== 'SunLight' && o.name !== 'MoonLight'){
+      o.visible = false;
+    }
+    // Retire d’éventuelles “boules” soleil/lune résiduelles
+    if (o.isMesh && (o.name === 'sunVis' || o.name === 'moonVis')){
+      o.parent?.remove(o);
+    }
+  });
+}
+cleanupStraySuns();*/
+
 animate();
-
-
-
+// Liste *tous* les Mesh/Lights proches de l'origine, même sans name
+(function debugListNearOrigin(radius = 30){
+  const near = [];
+  scene.traverse(o=>{
+    const p = o.position;
+    if (!p || !p.isVector3) return;
+    const d2 = p.lengthSq();
+    if (d2 <= radius*radius){
+      if (o.isMesh || o.isLight){
+        near.push({
+          type: o.type,
+          name: o.name || '(no-name)',
+          pos: p.toArray().map(n=>+n.toFixed(2)),
+          mat: o.material ? o.material.type : null,
+          geo: o.geometry ? o.geometry.type : null,
+          color: o.material?.color ? '#'+o.material.color.getHexString() : null,
+          uuid: o.uuid
+        });
+      }
+    }
+  });
+  console.table(near);
+  return near;
+})();
     /************ Resize ************/
     addEventListener('resize', ()=>{
       camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
@@ -2512,7 +3028,46 @@ animate();
 
     /************ Chat data hooks ************/
     const messagesListEl = document.getElementById('messages');
-    
+    window.debugListLights = function(scene = window.scene){
+  const out = [];
+  scene.traverse(o=>{
+    if (o.isLight){
+      out.push({
+        type: o.type,
+        name: o.name || '',
+        intensity: o.intensity,
+        color: (o.color && '#'+o.color.getHexString()) || null,
+        distance: o.distance ?? null,
+        decay: o.decay ?? null,
+        position: o.position?.toArray?.() || null,
+        parent: o.parent?.name || o.parent?.type || null,
+        visible: o.visible
+      });
+    }
+  });
+  console.table(out);
+  return out;
+};
+window.debugAttachLightHelpers = function(scene = window.scene){
+  (window.__LIGHT_HELPERS__ || []).forEach(h=>scene.remove(h));
+  window.__LIGHT_HELPERS__ = [];
+  scene.traverse(o=>{
+    if (o.isDirectionalLight){
+      const h = new THREE.DirectionalLightHelper(o, 1);
+      scene.add(h); window.__LIGHT_HELPERS__.push(h);
+    } else if (o.isPointLight){
+      const h = new THREE.PointLightHelper(o, 0.5);
+      scene.add(h); window.__LIGHT_HELPERS__.push(h);
+    } else if (o.isSpotLight){
+      const h = new THREE.SpotLightHelper(o);
+      scene.add(h); window.__LIGHT_HELPERS__.push(h);
+    } else if (o.isHemisphereLight){
+      const g = new THREE.AxesHelper(0.8); g.position.copy(o.position || new THREE.Vector3());
+      scene.add(g); window.__LIGHT_HELPERS__.push(g);
+    }
+  });
+  console.log('Helpers ajoutés:', window.__LIGHT_HELPERS__.length);
+};
   </script>
 
   <!--
