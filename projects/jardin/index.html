@@ -414,22 +414,54 @@ function spawnParticles(type, density = 1, origin = _playerXZ()){
   for (let i = 0; i < N; i++){
     let sprite;
     if (type === 'snow'){
-      mat = mat || new THREE.SpriteMaterial({ color: 0xffffff, opacity: 0.9, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
-      sprite.scale.setScalar(0.06 + Math.random()*0.06);
-    } else if (type === 'leaves'){
-      mat = mat || new THREE.SpriteMaterial({ color: 0xffa54a, opacity: 0.9, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
-      sprite.scale.set(0.12, 0.16, 1);
-    } else if (type === 'dust'){
-      mat = mat || new THREE.SpriteMaterial({ color: 0xd2b48c, opacity: 0.45, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
-      sprite.scale.setScalar(0.08 + Math.random()*0.08);
-    } else { // pollen
-      mat = mat || new THREE.SpriteMaterial({ color: 0xffe98a, opacity: 0.65, transparent:true, depthWrite:false });
-      sprite = new THREE.Sprite(mat);
-      sprite.scale.setScalar(0.05 + Math.random()*0.05);
-    }
+  mat = mat || new THREE.SpriteMaterial({
+    color: 0xffffff,
+    opacity: 0.75,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    toneMapped: false,     // 👈 évite le “cramé”
+    fog: true              // 👈 se fond mieux au lointain
+  });
+  sprite = new THREE.Sprite(mat);
+  sprite.scale.setScalar(0.06 + Math.random()*0.06);
+} else if (type === 'leaves'){
+  mat = mat || new THREE.SpriteMaterial({
+    color: 0xff8a3a,       // orange plus soutenu
+    opacity: 0.85,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    toneMapped: false,
+    fog: true
+  });
+  sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.12, 0.16, 1);
+} else if (type === 'dust'){
+  mat = mat || new THREE.SpriteMaterial({
+    color: 0xc9b28a,
+    opacity: 0.35,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    toneMapped: false,
+    fog: true
+  });
+  sprite = new THREE.Sprite(mat);
+  sprite.scale.setScalar(0.08 + Math.random()*0.08);
+} else { // pollen
+  mat = mat || new THREE.SpriteMaterial({
+    color: 0xffe97a,       // jaune chaud moins “blanc”
+    opacity: 0.55,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.NormalBlending,
+    toneMapped: false,
+    fog: true
+  });
+  sprite = new THREE.Sprite(mat);
+  sprite.scale.setScalar(0.05 + Math.random()*0.05);
+}
 
     // offsets RELATIFS au groupe
     const rx = (Math.random()-0.5) * (R*2);
@@ -847,6 +879,7 @@ const SKY_RADIUS = 800;
     const renderer = new THREE.WebGLRenderer({ antialias:true });
     renderer.setSize(innerWidth, innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.9;
 renderer.toneMappingExposure = 0.6;     // ↓ expo par défaut (était trop haute)
 renderer.physicallyCorrectLights = true; // rend les intensités plus réalistes
     // — Safety renderer color pipeline —
@@ -1025,9 +1058,41 @@ function purgeSunMoonVisuals(){
   // s’assurer que le background/fog sont des couleurs simples
   if (!(scene.background instanceof THREE.Color)) scene.background = new THREE.Color(0x0b1020);
   if (!scene.fog) scene.fog = new THREE.FogExp2(0x0b1020, 0.008);
+
+}
+function sanitizeLights(scn = (typeof scene !== 'undefined' ? scene : null)){
+  if (!scn || !scn.traverse) return; // 🔒 rien à faire si la scène n’est pas prête
+
+  const keep = new Set(['SunLight','MoonLight']); // on garde ton rig J/N
+
+  scn.traverse((o)=>{
+    if (!o.isLight) return;
+
+    // supprime l’Ambient (elle “grisouille” tout)
+    if (o.type === 'AmbientLight'){
+      scn.remove(o);
+      return;
+    }
+    // supprime les Directional sans nom (parasites)
+    if (o.type === 'DirectionalLight' && !keep.has(o.name)){
+      scn.remove(o);
+      return;
+    }
+    // hémisphère doux (si tu en gardes un)
+    if (o.type === 'HemisphereLight'){
+      o.intensity = 0.12;
+      o.color.set(0x9fd7ff);
+      o.groundColor?.set?.(0x1b2433);
+    }
+    // halo perso (PointLight) → on limite un peu
+    if (o.type === 'PointLight' && !o.name){
+      o.intensity = Math.min(o.intensity ?? 0.9, 0.6);
+    }
+  });
 }
 setupBaseLights();
 ensureDayNightRig();
+//requestAnimationFrame(()=> sanitizeLights(scene));
 
     // Lumières
     //createDayNightRig();
@@ -2890,7 +2955,7 @@ if (b !== currentBiome && (nowMs - _biomeSince) > 300){
   // Ciel / brouillard vers la target du biome
   //setSkyFogForBiome(currentBiome);
   //updateSkyAndFog(dt);
-  updateDayAndNight(dt,12);
+  updateDayAndNight(dt,null);
 //ensureSunMoonNotOrigin();
 
   // --- Caméra mobile (joystick droit) ---
