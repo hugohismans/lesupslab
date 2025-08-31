@@ -891,7 +891,8 @@ renderer.physicallyCorrectLights = true; // rend les intensités plus réalistes
 
 let portalManager;
 portalManager = new PortalManager(scene, camera, renderer.domElement, {
-      jsonUrl: 'portals.json'
+      jsonUrl: 'portals.json',
+      basePath: '/lesupslab/'
     });
     await portalManager.load();
     // — Safety renderer color pipeline —

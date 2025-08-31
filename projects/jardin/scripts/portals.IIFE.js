@@ -1,16 +1,17 @@
 // portals.iife.js — IIFE (aucun import). Utilise THREE global + expose PortalManager sur window.
-// Prérequis dans index.html (mode IIFE uniquement) :
+// Prérequis dans index.html (IIFE uniquement) :
 // <script src="./libs/three.min.js"></script>
 // <script src="./libs/examples/js/controls/PointerLockControls.js"></script>
 // <script src="./scripts/portals.iife.js"></script>
 
 (function () {
   class PortalManager {
-    constructor(scene, camera, domEl, { jsonUrl = 'portals.json' } = {}) {
+    constructor(scene, camera, domEl, { jsonUrl = 'portals.json', basePath = null } = {}) {
       this.scene = scene;
       this.camera = camera;
       this.domEl = domEl;
       this.jsonUrl = jsonUrl;
+      this.basePath = basePath; // si null, auto-détection
 
       this.group = new THREE.Group();
       this.group.name = 'PortalsRoot';
@@ -72,8 +73,8 @@
         particleColor = '#66ccff',
         autoElevate = true,
         clearance = 0.3,       // espace entre sol et bas de sphère
-        spin = 0.25,           // rotation lente (rad/s) pour montrer le volume
-        // Ondulation (vaguelettes) — valeurs par défaut douces
+        spin = 0.25,           // rotation lente (rad/s)
+        // Ondulation (vaguelettes)
         waveAmp = Math.max(0.02, 0.04 * radius), // amplitude (unités monde)
         waveFreq = 3.0,        // fréquence spatiale
         waveSpeed = 1.2,       // vitesse temporelle
@@ -87,8 +88,7 @@
       texture.anisotropy = 8;
       texture.colorSpace = THREE.SRGBColorSpace;
 
-      // === ShaderMaterial pour vaguelettes ===
-      // Lampert-ish fake lighting : lightDir approx (0.3, 0.8, 0.4), ambient 0.35
+      // === ShaderMaterial pour vaguelettes === (Lambert-ish simple)
       const uniforms = {
         uTime:      { value: 0 },
         uMap:       { value: texture },
@@ -101,15 +101,11 @@
       };
 
       const vertexShader = `
-        uniform float uTime;
-        uniform float uWaveAmp;
-        uniform float uWaveFreq;
-        uniform float uWaveSpeed;
+        uniform float uTime, uWaveAmp, uWaveFreq, uWaveSpeed;
         varying vec2 vUv;
         varying vec3 vNormalW;
         varying vec3 vPosW;
 
-        // petite fonction pour combiner deux ondes
         float wave(vec3 p) {
           float w1 = sin((p.y + p.x) * uWaveFreq + uTime * uWaveSpeed);
           float w2 = sin((p.y + p.z) * (uWaveFreq * 1.21) - uTime * (uWaveSpeed * 0.83));
@@ -118,38 +114,28 @@
 
         void main() {
           vUv = uv;
-
-          // espace objet
           vec3 pos = position;
-          // déformation radiale le long de la normale pour éviter les plis UV
-          float w = wave(normalize(position) * 1.0);    // dépend du sens
+          float w = wave(normalize(position));
           pos += normal * (uWaveAmp * w);
 
-          // normals approx via normalMatrix * normal (sans recalc TBN)
-          vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
           vPosW = (modelMatrix * vec4(pos, 1.0)).xyz;
-          vNormalW = normalize( mat3(modelMatrix) * normal );
+          vNormalW = normalize(mat3(modelMatrix) * normal);
 
-          gl_Position = projectionMatrix * mvPos;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
         }
       `;
 
       const fragmentShader = `
         uniform sampler2D uMap;
-        uniform float uOpacity;
-        uniform vec3  uLightDir;
-        uniform float uAmbient;
+        uniform float uOpacity, uAmbient;
+        uniform vec3 uLightDir;
         varying vec2 vUv;
         varying vec3 vNormalW;
 
         void main() {
           vec3 base = texture2D(uMap, vUv).rgb;
-
-          // Lambert simple : max(dot(n, L), 0)
-          vec3 L = normalize(uLightDir);
-          float ndl = max(dot(normalize(vNormalW), L), 0.0);
+          float ndl = max(dot(normalize(vNormalW), normalize(uLightDir)), 0.0);
           float light = clamp(uAmbient + ndl, 0.0, 1.0);
-
           gl_FragColor = vec4(base * light, uOpacity);
         }
       `;
@@ -159,7 +145,7 @@
         vertexShader,
         fragmentShader,
         transparent: true,
-        depthWrite: false,   // évite les soucis de tri avec ring/label
+        depthWrite: false,   // évite conflits avec ring/label
         depthTest: true
       });
 
@@ -170,7 +156,7 @@
       sphere.name = `PortalSphere:${id}`;
       sphere.renderOrder = 1; // derrière ring/label
 
-      // Anneau de particules (glow additif au-dessus)
+      // Anneau de particules (glow au-dessus)
       const ring = this._makeParticleRing(radius * 1.15, particleColor);
       ring.renderOrder = 2;
       ring.material.transparent = true;
@@ -178,7 +164,7 @@
       ring.material.depthWrite = false;
       ring.material.depthTest = false;
 
-      // Label
+      // Label (toujours lisible)
       const label = this._makeRichLabel({ title, description, maxWidthPx: 520 });
       if (label) {
         label.material.depthTest = false;
@@ -187,7 +173,7 @@
         label.position.set(0, radius + 0.55, 0);
       }
 
-      // Racine
+      // Racine + position hors sol
       const root = new THREE.Group();
       root.name = `Portal:${id}`;
       const [px, py = 0, pz] = position;
@@ -203,11 +189,13 @@
         id, url, title, description,
         root, sphere, ring, label,
         texture, radius,
-        spinSpeed: spin,  // rotation décorative (en plus des vagues)
-        uniforms
+        spinSpeed: spin,
+        uniforms,
+        urlRaw: url // stock brut pour résolution au clic
       };
     }
 
+    // ----- Helpers -----
     _makeParticleRing(r, colorHex, count = 250) {
       const inner = r * 0.9, outer = r * 1.15;
       const positions = new Float32Array(count * 3);
@@ -235,7 +223,6 @@
         color: new THREE.Color(colorHex),
         transparent: true,
         opacity: 0.9
-        // blending/test/write réglés à l'assemblage
       });
 
       const points = new THREE.Points(geo, mat);
@@ -322,20 +309,41 @@
       return spr;
     }
 
+    _detectBasePath() {
+      // 1) <base href="...">
+      const baseEl = document.querySelector('base[href]');
+      if (baseEl) {
+        try {
+          const p = new URL(baseEl.getAttribute('href'), location.origin).pathname;
+          return p.endsWith('/') ? p : p + '/';
+        } catch {}
+      }
+      // 2) GitHub Pages project site: origin + '/<repo>/...'
+      const segs = location.pathname.split('/').filter(Boolean);
+      if (segs.length > 0) return '/' + segs[0] + '/';
+      // 3) user/org site ou racine locale
+      return '/';
+    }
+
+    _resolveUrl(url) {
+      if (!url) return location.href;
+      if (/^https?:\/\//i.test(url)) return url;          // absolue
+      if (url.startsWith('/')) return location.origin + url; // absolue depuis racine
+      const base = (this.basePath ?? this._detectBasePath());
+      const normalized = base.endsWith('/') ? base : base + '/';
+      return location.origin + normalized + url.replace(/^\/+/, '');
+    }
+
     update(dt) {
       for (const p of this.portals) {
-        // label toujours face caméra
+        // label face caméra
         if (p.label) p.label.quaternion.copy(this.camera.quaternion);
 
-        // update temps shader (vaguelettes)
-        if (p.uniforms) {
-          p.uniforms.uTime.value += dt;
-        }
+        // temps shader (vagues)
+        if (p.uniforms) p.uniforms.uTime.value += dt;
 
-        // rotation décorative de la sphère
-        if (p.sphere && p.spinSpeed) {
-          p.sphere.rotation.y += p.spinSpeed * dt;
-        }
+        // rotation décorative
+        if (p.sphere && p.spinSpeed) p.sphere.rotation.y += p.spinSpeed * dt;
 
         // orbite des particules
         if (p.ring?.geometry) {
@@ -381,9 +389,13 @@
     _onClick(e) {
       this._screenToNdc(e);
       const hit = this._intersectPortals();
-      if (hit && hit.url) window.location.href = hit.url;
+      if (hit && hit.urlRaw) {
+        const to = this._resolveUrl(hit.urlRaw);
+        window.location.href = to;
+      }
     }
   }
 
   window.PortalManager = PortalManager;
 })();
+
