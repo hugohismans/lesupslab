@@ -216,16 +216,22 @@
   <button id="toggleHUD" aria-label="HUD">≡</button>
   <button id="toggleChat" aria-label="Chat">💬</button>
 
-  <!-- Three.js & Controls en LOCAL -->
-  <script src="./three.min.js"></script>
-  <script src="./PointerLockControls.js"></script>
+  <!-- Three.js & Controls en LOCAL --> 
+<!--  <script src="./three.min.js"></script>-->
+<!--    <script src="./PointerLockControls.js"></script>-->
 
+<script src="./libs/three.min.js"></script>
+<script src="./libs/examples/jsm/controls/PointerLockControls.js"></script>
+<script src="./scripts/portals.IIFE.js"></script>
   <!-- App + Firebase -->
+
   <script type="module">
 
     // ---- BIOMES ----
 const BIOMES = { SPRING:'printemps', SUMMER:'ete', AUTUMN:'automne', WINTER:'hiver', DESERT:'desert' };
-
+  //import { PortalManager } from './scripts/portals.js';
+  //import * as THREE from './libs/three.module.js';
+   //import { PointerLockControls } from './libs/examples/jsm/controls/PointerLockControls.js';
 function biomeAt(x, z){
   const r = Math.hypot(x, z);
   const ang = Math.atan2(z, x); // -PI..PI  (x=Est, z=Nord)
@@ -882,6 +888,12 @@ const SKY_RADIUS = 800;
     renderer.toneMappingExposure = 0.9;
 renderer.toneMappingExposure = 0.6;     // ↓ expo par défaut (était trop haute)
 renderer.physicallyCorrectLights = true; // rend les intensités plus réalistes
+
+let portalManager;
+portalManager = new PortalManager(scene, camera, renderer.domElement, {
+      jsonUrl: 'portals.json'
+    });
+    await portalManager.load();
     // — Safety renderer color pipeline —
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -976,40 +988,68 @@ function createDayNightRig(){
   // on parent les sprites au rig (il sera déplacé au niveau de la caméra)
   skyRig.add(sunDisc, moonDisc);
 }
+function disposeNode(node){
+  if (!node) return;
+  node.traverse?.((o)=>{
+    // géométrie
+    o.geometry?.dispose?.();
 
-function purgeSunMoonVisuals(){
-  const suspects = [];
-  const nameRGX = /(sun|moon|soleil|lune|sundisc|moondisc|sunvis|moonvis)/i;
-
-  scene.traverse(o=>{
-    // on ne garde que ce qui est dessiné (Mesh/Sprite)
-    if (!(o.isMesh || o.type === 'Sprite')) return;
-
-    // proche du centre ? (les boules à l’origine)
-    const nearOrigin = o.position.length() < 5;
-
-    // heuristique “très lumineux/blanc”
-    let brightish = false;
-    const m = o.material;
-    if (m){
-      const col = m.color?.getHex?.() ?? 0;
-      const em  = m.emissive?.getHex?.() ?? 0;
-      // blancs/jaunes/bleutés “étoile”
-      const WHITEISH = [0xffffff, 0xfff2a8, 0xcfe6ff, 0xfff7b1];
-      brightish = WHITEISH.includes(col) || WHITEISH.includes(em) ||
-                  (m.type === 'MeshBasicMaterial'); // souvent utilisé pour des billboards
+    // matériaux (array ou unique)
+    if (o.material){
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats){
+        m.map?.dispose?.();
+        m.alphaMap?.dispose?.();
+        m.aoMap?.dispose?.();
+        m.emissiveMap?.dispose?.();
+        m.envMap?.dispose?.();
+        m.bumpMap?.dispose?.();
+        m.normalMap?.dispose?.();
+        m.roughnessMap?.dispose?.();
+        m.metalnessMap?.dispose?.();
+        m.displacementMap?.dispose?.();
+        m.lightMap?.dispose?.();
+        m.dispose?.();
+      }
     }
 
-    if (nearOrigin && (nameRGX.test(o.name||'') || brightish)){
-      suspects.push(o);
+    // textures éventuelles attachées directement
+    o.texture?.dispose?.();
+  });
+
+  node.parent?.remove(node);
+}
+function purgeSunMoonVisuals(){
+  if (!window.scene) return;
+
+  // Noms/indices suspects rencontrés plus tôt
+  const suspectNames = new Set([
+    'SunDisc','MoonDisc','SunBillboard','MoonBillboard',
+    'sunVis','moonVis', // les sphères au centre
+    // (ne PAS supprimer tes DirectionalLight actuels gérés par le rig)
+  ]);
+
+  const toRemove = [];
+  scene.traverse((o)=>{
+    // par nom connu
+    if (o.name && suspectNames.has(o.name)) toRemove.push(o);
+
+    // heuristique : anciennes “boules” au centre
+    else if ((o.isMesh || o.type === 'Sprite') &&
+             o.position.length() < 2 &&                    // ~ au centre (0,0,0)
+             (o.material?.name === '__sun__' || o.material?.name === '__moon__'))
+    {
+      toRemove.push(o);
     }
   });
 
-  for (const o of suspects){
-    o.parent?.remove(o);
-    disposeNode(o);
-    // console.log('[purge] removed', o.name || o.type);
-  }
+  for (const n of toRemove) disposeNode(n);
+
+  // Nettoie d’éventuelles références globales obsolètes
+  if (window.sunVis) { disposeNode(window.sunVis); window.sunVis = null; }
+  if (window.moonVis){ disposeNode(window.moonVis); window.moonVis = null; }
+
+  // NE PAS nullifier sunLight/moonLight si ton rig actuel les utilise
 }
 
     function ensureDayNightLights(){
@@ -3044,6 +3084,7 @@ if (b !== currentBiome && (nowMs - _biomeSince) > 300){
   }
 //updateDayNight(); 
   // --- Render ---
+    portalManager?.update(dt);
   panicGuardPerFrame();
   renderer.render(scene, camera);
 }
