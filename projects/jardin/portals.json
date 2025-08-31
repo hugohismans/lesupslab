@@ -1,0 +1,19 @@
+[
+  {
+    "id": "harmonographe",
+    "title": "Clique pour acceder à : Harmonographe",
+    "description": "Dessins Lissajous animés, export GIF.",
+    "image": "assets/thumbs/harmonographe.jpg",
+    "url": "projects/harmonographe/index.html",
+    "position": [5, 0, -8],
+    "radius": 1.2,
+    "particleColor": "#66ccff",
+    "autoElevate": true,
+    "clearance": 0.35,
+    "sphereOpacity": 0.85,
+    "spin": 0.25,
+    "waveAmp": 0.05,   
+    "waveFreq": 5.0,  
+    "waveSpeed": 9.2  
+  }
+]
