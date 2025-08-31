@@ -223,6 +223,7 @@
 <script src="./libs/three.min.js"></script>
 <script src="./libs/examples/jsm/controls/PointerLockControls.js"></script>
 <script src="./scripts/portals.IIFE.js"></script>
+<script src="./scripts/hof.js"></script>
   <!-- App + Firebase -->
 
   <script type="module">
@@ -888,6 +889,17 @@ const SKY_RADIUS = 800;
     renderer.toneMappingExposure = 0.9;
 renderer.toneMappingExposure = 0.6;     // ↓ expo par défaut (était trop haute)
 renderer.physicallyCorrectLights = true; // rend les intensités plus réalistes
+
+
+
+  const hof = new HallOfFame(scene, camera, renderer.domElement, {
+    jsonUrl: 'hof.json',
+    gridCols: 3,        // nombre de colonnes
+    spacingX: 2.2,      // espace horizontal entre cadres
+    spacingY: 2.6,      // espace vertical entre rangées
+    anchor: new THREE.Vector3(-20, 1.8, -20) // où commence la grille (rangée 1, centrée)
+  });
+  hof.load();
 
 let portalManager;
 portalManager = new PortalManager(scene, camera, renderer.domElement, {

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "tree",
+    "titre": "Premier arbre planté.",
+    "description": "Réalisé par Alexis",
+    "image": "assets/hof/tree.png",
+    "size": 1.4
+  },
+   {
+    "id": "flower",
+    "titre": "Première fleur plantée.",
+    "description": "Réalisé par Hormun",
+    "image": "assets/hof/flower.png",
+    "size": 1.4
+  },
+  {
+    "id": "godwin",
+    "titre": "Premier point Godwin.",
+    "description": "Réalisé par Alain",
+    "image": "assets/hof/godwin.png",
+    "size": 1.4
+  }
+]
