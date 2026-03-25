@@ -394,7 +394,9 @@ function paintAt(wx, wz, color, bSize) {
 ══════════════════════════════════════ */
 function makeFlubber(hex) {
   const g = new THREE.Group();
-  const bGeo = new THREE.SphereGeometry(.42,26,16);
+
+  // Corps organique déformé
+  const bGeo = new THREE.SphereGeometry(.42,28,18);
   const pos  = bGeo.attributes.position;
   for (let i=0;i<pos.count;i++) {
     const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
@@ -404,24 +406,80 @@ function makeFlubber(hex) {
   bGeo.computeVertexNormals();
   const body=new THREE.Mesh(bGeo,new THREE.MeshStandardMaterial({color:hex,roughness:.22,metalness:.06,transparent:true,opacity:.94}));
   body.castShadow=true; body.scale.y=.72; body.position.y=.3; g.add(body);
+
+  // Gel coat
   const gel=new THREE.Mesh(new THREE.SphereGeometry(.44,18,12),new THREE.MeshStandardMaterial({color:hex,roughness:0,metalness:0,transparent:true,opacity:.18}));
   gel.scale.y=.72; gel.position.y=.3; g.add(gel);
+
+  // Yeux (montés sur un pivot pour regarder dans la direction du mouvement)
+  const eyePivot = new THREE.Group();
+  eyePivot.position.y = .3;
+  g.add(eyePivot);
   const eM=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.1});
   const pM=new THREE.MeshStandardMaterial({color:0x111111});
   const iC=new THREE.Color(hex); iC.multiplyScalar(1.6);
   const iM=new THREE.MeshStandardMaterial({color:iC});
+  const pupils = [];
   [-1,1].forEach(s=>{
     const e=new THREE.Mesh(new THREE.SphereGeometry(.07,10,10),eM);
     const ir=new THREE.Mesh(new THREE.SphereGeometry(.046,8,8),iM);
-    const p=new THREE.Mesh(new THREE.SphereGeometry(.026,6,6),pM);
-    e.position.set(s*.13,.4,.33); ir.position.set(s*.13,.4,.365); p.position.set(s*.13,.4,.375);
-    g.add(e,ir,p);
+    const p=new THREE.Mesh(new THREE.SphereGeometry(.028,6,6),pM);
+    e.position.set(s*.13,.1,.33);
+    ir.position.set(s*.13,.1,.365);
+    p.position.set(s*.13,.1,.375);
+    eyePivot.add(e,ir,p);
+    pupils.push(p);
   });
+
+  // Reflet
   const sh=new THREE.Mesh(new THREE.SphereGeometry(.05,5,5),new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.55,roughness:0}));
   sh.position.set(-.11,.47,.26); g.add(sh);
+
+  // Ombre blob
   const sb=new THREE.Mesh(new THREE.CircleGeometry(.4,16),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:.45,depthWrite:false}));
   sb.rotation.x=-Math.PI/2; sb.position.y=.006; g.add(sb);
-  g.userData={body,gel,sb,phase:Math.random()*Math.PI*2};
+
+  // Bouche (arc - visible quand il bouge vite)
+  const mouthGeo = new THREE.TorusGeometry(.12,.025,6,12,Math.PI);
+  const mouthMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.5});
+  const mouth = new THREE.Mesh(mouthGeo,mouthMat);
+  mouth.position.set(0,.22,.38); mouth.rotation.z=Math.PI; mouth.scale.set(1,.4,1);
+  g.add(mouth);
+
+  // Tentacules/queue (3 petites sphères qui traînent derrière)
+  const tentacles = [];
+  const tCol = new THREE.Color(hex); tCol.multiplyScalar(.85);
+  const tMat = new THREE.MeshStandardMaterial({color:tCol,roughness:.3,transparent:true,opacity:.85});
+  [0,1,2].forEach(i=>{
+    const tGeo = new THREE.SphereGeometry(.1-.02*i,8,6);
+    const t = new THREE.Mesh(tGeo,tMat);
+    t.castShadow=true;
+    t.position.set((i-.5)*.15,-.05+(i*.05),-.3-.12*i);
+    g.add(t);
+    tentacles.push(t);
+  });
+
+  // Traînée gélatineuse (pool de meshes réutilisables)
+  const trailPool = [];
+  const trlMat = new THREE.MeshBasicMaterial({color:hex,transparent:true,opacity:.55,depthWrite:false});
+  for(let i=0;i<10;i++){
+    const tr=new THREE.Mesh(new THREE.SphereGeometry(.18,8,6),trlMat.clone());
+    tr.scale.y=.3; tr.position.y=.04; tr.visible=false;
+    scene.add(tr);
+    trailPool.push({mesh:tr,life:0,maxLife:0});
+  }
+
+  // Bulles
+  const bubbles = [];
+  const bubMat = new THREE.MeshStandardMaterial({color:hex,transparent:true,opacity:.35,roughness:0,metalness:.1});
+  for(let i=0;i<6;i++){
+    const b=new THREE.Mesh(new THREE.SphereGeometry(.04+Math.random()*.04,6,6),bubMat.clone());
+    b.visible=false;
+    scene.add(b);
+    bubbles.push({mesh:b,life:0,maxLife:0,ox:0,oz:0});
+  }
+
+  g.userData={body,gel,sb,eyePivot,mouth,tentacles,trailPool,bubbles,phase:Math.random()*Math.PI*2,lastTrail:0,lastBubble:0};
   return g;
 }
 
@@ -435,20 +493,113 @@ function makeLabel(name,hex){
   return sp;
 }
 
-function animFlubber(g,speedNorm,t){
-  const {body,gel,sb,phase:ph}=g.userData;
-  if(speedNorm>.01){
-    const b=Math.abs(Math.sin(t*13+ph)); const sq=.2*Math.min(speedNorm*3,1);
-    body.scale.set(1+sq*.9,Math.max(.45,1-sq*1.2+b*.3),1+sq*.9);
-    body.position.y=.3+b*.2*Math.min(speedNorm*3,1);
-    body.rotation.z=Math.sin(t*11+ph)*.1*Math.min(speedNorm*3,1);
-    if(gel){gel.scale.copy(body.scale);gel.position.y=body.position.y;}
-    if(sb)sb.scale.set(1+speedNorm*.8,1,1+speedNorm*.8);
+function animFlubber(g,speedNorm,t,dx,dz){
+  const {body,gel,sb,eyePivot,mouth,tentacles,trailPool,bubbles,phase:ph}=g.userData;
+  const now=Date.now();
+  const moving=speedNorm>.01;
+  const spd=Math.min(speedNorm,1);
+
+  // ── Corps squash & stretch ──
+  if(moving){
+    const b=Math.abs(Math.sin(t*13+ph));
+    const sq=.22*spd;
+    body.scale.set(1+sq*.9,Math.max(.42,1-sq*1.3+b*.32),1+sq*.9);
+    body.position.y=.3+b*.22*spd;
+    body.rotation.z=Math.sin(t*11+ph)*.12*spd;
   } else {
-    const b=Math.sin(t*2.1+ph); const wx=Math.sin(t*3.8+ph)*.045,wz=Math.sin(t*4.2+ph+1)*.045;
-    body.scale.set(1+b*.055+wx,1-b*.042,1+b*.055+wz); body.position.y=.3+b*.02; body.rotation.z=Math.sin(t*1.9+ph)*.04;
-    if(gel){gel.scale.copy(body.scale);gel.position.y=body.position.y;}
-    if(sb)sb.scale.set(1,1,1);
+    const b=Math.sin(t*2.1+ph);
+    const wx=Math.sin(t*3.8+ph)*.045, wz=Math.sin(t*4.2+ph+1)*.045;
+    body.scale.set(1+b*.055+wx,1-b*.042,1+b*.055+wz);
+    body.position.y=.3+b*.02;
+    body.rotation.z=Math.sin(t*1.9+ph)*.04;
+  }
+  if(gel){gel.scale.copy(body.scale);gel.position.y=body.position.y;}
+  if(sb)sb.scale.set(1+spd*.7,1,1+spd*.7);
+
+  // ── Yeux : regardent dans la direction du mouvement ──
+  if(eyePivot){
+    const targetYaw = (dx||dz) ? Math.atan2(dx||0,dz||0) : g.rotation.y;
+    const curYaw = eyePivot.rotation.y;
+    eyePivot.rotation.y += (targetYaw - curYaw) * .12;
+    // Clignotement aléatoire
+    const blinkPhase = Math.sin(t*1.3+ph*3);
+    const blink = blinkPhase > .96 ? Math.max(0,1-(blinkPhase-.96)*50) : 1;
+    eyePivot.scale.y = blink;
+  }
+
+  // ── Bouche : s'ouvre avec la vitesse ──
+  if(mouth){
+    const mOpen = moving ? Math.min(spd*2,.9) : .15+Math.sin(t*1.8+ph)*.08;
+    mouth.scale.set(1+mOpen*.5, .4+mOpen*.8, 1);
+    mouth.position.z = .36+mOpen*.04;
+  }
+
+  // ── Tentacules : se balancent en retard ──
+  if(tentacles&&tentacles.length){
+    tentacles.forEach((tent,i)=>{
+      const lag = .18+i*.12;
+      const swayX = Math.sin(t*4+ph+i*1.2)*(.06+spd*.12);
+      const swayY = Math.abs(Math.sin(t*8+ph+i*.8))*(.04+spd*.08);
+      const stretchZ = -.28-.14*i - spd*.18;
+      tent.position.set(
+        (i-1)*.16 + swayX,
+        -.04+i*.03+swayY,
+        stretchZ
+      );
+      tent.scale.set(1-i*.08, 1+spd*.3, 1-i*.08);
+    });
+  }
+
+  // ── Traînée gélatineuse ──
+  if(trailPool&&moving&&now-g.userData.lastTrail>80){
+    const slot=trailPool.find(s=>!s.mesh.visible||s.life<=0);
+    if(slot){
+      slot.mesh.position.set(g.position.x,0.04,g.position.z);
+      slot.mesh.scale.set(1+spd*.5,.3,1+spd*.5);
+      slot.mesh.material.color.set(g.userData.body.material.color);
+      slot.mesh.visible=true;
+      slot.life=1; slot.maxLife=1;
+    }
+    g.userData.lastTrail=now;
+  }
+  if(trailPool){
+    trailPool.forEach(s=>{
+      if(!s.mesh.visible)return;
+      s.life-=.022;
+      if(s.life<=0){s.mesh.visible=false;return;}
+      s.mesh.material.opacity=s.life*.45;
+      s.mesh.scale.x+= .008; s.mesh.scale.z+=.008;
+      s.mesh.scale.y=Math.max(.01,s.mesh.scale.y-.003);
+    });
+  }
+
+  // ── Bulles ──
+  if(bubbles&&now-g.userData.lastBubble>400+Math.random()*600){
+    const slot=bubbles.find(b=>!b.mesh.visible||b.life<=0);
+    if(slot){
+      const angle=Math.random()*Math.PI*2;
+      const r=.2+Math.random()*.15;
+      slot.ox=g.position.x+Math.cos(angle)*r;
+      slot.oz=g.position.z+Math.sin(angle)*r;
+      slot.mesh.position.set(slot.ox,.15,slot.oz);
+      slot.mesh.visible=true;
+      slot.life=1; slot.maxLife=1;
+      slot.mesh.material.color.set(g.userData.body.material.color);
+    }
+    g.userData.lastBubble=now;
+  }
+  if(bubbles){
+    bubbles.forEach(b=>{
+      if(!b.mesh.visible)return;
+      b.life-=.008;
+      if(b.life<=0){b.mesh.visible=false;return;}
+      b.mesh.position.y+=.012;
+      b.mesh.position.x=b.ox+Math.sin(t*3+b.life*10)*.03;
+      b.mesh.position.z=b.oz+Math.cos(t*2.5+b.life*8)*.03;
+      b.mesh.material.opacity=b.life*.4;
+      const sc=.6+b.life*.4;
+      b.mesh.scale.set(sc,sc,sc);
+    });
   }
 }
 
@@ -600,8 +751,8 @@ function animate(){
       const rgtX = Math.sin(camYaw + Math.PI/2);
       const rgtZ = Math.cos(camYaw + Math.PI/2);
       // fz=-1 → avancer (+ forward), fx=1 → droite (+ right)
-      const mx = fwdX*(-fz) + rgtX*fx;
-      const mz = fwdZ*(-fz) + rgtZ*fx;
+      const mx = fwdX*(-fz) - rgtX*fx;
+      const mz = fwdZ*(-fz) - rgtZ*fx;
       const len=Math.hypot(mx,mz)||1;
       myMesh.position.x=Math.max(-HALF,Math.min(HALF,myMesh.position.x+mx/len*SPEED*dt));
       myMesh.position.z=Math.max(-HALF,Math.min(HALF,myMesh.position.z+mz/len*SPEED*dt));
@@ -629,7 +780,7 @@ function animate(){
       lastFBPos=now;
     }
     document.getElementById('bsizedot').style.background=myColor;
-    animFlubber(myMesh,spd/(SPEED*dt+.001),t);
+    animFlubber(myMesh,spd/(SPEED*dt+.001),t,dx,dz);
     updateCamera();
   }
 
@@ -638,7 +789,8 @@ function animate(){
     const ox=p.mesh.position.x,oz=p.mesh.position.z;
     p.mesh.position.x+=(p.tx-p.mesh.position.x)*.14;
     p.mesh.position.z+=(p.tz-p.mesh.position.z)*.14;
-    animFlubber(p.mesh,Math.hypot(p.mesh.position.x-ox,p.mesh.position.z-oz)*8,t);
+    const rdx=p.mesh.position.x-ox, rdz=p.mesh.position.z-oz;
+    animFlubber(p.mesh,Math.hypot(rdx,rdz)*8,t,rdx,rdz);
   });
 
   if(now-lastDots>33){drawMinimapDots();lastDots=now;}
