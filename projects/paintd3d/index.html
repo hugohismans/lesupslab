@@ -579,17 +579,23 @@ function animate(){
 
   if(myMesh){
     let fx=0,fz=0;
-    if(keys['KeyZ']||keys['ArrowUp'])   fz=-1;
-    if(keys['KeyS']||keys['ArrowDown']) fz=1;
-    if(keys['KeyQ']||keys['ArrowLeft']) fx=-1;
-    if(keys['KeyD']||keys['ArrowRight'])fx=1;
-    if(isMobile&&jlActive){fx=jlDelta.x;fz=jlDelta.y;}
-    if(isMobile&&jrActive){camYaw-=jrDelta.x*.05;}
+    // Codes physiques = indépendant AZERTY/QWERTY
+    if(keys['KeyW']||keys['KeyZ']||keys['ArrowUp'])   fz=-1;
+    if(keys['KeyS']||keys['ArrowDown'])               fz= 1;
+    if(keys['KeyA']||keys['KeyQ']||keys['ArrowLeft']) fx=-1;
+    if(keys['KeyD']||keys['ArrowRight'])              fx= 1;
+    // Joystick gauche : x=droite/gauche, y=avant/arrière
+    if(isMobile&&jlActive){fx=jlDelta.x; fz=jlDelta.y;}
+    // Joystick droit : rotation caméra (signe corrigé)
+    if(isMobile&&jrActive){camYaw+=jrDelta.x*.05;}
 
     const prevX=myMesh.position.x,prevZ=myMesh.position.z;
     if(fx!==0||fz!==0){
-      const mx=Math.sin(camYaw)*(-fz)+Math.cos(camYaw)*fx;
-      const mz=Math.cos(camYaw)*(-fz)-Math.sin(camYaw)*fx;
+      // Vecteurs caméra
+      const fwdX=-Math.sin(camYaw), fwdZ=-Math.cos(camYaw);
+      const rgtX= Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
+      const mx=rgtX*fx + fwdX*(-fz);
+      const mz=rgtZ*fx + fwdZ*(-fz);
       const len=Math.hypot(mx,mz)||1;
       myMesh.position.x=Math.max(-HALF,Math.min(HALF,myMesh.position.x+mx/len*SPEED*dt));
       myMesh.position.z=Math.max(-HALF,Math.min(HALF,myMesh.position.z+mz/len*SPEED*dt));
