@@ -609,10 +609,10 @@ function animate(){
     if(now-lastPaint>50){
       const painted=paintAt(myMesh.position.x,myMesh.position.z,myColor,BRUSH_SIZES[brushIdx]);
       lastPaint=now;
-      // Sync peinture Firebase (throttle séparé)
-      if(db&&painted&&painted.length>0&&now-lastFBPaint>200){
+      // Sync peinture Firebase : une clé par cellule (cx_cz) = pas de doublon
+      if(db&&painted&&painted.length>0){
         painted.forEach(({cx,cz,color})=>{
-          push(ref(db,'paint'),{cx,cz,color}).catch(e=>console.error('paint write error',e));
+          set(ref(db,`paint/${cx}_${cz}`),color).catch(e=>console.error('paint write error',e));
         });
         lastFBPaint=now;
       }
@@ -671,19 +671,21 @@ document.getElementById('bjoin').addEventListener('click',async()=>{
     onDisconnect(myRef).remove();
     set(myRef,{name:myName,color:myColor,x:spawnX,z:spawnZ,ts:Date.now()});
 
-    // Charger peinture existante
+    // Charger peinture existante (clé = "cx_cz", valeur = couleur)
     const snap=await get(ref(db,'paint'));
     if(snap.exists()){
-      const cellPx=PAINT_RES/GRID_N,cellMap=MAP_SIZE/GRID_N;
       const cells=[];
-      Object.values(snap.val()).forEach(p=>{
-        if(p.cx===undefined)return;
-        const idx=p.cz*GRID_N+p.cx;
-        if(grid[idx]===p.color)return;
-        grid[idx]=p.color;
-        cells.push({cx:p.cx,cz:p.cz,color:p.color});
+      Object.entries(snap.val()).forEach(([key,color])=>{
+        if(typeof color !== 'string') return; // ignorer anciens formats
+        const [cx,cz]=[parseInt(key.split('_')[0]),parseInt(key.split('_')[1])];
+        if(isNaN(cx)||isNaN(cz)) return;
+        const idx=cz*GRID_N+cx;
+        if(grid[idx]===color) return;
+        grid[idx]=color;
+        cells.push({cx,cz,color});
       });
       paintCells(cells);
+      console.log('Paint chargé:', cells.length, 'cellules');
     }
 
     // Joueurs
@@ -698,18 +700,20 @@ document.getElementById('bjoin').addEventListener('click',async()=>{
       updateUI();
     });
 
-    // Nouvelles cellules peintes
+    // Écouter les nouvelles cellules peintes en temps réel
     onValue(ref(db,'paint'),snap=>{
       if(!snap.exists())return;
       const cells=[];
-      Object.values(snap.val()).forEach(p=>{
-        if(p.cx===undefined)return;
-        const idx=p.cz*GRID_N+p.cx;
-        if(grid[idx]===p.color)return;
-        grid[idx]=p.color;
-        cells.push({cx:p.cx,cz:p.cz,color:p.color});
+      Object.entries(snap.val()).forEach(([key,color])=>{
+        if(typeof color !== 'string') return;
+        const [cx,cz]=[parseInt(key.split('_')[0]),parseInt(key.split('_')[1])];
+        if(isNaN(cx)||isNaN(cz)) return;
+        const idx=cz*GRID_N+cx;
+        if(grid[idx]===color) return;
+        grid[idx]=color;
+        cells.push({cx,cz,color});
       });
-      paintCells(cells);
+      if(cells.length>0) paintCells(cells);
     });
 
     console.log('Firebase connecté, db=',db,'myRef=',myRef);
