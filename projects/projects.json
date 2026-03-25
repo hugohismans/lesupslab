@@ -81,5 +81,15 @@
     ],
     "thumbnail": "thumb.png",
     "date": "2025-08-27"
+  },
+          {
+    "title": "paint3D",
+    "folder": "paintd3d",
+    "description": "bah un paint3d",
+    "tags": ["Three.js"
+    ],
+    "thumbnail": "thumb.png",
+    "date": "2025-08-27"
   }
+
 ]
