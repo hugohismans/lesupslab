@@ -568,7 +568,7 @@ if(isMobile){
    LOOP
 ══════════════════════════════════════ */
 const clock=new THREE.Clock();
-let lastPaint=0,lastFB=0,lastDots=0;
+let lastPaint=0,lastFBPos=0,lastFBPaint=0,lastDots=0;
 const SPEED=7,HALF=WORLD_W-.5;
 
 function animate(){
@@ -591,11 +591,12 @@ function animate(){
 
     const prevX=myMesh.position.x,prevZ=myMesh.position.z;
     if(fx!==0||fz!==0){
-      // Vecteurs caméra
-      const fwdX=-Math.sin(camYaw), fwdZ=-Math.cos(camYaw);
-      const rgtX= Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
-      const mx=rgtX*fx + fwdX*(-fz);
-      const mz=rgtZ*fx + fwdZ*(-fz);
+      // fz=-1 = W/Z = avancer, fx=1 = D = aller à droite
+      // camYaw=0 : caméra regarde vers Z+, forward=(sin,cos)
+      const fwdX=Math.sin(camYaw), fwdZ=Math.cos(camYaw);
+      const rgtX=Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
+      const mx=fwdX*(-fz)+rgtX*fx;
+      const mz=fwdZ*(-fz)+rgtZ*fx;
       const len=Math.hypot(mx,mz)||1;
       myMesh.position.x=Math.max(-HALF,Math.min(HALF,myMesh.position.x+mx/len*SPEED*dt));
       myMesh.position.z=Math.max(-HALF,Math.min(HALF,myMesh.position.z+mz/len*SPEED*dt));
@@ -604,18 +605,23 @@ function animate(){
     const dx=myMesh.position.x-prevX,dz=myMesh.position.z-prevZ;
     const spd=Math.hypot(dx,dz);
 
-    // Paint
+    // Paint sous le joueur
     if(now-lastPaint>50){
       const painted=paintAt(myMesh.position.x,myMesh.position.z,myColor,BRUSH_SIZES[brushIdx]);
       lastPaint=now;
-      if(db&&painted&&painted.length>0&&now-lastFB>180){
-        painted.forEach(({cx,cz,color})=>push(ref(db,'paint'),{cx,cz,color}));
-        lastFB=now;
+      // Sync peinture Firebase (throttle séparé)
+      if(db&&painted&&painted.length>0&&now-lastFBPaint>200){
+        painted.forEach(({cx,cz,color})=>{
+          push(ref(db,'paint'),{cx,cz,color}).catch(e=>console.error('paint write error',e));
+        });
+        lastFBPaint=now;
       }
     }
-    if(db&&now-lastFB>130){
-      set(myRef,{name:myName,color:myColor,x:+myMesh.position.x.toFixed(2),z:+myMesh.position.z.toFixed(2),ts:now});
-      lastFB=now;
+    // Sync position Firebase (throttle séparé)
+    if(db&&now-lastFBPos>100){
+      set(myRef,{name:myName,color:myColor,x:+myMesh.position.x.toFixed(2),z:+myMesh.position.z.toFixed(2),ts:now})
+        .catch(e=>console.error('pos write error',e));
+      lastFBPos=now;
     }
     document.getElementById('bsizedot').style.background=myColor;
     animFlubber(myMesh,spd/(SPEED*dt+.001),t);
@@ -706,12 +712,13 @@ document.getElementById('bjoin').addEventListener('click',async()=>{
       paintCells(cells);
     });
 
+    console.log('Firebase connecté, db=',db,'myRef=',myRef);
     document.getElementById('status').textContent='⬤ Connecté';
     document.getElementById('status').className='ok';
   }catch(e){
-    document.getElementById('status').textContent='⬤ Mode solo';
+    console.error('Firebase erreur:', e);
+    document.getElementById('status').textContent='⬤ Erreur Firebase: '+e.message;
     document.getElementById('status').className='err';
-    console.warn(e);
   }
 });
 
