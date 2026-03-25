@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FlubberWorld</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0c15;
+  --panel:#13162a;
+  --border:#252a45;
+  --accent:#6affb0;
+  --text:#e8ecff;
+  --dim:#6b7299;
+}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;overflow:hidden;width:100vw;height:100vh;}
+canvas{display:block;width:100vw;height:100vh;}
+
+/* LOGIN */
+#login{
+  position:fixed;inset:0;
+  background:rgba(8,10,20,0.93);
+  backdrop-filter:blur(16px);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:44px 36px;
+  width:340px;
+  text-align:center;
+  animation:up .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.card h1{font-family:'Fredoka One',cursive;font-size:2.2rem;color:var(--accent);margin-bottom:4px;letter-spacing:1px;}
+.card p{color:var(--dim);font-size:.85rem;margin-bottom:32px;}
+.blob-preview{
+  width:72px;height:72px;
+  border-radius:50% 50% 44% 44%;
+  margin:0 auto 24px;
+  animation:blobIdle 2.2s ease-in-out infinite;
+  position:relative;
+}
+.blob-preview::before,.blob-preview::after{
+  content:'';position:absolute;
+  background:rgba(255,255,255,.88);
+  border-radius:50%;
+  width:13px;height:13px;
+  top:20px;
+}
+.blob-preview::before{left:16px;}
+.blob-preview::after{right:16px;}
+@keyframes blobIdle{
+  0%,100%{transform:scaleX(1) scaleY(1);}
+  50%{transform:scaleX(1.1) scaleY(.92);}
+}
+label{display:block;text-align:left;font-size:.72rem;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+input[type=text]{
+  width:100%;background:#1a1f38;
+  border:1px solid var(--border);border-radius:10px;
+  padding:11px 14px;color:var(--text);
+  font-family:'Nunito',sans-serif;font-size:.95rem;
+  outline:none;transition:border-color .2s;margin-bottom:18px;
+}
+input[type=text]:focus{border-color:var(--accent);}
+.colors{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:24px;}
+.cdot{
+  width:30px;height:30px;border-radius:50%;cursor:pointer;
+  border:3px solid transparent;transition:transform .15s,border-color .15s;
+}
+.cdot:hover{transform:scale(1.15);}
+.cdot.sel{border-color:#fff;transform:scale(1.2);}
+.btn{
+  width:100%;padding:13px;
+  background:var(--accent);color:#071a0f;
+  border:none;border-radius:11px;
+  font-family:'Fredoka One',cursive;font-size:1.15rem;
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+  box-shadow:0 4px 18px rgba(106,255,176,.25);
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(106,255,176,.4);}
+
+/* HUD */
+#hud{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);
+  display:none;align-items:center;gap:10px;
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:50px;padding:7px 18px 7px 10px;
+  z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.4);
+}
+#hud .hdot{width:26px;height:26px;border-radius:50%;animation:blobIdle 2.2s ease-in-out infinite;}
+#hud .hname{font-weight:700;font-size:.9rem;}
+#hud .hsep{color:var(--border);}
+#hud .hcount{color:var(--dim);font-size:.8rem;}
+
+/* CONTROLS */
+#hint{
+  position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  display:none;gap:8px;z-index:50;
+}
+.chip{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:5px 12px;
+  font-size:.75rem;color:var(--dim);
+}
+.chip b{color:#ffe57e;}
+
+/* PLAYERS LIST */
+#plist{
+  position:fixed;top:60px;right:14px;
+  display:none;flex-direction:column;gap:5px;z-index:50;min-width:130px;
+}
+.pbadge{
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:9px;padding:6px 11px;
+  display:flex;align-items:center;gap:7px;font-size:.78rem;
+  animation:fin .25s ease;
+}
+@keyframes fin{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
+.pdot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* STATUS */
+#status{position:fixed;bottom:16px;right:16px;font-size:.7rem;color:var(--dim);z-index:50;display:none;}
+#status.ok{color:var(--accent);}
+#status.err{color:#ff7e7e;}
+
+/* MOBILE JOYSTICKS */
+#joystick-left,#joystick-right{
+  position:fixed;bottom:60px;
+  width:110px;height:110px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:50%;display:none;
+  align-items:center;justify-content:center;
+  z-index:60;touch-action:none;
+}
+#joystick-left{left:30px;}
+#joystick-right{right:30px;}
+.jstick{
+  width:44px;height:44px;
+  background:rgba(255,255,255,.2);
+  border-radius:50%;pointer-events:none;
+  position:absolute;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="card">
+    <h1>FlubberWorld</h1>
+    <p>Le monde gélatineux multijoueur 🌍</p>
+    <div class="blob-preview" id="bpreview" style="background:#6affb0;"></div>
+    <label>Ton pseudo</label>
+    <input type="text" id="iname" placeholder="FlubberBob" maxlength="16"/>
+    <label>Couleur</label>
+    <div class="colors" id="cpicker"></div>
+    <button class="btn" id="bjoin">Rejoindre !</button>
+  </div>
+</div>
+
+<!-- CANVAS 3D -->
+<canvas id="c"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hdot" id="hdot"></div>
+  <span class="hname" id="hname"></span>
+  <span class="hsep">·</span>
+  <span class="hcount" id="hcount">1 joueur</span>
+</div>
+
+<div id="plist"></div>
+
+<div id="hint">
+  <div class="chip"><b>ZQSD</b> bouger</div>
+  <div class="chip"><b>Souris</b> regarder</div>
+  <div class="chip"><b>Clic</b> capturer le curseur</div>
+</div>
+
+<div id="status">⬤ Connexion…</div>
+
+<!-- MOBILE JOYSTICKS -->
+<div id="joystick-left"><div class="jstick" id="jlstick"></div></div>
+<div id="joystick-right"><div class="jstick" id="jrstick"></div></div>
+
+<!-- THREE.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script type="module">
+import { initializeApp }          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, onDisconnect, remove, push, get }
+                                   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+/* ─── FIREBASE CONFIG ─────────────────────────────── */
+const firebaseConfig = {
+  apiKey:            "AIzaSyDIElbdvAXznPXNYakSrqi6FBsVfy_qNys",
+  authDomain:        "paint3d-831ec.firebaseapp.com",
+  databaseURL:       "https://paint3d-831ec-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "paint3d-831ec",
+  storageBucket:     "paint3d-831ec.firebasestorage.app",
+  messagingSenderId: "51683432535",
+  appId:             "1:51683432535:web:79529d7cd0a05f843e2b12",
+  measurementId:     "G-70NG22GHW2"
+};
+
+/* ─── COLORS ──────────────────────────────────────── */
+const PALETTE = ['#6affb0','#ff7eaa','#7eb8ff','#ffe57e','#d07eff','#ff9f5e','#7ef6ff','#ff7e7e'];
+let myColor = PALETTE[0];
+
+/* ─── COLOR PICKER ────────────────────────────────── */
+const cpicker = document.getElementById('cpicker');
+PALETTE.forEach((c,i)=>{
+  const d = document.createElement('div');
+  d.className = 'cdot'+(i===0?' sel':'');
+  d.style.background = c;
+  d.onclick = ()=>{
+    document.querySelectorAll('.cdot').forEach(x=>x.classList.remove('sel'));
+    d.classList.add('sel');
+    myColor = c;
+    document.getElementById('bpreview').style.background = c;
+  };
+  cpicker.appendChild(d);
+});
+
+/* ─── THREE SETUP ─────────────────────────────────── */
+const canvas   = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0c15);
+scene.fog = new THREE.FogExp2(0x0a0c15, 0.035);
+
+/* CAMERA — TPS (derrière le perso) */
+const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 200);
+
+/* ─── LIGHTS ──────────────────────────────────────── */
+scene.add(new THREE.AmbientLight(0x8899cc, 0.7));
+const sun = new THREE.DirectionalLight(0xffeedd, 1.2);
+sun.position.set(20,40,20);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-40,right:40,top:40,bottom:-40,near:.5,far:120});
+scene.add(sun);
+const fillLight = new THREE.DirectionalLight(0x4466ff,.3);
+fillLight.position.set(-10,8,-10);
+scene.add(fillLight);
+
+/* ─── WORLD ───────────────────────────────────────── */
+const WORLD = 40;
+
+// Sol
+const floorMat = new THREE.MeshStandardMaterial({color:0x111420,roughness:.95});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(WORLD,WORLD), floorMat);
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true;
+scene.add(floor);
+
+// Grille
+const grid = new THREE.GridHelper(WORLD, WORLD, 0x1e2340, 0x171b30);
+grid.position.y = .001; scene.add(grid);
+
+// Bordure lumineuse
+const edgeGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(WORLD,.02,WORLD));
+const edgeMat = new THREE.LineBasicMaterial({color:0x2a3060});
+scene.add(new THREE.LineSegments(edgeGeo,edgeMat));
+
+// Quelques décos (piliers lumineux)
+for(let i=0;i<8;i++){
+  const angle = (i/8)*Math.PI*2;
+  const r = 14;
+  const geo = new THREE.CylinderGeometry(.08,.08,3,8);
+  const mat = new THREE.MeshStandardMaterial({color:0x2a3060,emissive:new THREE.Color(PALETTE[i%PALETTE.length]),emissiveIntensity:.4});
+  const mesh = new THREE.Mesh(geo,mat);
+  mesh.position.set(Math.cos(angle)*r, 1.5, Math.sin(angle)*r);
+  scene.add(mesh);
+  // Halo au sol
+  const halo = new THREE.Mesh(
+    new THREE.CircleGeometry(.6,16),
+    new THREE.MeshBasicMaterial({color:new THREE.Color(PALETTE[i%PALETTE.length]),transparent:true,opacity:.18})
+  );
+  halo.rotation.x = -Math.PI/2; halo.position.set(Math.cos(angle)*r,.005,Math.sin(angle)*r);
+  scene.add(halo);
+}
+
+/* ─── PAINT TILES ─────────────────────────────────── */
+const paintMap = new Map();
+function paintTile(gx,gz,col){
+  const k = `${gx}_${gz}`;
+  if(paintMap.has(k)){ paintMap.get(k).material.color.set(col); return; }
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(.9,.9),
+    new THREE.MeshStandardMaterial({color:col,roughness:.6,transparent:true,opacity:.82})
+  );
+  m.rotation.x = -Math.PI/2;
+  m.position.set(gx, .003, gz);
+  scene.add(m);
+  paintMap.set(k, m);
+}
+
+/* ─── FLUBBER MESH ────────────────────────────────── */
+function makeFlubber(hex){
+  const g = new THREE.Group();
+  const bodyGeo = new THREE.SphereGeometry(.38,24,16);
+  bodyGeo.scale(1,.68,1);
+  const body = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({color:hex,roughness:.28,metalness:.05}));
+  body.castShadow = true; body.position.y = .28; g.add(body);
+
+  const eyeM  = new THREE.MeshStandardMaterial({color:0xffffff});
+  const pupM  = new THREE.MeshStandardMaterial({color:0x111111});
+  [-1,1].forEach(side=>{
+    const eye  = new THREE.Mesh(new THREE.SphereGeometry(.065,8,8),eyeM);
+    const pup  = new THREE.Mesh(new THREE.SphereGeometry(.035,6,6),pupM);
+    eye.position.set(side*.125,.39,.32); pup.position.set(side*.125,.39,.355);
+    g.add(eye,pup);
+  });
+  const shine = new THREE.Mesh(new THREE.SphereGeometry(.055,6,6),
+    new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:.5}));
+  shine.position.set(-.12,.46,.24); g.add(shine);
+
+  g.userData.body  = body;
+  g.userData.phase = Math.random()*Math.PI*2;
+  g.userData.velX  = 0;
+  g.userData.velZ  = 0;
+  return g;
+}
+
+/* ─── PLAYER LABEL ────────────────────────────────── */
+function makeLabel(name){
+  const cv = document.createElement('canvas');
+  cv.width=256; cv.height=56;
+  const ctx = cv.getContext('2d');
+  ctx.font = 'bold 26px Nunito';
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.textAlign = 'center';
+  ctx.fillText(name,128,36);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true}));
+  sprite.scale.set(2,.5,1);
+  sprite.position.y = 1.15;
+  return sprite;
+}
+
+/* ─── PLAYERS ─────────────────────────────────────── */
+const players = {}; // id → {mesh, tx, tz, tRot}
+let myMesh = null, myPos = {x:0,z:0};
+let myId = null, db = null, myRef = null;
+
+function spawnPlayer(id,data){
+  if(players[id]) return;
+  const mesh = makeFlubber(data.color);
+  mesh.position.set(data.x,0,data.z);
+  mesh.add(makeLabel(data.name));
+  scene.add(mesh);
+  players[id] = {mesh, tx:data.x, tz:data.z, tRot:0, data};
+}
+function updatePlayer(id,data){
+  if(!players[id]){ spawnPlayer(id,data); return; }
+  const p = players[id];
+  p.tx = data.x; p.tz = data.z;
+  p.data = data;
+  p.mesh.userData.body.material.color.set(data.color);
+}
+function removePlayer(id){
+  if(!players[id]) return;
+  scene.remove(players[id].mesh);
+  delete players[id];
+}
+
+/* ─── CAMERA ORBIT ────────────────────────────────── */
+let camYaw = 0, camPitch = .35;
+const CAM_DIST = 5.5, CAM_HEIGHT = 2.5;
+
+function updateCamera(){
+  if(!myMesh) return;
+  const mx = myMesh.position.x, mz = myMesh.position.z;
+  camera.position.set(
+    mx - Math.sin(camYaw)*CAM_DIST,
+    CAM_HEIGHT + Math.sin(camPitch)*CAM_DIST*.6,
+    mz - Math.cos(camYaw)*CAM_DIST
+  );
+  camera.lookAt(mx, .5, mz);
+}
+
+/* ─── MOUSE LOOK ──────────────────────────────────── */
+let pointerLocked = false;
+canvas.addEventListener('click',()=>{
+  if(myMesh) canvas.requestPointerLock();
+});
+document.addEventListener('pointerlockchange',()=>{
+  pointerLocked = document.pointerLockElement === canvas;
+});
+document.addEventListener('mousemove',e=>{
+  if(!pointerLocked) return;
+  camYaw   -= e.movementX * .002;
+  camPitch  = Math.max(-.1, Math.min(.9, camPitch - e.movementY*.002));
+});
+
+/* ─── KEYBOARD ────────────────────────────────────── */
+const keys = {};
+document.addEventListener('keydown',e=>{ keys[e.code]=true; });
+document.addEventListener('keyup',  e=>{ keys[e.code]=false; });
+
+/* ─── MOBILE JOYSTICKS ────────────────────────────── */
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+let jlActive=false, jrActive=false;
+let jlOrigin={x:0,y:0}, jrOrigin={x:0,y:0};
+let jlDelta={x:0,y:0}, jrDelta={x:0,y:0};
+
+function setupJoystick(el,stick,getOrigin,setDelta,setActive){
+  el.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    getOrigin(t.clientX,t.clientY);
+    setActive(true);
+  },{passive:false});
+  el.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    setDelta(t.clientX,t.clientY);
+  },{passive:false});
+  el.addEventListener('touchend',()=>{
+    setActive(false);
+    stick.style.transform='';
+    setDelta(0,0,true);
+  });
+}
+
+if(isMobile){
+  document.getElementById('joystick-left').style.display='flex';
+  document.getElementById('joystick-right').style.display='flex';
+  setupJoystick(
+    document.getElementById('joystick-left'),
+    document.getElementById('jlstick'),
+    (x,y)=>{jlOrigin={x,y};},
+    (x,y,reset)=>{
+      if(reset){jlDelta={x:0,y:0};return;}
+      const dx=x-jlOrigin.x, dy=y-jlOrigin.y;
+      const d=Math.min(Math.hypot(dx,dy),40);
+      const a=Math.atan2(dy,dx);
+      jlDelta={x:Math.cos(a)*d/40, y:Math.sin(a)*d/40};
+      document.getElementById('jlstick').style.transform=`translate(${Math.cos(a)*d*.6}px,${Math.sin(a)*d*.6}px)`;
+    },
+    v=>jlActive=v
+  );
+  setupJoystick(
+    document.getElementById('joystick-right'),
+    document.getElementById('jrstick'),
+    (x,y)=>{jrOrigin={x,y};},
+    (x,y,reset)=>{
+      if(reset){jrDelta={x:0,y:0};return;}
+      const dx=x-jrOrigin.x, dy=y-jrOrigin.y;
+      const d=Math.min(Math.hypot(dx,dy),40);
+      const a=Math.atan2(dy,dx);
+      jrDelta={x:Math.cos(a)*d/40, y:Math.sin(a)*d/40};
+      document.getElementById('jrstick').style.transform=`translate(${Math.cos(a)*d*.6}px,${Math.sin(a)*d*.6}px)`;
+      camYaw -= jrDelta.x * .04;
+    },
+    v=>jrActive=v
+  );
+}
+
+/* ─── PAINT THROTTLE ──────────────────────────────── */
+let lastPaint = 0;
+function worldToGrid(v){ return Math.round(v); }
+
+/* ─── MOVEMENT ────────────────────────────────────── */
+const SPEED = 6;
+const clock = new THREE.Clock();
+
+function getInput(){
+  let fx=0,fz=0;
+  if(keys['KeyZ']||keys['ArrowUp'])    fz=-1;
+  if(keys['KeyS']||keys['ArrowDown'])  fz= 1;
+  if(keys['KeyQ']||keys['ArrowLeft'])  fx=-1;
+  if(keys['KeyD']||keys['ArrowRight']) fx= 1;
+  if(isMobile && jlActive){ fx=jlDelta.x; fz=jlDelta.y; }
+  return {fx,fz};
+}
+
+/* ─── FIREBASE WRITE ──────────────────────────────── */
+let lastFBWrite = 0;
+function writeToFirebase(){
+  if(!myRef||!myMesh) return;
+  const now = Date.now();
+  if(now-lastFBWrite < 80) return;
+  lastFBWrite = now;
+  set(myRef,{
+    name:  document.getElementById('hname').textContent,
+    color: myColor,
+    x:     parseFloat(myMesh.position.x.toFixed(2)),
+    z:     parseFloat(myMesh.position.z.toFixed(2)),
+    ts:    now
+  });
+}
+
+/* ─── ANIMATE ─────────────────────────────────────── */
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05);
+  const t  = clock.getElapsedTime ? clock.getElapsedTime() : 0;
+  const elapsed = performance.now()/1000;
+
+  // Camera rotation from right joystick (mobile continuous)
+  if(isMobile && jrActive){ camYaw -= jrDelta.x * .04; }
+
+  // My player movement
+  if(myMesh){
+    const {fx,fz} = getInput();
+    const half = WORLD/2 - .5;
+
+    if(fx!==0 || fz!==0){
+      // Move in camera-relative direction
+      const moveX = Math.sin(camYaw)*(-fz) + Math.cos(camYaw)*fx;
+      const moveZ = Math.cos(camYaw)*(-fz) - Math.sin(camYaw)*fx;
+      const len   = Math.hypot(moveX,moveZ)||1;
+      myMesh.position.x = Math.max(-half, Math.min(half, myMesh.position.x + moveX/len*SPEED*dt));
+      myMesh.position.z = Math.max(-half, Math.min(half, myMesh.position.z + moveZ/len*SPEED*dt));
+      // Face direction
+      myMesh.rotation.y = Math.atan2(moveX, moveZ);
+      myMesh.userData.velX = moveX/len;
+      myMesh.userData.velZ = moveZ/len;
+    } else {
+      myMesh.userData.velX *= .8;
+      myMesh.userData.velZ *= .8;
+    }
+
+    // Paint under player
+    const now = Date.now();
+    if(now-lastPaint > 120){
+      paintTile(worldToGrid(myMesh.position.x), worldToGrid(myMesh.position.z), myColor);
+      lastPaint = now;
+      // Save paint to Firebase
+      if(db){
+        push(ref(db,'paint'),{
+          gx: worldToGrid(myMesh.position.x),
+          gz: worldToGrid(myMesh.position.z),
+          color: myColor
+        });
+      }
+    }
+    writeToFirebase();
+    updateCamera();
+  }
+
+  // Animate all flubbers
+  Object.values(players).forEach(p=>{
+    const mesh = p.mesh;
+    // Smooth interpolate remote players
+    if(mesh !== myMesh){
+      mesh.position.x += (p.tx - mesh.position.x)*.15;
+      mesh.position.z += (p.tz - mesh.position.z)*.15;
+    }
+    const body = mesh.userData.body;
+    const ph   = mesh.userData.phase;
+    const vx   = mesh.userData.velX||0;
+    const vz   = mesh.userData.velZ||0;
+    const moving = Math.abs(vx)+Math.abs(vz) > .05 || (mesh!==myMesh && (Math.abs(p.tx-mesh.position.x)+Math.abs(p.tz-mesh.position.z))>.08);
+    if(moving){
+      const b = Math.sin(elapsed*12+ph)*.22;
+      body.scale.set(1+b*.6, 1-Math.abs(b)*.95, 1+b*.6);
+      body.position.y = .28 + Math.abs(Math.sin(elapsed*12+ph))*.1;
+    } else {
+      const b = Math.sin(elapsed*2.2+ph)*.038;
+      body.scale.set(1+b, 1-b*.7, 1+b);
+      body.position.y = .28 + Math.sin(elapsed*2.2+ph)*.012;
+    }
+  });
+
+  renderer.render(scene, camera);
+}
+
+/* ─── JOIN ────────────────────────────────────────── */
+document.getElementById('bjoin').addEventListener('click', async ()=>{
+  const name = (document.getElementById('iname').value.trim()||'Flubber').slice(0,16);
+  document.getElementById('login').style.display = 'none';
+
+  // Show HUD
+  document.getElementById('hud').style.display   = 'flex';
+  document.getElementById('hint').style.display  = 'flex';
+  document.getElementById('plist').style.display = 'flex';
+  document.getElementById('status').style.display= 'block';
+  document.getElementById('hdot').style.background = myColor;
+  document.getElementById('hname').textContent   = name;
+
+  // Spawn my flubber
+  myMesh = makeFlubber(myColor);
+  myMesh.add(makeLabel(name));
+  myMesh.position.set(0,0,0);
+  scene.add(myMesh);
+  myId = 'p_'+Math.random().toString(36).slice(2,9);
+  players[myId] = {mesh:myMesh, tx:0, tz:0, data:{name,color:myColor,x:0,z:0}};
+  updateCamera();
+  animate();
+
+  // Firebase
+  try{
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    myRef = ref(db, `players/${myId}`);
+    onDisconnect(myRef).remove();
+    set(myRef,{name,color:myColor,x:0,z:0,ts:Date.now()});
+
+    // Load existing paint
+    const paintSnap = await get(ref(db,'paint'));
+    if(paintSnap.exists()){
+      Object.values(paintSnap.val()).forEach(t=>paintTile(t.gx,t.gz,t.color));
+    }
+
+    // Listen players
+    onValue(ref(db,'players'), snap=>{
+      const data = snap.val()||{};
+      const seen = new Set();
+      Object.entries(data).forEach(([id,pd])=>{
+        if(id===myId) return;
+        seen.add(id);
+        if(players[id]) updatePlayer(id,pd);
+        else spawnPlayer(id,pd);
+      });
+      Object.keys(players).forEach(id=>{
+        if(id!==myId && !seen.has(id)) removePlayer(id);
+      });
+      // Update paint from other players
+      Object.entries(data).forEach(([id,pd])=>{
+        if(id===myId||!pd.x) return;
+        paintTile(worldToGrid(pd.x), worldToGrid(pd.z), pd.color);
+      });
+      updatePlayersUI();
+    });
+
+    // Listen new paint tiles
+    onValue(ref(db,'paint'), snap=>{
+      if(!snap.exists()) return;
+      Object.values(snap.val()).forEach(t=>paintTile(t.gx,t.gz,t.color));
+    });
+
+    document.getElementById('status').textContent = '⬤ Connecté';
+    document.getElementById('status').className   = 'ok';
+  } catch(e){
+    document.getElementById('status').textContent = '⬤ Mode solo (Firebase KO)';
+    document.getElementById('status').className   = 'err';
+    console.warn('Firebase error',e);
+    animate();
+  }
+});
+
+function updatePlayersUI(){
+  const list = document.getElementById('plist');
+  list.innerHTML='';
+  let n=0;
+  Object.values(players).forEach(p=>{
+    n++;
+    const b=document.createElement('div');
+    b.className='pbadge';
+    b.innerHTML=`<div class="pdot" style="background:${p.data.color}"></div><span>${p.data.name}</span>`;
+    list.appendChild(b);
+  });
+  document.getElementById('hcount').textContent = n===1?'1 joueur':`${n} joueurs`;
+}
+
+/* ─── RESIZE ──────────────────────────────────────── */
+window.addEventListener('resize',()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
