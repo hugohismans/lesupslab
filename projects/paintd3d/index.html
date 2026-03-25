@@ -595,8 +595,8 @@ function animate(){
       // camYaw=0 : caméra regarde vers Z+, forward=(sin,cos)
       const fwdX=Math.sin(camYaw), fwdZ=Math.cos(camYaw);
       const rgtX=-Math.cos(camYaw), rgtZ=Math.sin(camYaw);
-      const mx=fwdX*(-fz)+rgtX*fx;
-      const mz=fwdZ*(-fz)+rgtZ*fx;
+      const mx=fwdX*(-fz)-rgtX*fx;
+      const mz=fwdZ*(-fz)-rgtZ*fx;
       const len=Math.hypot(mx,mz)||1;
       myMesh.position.x=Math.max(-HALF,Math.min(HALF,myMesh.position.x+mx/len*SPEED*dt));
       myMesh.position.z=Math.max(-HALF,Math.min(HALF,myMesh.position.z+mz/len*SPEED*dt));
