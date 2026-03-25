@@ -905,14 +905,33 @@ document.getElementById('bjoin').addEventListener('click',async()=>{
   }
 });
 
+let lastUIHash='';
 function updateUI(){
-  const list=document.getElementById('plist'); list.innerHTML=''; let n=0;
-  Object.values(players).forEach(p=>{
-    n++;
-    const b=document.createElement('div'); b.className='pbadge';
+  const vals=Object.values(players);
+  const n=vals.length;
+  // Calcule un hash simple pour éviter de redessiner si rien n'a changé
+  const hash=vals.map(p=>p.data.name+p.data.color).join('|')+'|'+n;
+  if(hash===lastUIHash) return;
+  lastUIHash=hash;
+
+  const list=document.getElementById('plist');
+  // Met à jour sans vider — ajoute/modifie/supprime individuellement
+  const existing=new Map([...list.querySelectorAll('.pbadge')].map(el=>[el.dataset.id,el]));
+  const seen=new Set();
+
+  vals.forEach(p=>{
+    const id=p.data.name+p.data.color;
+    seen.add(id);
+    if(existing.has(id)) return; // déjà là, on touche pas
+    const b=document.createElement('div');
+    b.className='pbadge'; b.dataset.id=id;
     b.innerHTML=`<div class="pdot" style="background:${p.data.color}"></div><span>${p.data.name}</span>`;
     list.appendChild(b);
   });
+
+  // Retire les partis
+  existing.forEach((el,id)=>{ if(!seen.has(id)) el.remove(); });
+
   document.getElementById('hcount').textContent=n===1?'1 joueur':`${n} joueurs`;
 }
 
