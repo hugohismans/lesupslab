@@ -594,7 +594,7 @@ function animate(){
       // fz=-1 = W/Z = avancer, fx=1 = D = aller à droite
       // camYaw=0 : caméra regarde vers Z+, forward=(sin,cos)
       const fwdX=Math.sin(camYaw), fwdZ=Math.cos(camYaw);
-      const rgtX=Math.cos(camYaw), rgtZ=-Math.sin(camYaw);
+      const rgtX=-Math.cos(camYaw), rgtZ=Math.sin(camYaw);
       const mx=fwdX*(-fz)+rgtX*fx;
       const mz=fwdZ*(-fz)+rgtZ*fx;
       const len=Math.hypot(mx,mz)||1;
