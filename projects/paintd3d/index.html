@@ -738,7 +738,7 @@ function animate(){
     // Joystick gauche : x=droite/gauche, y=avant/arrière
     if(isMobile&&jlActive){fx=jlDelta.x; fz=jlDelta.y;}
     // Joystick droit : rotation caméra (signe corrigé)
-    if(isMobile&&jrActive){camYaw+=jrDelta.x*.05;}
+    if(isMobile&&jrActive){camYaw-=jrDelta.x*.05;}
 
     const prevX=myMesh.position.x,prevZ=myMesh.position.z;
     if(fx!==0||fz!==0){
