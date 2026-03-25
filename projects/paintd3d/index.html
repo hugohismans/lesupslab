@@ -158,7 +158,7 @@ input[type=text]:focus{border-color:rgba(255,255,255,.4);}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script type="module">
 import { initializeApp }     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, onDisconnect, push, get }
+import { getDatabase, ref, set, onValue, onDisconnect, push, get, remove }
                               from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 /* ══════════════════════════════════════
@@ -845,17 +845,39 @@ document.getElementById('bjoin').addEventListener('click',async()=>{
       console.log('Paint chargé:', cells.length, 'cellules');
     }
 
-    // Joueurs
+    // Joueurs — filtre par timestamp (timeout 8s)
+    const PLAYER_TIMEOUT = 8000;
     onValue(ref(db,'players'),snap=>{
       const data=snap.val()||{};
       const seen=new Set();
+      const nowTs=Date.now();
       Object.entries(data).forEach(([id,pd])=>{
-        if(id===myId)return; seen.add(id);
+        if(id===myId)return;
+        // Ignorer les joueurs dont le timestamp est trop vieux
+        if(pd.ts && nowTs-pd.ts > PLAYER_TIMEOUT) {
+          // Nettoyer Firebase pour ce joueur fantôme
+          remove(ref(db,`players/${id}`)).catch(()=>{});
+          return;
+        }
+        seen.add(id);
         players[id]?updatePlayer(id,pd):spawnPlayer(id,pd);
       });
       Object.keys(players).forEach(id=>{if(id!==myId&&!seen.has(id))removePlayer(id);});
       updateUI();
     });
+
+    // Nettoyage local toutes les 5s : retire les joueurs sans update récent
+    setInterval(()=>{
+      const nowTs=Date.now();
+      Object.entries(players).forEach(([id,p])=>{
+        if(id===myId)return;
+        if(p.data.ts && nowTs-p.data.ts > PLAYER_TIMEOUT){
+          removePlayer(id);
+          remove(ref(db,`players/${id}`)).catch(()=>{});
+          updateUI();
+        }
+      });
+    },5000);
 
     // Écouter les nouvelles cellules peintes en temps réel
     onValue(ref(db,'paint'),snap=>{
