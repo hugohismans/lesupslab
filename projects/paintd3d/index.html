@@ -509,7 +509,7 @@ document.addEventListener('pointerlockchange',()=>{pointerLocked=document.pointe
 document.addEventListener('mousemove',e=>{
   if(!pointerLocked)return;
   camYaw-=e.movementX*.0022;
-  camPitch=Math.max(-.08,Math.min(.85,camPitch-e.movementY*.0022));
+  camPitch=Math.max(-.08,Math.min(.85,camPitch+e.movementY*.0022));
 });
 function updateCamera(){
   if(!myMesh)return;
