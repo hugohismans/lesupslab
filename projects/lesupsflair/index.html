@@ -389,7 +389,12 @@ function soundLose() {
 function soundReactionContinue() { playTone(880,0,0.1,'sine',0.2); playTone(1100,0.12,0.1,'sine',0.2); }
 function soundReactionMain() { playTone(660,0,0.15,'triangle',0.25); playTone(660,0.18,0.15,'triangle',0.25); }
 function soundReactionNimp() { [[400,0],[350,0.1],[300,0.2],[250,0.32]].forEach(([f,t]) => playTone(f,t,0.12,'sawtooth',0.2)); }
-function soundClue() { playTone(1047,0,0.08,'sine',0.15); }
+function soundClue() { playTone(1047,0,0.08,'sine',0.15); }         // adversaire donne un indice
+function soundMyClue() { playTone(880,0,0.06,'sine',0.12); }          // moi je donne un indice
+function soundMyGuess() { playTone(660,0,0.08,'triangle',0.15); }     // moi je propose une réponse
+function soundOpponentGuess() {                                        // adversaire propose une réponse
+  playTone(520,0,0.07,'triangle',0.12); playTone(440,0.09,0.07,'triangle',0.1);
+}
 
 // ── État local ──
 let myId = localStorage.getItem('lsf_id') || null;
@@ -403,6 +408,7 @@ let timerEnd = null;
 let lastReactionTs = 0;
 let lastRoundStatus = null;
 let lastClueCount = 0;
+let lastGuessCount = 0;
 
 // État modal création
 let selectedDictKey = 'general';
@@ -675,6 +681,10 @@ function renderGame(g) {
   if (clueCount > lastClueCount && g.clueGiver !== myId) soundClue();
   lastClueCount = clueCount;
 
+  const guessCount = (g.guesses||[]).length;
+  if (guessCount > lastGuessCount && g.clueGiver === myId) soundOpponentGuess();
+  lastGuessCount = guessCount;
+
   if (g.reaction && g.reaction.from !== myId && g.reaction.ts > lastReactionTs) {
     lastReactionTs = g.reaction.ts;
     const label = {continue:'👍 Continue !', main:'✋ Demande la main', nimp:'😤 Tu fais nimp !'}[g.reaction.type];
@@ -782,6 +792,7 @@ window.submitClue = function() {
     return;
   }
   rejectEl.style.display = 'none';
+  soundMyClue();
   const clues = currentGame.clues || [];
   clues.push({ word, rejected: false });
   update(ref(db,'lsf_games/'+currentGameId), { clues });
@@ -793,6 +804,7 @@ window.submitGuess = function() {
   const input = document.getElementById('guessInput');
   const word = input.value.trim().toLowerCase();
   if (!word) return;
+  soundMyGuess();
   const guesses = currentGame.guesses || [];
   guesses.push(word);
   const won = isCloseEnough(word, currentGame.currentWord);
@@ -829,7 +841,7 @@ function markReady() {
 // Appelé par le listener quand les deux joueurs sont prêts (hôte seulement pour éviter la double écriture)
 function doNextRound(g) {
   const next = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0;
 
   if (next > 3) {
     update(ref(db,'lsf_games/'+currentGameId), { status:'finished' });
