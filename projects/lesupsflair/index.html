@@ -91,6 +91,24 @@
   .msg-error { background: #fde8e8; color: #c0392b; }
   .msg-info { background: #ebf5fb; color: #2980b9; }
   .msg-warn { background: #fef9e7; color: #d68910; }
+
+  /* REACTIONS */
+  .reaction-bar { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .btn-reaction { padding: 8px 14px; font-size: 0.88em; border: none; border-radius: 20px; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+  .btn-reaction:hover { transform: translateY(-2px); filter: brightness(0.92); }
+  .btn-reaction:active { transform: scale(0.96); }
+  .btn-continue { background: #d5f5e3; color: #1e8449; }
+  .btn-main { background: #fef9e7; color: #d68910; }
+  .btn-nimp { background: #fde8e8; color: #c0392b; }
+
+  /* TOAST REACTION */
+  #reactionToast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: #2c3e50; color: white; padding: 12px 24px; border-radius: 30px;
+    font-size: 1.05em; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+    transition: transform 0.3s cubic-bezier(.175,.885,.32,1.275); z-index: 999; white-space: nowrap;
+  }
+  #reactionToast.show { transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -159,6 +177,13 @@
     </div>
   </div>
 
+  <!-- Boutons de réaction -->
+  <div class="reaction-bar" id="reactionBar">
+    <button class="btn-reaction btn-continue" onclick="sendReaction('continue')">👍 Continue !</button>
+    <button class="btn-reaction btn-main" onclick="sendReaction('main')">✋ Demander la main</button>
+    <button class="btn-reaction btn-nimp" onclick="sendReaction('nimp')">😤 Tu fais nimp</button>
+  </div>
+
   <div class="tables-row">
     <div class="table-box">
       <div class="table-header">Indices</div>
@@ -218,6 +243,41 @@ const WORDS = [
   {w:"cave",d:2},{w:"balcon",d:2},{w:"terrasse",d:2},{w:"piscine",d:2},{w:"garage",d:2},
 ];
 
+// ── Sons (Web Audio API) ──
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTone(freq, start, dur, type='sine', vol=0.3) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime + start);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime + start);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + dur);
+  osc.start(audioCtx.currentTime + start);
+  osc.stop(audioCtx.currentTime + start + dur + 0.05);
+}
+
+function soundWin() {
+  // Fanfare ascendante joyeuse
+  [[523,0],[659,0.12],[784,0.24],[1047,0.36],[1047,0.5],[1319,0.62]].forEach(([f,t]) => playTone(f,t,0.25,'triangle',0.35));
+}
+function soundLose() {
+  // Descente triste
+  [[392,0],[330,0.2],[262,0.4],[220,0.65]].forEach(([f,t]) => playTone(f,t,0.3,'sawtooth',0.2));
+}
+function soundReactionContinue() {
+  playTone(880, 0, 0.1, 'sine', 0.2); playTone(1100, 0.12, 0.1, 'sine', 0.2);
+}
+function soundReactionMain() {
+  playTone(660, 0, 0.15, 'triangle', 0.25); playTone(660, 0.18, 0.15, 'triangle', 0.25);
+}
+function soundReactionNimp() {
+  [[400,0],[350,0.1],[300,0.2],[250,0.32]].forEach(([f,t]) => playTone(f,t,0.12,'sawtooth',0.2));
+}
+function soundClue() {
+  playTone(1047, 0, 0.08, 'sine', 0.15);
+}
+
 // ── État local ──
 let myId = localStorage.getItem('lsf_id') || null;
 let myName = localStorage.getItem('lsf_name') || null;
@@ -227,6 +287,9 @@ let gameListener = null;
 let lobbyListener = null;
 let timerInterval = null;
 let timerEnd = null;
+let lastReactionTs = 0;
+let lastRoundStatus = null;
+let lastClueCount = 0;
 
 // Génère un ID unique simple
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -390,6 +453,27 @@ function stopGameListener() {
 // ── GAME RENDER ──
 function renderGame(g) {
   showScreen('gameScreen');
+  audioCtx.resume();
+
+  // Sons de fin de manche
+  if (g.status === 'round_end' && lastRoundStatus !== 'round_end') {
+    g.roundResult === 'win' ? soundWin() : soundLose();
+  }
+  lastRoundStatus = g.status;
+
+  // Son nouveau indice
+  const clueCount = (g.clues||[]).length;
+  if (clueCount > lastClueCount && g.clueGiver !== myId) soundClue();
+  lastClueCount = clueCount;
+
+  // Réactions reçues de l'adversaire
+  if (g.reaction && g.reaction.from !== myId && g.reaction.ts > lastReactionTs) {
+    lastReactionTs = g.reaction.ts;
+    const label = REACTION_LABELS[g.reaction.type] || g.reaction.type;
+    showReactionToast(`${g.reaction.fromName} : ${label}`);
+    REACTION_SOUNDS[g.reaction.type]?.();
+  }
+
   const isClueGiver = g.clueGiver === myId;
   const clues = g.clues || [];
   const guesses = g.guesses || [];
@@ -554,6 +638,8 @@ window.nextRound = function() {
     update(ref(db,'lsf_games/'+currentGameId), { status: 'finished' });
     return;
   }
+  lastRoundStatus = null;
+  lastClueCount = 0;
   // Swap clue giver
   const nextClueGiver = g.clueGiver === g.host ? g.guest : g.host;
   const word = pickWord();
@@ -569,6 +655,7 @@ window.nextRound = function() {
     timerEnd: Date.now() + 60000,
     roundResult: null,
     lastScore: null,
+    reaction: null,
   });
 };
 
@@ -581,12 +668,14 @@ function endRound(won) {
 function renderResult(g) {
   showScreen('resultScreen');
   clearInterval(timerInterval);
+  audioCtx.resume();
   const myScore = g.scores?.[myId] || 0;
   const otherId = myId === g.host ? g.guest : g.host;
   const otherScore = g.scores?.[otherId] || 0;
   const myName_ = g.names?.[myId] || myName;
   const otherName = g.names?.[otherId] || '?';
   const won = myScore >= otherScore;
+  setTimeout(() => won ? soundWin() : soundLose(), 400);
   document.getElementById('resultBanner').className = 'result-banner ' + (won?'result-win':'result-lose');
   document.getElementById('resultBanner').textContent = won ? '✓ Victoire !' : '✗ Défaite';
   document.getElementById('resultTable').innerHTML = `
@@ -612,6 +701,35 @@ function pickWord() {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// ── REACTIONS ──
+const REACTION_LABELS = {
+  continue: '👍 Continue !',
+  main: '✋ Demande la main',
+  nimp: '😤 Tu fais nimp !',
+};
+const REACTION_SOUNDS = {
+  continue: soundReactionContinue,
+  main: soundReactionMain,
+  nimp: soundReactionNimp,
+};
+
+window.sendReaction = function(type) {
+  if (!currentGameId) return;
+  audioCtx.resume();
+  REACTION_SOUNDS[type]?.();
+  update(ref(db,'lsf_games/'+currentGameId), {
+    reaction: { type, from: myId, fromName: myName, ts: Date.now() }
+  });
+};
+
+function showReactionToast(text) {
+  const toast = document.getElementById('reactionToast');
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
 // ── HELPERS ──
 function showMsg(id, msg, type) {
   const el = document.getElementById(id);
@@ -626,5 +744,6 @@ if (myName) {
 }
 document.getElementById('pseudoInput').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
 </script>
+<div id="reactionToast"></div>
 </body>
 </html>
