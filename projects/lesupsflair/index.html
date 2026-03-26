@@ -252,7 +252,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, update, remove, onValue, off }
+import { getDatabase, ref, set, get, update, remove, onValue }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -578,7 +578,7 @@ function startLobbyListener() {
   });
 }
 function stopLobbyListener() {
-  if (lobbyListener) { off(ref(db,'lsf_games')); lobbyListener = null; }
+  if (lobbyListener) { lobbyListener(); lobbyListener = null; }
 }
 
 // ── CREATE GAME ──
@@ -667,7 +667,7 @@ function listenGame(gameId) {
   });
 }
 function stopGameListener() {
-  if (gameListener && currentGameId) { off(ref(db,'lsf_games/'+currentGameId)); gameListener = null; }
+  if (gameListener) { gameListener(); gameListener = null; }
   clearInterval(timerInterval);
 }
 
