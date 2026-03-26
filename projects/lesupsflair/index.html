@@ -6,7 +6,7 @@
 <title>LeSuperFlair</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 20px 0; }
   .screen { display: none; width: 100%; max-width: 700px; margin: 0 auto; padding: 20px; }
   .screen.active { display: block; }
 
@@ -650,7 +650,18 @@ function listenGame(gameId) {
   stopGameListener();
   gameListener = onValue(ref(db,'lsf_games/'+gameId), snap => {
     const g = snap.val();
-    if (!g) return;
+    if (!g) {
+      // Partie supprimée par l'adversaire avant qu'on voie les résultats
+      if (!document.getElementById('resultScreen').classList.contains('active')
+          && !document.getElementById('lobbyScreen').classList.contains('active')) {
+        showScreen('resultScreen');
+        document.getElementById('resultBanner').className = 'result-banner result-lose';
+        document.getElementById('resultBanner').textContent = 'Partie terminée';
+        document.getElementById('resultTable').innerHTML = '';
+        document.getElementById('resultMsg').textContent = "L'adversaire a quitté la partie.";
+      }
+      return;
+    }
     currentGame = g;
     if (g.status === 'waiting') return;
     if (g.status === 'playing' || g.status === 'round_end') renderGame(g);
