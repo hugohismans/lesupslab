@@ -400,7 +400,6 @@ function soundOpponentGuess() {                                        // advers
 }
 
 // ── État local ──
-let myId = localStorage.getItem('lsf_id') || null;
 let myName = localStorage.getItem('lsf_name') || null;
 let currentGameId = null;
 let currentGame = null;
@@ -418,6 +417,12 @@ let selectedDictKey = 'general';
 let customWords = null; // [{w, d}] si fichier uploadé
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// ── ID de session ──
+// sessionStorage = unique par onglet → deux onglets du même navigateur = deux joueurs distincts
+let myId = sessionStorage.getItem('lsf_id') || uid();
+sessionStorage.setItem('lsf_id', myId);
+
 
 // ── Algo proximité mots ──
 function levenshtein(a, b) {
@@ -468,7 +473,6 @@ window.login = function() {
   if (!name || name.length < 2) { showMsg('loginMsg','Pseudo trop court','error'); return; }
   if (!myId) myId = uid();
   myName = name;
-  localStorage.setItem('lsf_id', myId);
   localStorage.setItem('lsf_name', myName);
   document.getElementById('pseudoDisplay').textContent = myName;
   showScreen('lobbyScreen');
