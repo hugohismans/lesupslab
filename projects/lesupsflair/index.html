@@ -421,6 +421,14 @@ function levenshtein(a, b) {
 function normalize(w) {
   return w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
 }
+function isCloseEnough(guess, target) {
+  const g = normalize(guess), t = normalize(target);
+  if (g === t) return true;
+  const dist = levenshtein(g, t);
+  // Tolérance : 1 faute pour mots ≤6 lettres, 2 fautes au-delà
+  const tolerance = t.length <= 6 ? 1 : 2;
+  return dist <= tolerance;
+}
 function isTooClose(clue, target) {
   const c = normalize(clue), t = normalize(target);
   if (c === t) return { bad: true, reason: "C'est le mot lui-même !" };
@@ -787,8 +795,8 @@ window.submitGuess = function() {
   if (!word) return;
   const guesses = currentGame.guesses || [];
   guesses.push(word);
-  const won = normalize(word) === normalize(currentGame.currentWord);
-  if (won || guesses.length >= 3) {
+  const won = isCloseEnough(word, currentGame.currentWord);
+  if (won || guesses.length >= 4) {
     update(ref(db,'lsf_games/'+currentGameId), { guesses, status:'round_end', roundResult: won?'win':'lose' });
     computeAndSaveScore(won);
   } else {
