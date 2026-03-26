@@ -640,6 +640,13 @@ function listenGame(gameId) {
     if (g.status === 'finished') renderResult(g);
     if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
       showScreen('gameScreen');
+
+    // Les deux joueurs sont prêts → l'hôte déclenche la manche suivante
+    if (g.status === 'round_end' && g.host && g.guest
+        && g.readyForNext?.[g.host] && g.readyForNext?.[g.guest]
+        && g.host === myId) {
+      doNextRound(g);
+    }
   });
 }
 function stopGameListener() {
@@ -684,7 +691,12 @@ function renderGame(g) {
     document.getElementById('wordDisplay').className = 'word-hidden';
   }
 
-  startTimer(g.timerEnd);
+  // Timer : on lance seulement en cours de manche, on arrête à la fin
+  if (g.status === 'playing') {
+    startTimer(g.timerEnd);
+  } else {
+    clearInterval(timerInterval);
+  }
 
   document.getElementById('cluesList').innerHTML = clues.map(c =>
     `<div class="table-row ${c.rejected?'rejected':''}">${c.word}${c.rejected?' ❌':''}</div>`
@@ -707,11 +719,24 @@ function renderGame(g) {
     banner.textContent = won ? `✓ Bravo ! Le mot était "${g.currentWord}"` : `✗ Perdu. Le mot était "${g.currentWord}"`;
     document.getElementById('gameMsg').innerHTML = '';
     document.getElementById('gameMsg').appendChild(banner);
-    const nextBtn = document.createElement('button');
-    nextBtn.className = 'btn btn-blue';
-    nextBtn.textContent = g.round >= 3 ? 'Voir les résultats' : 'Manche suivante';
-    nextBtn.onclick = nextRound;
-    btns.appendChild(nextBtn);
+
+    const otherId = myId === g.host ? g.guest : g.host;
+    const iReady = !!(g.readyForNext?.[myId]);
+    const otherReady = !!(g.readyForNext?.[otherId]);
+    const label = g.round >= 3 ? 'Voir les résultats' : 'Manche suivante';
+
+    if (!iReady) {
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-blue';
+      nextBtn.textContent = label + ' →';
+      nextBtn.onclick = markReady;
+      btns.appendChild(nextBtn);
+    } else {
+      const waiting = document.createElement('div');
+      waiting.style.cssText = 'color:#888;font-size:0.9em;padding:8px';
+      waiting.textContent = otherReady ? '⏳ Lancement...' : '✓ Prêt — en attente de l\'adversaire…';
+      btns.appendChild(waiting);
+    }
   } else {
     document.getElementById('gameMsg').innerHTML = '';
   }
@@ -786,12 +811,22 @@ function computeAndSaveScore(won) {
   });
 }
 
-// ── NEXT ROUND ──
-window.nextRound = function() {
-  const g = currentGame;
+// ── NEXT ROUND — système de double confirmation ──
+function markReady() {
+  update(ref(db,'lsf_games/'+currentGameId), {
+    [`readyForNext/${myId}`]: true
+  });
+}
+
+// Appelé par le listener quand les deux joueurs sont prêts (hôte seulement pour éviter la double écriture)
+function doNextRound(g) {
   const next = (g.round||1) + 1;
-  if (next > 3) { update(ref(db,'lsf_games/'+currentGameId), { status:'finished' }); return; }
   lastRoundStatus = null; lastClueCount = 0;
+
+  if (next > 3) {
+    update(ref(db,'lsf_games/'+currentGameId), { status:'finished' });
+    return;
+  }
   const words = g.dictKey === 'custom' ? (g.customWords||[]) : (DICTIONARIES[g.dictKey]?.words || DICTIONARIES.general.words);
   const word = pickWordFrom(words);
   update(ref(db,'lsf_games/'+currentGameId), {
@@ -800,9 +835,9 @@ window.nextRound = function() {
     currentWord: word.w, wordDifficulty: word.d,
     clues: [], guesses: [],
     timerStart: Date.now(), timerEnd: Date.now() + 60000,
-    roundResult: null, lastScore: null, reaction: null,
+    roundResult: null, lastScore: null, reaction: null, readyForNext: null,
   });
-};
+}
 
 function endRound(won) {
   update(ref(db,'lsf_games/'+currentGameId), { status:'round_end', roundResult: won?'win':'lose' });
