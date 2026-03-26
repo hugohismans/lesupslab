@@ -671,19 +671,22 @@ function stopGameListener() {
 // ── GAME RENDER ──
 function renderGame(g) {
   showScreen('gameScreen');
-  audioCtx.resume();
-
-  if (g.status === 'round_end' && lastRoundStatus !== 'round_end')
-    g.roundResult === 'win' ? soundWin() : soundLose();
-  lastRoundStatus = g.status;
 
   const clueCount = (g.clues||[]).length;
-  if (clueCount > lastClueCount && g.clueGiver !== myId) soundClue();
-  lastClueCount = clueCount;
-
   const guessCount = (g.guesses||[]).length;
-  if (guessCount > lastGuessCount && g.clueGiver === myId) soundOpponentGuess();
+  const roundJustEnded = g.status === 'round_end' && lastRoundStatus !== 'round_end';
+  const newOpponentClue = clueCount > lastClueCount && g.clueGiver !== myId;
+  const newOpponentGuess = guessCount > lastGuessCount && g.clueGiver === myId;
+
+  lastRoundStatus = g.status;
+  lastClueCount = clueCount;
   lastGuessCount = guessCount;
+
+  audioCtx.resume().then(() => {
+    if (roundJustEnded) g.roundResult === 'win' ? soundWin() : soundLose();
+    else if (newOpponentClue) soundClue();
+    else if (newOpponentGuess) soundOpponentGuess();
+  });
 
   if (g.reaction && g.reaction.from !== myId && g.reaction.ts > lastReactionTs) {
     lastReactionTs = g.reaction.ts;
