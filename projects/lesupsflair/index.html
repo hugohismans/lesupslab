@@ -216,6 +216,9 @@
       <button class="btn btn-orange btn-sm" onclick="submitGuess()">Deviner</button>
     </div>
   </div>
+  <div id="waitForClueMsg" style="display:none;text-align:center;padding:10px;color:#888;font-size:0.9em;background:white;border-radius:8px;margin-bottom:14px;box-shadow:0 2px 6px rgba(0,0,0,.07)">
+    ⏳ En attente d'un nouvel indice…
+  </div>
 
   <div class="reaction-bar">
     <button class="btn-reaction btn-continue" onclick="sendReaction('continue')">👍 Continue !</button>
@@ -728,8 +731,19 @@ function renderGame(g) {
   ).join('') || '<div class="table-row" style="color:#aaa">—</div>';
 
   const validClues = clues.filter(c => !c.rejected);
-  document.getElementById('clueArea').style.display = isClueGiver && validClues.length < 4 && g.status === 'playing' ? 'block' : 'none';
-  document.getElementById('guessArea').style.display = !isClueGiver && validClues.length > 0 && g.status === 'playing' ? 'block' : 'none';
+  const canGuess = !isClueGiver && validClues.length > guesses.length && g.status === 'playing';
+  const waitingForClue = !isClueGiver && validClues.length > 0 && validClues.length <= guesses.length && g.status === 'playing';
+
+  // Le faiseur peut donner un indice seulement si le devineur a répondu au précédent
+  const canClue = isClueGiver && validClues.length < 4 && g.status === 'playing'
+    && (validClues.length === 0 || guesses.length >= validClues.length);
+
+  document.getElementById('clueArea').style.display = canClue ? 'block' : 'none';
+  document.getElementById('guessArea').style.display = canGuess ? 'block' : 'none';
+
+  // Message d'attente pour le devineur
+  const waitMsg = document.getElementById('waitForClueMsg');
+  waitMsg.style.display = waitingForClue ? 'block' : 'none';
 
   const btns = document.getElementById('actionBtns');
   btns.innerHTML = '';
@@ -807,6 +821,9 @@ window.submitGuess = function() {
   const input = document.getElementById('guessInput');
   const word = input.value.trim().toLowerCase();
   if (!word) return;
+  // Sécurité : ne pas dépasser le nombre d'indices
+  const validClues = (currentGame.clues||[]).filter(c => !c.rejected);
+  if ((currentGame.guesses||[]).length >= validClues.length) return;
   soundMyGuess();
   const guesses = currentGame.guesses || [];
   guesses.push(word);
