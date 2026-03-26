@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeSuperFlair</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .screen { display: none; width: 100%; max-width: 700px; margin: 0 auto; padding: 20px; }
+  .screen.active { display: block; }
+
+  /* LOGIN */
+  #loginScreen { text-align: center; }
+  #loginScreen h1 { font-size: 2.5em; color: #2c3e50; margin-bottom: 8px; }
+  #loginScreen p { color: #666; margin-bottom: 30px; }
+  .input-group { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  input[type=text] { padding: 12px 20px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 8px; outline: none; width: 220px; }
+  input[type=text]:focus { border-color: #3498db; }
+
+  /* LOBBY */
+  #lobbyScreen { text-align: center; }
+  .lobby-title { font-size: 1.8em; color: #2c3e50; margin-bottom: 6px; }
+  .pseudo-badge { display: inline-block; background: #3498db; color: white; padding: 6px 16px; border-radius: 20px; margin-bottom: 30px; font-size: 1em; }
+  .lobby-btns { display: flex; gap: 20px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap; }
+  .game-list { text-align: left; }
+  .game-list h3 { margin-bottom: 10px; color: #555; }
+  .game-item { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 14px 18px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .game-item span { font-size: 0.95em; color: #444; }
+  .no-games { color: #aaa; font-style: italic; padding: 20px; text-align: center; }
+
+  /* WAITING */
+  #waitingScreen { text-align: center; }
+  .game-code { font-size: 3em; font-weight: bold; letter-spacing: 6px; color: #e74c3c; margin: 20px 0; }
+  .waiting-dots::after { content: '...'; animation: dots 1.5s infinite; }
+  @keyframes dots { 0%,20%{content:'.'} 40%{content:'..'} 60%,100%{content:'...'} }
+
+  /* GAME */
+  #gameScreen { max-width: 750px; }
+  .game-header { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 14px; text-align: center; border-left: 5px solid #e74c3c; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .round-info { color: #888; font-size: 0.9em; margin-bottom: 4px; }
+  .word-display { font-size: 2em; font-weight: bold; color: #2c3e50; }
+  .word-hidden { font-size: 1.4em; color: #999; letter-spacing: 3px; }
+  .role-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-top: 6px; }
+  .role-clue { background: #e8f5e9; color: #27ae60; }
+  .role-guess { background: #fff3e0; color: #e67e22; }
+
+  .timer-bar { background: #eee; border-radius: 4px; height: 8px; margin-bottom: 14px; overflow: hidden; }
+  .timer-fill { height: 100%; background: #2ecc71; transition: width 1s linear, background 1s; border-radius: 4px; }
+
+  .action-btns { display: flex; gap: 10px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
+
+  .tables-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .table-box { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.07); }
+  .table-header { background: #f0f0f0; font-weight: bold; padding: 10px 14px; font-size: 0.95em; border-bottom: 1px solid #e0e0e0; }
+  .table-row { padding: 8px 14px; font-size: 0.95em; border-bottom: 1px solid #f0f0f0; color: #333; }
+  .table-row:last-child { border-bottom: none; }
+  .table-row.rejected { color: #e74c3c; text-decoration: line-through; }
+  .table-row.valid { color: #27ae60; }
+
+  .clue-input-area { background: white; border-radius: 8px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,.07); margin-bottom: 14px; }
+  .clue-input-area label { display: block; font-size: 0.9em; color: #666; margin-bottom: 6px; }
+  .clue-row { display: flex; gap: 8px; }
+  .clue-row input { flex: 1; }
+  .reject-reason { font-size: 0.82em; color: #e74c3c; margin-top: 4px; display: none; }
+
+  .guess-input-area { background: white; border-radius: 8px; padding: 14px; box-shadow: 0 2px 6px rgba(0,0,0,.07); margin-bottom: 14px; }
+
+  /* RESULT */
+  #resultScreen { text-align: center; }
+  .result-banner { padding: 18px; border-radius: 10px; font-size: 1.5em; font-weight: bold; margin-bottom: 20px; }
+  .result-win { background: #d5f5e3; color: #1e8449; }
+  .result-lose { background: #fde8e8; color: #c0392b; }
+  .result-table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 20px; text-align: left; }
+  .result-row { display: flex; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; }
+  .result-row:last-child { border-bottom: none; }
+  .result-row.total { font-weight: bold; font-size: 1.1em; }
+
+  /* BUTTONS */
+  .btn { padding: 12px 24px; font-size: 1em; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+  .btn:hover { filter: brightness(0.92); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn-blue { background: #3498db; color: white; }
+  .btn-green { background: #2ecc71; color: white; }
+  .btn-red { background: #e74c3c; color: white; }
+  .btn-orange { background: #e67e22; color: white; }
+  .btn-gray { background: #95a5a6; color: white; }
+  .btn-sm { padding: 8px 16px; font-size: 0.9em; }
+
+  .msg { padding: 10px 16px; border-radius: 6px; margin: 10px 0; font-size: 0.9em; }
+  .msg-error { background: #fde8e8; color: #c0392b; }
+  .msg-info { background: #ebf5fb; color: #2980b9; }
+  .msg-warn { background: #fef9e7; color: #d68910; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="screen active">
+  <h1>LeSuperFlair</h1>
+  <p>Le jeu des indices malins</p>
+  <div class="input-group">
+    <input type="text" id="pseudoInput" placeholder="Ton pseudo..." maxlength="16" />
+    <button class="btn btn-blue" onclick="login()">Jouer</button>
+  </div>
+  <div id="loginMsg"></div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobbyScreen" class="screen">
+  <div class="lobby-title">Bienvenue,</div>
+  <div class="pseudo-badge" id="pseudoDisplay"></div>
+  <div class="lobby-btns">
+    <button class="btn btn-green" onclick="createGame()">+ Créer une partie</button>
+    <button class="btn btn-gray btn-sm" onclick="logout()">Changer de pseudo</button>
+  </div>
+  <div class="game-list">
+    <h3>Parties disponibles</h3>
+    <div id="gamesList"><div class="no-games">Aucune partie en attente</div></div>
+  </div>
+</div>
+
+<!-- WAITING -->
+<div id="waitingScreen" class="screen">
+  <h2>Partie créée !</h2>
+  <p>Code de la partie :</p>
+  <div class="game-code" id="waitingCode"></div>
+  <p>En attente d'un adversaire <span class="waiting-dots"></span></p>
+  <br>
+  <button class="btn btn-gray btn-sm" onclick="cancelGame()">Annuler</button>
+</div>
+
+<!-- GAME -->
+<div id="gameScreen" class="screen">
+  <div class="game-header">
+    <div class="round-info" id="roundInfo">Manche 1</div>
+    <div id="wordDisplay" class="word-display"></div>
+    <span class="role-badge" id="roleBadge"></span>
+  </div>
+  <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+  <div class="action-btns" id="actionBtns"></div>
+
+  <!-- Clue giver input -->
+  <div class="clue-input-area" id="clueArea" style="display:none">
+    <label>Donner un indice (pas de mot trop proche !)</label>
+    <div class="clue-row">
+      <input type="text" id="clueInput" placeholder="Votre indice..." maxlength="30" onkeydown="if(event.key==='Enter')submitClue()" />
+      <button class="btn btn-blue btn-sm" onclick="submitClue()">Envoyer</button>
+    </div>
+    <div class="reject-reason" id="rejectReason"></div>
+  </div>
+
+  <!-- Guesser input -->
+  <div class="guess-input-area" id="guessArea" style="display:none">
+    <label>Proposez votre réponse :</label>
+    <div class="clue-row">
+      <input type="text" id="guessInput" placeholder="Votre réponse..." maxlength="30" onkeydown="if(event.key==='Enter')submitGuess()" />
+      <button class="btn btn-orange btn-sm" onclick="submitGuess()">Deviner</button>
+    </div>
+  </div>
+
+  <div class="tables-row">
+    <div class="table-box">
+      <div class="table-header">Indices</div>
+      <div id="cluesList"></div>
+    </div>
+    <div class="table-box">
+      <div class="table-header">Réponses</div>
+      <div id="guessesList"></div>
+    </div>
+  </div>
+  <div id="gameMsg"></div>
+</div>
+
+<!-- RESULT -->
+<div id="resultScreen" class="screen">
+  <h2 style="margin-bottom:16px">Résultats</h2>
+  <div class="result-banner" id="resultBanner"></div>
+  <div class="result-table" id="resultTable"></div>
+  <div id="resultMsg" style="margin-bottom:16px;color:#888;font-size:0.95em"></div>
+  <button class="btn btn-blue" onclick="goLobby()">Accueil</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, push, update, remove, onValue, off, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ── Firebase config (même projet jardin-feerique) ──
+const firebaseConfig = {
+  apiKey: "AIzaSyBUiGGKBssQ_wTrz5uYBkHRKeMk0GNWeFI",
+  authDomain: "jardin-feerique.firebaseapp.com",
+  databaseURL: "https://jardin-feerique-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "jardin-feerique",
+  storageBucket: "jardin-feerique.firebasestorage.app",
+  messagingSenderId: "240867851823",
+  appId: "1:240867851823:web:43529ae5008fe9dcd910da"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ── Dictionnaire français avec difficulté (1=facile, 5=difficile) ──
+const WORDS = [
+  {w:"chat",d:1},{w:"chien",d:1},{w:"maison",d:1},{w:"voiture",d:1},{w:"arbre",d:1},
+  {w:"soleil",d:1},{w:"eau",d:1},{w:"pain",d:1},{w:"école",d:1},{w:"livre",d:1},
+  {w:"fleur",d:2},{w:"montagne",d:2},{w:"musique",d:2},{w:"jardin",d:2},{w:"cuisine",d:2},
+  {w:"voyage",d:2},{w:"forêt",d:2},{w:"plage",d:2},{w:"nuit",d:2},{w:"lumière",d:2},
+  {w:"avocat",d:2},{w:"barreau",d:3},{w:"ténor",d:3},{w:"grotte",d:3},{w:"archipel",d:3},
+  {w:"parquet",d:3},{w:"tribunal",d:3},{w:"spectre",d:3},{w:"sabot",d:3},{w:"vipère",d:3},
+  {w:"obélisque",d:4},{w:"chrysalide",d:4},{w:"clavecin",d:4},{w:"stalactite",d:4},{w:"monocle",d:4},
+  {w:"zénith",d:4},{w:"pacotille",d:4},{w:"sinécure",d:4},{w:"phylactère",d:4},{w:"aiguade",d:4},
+  {w:"abscisse",d:5},{w:"fulgurant",d:5},{w:"mégalomane",d:5},{w:"troglodyte",d:5},{w:"péristyle",d:5},
+  {w:"entracte",d:3},{w:"bivouac",d:4},{w:"caravane",d:2},{w:"éclair",d:2},{w:"cascade",d:2},
+  {w:"tambour",d:2},{w:"fanfare",d:3},{w:"carnaval",d:3},{w:"masque",d:2},{w:"déguisement",d:3},
+  {w:"bougie",d:2},{w:"chandelier",d:3},{w:"lustre",d:3},{w:"lampadaire",d:3},{w:"lanterne",d:2},
+  {w:"fenêtre",d:1},{w:"porte",d:1},{w:"escalier",d:2},{w:"couloir",d:2},{w:"grenier",d:2},
+  {w:"cave",d:2},{w:"balcon",d:2},{w:"terrasse",d:2},{w:"piscine",d:2},{w:"garage",d:2},
+];
+
+// ── État local ──
+let myId = localStorage.getItem('lsf_id') || null;
+let myName = localStorage.getItem('lsf_name') || null;
+let currentGameId = null;
+let currentGame = null;
+let gameListener = null;
+let lobbyListener = null;
+let timerInterval = null;
+let timerEnd = null;
+
+// Génère un ID unique simple
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// ── Word similarity (algo clé) ──
+function levenshtein(a, b) {
+  a = a.toLowerCase(); b = b.toLowerCase();
+  const dp = Array.from({length:a.length+1},(_,i)=>Array.from({length:b.length+1},(_,j)=>i||j));
+  for(let i=1;i<=a.length;i++) for(let j=1;j<=b.length;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+
+function normalize(w) {
+  // supprime accents, met en minuscule
+  return w.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+
+function isTooClose(clue, target) {
+  const c = normalize(clue), t = normalize(target);
+  if (c === t) return { bad: true, reason: "C'est le mot lui-même !" };
+  // containment
+  if (c.includes(t) || t.includes(c)) return { bad: true, reason: "Le mot est contenu dans l'indice" };
+  // Levenshtein normalisé
+  const lev = levenshtein(c, t);
+  const maxLen = Math.max(c.length, t.length);
+  const sim = 1 - lev / maxLen;
+  if (sim > 0.6) return { bad: true, reason: `Trop proche du mot (${Math.round(sim*100)}% similaire)` };
+  // préfixe commun > 60% du mot cible
+  let commonPfx = 0;
+  while (commonPfx < c.length && commonPfx < t.length && c[commonPfx] === t[commonPfx]) commonPfx++;
+  if (commonPfx / t.length > 0.6 && t.length > 3) return { bad: true, reason: "Préfixe trop similaire" };
+  // suffixe commun (for plurals/conjugation)
+  const rc = c.split('').reverse().join(''), rt = t.split('').reverse().join('');
+  let commonSfx = 0;
+  while (commonSfx < rc.length && commonSfx < rt.length && rc[commonSfx] === rt[commonSfx]) commonSfx++;
+  if (commonSfx / t.length > 0.65 && t.length > 4) return { bad: true, reason: "Trop similaire (terminaison)" };
+  return { bad: false };
+}
+
+// ── Navigation entre écrans ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── LOGIN ──
+window.login = function() {
+  const name = document.getElementById('pseudoInput').value.trim();
+  if (!name || name.length < 2) { showMsg('loginMsg','Pseudo trop court','error'); return; }
+  if (!myId) myId = uid();
+  myName = name;
+  localStorage.setItem('lsf_id', myId);
+  localStorage.setItem('lsf_name', myName);
+  document.getElementById('pseudoDisplay').textContent = myName;
+  showScreen('lobbyScreen');
+  startLobbyListener();
+};
+
+window.logout = function() {
+  stopLobbyListener();
+  showScreen('loginScreen');
+  document.getElementById('pseudoInput').value = myName || '';
+};
+
+// ── LOBBY ──
+function startLobbyListener() {
+  stopLobbyListener();
+  const gamesRef = ref(db, 'lsf_games');
+  lobbyListener = onValue(gamesRef, snap => {
+    const list = document.getElementById('gamesList');
+    const data = snap.val();
+    if (!data) { list.innerHTML = '<div class="no-games">Aucune partie en attente</div>'; return; }
+    const open = Object.entries(data).filter(([,g]) => g.status === 'waiting' && g.host !== myId);
+    if (!open.length) { list.innerHTML = '<div class="no-games">Aucune partie en attente</div>'; return; }
+    list.innerHTML = open.map(([id, g]) => `
+      <div class="game-item">
+        <span>Partie de <strong>${g.hostName}</strong></span>
+        <button class="btn btn-green btn-sm" onclick="joinGame('${id}')">Rejoindre</button>
+      </div>`).join('');
+  });
+}
+
+function stopLobbyListener() {
+  if (lobbyListener) { off(ref(db,'lsf_games')); lobbyListener = null; }
+}
+
+window.createGame = function() {
+  const gameId = uid();
+  const word = pickWord();
+  set(ref(db, 'lsf_games/' + gameId), {
+    status: 'waiting',
+    host: myId,
+    hostName: myName,
+    round: 1,
+    scores: { [myId]: 0 },
+    names: { [myId]: myName },
+    currentWord: word.w,
+    wordDifficulty: word.d,
+    wordStats: {},
+    clueGiver: myId,
+    clues: [],
+    guesses: [],
+    timerStart: null,
+  });
+  currentGameId = gameId;
+  document.getElementById('waitingCode').textContent = gameId.slice(0,6).toUpperCase();
+  stopLobbyListener();
+  showScreen('waitingScreen');
+  listenGame(gameId);
+};
+
+window.joinGame = function(gameId) {
+  get(ref(db, 'lsf_games/' + gameId)).then(snap => {
+    const g = snap.val();
+    if (!g || g.status !== 'waiting') { alert("Partie non disponible"); return; }
+    const ts = Date.now() + 60000; // 60s timer
+    update(ref(db, 'lsf_games/' + gameId), {
+      status: 'playing',
+      guest: myId,
+      guestName: myName,
+      [`scores/${myId}`]: 0,
+      [`names/${myId}`]: myName,
+      timerStart: Date.now(),
+      timerEnd: ts,
+    });
+    currentGameId = gameId;
+    stopLobbyListener();
+    listenGame(gameId);
+  });
+};
+
+window.cancelGame = function() {
+  if (currentGameId) { remove(ref(db,'lsf_games/'+currentGameId)); currentGameId = null; }
+  stopGameListener();
+  showScreen('lobbyScreen');
+  startLobbyListener();
+};
+
+// ── GAME LISTENER ──
+function listenGame(gameId) {
+  stopGameListener();
+  gameListener = onValue(ref(db,'lsf_games/'+gameId), snap => {
+    const g = snap.val();
+    if (!g) return;
+    currentGame = g;
+    if (g.status === 'waiting') return; // waiting screen already shown
+    if (g.status === 'playing' || g.status === 'round_end') renderGame(g);
+    if (g.status === 'finished') renderResult(g);
+    if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active')) {
+      showScreen('gameScreen');
+    }
+  });
+}
+
+function stopGameListener() {
+  if (gameListener && currentGameId) { off(ref(db,'lsf_games/'+currentGameId)); gameListener = null; }
+  clearInterval(timerInterval);
+}
+
+// ── GAME RENDER ──
+function renderGame(g) {
+  showScreen('gameScreen');
+  const isClueGiver = g.clueGiver === myId;
+  const clues = g.clues || [];
+  const guesses = g.guesses || [];
+
+  document.getElementById('roundInfo').textContent = `Manche ${g.round}`;
+  document.getElementById('roleBadge').textContent = isClueGiver ? 'Vous faites deviner' : 'Vous devinez';
+  document.getElementById('roleBadge').className = 'role-badge ' + (isClueGiver ? 'role-clue' : 'role-guess');
+
+  // Word display
+  if (isClueGiver) {
+    document.getElementById('wordDisplay').textContent = g.currentWord;
+    document.getElementById('wordDisplay').className = 'word-display';
+  } else {
+    document.getElementById('wordDisplay').textContent = '? ? ? ? ?';
+    document.getElementById('wordDisplay').className = 'word-hidden';
+  }
+
+  // Timer
+  startTimer(g.timerEnd);
+
+  // Clues list
+  const cluesList = document.getElementById('cluesList');
+  cluesList.innerHTML = clues.map(c =>
+    `<div class="table-row ${c.rejected?'rejected':''}">${c.word}${c.rejected?' ❌':''}</div>`
+  ).join('') || '<div class="table-row" style="color:#aaa">—</div>';
+
+  // Guesses list
+  const guessesList = document.getElementById('guessesList');
+  guessesList.innerHTML = guesses.map(g =>
+    `<div class="table-row">${g}</div>`
+  ).join('') || '<div class="table-row" style="color:#aaa">—</div>';
+
+  // Input areas
+  const maxClues = 4;
+  const validClues = clues.filter(c => !c.rejected);
+  document.getElementById('clueArea').style.display = isClueGiver && validClues.length < maxClues && g.status === 'playing' ? 'block' : 'none';
+  document.getElementById('guessArea').style.display = !isClueGiver && validClues.length > 0 && g.status === 'playing' ? 'block' : 'none';
+
+  // Action buttons
+  const btns = document.getElementById('actionBtns');
+  btns.innerHTML = '';
+  if (g.status === 'round_end') {
+    const won = g.roundResult === 'win';
+    const banner = document.createElement('div');
+    banner.className = `result-banner ${won?'result-win':'result-lose'}`;
+    banner.textContent = won ? `✓ Bravo ! Le mot était "${g.currentWord}"` : `✗ Perdu. Le mot était "${g.currentWord}"`;
+    document.getElementById('gameMsg').innerHTML = '';
+    document.getElementById('gameMsg').appendChild(banner);
+    // Host starts next round
+    if (g.host === myId || g.guest === myId) {
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'btn btn-blue';
+      nextBtn.textContent = g.round >= 3 ? 'Voir les résultats' : 'Manche suivante';
+      nextBtn.onclick = nextRound;
+      btns.appendChild(nextBtn);
+    }
+  } else {
+    document.getElementById('gameMsg').innerHTML = '';
+  }
+}
+
+function startTimer(end) {
+  clearInterval(timerInterval);
+  if (!end) return;
+  const fill = document.getElementById('timerFill');
+  const total = 60000;
+  timerEnd = end;
+  function tick() {
+    const left = Math.max(0, timerEnd - Date.now());
+    const pct = (left / total) * 100;
+    fill.style.width = pct + '%';
+    fill.style.background = pct > 50 ? '#2ecc71' : pct > 20 ? '#f39c12' : '#e74c3c';
+    if (left <= 0) {
+      clearInterval(timerInterval);
+      // Timer expired → auto-lose if still playing
+      if (currentGame && currentGame.status === 'playing' && currentGame.host === myId) {
+        endRound(false);
+      }
+    }
+  }
+  tick();
+  timerInterval = setInterval(tick, 500);
+}
+
+// ── SUBMIT CLUE ──
+window.submitClue = function() {
+  const input = document.getElementById('clueInput');
+  const word = input.value.trim().toLowerCase();
+  if (!word) return;
+  const check = isTooClose(word, currentGame.currentWord);
+  const rejectEl = document.getElementById('rejectReason');
+  if (check.bad) {
+    rejectEl.textContent = '❌ ' + check.reason;
+    rejectEl.style.display = 'block';
+    setTimeout(() => rejectEl.style.display = 'none', 3000);
+    return;
+  }
+  rejectEl.style.display = 'none';
+  const clues = currentGame.clues || [];
+  clues.push({ word, rejected: false });
+  update(ref(db,'lsf_games/'+currentGameId), { clues });
+  input.value = '';
+};
+
+// ── SUBMIT GUESS ──
+window.submitGuess = function() {
+  const input = document.getElementById('guessInput');
+  const word = input.value.trim().toLowerCase();
+  if (!word) return;
+  const guesses = currentGame.guesses || [];
+  guesses.push(word);
+  const won = normalize(word) === normalize(currentGame.currentWord);
+  if (won || guesses.length >= 3) {
+    update(ref(db,'lsf_games/'+currentGameId), { guesses, status:'round_end', roundResult: won?'win':'lose' });
+    computeAndSaveScore(won);
+  } else {
+    update(ref(db,'lsf_games/'+currentGameId), { guesses });
+  }
+  input.value = '';
+};
+
+function computeAndSaveScore(won) {
+  const g = currentGame;
+  const timeLeft = Math.max(0, (g.timerEnd || 0) - Date.now());
+  const timeFactor = Math.round(timeLeft / 2000); // max ~30
+  const clues = (g.clues||[]).filter(c=>!c.rejected).length;
+  const cluePenalty = clues * 5;
+  let score = won ? (50 + timeFactor - cluePenalty) : -Math.round(g.wordDifficulty * 5 + 6);
+  const hostScore = (g.scores[g.host]||0) + score;
+  const guestScore = (g.scores[g.guest]||0) + score;
+  update(ref(db,'lsf_games/'+currentGameId), {
+    [`scores/${g.host}`]: hostScore,
+    [`scores/${g.guest}`]: guestScore,
+    lastScore: score,
+    lastClues: clues,
+    lastTime: Math.round((60000 - timeLeft)/1000),
+  });
+  // Update word difficulty based on result
+  updateWordDifficulty(g.currentWord, won);
+}
+
+function updateWordDifficulty(word, won) {
+  const existing = WORDS.find(w => normalize(w.w) === normalize(word));
+  if (!existing) return;
+  // nudge difficulty
+  const delta = won ? -0.1 : 0.1;
+  const key = `lsf_wordstats/${normalize(word)}`;
+  get(ref(db, key)).then(snap => {
+    const stats = snap.val() || { d: existing.d, played: 0, won: 0 };
+    stats.played++;
+    if (won) stats.won++;
+    stats.d = Math.max(1, Math.min(5, (stats.d || existing.d) + delta));
+    set(ref(db, key), stats);
+  });
+}
+
+// ── NEXT ROUND ──
+window.nextRound = function() {
+  const g = currentGame;
+  const nextRound = (g.round || 1) + 1;
+  if (nextRound > 3) {
+    update(ref(db,'lsf_games/'+currentGameId), { status: 'finished' });
+    return;
+  }
+  // Swap clue giver
+  const nextClueGiver = g.clueGiver === g.host ? g.guest : g.host;
+  const word = pickWord();
+  update(ref(db,'lsf_games/'+currentGameId), {
+    round: nextRound,
+    status: 'playing',
+    clueGiver: nextClueGiver,
+    currentWord: word.w,
+    wordDifficulty: word.d,
+    clues: [],
+    guesses: [],
+    timerStart: Date.now(),
+    timerEnd: Date.now() + 60000,
+    roundResult: null,
+    lastScore: null,
+  });
+};
+
+function endRound(won) {
+  update(ref(db,'lsf_games/'+currentGameId), { status:'round_end', roundResult: won?'win':'lose' });
+  computeAndSaveScore(won);
+}
+
+// ── RESULT ──
+function renderResult(g) {
+  showScreen('resultScreen');
+  clearInterval(timerInterval);
+  const myScore = g.scores?.[myId] || 0;
+  const otherId = myId === g.host ? g.guest : g.host;
+  const otherScore = g.scores?.[otherId] || 0;
+  const myName_ = g.names?.[myId] || myName;
+  const otherName = g.names?.[otherId] || '?';
+  const won = myScore >= otherScore;
+  document.getElementById('resultBanner').className = 'result-banner ' + (won?'result-win':'result-lose');
+  document.getElementById('resultBanner').textContent = won ? '✓ Victoire !' : '✗ Défaite';
+  document.getElementById('resultTable').innerHTML = `
+    <div class="result-row"><span>${myName_}</span><strong>${myScore} pts</strong></div>
+    <div class="result-row"><span>${otherName}</span><strong>${otherScore} pts</strong></div>
+    <div class="result-row total"><span>Dernier mot</span><span>${g.currentWord}</span></div>
+  `;
+  document.getElementById('resultMsg').textContent = `Durée de la dernière manche : ${g.lastTime||0}s · Indices utilisés : ${g.lastClues||0}`;
+}
+
+window.goLobby = function() {
+  if (currentGameId) { remove(ref(db,'lsf_games/'+currentGameId)); currentGameId = null; }
+  stopGameListener();
+  currentGame = null;
+  showScreen('lobbyScreen');
+  startLobbyListener();
+};
+
+// ── WORD PICKER ──
+function pickWord() {
+  // bias toward medium difficulty (2-3) initially
+  const pool = WORDS.filter(w => w.d >= 1 && w.d <= 4);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ── HELPERS ──
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="msg msg-${type}">${msg}</div>`;
+  setTimeout(() => el.innerHTML = '', 3000);
+}
+
+// ── INIT ──
+if (myName) {
+  document.getElementById('pseudoDisplay').textContent = myName;
+  document.getElementById('pseudoInput').value = myName;
+}
+document.getElementById('pseudoInput').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
+</script>
+</body>
+</html>
