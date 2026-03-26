@@ -186,15 +186,16 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getDatabase, ref, set, get, push, update, remove, onValue, off, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ── Firebase config (même projet jardin-feerique) ──
+// ── Firebase config ──
 const firebaseConfig = {
-  apiKey: "AIzaSyBUiGGKBssQ_wTrz5uYBkHRKeMk0GNWeFI",
-  authDomain: "jardin-feerique.firebaseapp.com",
-  databaseURL: "https://jardin-feerique-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "jardin-feerique",
-  storageBucket: "jardin-feerique.firebasestorage.app",
-  messagingSenderId: "240867851823",
-  appId: "1:240867851823:web:43529ae5008fe9dcd910da"
+  apiKey: "AIzaSyAfHnD9E7qfQuYMlbFTLET_IlwekGkd-PU",
+  authDomain: "lesuperflair.firebaseapp.com",
+  databaseURL: "https://lesuperflair-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "lesuperflair",
+  storageBucket: "lesuperflair.firebasestorage.app",
+  messagingSenderId: "586255751723",
+  appId: "1:586255751723:web:00c2d2c3d807483630686e",
+  measurementId: "G-PT98DD2FD3"
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
