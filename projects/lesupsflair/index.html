@@ -337,6 +337,34 @@
   body.dark .spr-name { color: #c0c8dc; }
   body.dark .btn-quit-game { border-color: #2a2a38; color: #6a7090; }
   body.dark .btn-quit-game:hover { background: #2a1a1a; border-color: #e74c3c; color: #e74c3c; }
+
+  /* ── CHAT ── */
+  .chat-box { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.07); overflow: hidden; }
+  .chat-box-title { padding: 8px 14px; font-size: 0.85em; font-weight: 700; color: #555; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 6px; }
+  .chat-messages { max-height: 180px; overflow-y: auto; padding: 6px 0; scroll-behavior: smooth; }
+  .chat-no-msg { color: #bbb; font-size: 0.82em; text-align: center; padding: 18px; font-style: italic; }
+  .chat-msg { padding: 4px 14px; font-size: 0.88em; line-height: 1.45; }
+  .chat-msg-author { font-weight: 700; color: #3498db; margin-right: 5px; }
+  .chat-msg-author.mine { color: #9b59b6; }
+  .chat-msg-text { color: #333; word-break: break-word; }
+  .chat-input-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #f0f0f0; }
+  .chat-input-row input { flex: 1; padding: 7px 12px; font-size: 0.88em; border: 1px solid #ddd; border-radius: 6px; outline: none; transition: border-color 0.15s; }
+  .chat-input-row input:focus { border-color: #3498db; }
+  .chat-input-row input:disabled { background: #f5f5f5; color: #bbb; cursor: default; }
+  .chat-input-row button:disabled { opacity: 0.4; cursor: default; }
+  .lobby-chat-wrap { margin-top: 24px; }
+  .game-chat-wrap { margin-top: 14px; }
+  .chat-disabled-hint { font-size: 0.76em; color: #aaa; text-align: center; padding: 3px 0 6px; }
+
+  body.dark .chat-box { background: #1e1e28; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  body.dark .chat-box-title { border-color: #252530; color: #8090a8; }
+  body.dark .chat-msg-text { color: #c0c8dc; }
+  body.dark .chat-msg-author { color: #5b9bd5; }
+  body.dark .chat-msg-author.mine { color: #b07fd8; }
+  body.dark .chat-input-row { border-color: #252530; }
+  body.dark .chat-input-row input { background: #252530; border-color: #3a3a48; color: #e0e4ef; }
+  body.dark .chat-input-row input:disabled { background: #181820; color: #555; }
+  body.dark .chat-disabled-hint { color: #555; }
 </style>
 </head>
 <body>
@@ -401,6 +429,17 @@
   <div class="game-list" style="margin-top:24px">
     <h3>🟢 Joueurs en ligne</h3>
     <div id="onlinePlayersList"><div class="no-games">…</div></div>
+  </div>
+  <div class="lobby-chat-wrap">
+    <h3 style="margin-bottom:10px">💬 Chat du lobby</h3>
+    <div class="chat-box">
+      <div class="chat-messages" id="lobbyChatMessages"><div class="chat-no-msg">Aucun message pour l'instant</div></div>
+      <div class="chat-input-row">
+        <input type="text" id="lobbyChatInput" placeholder="Écrire un message..." maxlength="200"
+          onkeydown="if(event.key==='Enter')sendLobbyMsg()" />
+        <button class="btn btn-blue btn-sm" onclick="sendLobbyMsg()">→</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -532,6 +571,16 @@
   </div>
 
   <div id="gameMsg"></div>
+  <div class="game-chat-wrap chat-box" id="gameChatSection" style="display:none">
+    <div class="chat-box-title">💬 Discussion</div>
+    <div class="chat-messages" id="gameChatMessages"><div class="chat-no-msg">Les messages s'afficheront ici entre les manches</div></div>
+    <div id="gameChatDisabledHint" class="chat-disabled-hint" style="display:none">🔒 Chat ouvert entre les manches</div>
+    <div class="chat-input-row">
+      <input type="text" id="gameChatInput" placeholder="Écrire... (entre les manches)" maxlength="200" disabled
+        onkeydown="if(event.key==='Enter'&&!this.disabled)sendGameMsg()" />
+      <button class="btn btn-blue btn-sm" id="gameChatSendBtn" onclick="sendGameMsg()" disabled>→</button>
+    </div>
+  </div>
   </div><!-- /gameMain -->
   <div id="gameSidebar" style="display:none">
     <div class="score-panel">
@@ -1005,6 +1054,8 @@ let customWords = null;
 let selectedRounds = 3; // 1, 3, 5, 10, ou 'infinite'
 let selectedMaxPlayers = 2; // 2 = mode duo, 3-6 = mode multi
 let multiHintInterval = null;
+let lobbyChatListener = null;
+let gameChatListener = null;
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -1144,6 +1195,7 @@ function enterLobby() {
   onDisconnect(presRef).remove();
   showScreen('lobbyScreen');
   startLobbyListener();
+  initLobbyChat();
 }
 
 // ── AUTH STATE (comptes Google) ──
@@ -1422,6 +1474,7 @@ function startLobbyListener() {
 function stopLobbyListener() {
   if (lobbyListener)  { lobbyListener();  lobbyListener  = null; }
   if (presenceListener) { presenceListener(); presenceListener = null; }
+  stopLobbyChat();
 }
 
 // ── CREATE GAME ──
@@ -1512,10 +1565,12 @@ window.spectateGame = function(gameId) {
 window.leaveSpectator = function() {
   isSpectator = false;
   stopGameListener();
+  document.getElementById('gameChatSection').style.display = 'none';
   currentGameId = null;
   currentGame = null;
   showScreen('lobbyScreen');
   startLobbyListener();
+  initLobbyChat();
 };
 
 window.cancelGame = function() {
@@ -1541,6 +1596,7 @@ window.cancelGame = function() {
 // ── GAME LISTENER ──
 function listenGame(gameId) {
   stopGameListener();
+  listenGameChat(gameId);
   gameListener = onValue(ref(db,'lsf_games/'+gameId), snap => {
     const g = snap.val();
     if (!g) {
@@ -1591,6 +1647,7 @@ function listenGame(gameId) {
 }
 function stopGameListener() {
   if (gameListener) { gameListener(); gameListener = null; }
+  if (gameChatListener) { gameChatListener(); gameChatListener = null; }
   clearInterval(timerInterval);
   clearInterval(multiHintInterval);
 }
@@ -1604,6 +1661,7 @@ function renderGame(g) {
   document.getElementById('quitGameBtn').style.display = 'none';
   document.getElementById('tablesRow').style.display = '';
   document.getElementById('multiHintsSection').style.display = 'none';
+  setGameChatEnabled(g.status === 'round_end' && !isSpectator);
   document.getElementById('multiPlayersSection').style.display = 'none';
   document.getElementById('multiGuessSection').style.display = 'none';
 
@@ -2008,9 +2066,13 @@ window.loadLeaderboard = function() {
 };
 
 window.goLobby = function() {
-  if (currentGameId) { remove(ref(db,'lsf_games/'+currentGameId)); currentGameId = null; }
+  if (currentGameId) {
+    remove(ref(db,'lsf_games/'+currentGameId));
+    remove(ref(db,'lsf_game_chats/'+currentGameId));
+    currentGameId = null;
+  }
   stopGameListener(); currentGame = null;
-  showScreen('lobbyScreen'); startLobbyListener();
+  showScreen('lobbyScreen'); startLobbyListener(); initLobbyChat();
 };
 
 // ── REACTIONS ──
@@ -2041,6 +2103,115 @@ function showMsg(id, msg, type) {
   const el = document.getElementById(id);
   el.innerHTML = `<div class="msg msg-${type}">${msg}</div>`;
   setTimeout(() => el.innerHTML = '', 3000);
+}
+
+// ══════════════════════════════════════════════
+// ── CHAT ──
+// ══════════════════════════════════════════════
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Chat lobby ──
+// Messages supprimés automatiquement après 2 heures
+const LOBBY_CHAT_TTL = 2 * 60 * 60 * 1000; // 2h
+
+async function cleanOldLobbyMessages() {
+  const cutoff = Date.now() - LOBBY_CHAT_TTL;
+  const snap = await get(ref(db,'lsf_lobby_chat'));
+  if (!snap.exists()) return;
+  const tasks = [];
+  snap.forEach(child => {
+    if ((child.val().ts||0) < cutoff) tasks.push(remove(ref(db,'lsf_lobby_chat/'+child.key)));
+  });
+  await Promise.all(tasks);
+}
+
+function initLobbyChat() {
+  stopLobbyChat();
+  cleanOldLobbyMessages();
+  lobbyChatListener = onValue(ref(db,'lsf_lobby_chat'), snap => {
+    const data = snap.val();
+    const msgs = data
+      ? Object.entries(data)
+          .filter(([,m]) => (m.ts||0) > Date.now() - LOBBY_CHAT_TTL)
+          .sort((a,b) => a[1].ts - b[1].ts)
+      : [];
+    renderChatMessages('lobbyChatMessages', msgs, false);
+  });
+}
+
+function stopLobbyChat() {
+  if (lobbyChatListener) { lobbyChatListener(); lobbyChatListener = null; }
+}
+
+window.sendLobbyMsg = function() {
+  const inp = document.getElementById('lobbyChatInput');
+  const text = inp.value.trim();
+  if (!text || !myName) return;
+  const msgId = uid();
+  set(ref(db,'lsf_lobby_chat/'+msgId), { author: myName, authorId: myId, text, ts: Date.now() });
+  inp.value = '';
+};
+
+// ── Chat de partie ──
+// Stocké séparément à lsf_game_chats/{gameId} pour ne pas déclencher le rendu du jeu
+
+function listenGameChat(gameId) {
+  if (gameChatListener) { gameChatListener(); gameChatListener = null; }
+  gameChatListener = onValue(ref(db,'lsf_game_chats/'+gameId), snap => {
+    const data = snap.val();
+    const msgs = data
+      ? Object.entries(data).sort((a,b) => a[1].ts - b[1].ts)
+      : [];
+    renderChatMessages('gameChatMessages', msgs, true);
+  });
+  // Afficher la section chat dès qu'on entre dans une partie
+  document.getElementById('gameChatSection').style.display = 'block';
+}
+
+window.sendGameMsg = function() {
+  const inp = document.getElementById('gameChatInput');
+  const text = inp.value.trim();
+  if (!text || !currentGameId || inp.disabled) return;
+  const msgId = uid();
+  set(ref(db,'lsf_game_chats/'+currentGameId+'/'+msgId), {
+    author: myName, authorId: myId, text, ts: Date.now()
+  });
+  inp.value = '';
+};
+
+function setGameChatEnabled(enabled) {
+  const inp = document.getElementById('gameChatInput');
+  const btn = document.getElementById('gameChatSendBtn');
+  const hint = document.getElementById('gameChatDisabledHint');
+  if (!inp) return;
+  inp.disabled = !enabled;
+  btn.disabled = !enabled;
+  hint.style.display = enabled ? 'none' : 'block';
+  if (enabled) inp.placeholder = 'Écrire un message...';
+  else inp.placeholder = 'Chat ouvert entre les manches';
+}
+
+// ── Rendu commun des messages ──
+function renderChatMessages(containerId, entries, showCount) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!entries.length) {
+    el.innerHTML = '<div class="chat-no-msg">Aucun message pour l\'instant</div>';
+    return;
+  }
+  // Limiter à 80 messages affichés
+  const display = entries.slice(-80);
+  el.innerHTML = display.map(([, msg]) => {
+    const isMe = msg.authorId === myId;
+    return `<div class="chat-msg">
+      <span class="chat-msg-author${isMe?' mine':''}">${escapeHtml(msg.author||'?')}</span>
+      <span class="chat-msg-text">${escapeHtml(msg.text||'')}</span>
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
 }
 
 // ══════════════════════════════════════════════
@@ -2220,6 +2391,7 @@ function renderMultiGame(g) {
 
   if (g.status === 'playing') { startTimer(g.timerEnd); startMultiHintTimer(); }
   else { clearInterval(timerInterval); clearInterval(multiHintInterval); }
+  setGameChatEnabled(g.status === 'round_end' && !isSpectator);
 
   // Grille des indices
   updateHintsGrid(hints, unlockedSlots);
