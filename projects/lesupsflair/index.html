@@ -303,6 +303,40 @@
   body.dark .player-status-card.failed { background:#2a1a1a; border-color:#e74c3c; }
   body.dark .player-status-card.is-clue-giver { background:#22182a; border-color:#9b59b6; }
   body.dark .psc-name { color:#e0e4ef; }
+
+  /* ── LAYOUT SIDEBAR ── */
+  #gameScreen.has-sidebar { max-width: 960px; }
+  .game-layout-row { display: flex; gap: 16px; align-items: flex-start; }
+  .game-main-col { flex: 1; min-width: 0; }
+  #gameSidebar { width: 200px; flex-shrink: 0; position: sticky; top: 20px; }
+  .score-panel { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 12px; }
+  .score-panel-title { background: #2c3e50; color: white; padding: 10px 14px; font-weight: 700; font-size: 0.88em; letter-spacing: 0.5px; }
+  .score-panel-row { display: flex; align-items: center; padding: 9px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.85em; gap: 6px; }
+  .score-panel-row:last-child { border-bottom: none; }
+  .score-panel-row.spr-me { background: #ebf5fb; }
+  .score-panel-row.spr-cluegiver { background: #f9f4ff; }
+  .spr-rank { width: 18px; text-align: center; flex-shrink: 0; font-size: 0.9em; }
+  .spr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .spr-pts { font-weight: 700; color: #2c3e50; flex-shrink: 0; font-size: 0.9em; }
+  .spr-role { font-size: 0.8em; color: #9b59b6; display: block; font-weight: 400; }
+
+  .btn-quit-game { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 4px 10px; font-size: 0.75em; color: #aaa; cursor: pointer; transition: all 0.15s; line-height: 1; }
+  .btn-quit-game:hover { background: #fde8e8; border-color: #e74c3c; color: #e74c3c; }
+
+  @media (max-width: 680px) {
+    .game-layout-row { flex-direction: column; }
+    #gameSidebar { width: 100%; position: static; }
+  }
+
+  body.dark .score-panel { background: #1e1e28; box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+  body.dark .score-panel-title { background: #252530; }
+  body.dark .score-panel-row { border-color: #252530; }
+  body.dark .score-panel-row.spr-me { background: #1a2535; }
+  body.dark .score-panel-row.spr-cluegiver { background: #22182a; }
+  body.dark .spr-pts { color: #e0e4ef; }
+  body.dark .spr-name { color: #c0c8dc; }
+  body.dark .btn-quit-game { border-color: #2a2a38; color: #6a7090; }
+  body.dark .btn-quit-game:hover { background: #2a1a1a; border-color: #e74c3c; color: #e74c3c; }
 </style>
 </head>
 <body>
@@ -416,8 +450,13 @@
 <!-- GAME -->
 <div id="gameScreen" class="screen">
   <div id="spectatorBanner" class="spectator-banner" style="display:none">👁 Mode Spectateur — <span id="spectatorNames"></span> <button class="btn btn-gray btn-sm" style="margin-left:12px;padding:4px 12px" onclick="leaveSpectator()">Quitter</button></div>
+  <div class="game-layout-row" id="gameLayoutRow">
+  <div class="game-main-col" id="gameMain">
   <div class="game-header">
-    <div class="round-info" id="roundInfo">Manche 1</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <div class="round-info" id="roundInfo">Manche 1</div>
+      <button class="btn-quit-game" id="quitGameBtn" onclick="quitMultiGame()" style="display:none">✖ Quitter</button>
+    </div>
     <div id="playersRow" style="font-size:0.85em;color:#777;margin:3px 0 2px"></div>
     <div id="livesBar" class="lives-bar" style="display:none"></div>
     <div id="wordDisplay" class="word-display"></div>
@@ -493,6 +532,14 @@
   </div>
 
   <div id="gameMsg"></div>
+  </div><!-- /gameMain -->
+  <div id="gameSidebar" style="display:none">
+    <div class="score-panel">
+      <div class="score-panel-title">🏆 Classement</div>
+      <div id="scorePanelRows"></div>
+    </div>
+  </div>
+  </div><!-- /gameLayoutRow -->
 </div>
 
 <!-- RESULT -->
@@ -1552,6 +1599,9 @@ function stopGameListener() {
 function renderGame(g) {
   showScreen('gameScreen');
   // Affiche les éléments duo, cache les sections multi
+  document.getElementById('gameScreen').classList.remove('has-sidebar');
+  document.getElementById('gameSidebar').style.display = 'none';
+  document.getElementById('quitGameBtn').style.display = 'none';
   document.getElementById('tablesRow').style.display = '';
   document.getElementById('multiHintsSection').style.display = 'none';
   document.getElementById('multiPlayersSection').style.display = 'none';
@@ -2123,6 +2173,10 @@ function startMultiHintTimer() {
 // ── Rendu jeu multi ──
 function renderMultiGame(g) {
   showScreen('gameScreen');
+  // Layout sidebar
+  document.getElementById('gameScreen').classList.add('has-sidebar');
+  document.getElementById('gameSidebar').style.display = '';
+  document.getElementById('quitGameBtn').style.display = '';
   // Cacher éléments duo, montrer multi
   document.getElementById('tablesRow').style.display = 'none';
   document.getElementById('clueArea').style.display = 'none';
@@ -2202,6 +2256,19 @@ function renderMultiGame(g) {
   } else {
     guessSection.style.display = 'none';
   }
+
+  // Classement latéral
+  const medals = ['🥇','🥈','🥉'];
+  const sorted = [...players].sort((a,b) => (g.scores?.[b]||0) - (g.scores?.[a]||0));
+  document.getElementById('scorePanelRows').innerHTML = sorted.map((pid, i) => {
+    const isCG = pid === clueGiverId, isMe = pid === myId;
+    const cls = 'score-panel-row' + (isMe?' spr-me':isCG?' spr-cluegiver':'');
+    return `<div class="${cls}">
+      <span class="spr-rank">${medals[i]||i+1}</span>
+      <span class="spr-name">${g.names?.[pid]||pid}${isMe?' (moi)':''}${isCG?'<span class="spr-role">✏️ fait deviner</span>':''}</span>
+      <span class="spr-pts">${g.scores?.[pid]||0}</span>
+    </div>`;
+  }).join('');
 
   // Boutons action fin de manche
   const btns = document.getElementById('actionBtns');
@@ -2336,6 +2403,15 @@ async function doNextRoundMulti(g) {
     roundResult: null, readyForNext: null, reaction: null,
   });
 }
+
+// ── Quitter une partie multi en cours ──
+window.quitMultiGame = function() {
+  if (!confirm('Quitter la partie ? Tu seras absent(e) des prochaines manches.')) return;
+  stopGameListener();
+  currentGameId = null; currentGame = null;
+  showScreen('lobbyScreen');
+  startLobbyListener();
+};
 
 // ── Résultats finaux multi ──
 function renderMultiResult(g) {
