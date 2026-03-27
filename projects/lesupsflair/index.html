@@ -326,7 +326,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, update, remove, onValue }
+import { getDatabase, ref, set, get, update, remove, onValue, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -1041,8 +1041,28 @@ window.confirmCreate = function() {
 };
 
 // ── LOBBY ──
+async function cleanStaleGames() {
+  const snap = await get(ref(db,'lsf_games'));
+  if (!snap.exists()) return;
+  const now = Date.now();
+  const STALE_WAITING  = 30 * 60 * 1000; // 30 min sans adversaire
+  const STALE_PLAYING  = 15 * 60 * 1000; // 15 min sans activité
+  const tasks = [];
+  snap.forEach(child => {
+    const g = child.val();
+    const id = child.key;
+    const age = now - (g.createdAt || 0);
+    const lastActivity = now - (g.timerEnd || g.createdAt || 0);
+    if (g.status === 'waiting'  && age > STALE_WAITING)  tasks.push(remove(ref(db,'lsf_games/'+id)));
+    if (['playing','round_end'].includes(g.status) && lastActivity > STALE_PLAYING) tasks.push(remove(ref(db,'lsf_games/'+id)));
+    if (g.status === 'finished') tasks.push(remove(ref(db,'lsf_games/'+id)));
+  });
+  await Promise.all(tasks);
+}
+
 function startLobbyListener() {
   stopLobbyListener();
+  cleanStaleGames(); // Nettoie les parties fantômes à chaque retour au lobby
   lobbyListener = onValue(ref(db,'lsf_games'), snap => {
     const data = snap.val();
     const waitList    = document.getElementById('gamesList');
@@ -1120,11 +1140,15 @@ function createGame() {
     dictWordCount: words.length,
     totalRounds: isInfinite ? 'infinite' : selectedRounds,
     lives: isInfinite ? 3 : null,
+    createdAt: Date.now(),
   };
   if (dictKey === 'custom') gameData.customWords = words.slice(0, 200);
 
   set(ref(db,'lsf_games/'+gameId), gameData);
   currentGameId = gameId;
+
+  // Suppression automatique si l'hôte se déconnecte en salle d'attente
+  onDisconnect(ref(db,'lsf_games/'+gameId)).remove();
 
   const dictInfo = `${gameData.dictEmoji} ${gameData.dictLabel}`;
   document.getElementById('waitingDictBadge').textContent = dictInfo;
