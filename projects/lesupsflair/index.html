@@ -1560,11 +1560,6 @@ function showMsg(id, msg, type) {
 }
 
 // ── INIT ──
-if (myName) {
-  document.getElementById('pseudoDisplay').textContent = myName;
-  document.getElementById('pseudoInput').value = myName;
-}
-document.getElementById('pseudoInput').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
 document.getElementById('createModal').addEventListener('click', e => {
   if (e.target === document.getElementById('createModal')) closeCreateModal();
 });
