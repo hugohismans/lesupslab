@@ -168,6 +168,13 @@
   }
   #reactionToast.show { transform: translateX(-50%) translateY(0); }
 
+  /* ONLINE PLAYERS */
+  .online-players { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+  .online-pill { display: inline-flex; align-items: center; gap: 6px; background: white; border: 1px solid #e0e0e0; border-radius: 20px; padding: 5px 12px; font-size: 0.88em; color: #444; }
+  .online-pill.me { background: #ebf5fb; border-color: #3498db; color: #2980b9; font-weight: 700; }
+  .online-pill.guest-pill { color: #888; font-style: italic; }
+  .online-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; flex-shrink: 0; }
+
   /* DARK MODE TOGGLE */
   #darkToggle {
     position: fixed; bottom: 18px; right: 18px; z-index: 999;
@@ -245,6 +252,9 @@
   body.dark .msg-error { background: #2a1a1a; color: #e07878; }
   body.dark .msg-info { background: #1a2535; color: #5b9bd5; }
   body.dark #darkToggle { background: #f39c12; }
+  body.dark .online-pill { background: #1e1e28; border-color: #2a2a38; color: #b0b8c8; }
+  body.dark .online-pill.me { background: #1a2535; border-color: #3498db; color: #5b9bd5; }
+  body.dark .online-pill.guest-pill { color: #6a7090; }
 </style>
 </head>
 <body>
@@ -305,6 +315,10 @@
   <div class="game-list" style="margin-top:24px">
     <h3><span class="live-dot"></span>Parties en cours</h3>
     <div id="ongoingGamesList"><div class="no-games">Aucune partie en cours</div></div>
+  </div>
+  <div class="game-list" style="margin-top:24px">
+    <h3>🟢 Joueurs en ligne</h3>
+    <div id="onlinePlayersList"><div class="no-games">…</div></div>
   </div>
 </div>
 
@@ -843,6 +857,7 @@ let currentGameId = null;
 let currentGame = null;
 let gameListener = null;
 let lobbyListener = null;
+let presenceListener = null;
 let timerInterval = null;
 let timerEnd = null;
 let lastReactionTs = 0;
@@ -969,6 +984,7 @@ window.loginAsGuest = function() {
 
 window.logout = async function() {
   stopLobbyListener();
+  if (myId) await remove(ref(db, 'lsf_presence/' + myId));
   if (isGuest) {
     isGuest = false;
     myId = null; myName = null;
@@ -986,6 +1002,10 @@ function enterLobby() {
   document.getElementById('guestBadge').style.display        = isGuest ? '' : 'none';
   document.getElementById('logoutBtn').textContent           = isGuest ? 'Quitter' : 'Déconnexion';
   document.getElementById('changePseudoBtn').style.display   = isGuest ? 'none' : '';
+  // Présence en ligne
+  const presRef = ref(db, 'lsf_presence/' + myId);
+  set(presRef, { name: myName, isGuest: !!isGuest, connectedAt: Date.now() });
+  onDisconnect(presRef).remove();
   showScreen('lobbyScreen');
   startLobbyListener();
 }
@@ -1030,6 +1050,7 @@ window.confirmPseudo = async function() {
   if (pseudo.length > 16) { showMsg('pseudoMsg', 'Pseudo trop long (16 max)', 'error'); return; }
   myName = pseudo;
   await update(ref(db, 'lsf_users/' + myId), { name: pseudo, pseudoChosen: true });
+  await update(ref(db, 'lsf_presence/' + myId), { name: pseudo });
   const scoreSnap = await get(ref(db, 'lsf_users/' + myId + '/globalScore'));
   updateScoreBadge(scoreSnap.val() || 0);
   enterLobby();
@@ -1185,6 +1206,22 @@ async function cleanStaleGames() {
 function startLobbyListener() {
   stopLobbyListener();
   cleanStaleGames(); // Nettoie les parties fantômes à chaque retour au lobby
+
+  // Joueurs en ligne
+  presenceListener = onValue(ref(db, 'lsf_presence'), snap => {
+    const el = document.getElementById('onlinePlayersList');
+    if (!el) return;
+    const data = snap.val();
+    if (!data) { el.innerHTML = '<div class="no-games">Aucun joueur en ligne</div>'; return; }
+    const players = Object.entries(data).sort(([,a],[,b]) => (a.connectedAt||0) - (b.connectedAt||0));
+    el.innerHTML = '<div class="online-players">' + players.map(([uid, p]) => {
+      const isMe = uid === myId;
+      const cls = 'online-pill' + (isMe ? ' me' : '') + (p.isGuest ? ' guest-pill' : '');
+      const label = (p.isGuest ? '👤 ' : '🔵 ') + (p.name || '?') + (isMe ? ' (moi)' : '');
+      return `<span class="${cls}"><span class="online-dot"></span>${label}</span>`;
+    }).join('') + '</div>';
+  });
+
   lobbyListener = onValue(ref(db,'lsf_games'), snap => {
     const data = snap.val();
     const waitList    = document.getElementById('gamesList');
@@ -1232,7 +1269,8 @@ function startLobbyListener() {
   });
 }
 function stopLobbyListener() {
-  if (lobbyListener) { lobbyListener(); lobbyListener = null; }
+  if (lobbyListener)  { lobbyListener();  lobbyListener  = null; }
+  if (presenceListener) { presenceListener(); presenceListener = null; }
 }
 
 // ── CREATE GAME ──
