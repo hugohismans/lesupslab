@@ -252,6 +252,7 @@
   body.dark .msg-error { background: #2a1a1a; color: #e07878; }
   body.dark .msg-info { background: #1a2535; color: #5b9bd5; }
   body.dark #darkToggle { background: #f39c12; }
+  body.dark #playersRow { color: #6a7090; }
   body.dark .online-pill { background: #1e1e28; border-color: #2a2a38; color: #b0b8c8; }
   body.dark .online-pill.me { background: #1a2535; border-color: #3498db; color: #5b9bd5; }
   body.dark .online-pill.guest-pill { color: #6a7090; }
@@ -361,6 +362,7 @@
   <div id="spectatorBanner" class="spectator-banner" style="display:none">👁 Mode Spectateur — <span id="spectatorNames"></span> <button class="btn btn-gray btn-sm" style="margin-left:12px;padding:4px 12px" onclick="leaveSpectator()">Quitter</button></div>
   <div class="game-header">
     <div class="round-info" id="roundInfo">Manche 1</div>
+    <div id="playersRow" style="font-size:0.85em;color:#777;margin:3px 0 2px"></div>
     <div id="livesBar" class="lives-bar" style="display:none"></div>
     <div id="wordDisplay" class="word-display"></div>
     <span class="role-badge" id="roleBadge"></span>
@@ -1432,6 +1434,16 @@ function renderGame(g) {
   document.getElementById('roundInfo').textContent = isInfinite
     ? `Manche ${g.round}`
     : `Manche ${g.round} / ${g.totalRounds||3}`;
+
+  // Noms des joueurs avec leurs rôles
+  const clueGiverName = g.clueGiver === g.host ? g.hostName : g.guestName;
+  const guesserName   = g.clueGiver === g.host ? g.guestName : g.hostName;
+  const meClue  = !isSpectator && isClueGiver;
+  const meGuess = !isSpectator && !isClueGiver;
+  document.getElementById('playersRow').innerHTML =
+    `<span style="${meClue  ? 'font-weight:700;color:#27ae60' : ''}">✏️ ${clueGiverName}</span>` +
+    `<span style="color:#ccc;margin:0 6px">·</span>` +
+    `<span style="${meGuess ? 'font-weight:700;color:#e67e22' : ''}">🔍 ${guesserName}</span>`;
 
   // Vies (mode infini)
   const livesBar = document.getElementById('livesBar');
