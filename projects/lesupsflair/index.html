@@ -170,11 +170,19 @@
 <div id="loginScreen" class="screen active">
   <h1>LeSuperFlair</h1>
   <p>Le jeu des indices malins</p>
-  <div style="margin-top:32px">
+
+  <div style="margin-top:32px;display:flex;flex-direction:column;align-items:center;gap:0">
     <button class="btn-google" onclick="loginWithGoogle()">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google" />
       Se connecter avec Google
     </button>
+    <p style="color:#aaa;font-size:0.85em;margin:18px 0">— ou jouer en invité —</p>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="guestPseudo" placeholder="Ton pseudo..." maxlength="16" style="width:200px;font-size:1em;padding:11px 16px"
+        onkeydown="if(event.key==='Enter')loginAsGuest()" />
+      <button class="btn btn-gray" onclick="loginAsGuest()">Jouer</button>
+    </div>
+    <p style="color:#bbb;font-size:0.78em;margin-top:10px">Mode invité : pas de score sauvegardé</p>
   </div>
   <div id="loginMsg" style="margin-top:16px"></div>
 </div>
@@ -184,12 +192,13 @@
   <div class="lobby-title">Bienvenue,</div>
   <div style="margin-bottom:24px">
     <span class="pseudo-badge" id="pseudoDisplay"></span>
-    <span class="global-score-badge" id="globalScoreBadge">⭐ 0 pts</span>
+    <span class="global-score-badge" id="globalScoreBadge" style="display:none">⭐ 0 pts</span>
+    <span id="guestBadge" style="display:none;font-size:0.8em;color:#999;margin-left:8px">👤 Invité</span>
   </div>
   <div class="lobby-btns">
     <button class="btn btn-green" onclick="openCreateModal()">+ Créer une partie</button>
-    <button class="btn btn-blue btn-sm" onclick="showScreen('leaderboardScreen');loadLeaderboard()">🏆 Classement</button>
-    <button class="btn btn-gray btn-sm" onclick="logout()">Déconnexion</button>
+    <button class="btn btn-blue btn-sm" id="lbBtn" onclick="showScreen('leaderboardScreen');loadLeaderboard()">🏆 Classement</button>
+    <button class="btn btn-gray btn-sm" id="logoutBtn" onclick="logout()">Déconnexion</button>
   </div>
   <div class="game-list">
     <h3>Parties disponibles</h3>
@@ -829,8 +838,9 @@ window.showScreen = function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
-// ── AUTH Google ──
+// ── AUTH ──
 const googleProvider = new GoogleAuthProvider();
+let isGuest = false;
 
 window.loginWithGoogle = async function() {
   try {
@@ -843,35 +853,58 @@ window.loginWithGoogle = async function() {
   }
 };
 
-window.logout = async function() {
-  stopLobbyListener();
-  await signOut(auth);
-  showScreen('loginScreen');
+window.loginAsGuest = function() {
+  const name = document.getElementById('guestPseudo').value.trim();
+  if (!name || name.length < 2) { showMsg('loginMsg', 'Pseudo trop court (2 min)', 'error'); return; }
+  isGuest = true;
+  myId   = sessionStorage.getItem('lsf_id') || uid();
+  sessionStorage.setItem('lsf_id', myId);
+  myName = name;
+  enterLobby();
 };
 
-// ── AUTH STATE ──
+window.logout = async function() {
+  stopLobbyListener();
+  if (isGuest) {
+    isGuest = false;
+    myId = null; myName = null;
+    showScreen('loginScreen');
+  } else {
+    await signOut(auth);
+    showScreen('loginScreen');
+  }
+};
+
+function enterLobby() {
+  localStorage.setItem('lsf_name', myName);
+  document.getElementById('pseudoDisplay').textContent = myName;
+  document.getElementById('globalScoreBadge').style.display = isGuest ? 'none' : '';
+  document.getElementById('guestBadge').style.display       = isGuest ? '' : 'none';
+  document.getElementById('logoutBtn').textContent          = isGuest ? 'Quitter' : 'Déconnexion';
+  showScreen('lobbyScreen');
+  startLobbyListener();
+}
+
+// ── AUTH STATE (comptes Google) ──
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
+  if (user && !isGuest) {
     myId   = user.uid;
     myName = user.displayName || user.email;
-    localStorage.setItem('lsf_name', myName);
-    document.getElementById('pseudoDisplay').textContent = myName;
+    isGuest = false;
 
-    // Crée le profil en DB si c'est la première connexion
+    // Crée le profil en DB si première connexion
     const userSnap = await get(ref(db, 'lsf_users/' + myId));
     if (!userSnap.exists()) {
       await set(ref(db, 'lsf_users/' + myId), {
         name: myName, globalScore: 0, gamesPlayed: 0, createdAt: Date.now()
       });
     } else if (!userSnap.val().name) {
-      // Met à jour le nom si absent (ancien compte)
       await update(ref(db, 'lsf_users/' + myId), { name: myName });
     }
 
     const scoreSnap = await get(ref(db, 'lsf_users/' + myId + '/globalScore'));
     updateScoreBadge(scoreSnap.val() || 0);
-    showScreen('lobbyScreen');
-    startLobbyListener();
+    enterLobby();
   }
 });
 
@@ -882,11 +915,12 @@ function updateScoreBadge(score) {
 
 async function updateGlobalScore(uid, delta) {
   if (!uid || delta === 0) return;
-  const scoreRef = ref(db, 'lsf_users/' + uid + '/globalScore');
-  const snap = await get(scoreRef);
-  const current = snap.val() || 0;
+  // Vérifie que le joueur a un compte (pas invité) avant d'écrire
+  const userSnap = await get(ref(db, 'lsf_users/' + uid));
+  if (!userSnap.exists()) return; // invité, pas de score persistant
+  const current = userSnap.val().globalScore || 0;
   const next = Math.max(0, current + delta);
-  await set(scoreRef, next);
+  await set(ref(db, 'lsf_users/' + uid + '/globalScore'), next);
   if (uid === myId) updateScoreBadge(next);
 }
 
