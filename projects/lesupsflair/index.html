@@ -21,6 +21,8 @@
   .auth-form input { width: 100%; padding: 12px 16px; font-size: 1em; border: 2px solid #ddd; border-radius: 8px; outline: none; }
   .auth-form input:focus { border-color: #3498db; }
   .global-score-badge { display: inline-block; background: #f39c12; color: white; padding: 4px 14px; border-radius: 16px; font-size: 0.85em; margin-left: 8px; font-weight: 700; vertical-align: middle; }
+  .btn-google { display: inline-flex; align-items: center; gap: 12px; padding: 13px 28px; background: white; border: 2px solid #ddd; border-radius: 10px; font-size: 1.05em; font-weight: 600; color: #3c4043; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.1); transition: all 0.15s; }
+  .btn-google:hover { box-shadow: 0 4px 16px rgba(0,0,0,.15); border-color: #aaa; transform: translateY(-1px); }
   input[type=text],input[type=password] { padding: 12px 20px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 8px; outline: none; width: 220px; }
   input[type=text]:focus,input[type=password]:focus { border-color: #3498db; }
 
@@ -168,30 +170,13 @@
 <div id="loginScreen" class="screen active">
   <h1>LeSuperFlair</h1>
   <p>Le jeu des indices malins</p>
-
-  <div class="auth-tabs">
-    <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Se connecter</div>
-    <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Créer un compte</div>
+  <div style="margin-top:32px">
+    <button class="btn-google" onclick="loginWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google" />
+      Se connecter avec Google
+    </button>
   </div>
-
-  <div id="loginForm">
-    <div class="auth-form">
-      <input type="text" id="loginPseudo" placeholder="Pseudo" maxlength="16" autocomplete="username" />
-      <input type="password" id="loginPassword" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginUser()" />
-      <button class="btn btn-blue" onclick="loginUser()">Se connecter</button>
-    </div>
-    <div id="loginMsg"></div>
-  </div>
-
-  <div id="registerForm" style="display:none">
-    <div class="auth-form">
-      <input type="text" id="regPseudo" placeholder="Pseudo (2–16 caractères)" maxlength="16" autocomplete="username" />
-      <input type="password" id="regPassword" placeholder="Mot de passe (6+ caractères)" autocomplete="new-password" />
-      <input type="password" id="regPassword2" placeholder="Confirmer le mot de passe" autocomplete="new-password" onkeydown="if(event.key==='Enter')registerUser()" />
-      <button class="btn btn-green" onclick="registerUser()">Créer le compte</button>
-    </div>
-    <div id="registerMsg"></div>
-  </div>
+  <div id="loginMsg" style="margin-top:16px"></div>
 </div>
 
 <!-- LOBBY -->
@@ -324,7 +309,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, update, remove, onValue }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -844,51 +829,17 @@ window.showScreen = function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
-// ── AUTH ──
-function pseudoToEmail(pseudo) {
-  // Derive a deterministic internal email from pseudo (never shown to user)
-  return pseudo.toLowerCase().replace(/[^a-z0-9]/g, '') + '@lsf.game';
-}
+// ── AUTH Google ──
+const googleProvider = new GoogleAuthProvider();
 
-window.switchAuthTab = function(tab) {
-  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-  document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
-  document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
-};
-
-window.registerUser = async function() {
-  const pseudo = document.getElementById('regPseudo').value.trim();
-  const pass   = document.getElementById('regPassword').value;
-  const pass2  = document.getElementById('regPassword2').value;
-  if (pseudo.length < 2) { showMsg('registerMsg', 'Pseudo trop court (2 min)', 'error'); return; }
-  if (pass.length < 6)   { showMsg('registerMsg', 'Mot de passe trop court (6 min)', 'error'); return; }
-  if (pass !== pass2)    { showMsg('registerMsg', 'Les mots de passe ne correspondent pas', 'error'); return; }
+window.loginWithGoogle = async function() {
   try {
-    const email = pseudoToEmail(pseudo);
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await updateProfile(cred.user, { displayName: pseudo });
-    await set(ref(db, 'lsf_users/' + cred.user.uid), {
-      name: pseudo, globalScore: 0, gamesPlayed: 0, createdAt: Date.now()
-    });
-    // onAuthStateChanged handles the redirect
+    await signInWithPopup(auth, googleProvider);
+    // onAuthStateChanged gère la suite
   } catch(e) {
-    const msg = e.code === 'auth/email-already-in-use'
-      ? 'Ce pseudo est déjà utilisé'
-      : 'Erreur : ' + e.message;
-    showMsg('registerMsg', msg, 'error');
-  }
-};
-
-window.loginUser = async function() {
-  const pseudo = document.getElementById('loginPseudo').value.trim();
-  const pass   = document.getElementById('loginPassword').value;
-  if (!pseudo || !pass) { showMsg('loginMsg', 'Pseudo et mot de passe requis', 'error'); return; }
-  try {
-    await signInWithEmailAndPassword(auth, pseudoToEmail(pseudo), pass);
-    // onAuthStateChanged handles the redirect
-  } catch(e) {
-    showMsg('loginMsg', 'Pseudo ou mot de passe incorrect', 'error');
+    if (e.code !== 'auth/popup-closed-by-user') {
+      showMsg('loginMsg', 'Erreur de connexion : ' + e.message, 'error');
+    }
   }
 };
 
@@ -898,16 +849,27 @@ window.logout = async function() {
   showScreen('loginScreen');
 };
 
-// ── AUTH STATE — déclenché au chargement et à chaque connexion/déconnexion ──
+// ── AUTH STATE ──
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     myId   = user.uid;
-    myName = user.displayName || user.email.split('@')[0];
+    myName = user.displayName || user.email;
     localStorage.setItem('lsf_name', myName);
     document.getElementById('pseudoDisplay').textContent = myName;
-    // Charge le score global
-    const snap = await get(ref(db, 'lsf_users/' + myId + '/globalScore'));
-    updateScoreBadge(snap.val() || 0);
+
+    // Crée le profil en DB si c'est la première connexion
+    const userSnap = await get(ref(db, 'lsf_users/' + myId));
+    if (!userSnap.exists()) {
+      await set(ref(db, 'lsf_users/' + myId), {
+        name: myName, globalScore: 0, gamesPlayed: 0, createdAt: Date.now()
+      });
+    } else if (!userSnap.val().name) {
+      // Met à jour le nom si absent (ancien compte)
+      await update(ref(db, 'lsf_users/' + myId), { name: myName });
+    }
+
+    const scoreSnap = await get(ref(db, 'lsf_users/' + myId + '/globalScore'));
+    updateScoreBadge(scoreSnap.val() || 0);
     showScreen('lobbyScreen');
     startLobbyListener();
   }
