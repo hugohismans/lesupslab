@@ -51,6 +51,29 @@
   .upload-preview { font-size: 0.88em; color: #555; margin-top: 8px; }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
   .upload-format { font-size: 0.78em; color: #aaa; margin-top: 6px; }
+  .modal-section-title { font-size: 0.95em; font-weight: 700; color: #555; margin-bottom: 10px; margin-top: 6px; }
+  .round-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .round-btn { flex: 1; min-width: 60px; padding: 10px 6px; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; text-align: center; background: white; transition: all 0.15s; font-size: 0.9em; font-weight: 700; color: #555; }
+  .round-btn:hover { border-color: #3498db; }
+  .round-btn.selected { border-color: #e74c3c; background: #fdf0ef; color: #e74c3c; }
+  .round-btn.infinite { border-color: #9b59b6; }
+  .round-btn.infinite.selected { border-color: #9b59b6; background: #f5eef8; color: #9b59b6; }
+  .round-btn .rb-label { font-size: 1.4em; display: block; }
+  .round-btn .rb-sub { font-size: 0.72em; color: inherit; opacity: 0.8; }
+
+  /* VIES */
+  .lives-bar { font-size: 1.4em; letter-spacing: 4px; margin-top: 4px; }
+
+  /* LEADERBOARD */
+  #leaderboardScreen { text-align: center; }
+  .lb-table { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.08); margin: 16px 0; text-align: left; }
+  .lb-header { background: #2c3e50; color: white; display: grid; grid-template-columns: 40px 1fr 1fr 80px 80px; padding: 10px 16px; font-size: 0.85em; font-weight: 700; gap: 8px; }
+  .lb-row { display: grid; grid-template-columns: 40px 1fr 1fr 80px 80px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 0.88em; gap: 8px; align-items: center; }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-row.highlight { background: #fffde7; }
+  .lb-rank { font-weight: 700; color: #e74c3c; font-size: 1.1em; }
+  .lb-score { font-weight: 700; color: #2c3e50; }
+  .lb-dict { font-size: 0.8em; color: #888; }
 
   /* WAITING */
   #waitingScreen { text-align: center; }
@@ -152,6 +175,7 @@
   <div class="pseudo-badge" id="pseudoDisplay"></div>
   <div class="lobby-btns">
     <button class="btn btn-green" onclick="openCreateModal()">+ Créer une partie</button>
+    <button class="btn btn-blue btn-sm" onclick="showScreen('leaderboardScreen');loadLeaderboard()">🏆 Classement</button>
     <button class="btn btn-gray btn-sm" onclick="logout()">Changer de pseudo</button>
   </div>
   <div class="game-list">
@@ -163,7 +187,12 @@
 <!-- MODAL CRÉER -->
 <div class="modal-overlay" id="createModal">
   <div class="modal">
-    <h3>Choisir un dictionnaire</h3>
+    <h3>Créer une partie</h3>
+
+    <div class="modal-section-title">Nombre de manches</div>
+    <div class="round-selector" id="roundSelector"></div>
+
+    <div class="modal-section-title">Dictionnaire</div>
     <div class="dict-grid" id="dictGrid"></div>
 
     <div class="upload-section" id="uploadSection" onclick="document.getElementById('fileInput').click()">
@@ -193,6 +222,7 @@
 <div id="gameScreen" class="screen">
   <div class="game-header">
     <div class="round-info" id="roundInfo">Manche 1</div>
+    <div id="livesBar" class="lives-bar" style="display:none"></div>
     <div id="wordDisplay" class="word-display"></div>
     <span class="role-badge" id="roleBadge"></span>
     <div class="dict-tag" id="dictTag"></div>
@@ -246,6 +276,15 @@
   <div class="result-table" id="resultTable"></div>
   <div id="resultMsg" style="margin-bottom:16px;color:#888;font-size:0.95em"></div>
   <button class="btn btn-blue" onclick="goLobby()">Accueil</button>
+</div>
+
+<!-- LEADERBOARD -->
+<div id="leaderboardScreen" class="screen">
+  <h2 style="margin-bottom:6px">🏆 Classement</h2>
+  <p style="color:#888;font-size:0.9em;margin-bottom:16px">Mode infini — top 10 des meilleures parties</p>
+  <div id="lbContent"><p style="color:#aaa;text-align:center;padding:30px">Chargement…</p></div>
+  <br>
+  <button class="btn btn-blue btn-sm" onclick="showScreen('lobbyScreen')">← Retour</button>
 </div>
 
 <div id="reactionToast"></div>
@@ -580,7 +619,8 @@ let lastGuessCount = 0;
 
 // État modal création
 let selectedDictKey = 'general';
-let customWords = null; // [{w, d}] si fichier uploadé
+let customWords = null;
+let selectedRounds = 3; // 1, 3, 5, 10, ou 'infinite'
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -654,10 +694,32 @@ window.logout = function() {
 window.openCreateModal = function() {
   selectedDictKey = 'general';
   customWords = null;
+  selectedRounds = 3;
+  renderRoundSelector();
   renderDictGrid();
   document.getElementById('uploadPreview').textContent = 'Fichier .txt ou .csv — un mot par ligne';
   document.getElementById('uploadSection').classList.remove('has-file');
   document.getElementById('createModal').classList.add('open');
+};
+
+function renderRoundSelector() {
+  const options = [
+    { v: 1,          label: '1',  sub: 'manche' },
+    { v: 3,          label: '3',  sub: 'manches' },
+    { v: 5,          label: '5',  sub: 'manches' },
+    { v: 10,         label: '10', sub: 'manches' },
+    { v: 'infinite', label: '♾️', sub: '3 vies', cls: 'infinite' },
+  ];
+  document.getElementById('roundSelector').innerHTML = options.map(o => `
+    <div class="round-btn ${o.cls||''} ${selectedRounds === o.v ? 'selected' : ''}" onclick="selectRounds(${typeof o.v==='string'?`'${o.v}'`:o.v})">
+      <span class="rb-label">${o.label}</span>
+      <span class="rb-sub">${o.sub}</span>
+    </div>`).join('');
+}
+
+window.selectRounds = function(v) {
+  selectedRounds = v;
+  renderRoundSelector();
 };
 window.closeCreateModal = function() {
   document.getElementById('createModal').classList.remove('open');
@@ -737,10 +799,11 @@ function startLobbyListener() {
       const dictInfo = g.dictKey === 'custom'
         ? `📂 Dictionnaire personnalisé (${g.dictWordCount||'?'} mots)`
         : `${DICTIONARIES[g.dictKey]?.emoji||'📚'} ${DICTIONARIES[g.dictKey]?.label||g.dictKey}`;
+      const modeInfo = g.totalRounds === 'infinite' ? '♾️ Mode infini (3 vies)' : `${g.totalRounds||3} manches`;
       return `<div class="game-item">
         <div class="game-item-info">
           <span>Partie de <strong>${g.hostName}</strong></span>
-          <span class="game-item-dict">${dictInfo}</span>
+          <span class="game-item-dict">${dictInfo} · ${modeInfo}</span>
         </div>
         <button class="btn btn-green btn-sm" onclick="joinGame('${id}')">Rejoindre</button>
       </div>`;
@@ -757,6 +820,7 @@ function createGame() {
   const words = dictKey === 'custom' ? customWords : DICTIONARIES[dictKey].words;
   const word = pickWordFrom(words);
   const gameId = uid();
+  const isInfinite = selectedRounds === 'infinite';
 
   const gameData = {
     status: 'waiting',
@@ -775,8 +839,9 @@ function createGame() {
     dictLabel: dictKey === 'custom' ? 'Personnalisé' : DICTIONARIES[dictKey].label,
     dictEmoji: dictKey === 'custom' ? '📂' : DICTIONARIES[dictKey].emoji,
     dictWordCount: words.length,
+    totalRounds: isInfinite ? 'infinite' : selectedRounds,
+    lives: isInfinite ? 3 : null,
   };
-  // On stocke les mots custom dans la game pour que l'adversaire les ait aussi
   if (dictKey === 'custom') gameData.customWords = words.slice(0, 200);
 
   set(ref(db,'lsf_games/'+gameId), gameData);
@@ -883,7 +948,20 @@ function renderGame(g) {
   const clues = g.clues || [];
   const guesses = g.guesses || [];
 
-  document.getElementById('roundInfo').textContent = `Manche ${g.round}`;
+  const isInfinite = g.totalRounds === 'infinite';
+  document.getElementById('roundInfo').textContent = isInfinite
+    ? `Manche ${g.round}`
+    : `Manche ${g.round} / ${g.totalRounds||3}`;
+
+  // Vies (mode infini)
+  const livesBar = document.getElementById('livesBar');
+  if (isInfinite && g.lives != null) {
+    livesBar.style.display = 'block';
+    livesBar.textContent = '❤️'.repeat(g.lives) + '🖤'.repeat(Math.max(0, 3 - g.lives));
+  } else {
+    livesBar.style.display = 'none';
+  }
+
   document.getElementById('roleBadge').textContent = isClueGiver ? 'Vous faites deviner' : 'Vous devinez';
   document.getElementById('roleBadge').className = 'role-badge ' + (isClueGiver ? 'role-clue' : 'role-guess');
   document.getElementById('dictTag').textContent = `${g.dictEmoji||'📚'} ${g.dictLabel||''}`;
@@ -939,7 +1017,8 @@ function renderGame(g) {
     const otherId = myId === g.host ? g.guest : g.host;
     const iReady = !!(g.readyForNext?.[myId]);
     const otherReady = !!(g.readyForNext?.[otherId]);
-    const label = g.round >= 3 ? 'Voir les résultats' : 'Manche suivante';
+    const isLastRound = g.totalRounds !== 'infinite' && g.round >= (g.totalRounds || 3);
+    const label = isLastRound ? 'Voir les résultats' : 'Manche suivante';
 
     if (!iReady) {
       const nextBtn = document.createElement('button');
@@ -1044,10 +1123,24 @@ function doNextRound(g) {
   const next = (g.round||1) + 1;
   lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0;
 
-  if (next > 3) {
+  const isInfinite = g.totalRounds === 'infinite';
+
+  // Mode infini : perd une vie si défaite, fin si 0 vies
+  let newLives = g.lives ?? 3;
+  if (isInfinite && g.roundResult === 'lose') {
+    newLives--;
+    if (newLives <= 0) {
+      update(ref(db,'lsf_games/'+currentGameId), { status:'finished', lives: 0 });
+      return;
+    }
+  }
+
+  // Mode normal : fin quand toutes les manches sont jouées
+  if (!isInfinite && next > (g.totalRounds || 3)) {
     update(ref(db,'lsf_games/'+currentGameId), { status:'finished' });
     return;
   }
+
   const words = g.dictKey === 'custom' ? (g.customWords||[]) : (DICTIONARIES[g.dictKey]?.words || DICTIONARIES.general.words);
   const word = pickWordFrom(words);
   update(ref(db,'lsf_games/'+currentGameId), {
@@ -1057,6 +1150,7 @@ function doNextRound(g) {
     clues: [], guesses: [],
     timerStart: Date.now(), timerEnd: Date.now() + 60000,
     roundResult: null, lastScore: null, reaction: null, readyForNext: null,
+    lives: isInfinite ? newLives : null,
   });
 }
 
@@ -1075,15 +1169,73 @@ function renderResult(g) {
   const otherScore = g.scores?.[otherId]||0;
   const won = myScore >= otherScore;
   setTimeout(() => won ? soundWin() : soundLose(), 400);
+
+  const isInfinite = g.totalRounds === 'infinite';
+  const modeLine = isInfinite
+    ? `♾️ Mode infini · ${g.round} manches jouées`
+    : `${g.totalRounds||3} manches`;
+
   document.getElementById('resultBanner').className = 'result-banner ' + (won?'result-win':'result-lose');
-  document.getElementById('resultBanner').textContent = won ? '✓ Victoire !' : '✗ Défaite';
+  document.getElementById('resultBanner').textContent = isInfinite
+    ? (g.lives <= 0 ? '💀 Plus de vies !' : '🏁 Partie terminée')
+    : (won ? '✓ Victoire !' : '✗ Défaite');
+
   document.getElementById('resultTable').innerHTML = `
     <div class="result-row"><span>${g.names?.[myId]||myName}</span><strong>${myScore} pts</strong></div>
     <div class="result-row"><span>${g.names?.[otherId]||'?'}</span><strong>${otherScore} pts</strong></div>
-    <div class="result-row total"><span>Dictionnaire</span><span>${g.dictEmoji||''} ${g.dictLabel||''}</span></div>
+    <div class="result-row total"><span>${g.dictEmoji||''} ${g.dictLabel||''}</span><span>${modeLine}</span></div>
   `;
   document.getElementById('resultMsg').textContent = `Dernière manche : ${g.lastTime||0}s · ${g.lastClues||0} indices`;
+
+  // Sauvegarde leaderboard si mode infini (hôte seulement)
+  if (isInfinite && g.host === myId) saveLeaderboard(g);
 }
+
+// ── LEADERBOARD ──
+async function saveLeaderboard(g) {
+  const score = Math.max(g.scores?.[g.host]||0, g.scores?.[g.guest]||0);
+  const entry = {
+    player1: g.names?.[g.host] || '?',
+    player2: g.names?.[g.guest] || '?',
+    score,
+    rounds: g.round,
+    dict: `${g.dictEmoji||''} ${g.dictLabel||''}`,
+    date: Date.now(),
+  };
+  const snap = await get(ref(db,'lsf_leaderboard'));
+  let entries = snap.val() ? Object.values(snap.val()) : [];
+  entries.push(entry);
+  entries.sort((a,b) => b.score - a.score);
+  entries = entries.slice(0, 10);
+  const obj = {};
+  entries.forEach((e,i) => obj[i] = e);
+  set(ref(db,'lsf_leaderboard'), obj);
+}
+
+window.loadLeaderboard = function() {
+  const el = document.getElementById('lbContent');
+  el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Chargement…</p>';
+  get(ref(db,'lsf_leaderboard')).then(snap => {
+    const data = snap.val();
+    if (!data) { el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Aucune partie enregistrée</p>'; return; }
+    const entries = Object.values(data).sort((a,b) => b.score - a.score);
+    const medals = ['🥇','🥈','🥉'];
+    el.innerHTML = `
+      <div class="lb-table">
+        <div class="lb-header"><span>#</span><span>Joueur 1</span><span>Joueur 2</span><span>Score</span><span>Manches</span></div>
+        ${entries.map((e,i) => `
+          <div class="lb-row">
+            <span class="lb-rank">${medals[i]||i+1}</span>
+            <span>${e.player1}</span>
+            <span>${e.player2}</span>
+            <span class="lb-score">${e.score}</span>
+            <span style="color:#888">${e.rounds}</span>
+          </div>
+          <div style="padding:2px 16px 8px;font-size:0.78em;color:#aaa;border-bottom:1px solid #f0f0f0">${e.dict}</div>
+        `).join('')}
+      </div>`;
+  });
+};
 
 window.goLobby = function() {
   if (currentGameId) { remove(ref(db,'lsf_games/'+currentGameId)); currentGameId = null; }
