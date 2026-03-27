@@ -167,9 +167,89 @@
     transition: transform 0.3s cubic-bezier(.175,.885,.32,1.275); z-index: 999; white-space: nowrap;
   }
   #reactionToast.show { transform: translateX(-50%) translateY(0); }
+
+  /* DARK MODE TOGGLE */
+  #darkToggle {
+    position: fixed; bottom: 18px; right: 18px; z-index: 999;
+    width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+    font-size: 1.2em; display: flex; align-items: center; justify-content: center;
+    background: #2c3e50; color: white; box-shadow: 0 2px 10px rgba(0,0,0,.25);
+    transition: background 0.2s, transform 0.15s;
+  }
+  #darkToggle:hover { transform: scale(1.1); }
+
+  /* DARK MODE */
+  body.dark { background: #0f0f13; color: #e0e4ef; }
+  body.dark #loginScreen h1,
+  body.dark .lobby-title,
+  body.dark .word-display,
+  body.dark .modal h3,
+  body.dark .lb-score { color: #e0e4ef; }
+  body.dark #loginScreen p,
+  body.dark .game-list h3,
+  body.dark .round-info,
+  body.dark h2 { color: #9099b0; }
+  body.dark .game-item {
+    background: #1e1e28; border-color: #2a2a38;
+  }
+  body.dark .game-item-info span { color: #b0b8c8; }
+  body.dark .game-item-dict,
+  body.dark .dict-tag,
+  body.dark .no-games,
+  body.dark .clue-input-area label,
+  body.dark .upload-preview,
+  body.dark .upload-format { color: #6a7090; }
+  body.dark .modal { background: #1e1e28; border-color: #2a2a38; }
+  body.dark .modal-overlay { background: rgba(0,0,0,0.72); }
+  body.dark input[type=text],
+  body.dark input[type=password],
+  body.dark .auth-form input {
+    background: #252530; border-color: #3a3a48; color: #e0e4ef;
+  }
+  body.dark input[type=text]:focus,
+  body.dark input[type=password]:focus,
+  body.dark .auth-form input:focus { border-color: #3498db; }
+  body.dark .table-box { background: #1e1e28; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  body.dark .table-header { background: #252530; border-color: #2a2a38; color: #c0c8dc; }
+  body.dark .table-row { border-color: #252530; color: #c0c8dc; }
+  body.dark .lb-table { background: #1e1e28; box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+  body.dark .lb-header { background: #252530; }
+  body.dark .lb-row { border-color: #252530; }
+  body.dark .lb-row.highlight { background: #2a2820; }
+  body.dark .lb-dict { color: #6a7090; }
+  body.dark .timer-bar { background: #2a2a35; }
+  body.dark .game-header { background: #1e1e28; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+  body.dark .clue-input-area,
+  body.dark .guess-input-area { background: #1e1e28; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  body.dark #waitForClueMsg { background: #1e1e28; color: #7a8090; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  body.dark .dict-card { background: #1e1e28; border-color: #2a2a38; }
+  body.dark .dict-card .dict-name { color: #e0e4ef; }
+  body.dark .dict-card .dict-count { color: #6a7090; }
+  body.dark .dict-card:hover,
+  body.dark .dict-card.selected { border-color: #3498db; background: #1a2535; }
+  body.dark .round-btn { background: #1e1e28; border-color: #2a2a38; color: #c0c8dc; }
+  body.dark .round-btn:hover { border-color: #3498db; }
+  body.dark .round-btn.selected { background: #2a1a1a; border-color: #e74c3c; }
+  body.dark .round-btn.infinite.selected { background: #22182a; border-color: #9b59b6; }
+  body.dark .upload-section { border-color: #2a2a38; }
+  body.dark .upload-section.has-file { background: #142018; }
+  body.dark .modal-section-title { color: #8090a8; }
+  body.dark .auth-tabs { border-color: #2a2a38; }
+  body.dark .auth-tab { color: #6a7090; }
+  body.dark .auth-tab.active { color: #3498db; border-bottom-color: #3498db; }
+  body.dark .waiting-dict-badge { background: #252530; border-color: #2a2a38; color: #b0b8c8; }
+  body.dark .result-table { background: #1e1e28; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  body.dark .result-row { border-color: #252530; }
+  body.dark .spectator-banner { background: #252530; }
+  body.dark .btn-google { background: #252530; border-color: #3a3a48; color: #e0e4ef; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  body.dark .msg-error { background: #2a1a1a; color: #e07878; }
+  body.dark .msg-info { background: #1a2535; color: #5b9bd5; }
+  body.dark #darkToggle { background: #f39c12; }
 </style>
 </head>
 <body>
+
+<button id="darkToggle" title="Mode sombre" onclick="toggleDark()">🌙</button>
 
 <!-- AUTH -->
 <div id="loginScreen" class="screen active">
@@ -1710,6 +1790,19 @@ function showMsg(id, msg, type) {
 document.getElementById('createModal').addEventListener('click', e => {
   if (e.target === document.getElementById('createModal')) closeCreateModal();
 });
+</script>
+<script>
+  (function() {
+    if (localStorage.getItem('lsf_dark') === '1') {
+      document.body.classList.add('dark');
+      document.getElementById('darkToggle').textContent = '☀️';
+    }
+  })();
+  function toggleDark() {
+    const on = document.body.classList.toggle('dark');
+    document.getElementById('darkToggle').textContent = on ? '☀️' : '🌙';
+    localStorage.setItem('lsf_dark', on ? '1' : '0');
+  }
 </script>
 </body>
 </html>
