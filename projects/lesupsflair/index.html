@@ -915,13 +915,22 @@ function updateScoreBadge(score) {
 
 async function updateGlobalScore(uid, delta) {
   if (!uid || delta === 0) return;
-  // Vérifie que le joueur a un compte (pas invité) avant d'écrire
   const userSnap = await get(ref(db, 'lsf_users/' + uid));
   if (!userSnap.exists()) return; // invité, pas de score persistant
   const current = userSnap.val().globalScore || 0;
   const next = Math.max(0, current + delta);
   await set(ref(db, 'lsf_users/' + uid + '/globalScore'), next);
   if (uid === myId) updateScoreBadge(next);
+}
+
+async function incrementGamesPlayed(g) {
+  for (const uid of [g.host, g.guest]) {
+    if (!uid) continue;
+    const userSnap = await get(ref(db, 'lsf_users/' + uid));
+    if (!userSnap.exists()) continue; // invité
+    const current = userSnap.val().gamesPlayed || 0;
+    await set(ref(db, 'lsf_users/' + uid + '/gamesPlayed'), current + 1);
+  }
 }
 
 // ── MODAL CRÉER ──
@@ -1379,6 +1388,7 @@ async function doNextRound(g) {
     newLives--;
     if (newLives <= 0) {
       update(ref(db,'lsf_games/'+currentGameId), { status:'finished', lives: 0 });
+      await incrementGamesPlayed(g);
       return;
     }
   }
@@ -1386,6 +1396,7 @@ async function doNextRound(g) {
   // Mode normal : fin quand toutes les manches sont jouées
   if (!isInfinite && next > (g.totalRounds || 3)) {
     update(ref(db,'lsf_games/'+currentGameId), { status:'finished' });
+    await incrementGamesPlayed(g);
     return;
   }
 
