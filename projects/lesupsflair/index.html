@@ -2579,10 +2579,59 @@ async function doNextRoundMulti(g) {
 // ── Quitter une partie multi en cours ──
 window.quitMultiGame = function() {
   if (!confirm('Quitter la partie ? Tu seras absent(e) des prochaines manches.')) return;
+
+  const gameId = currentGameId;
+  const g = currentGame;
+
+  // Naviguer vers le lobby d'abord
   stopGameListener();
+  document.getElementById('gameChatSection').style.display = 'none';
   currentGameId = null; currentGame = null;
   showScreen('lobbyScreen');
   startLobbyListener();
+  initLobbyChat();
+
+  if (!gameId || !g || g.mode !== 'multi') return;
+
+  const players = (g.players || []).filter(p => p !== myId);
+
+  // Moins de 2 joueurs restants → supprimer la partie
+  if (players.length < 2) {
+    remove(ref(db, 'lsf_games/' + gameId));
+    remove(ref(db, 'lsf_game_chats/' + gameId));
+    return;
+  }
+
+  const updates = { players };
+
+  // Effacer notre "prêt" pour ne pas bloquer la progression
+  updates[`readyForNext/${myId}`] = null;
+
+  // Ajuster clueGiverIndex si on était avant le clue giver dans le tableau
+  const quitterIdx = (g.players || []).indexOf(myId);
+  let newCGI = g.clueGiverIndex || 0;
+  if (quitterIdx >= 0 && quitterIdx < newCGI) newCGI--;
+  if (newCGI >= players.length) newCGI = 0;
+  updates.clueGiverIndex = newCGI;
+
+  // Transférer le rôle d'hôte si on était l'hôte
+  if (g.host === myId) {
+    updates.host = players[0];
+    updates.hostName = g.names?.[players[0]] || '';
+  }
+
+  // Si la partie était en cours
+  if (g.status === 'playing') {
+    if (g.clueGiverId === myId) {
+      // Le clue giver quitte → forcer fin de manche
+      updates.status = 'round_end';
+    } else {
+      // Guesser qui quitte → le marquer comme terminé pour débloquer la manche
+      updates[`playerDone/${myId}`] = true;
+    }
+  }
+
+  update(ref(db, 'lsf_games/' + gameId), updates);
 };
 
 // ── Résultats finaux multi ──
