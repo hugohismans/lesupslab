@@ -83,6 +83,11 @@
   .lb-score { font-weight: 700; color: #2c3e50; }
   .lb-dict { font-size: 0.8em; color: #888; }
 
+  .spectator-banner { background: #2c3e50; color: #ecf0f1; text-align: center; padding: 8px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9em; font-weight: 600; letter-spacing: 1px; }
+  .live-dot { display: inline-block; width: 8px; height: 8px; background: #e74c3c; border-radius: 50%; margin-right: 6px; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .game-item-live { border-left: 3px solid #e74c3c; }
+
   /* WAITING */
   #waitingScreen { text-align: center; }
   .game-code { font-size: 3em; font-weight: bold; letter-spacing: 6px; color: #e74c3c; margin: 20px 0; }
@@ -204,6 +209,10 @@
     <h3>Parties disponibles</h3>
     <div id="gamesList"><div class="no-games">Aucune partie en attente</div></div>
   </div>
+  <div class="game-list" style="margin-top:24px">
+    <h3><span class="live-dot"></span>Parties en cours</h3>
+    <div id="ongoingGamesList"><div class="no-games">Aucune partie en cours</div></div>
+  </div>
 </div>
 
 <!-- MODAL CRÉER -->
@@ -242,6 +251,7 @@
 
 <!-- GAME -->
 <div id="gameScreen" class="screen">
+  <div id="spectatorBanner" class="spectator-banner" style="display:none">👁 Mode Spectateur — <span id="spectatorNames"></span> <button class="btn btn-gray btn-sm" style="margin-left:12px;padding:4px 12px" onclick="leaveSpectator()">Quitter</button></div>
   <div class="game-header">
     <div class="round-info" id="roundInfo">Manche 1</div>
     <div id="livesBar" class="lives-bar" style="display:none"></div>
@@ -841,6 +851,7 @@ window.showScreen = function showScreen(id) {
 // ── AUTH ──
 const googleProvider = new GoogleAuthProvider();
 let isGuest = false;
+let isSpectator = false;
 
 window.loginWithGoogle = async function() {
   try {
@@ -1033,16 +1044,23 @@ window.confirmCreate = function() {
 function startLobbyListener() {
   stopLobbyListener();
   lobbyListener = onValue(ref(db,'lsf_games'), snap => {
-    const list = document.getElementById('gamesList');
     const data = snap.val();
-    if (!data) { list.innerHTML = '<div class="no-games">Aucune partie en attente</div>'; return; }
+    const waitList    = document.getElementById('gamesList');
+    const ongoingList = document.getElementById('ongoingGamesList');
+
+    if (!data) {
+      waitList.innerHTML    = '<div class="no-games">Aucune partie en attente</div>';
+      ongoingList.innerHTML = '<div class="no-games">Aucune partie en cours</div>';
+      return;
+    }
+
+    // Parties en attente (rejoignables)
     const open = Object.entries(data).filter(([,g]) => g.status === 'waiting' && g.host !== myId);
-    if (!open.length) { list.innerHTML = '<div class="no-games">Aucune partie en attente</div>'; return; }
-    list.innerHTML = open.map(([id, g]) => {
+    waitList.innerHTML = open.length ? open.map(([id, g]) => {
       const dictInfo = g.dictKey === 'custom'
-        ? `📂 Dictionnaire personnalisé (${g.dictWordCount||'?'} mots)`
+        ? `📂 Personnalisé (${g.dictWordCount||'?'} mots)`
         : `${DICTIONARIES[g.dictKey]?.emoji||'📚'} ${DICTIONARIES[g.dictKey]?.label||g.dictKey}`;
-      const modeInfo = g.totalRounds === 'infinite' ? '♾️ Mode infini (3 vies)' : `${g.totalRounds||3} manches`;
+      const modeInfo = g.totalRounds === 'infinite' ? '♾️ Infini' : `${g.totalRounds||3} manches`;
       return `<div class="game-item">
         <div class="game-item-info">
           <span>Partie de <strong>${g.hostName}</strong></span>
@@ -1050,7 +1068,25 @@ function startLobbyListener() {
         </div>
         <button class="btn btn-green btn-sm" onclick="joinGame('${id}')">Rejoindre</button>
       </div>`;
-    }).join('');
+    }).join('') : '<div class="no-games">Aucune partie en attente</div>';
+
+    // Parties en cours (regardables)
+    const ongoing = Object.entries(data).filter(([,g]) =>
+      ['playing','round_end'].includes(g.status) && g.host !== myId && g.guest !== myId
+    );
+    ongoingList.innerHTML = ongoing.length ? ongoing.map(([id, g]) => {
+      const dictInfo = g.dictKey === 'custom'
+        ? `📂 Personnalisé`
+        : `${DICTIONARIES[g.dictKey]?.emoji||'📚'} ${DICTIONARIES[g.dictKey]?.label||g.dictKey}`;
+      const modeInfo = g.totalRounds === 'infinite' ? '♾️ Infini' : `Manche ${g.round||1}/${g.totalRounds||3}`;
+      return `<div class="game-item game-item-live">
+        <div class="game-item-info">
+          <span><span class="live-dot"></span><strong>${g.hostName}</strong> vs <strong>${g.guestName}</strong></span>
+          <span class="game-item-dict">${dictInfo} · ${modeInfo}</span>
+        </div>
+        <button class="btn btn-orange btn-sm" onclick="spectateGame('${id}')">👁 Regarder</button>
+      </div>`;
+    }).join('') : '<div class="no-games">Aucune partie en cours</div>';
   });
 }
 function stopLobbyListener() {
@@ -1098,6 +1134,7 @@ function createGame() {
 }
 
 window.joinGame = function(gameId) {
+  isSpectator = false;
   get(ref(db,'lsf_games/'+gameId)).then(snap => {
     const g = snap.val();
     if (!g || g.status !== 'waiting') { alert("Partie non disponible"); return; }
@@ -1114,6 +1151,22 @@ window.joinGame = function(gameId) {
     stopLobbyListener();
     listenGame(gameId);
   });
+};
+
+window.spectateGame = function(gameId) {
+  isSpectator = true;
+  currentGameId = gameId;
+  stopLobbyListener();
+  listenGame(gameId);
+};
+
+window.leaveSpectator = function() {
+  isSpectator = false;
+  stopGameListener();
+  currentGameId = null;
+  currentGame = null;
+  showScreen('lobbyScreen');
+  startLobbyListener();
 };
 
 window.cancelGame = function() {
@@ -1205,11 +1258,27 @@ function renderGame(g) {
     livesBar.style.display = 'none';
   }
 
-  document.getElementById('roleBadge').textContent = isClueGiver ? 'Vous faites deviner' : 'Vous devinez';
-  document.getElementById('roleBadge').className = 'role-badge ' + (isClueGiver ? 'role-clue' : 'role-guess');
+  // Bandeau spectateur
+  document.getElementById('spectatorBanner').style.display = isSpectator ? 'block' : 'none';
+  if (isSpectator) {
+    document.getElementById('spectatorNames').textContent = `${g.hostName} vs ${g.guestName}`;
+  }
+
+  if (isSpectator) {
+    document.getElementById('roleBadge').textContent = '👁 Spectateur';
+    document.getElementById('roleBadge').className = 'role-badge';
+    document.getElementById('roleBadge').style.background = '#ecf0f1';
+    document.getElementById('roleBadge').style.color = '#555';
+  } else {
+    document.getElementById('roleBadge').style.background = '';
+    document.getElementById('roleBadge').style.color = '';
+    document.getElementById('roleBadge').textContent = isClueGiver ? 'Vous faites deviner' : 'Vous devinez';
+    document.getElementById('roleBadge').className = 'role-badge ' + (isClueGiver ? 'role-clue' : 'role-guess');
+  }
   document.getElementById('dictTag').textContent = `${g.dictEmoji||'📚'} ${g.dictLabel||''}`;
 
-  if (isClueGiver) {
+  // Le spectateur voit toujours le mot (c'est plus fun)
+  if (isSpectator || isClueGiver) {
     document.getElementById('wordDisplay').textContent = g.currentWord;
     document.getElementById('wordDisplay').className = 'word-display';
   } else {
@@ -1240,12 +1309,11 @@ function renderGame(g) {
   const canClue = isClueGiver && validClues.length < 4 && g.status === 'playing'
     && (validClues.length === 0 || guesses.length >= validClues.length);
 
-  document.getElementById('clueArea').style.display = canClue ? 'block' : 'none';
-  document.getElementById('guessArea').style.display = canGuess ? 'block' : 'none';
+  document.getElementById('clueArea').style.display  = (!isSpectator && canClue)  ? 'block' : 'none';
+  document.getElementById('guessArea').style.display = (!isSpectator && canGuess) ? 'block' : 'none';
 
-  // Message d'attente pour le devineur
   const waitMsg = document.getElementById('waitForClueMsg');
-  waitMsg.style.display = waitingForClue ? 'block' : 'none';
+  waitMsg.style.display = (!isSpectator && waitingForClue) ? 'block' : 'none';
 
   const btns = document.getElementById('actionBtns');
   btns.innerHTML = '';
@@ -1257,26 +1325,32 @@ function renderGame(g) {
     document.getElementById('gameMsg').innerHTML = '';
     document.getElementById('gameMsg').appendChild(banner);
 
-    const otherId = myId === g.host ? g.guest : g.host;
-    const iReady = !!(g.readyForNext?.[myId]);
-    const otherReady = !!(g.readyForNext?.[otherId]);
-    const isLastRound = g.totalRounds !== 'infinite' && g.round >= (g.totalRounds || 3);
-    const label = isLastRound ? 'Voir les résultats' : 'Manche suivante';
-
-    if (!iReady) {
-      const nextBtn = document.createElement('button');
-      nextBtn.className = 'btn btn-blue';
-      nextBtn.textContent = label + ' →';
-      nextBtn.onclick = markReady;
-      btns.appendChild(nextBtn);
-    } else {
-      const waiting = document.createElement('div');
-      waiting.style.cssText = 'color:#888;font-size:0.9em;padding:8px';
-      waiting.textContent = otherReady ? '⏳ Lancement...' : '✓ Prêt — en attente de l\'adversaire…';
-      btns.appendChild(waiting);
+    if (!isSpectator) {
+      const otherId = myId === g.host ? g.guest : g.host;
+      const iReady = !!(g.readyForNext?.[myId]);
+      const otherReady = !!(g.readyForNext?.[otherId]);
+      const isLastRound = g.totalRounds !== 'infinite' && g.round >= (g.totalRounds || 3);
+      const label = isLastRound ? 'Voir les résultats' : 'Manche suivante';
+      if (!iReady) {
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn btn-blue';
+        nextBtn.textContent = label + ' →';
+        nextBtn.onclick = markReady;
+        btns.appendChild(nextBtn);
+      } else {
+        const waiting = document.createElement('div');
+        waiting.style.cssText = 'color:#888;font-size:0.9em;padding:8px';
+        waiting.textContent = otherReady ? '⏳ Lancement...' : '✓ Prêt — en attente de l\'adversaire…';
+        btns.appendChild(waiting);
+      }
     }
   } else {
     document.getElementById('gameMsg').innerHTML = '';
+  }
+
+  // Si la partie se termine, le spectateur revient automatiquement au lobby
+  if (isSpectator && g.status === 'finished') {
+    setTimeout(() => window.leaveSpectator(), 3000);
   }
 }
 
