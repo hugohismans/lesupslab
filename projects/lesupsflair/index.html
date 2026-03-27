@@ -10,13 +10,19 @@
   .screen { display: none; width: 100%; max-width: 700px; margin: 0 auto; padding: 20px; }
   .screen.active { display: block; }
 
-  /* LOGIN */
+  /* AUTH */
   #loginScreen { text-align: center; }
   #loginScreen h1 { font-size: 2.5em; color: #2c3e50; margin-bottom: 8px; }
-  #loginScreen p { color: #666; margin-bottom: 30px; }
-  .input-group { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  input[type=text] { padding: 12px 20px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 8px; outline: none; width: 220px; }
-  input[type=text]:focus { border-color: #3498db; }
+  #loginScreen p { color: #666; margin-bottom: 24px; }
+  .auth-tabs { display: flex; border-bottom: 2px solid #e0e0e0; margin-bottom: 24px; max-width: 360px; margin-left: auto; margin-right: auto; }
+  .auth-tab { flex: 1; padding: 12px; cursor: pointer; font-weight: 600; color: #999; border-bottom: 3px solid transparent; margin-bottom: -2px; text-align: center; transition: all 0.15s; }
+  .auth-tab.active { color: #3498db; border-bottom-color: #3498db; }
+  .auth-form { display: flex; flex-direction: column; gap: 12px; max-width: 360px; margin: 0 auto 16px; }
+  .auth-form input { width: 100%; padding: 12px 16px; font-size: 1em; border: 2px solid #ddd; border-radius: 8px; outline: none; }
+  .auth-form input:focus { border-color: #3498db; }
+  .global-score-badge { display: inline-block; background: #f39c12; color: white; padding: 4px 14px; border-radius: 16px; font-size: 0.85em; margin-left: 8px; font-weight: 700; vertical-align: middle; }
+  input[type=text],input[type=password] { padding: 12px 20px; font-size: 1.1em; border: 2px solid #ddd; border-radius: 8px; outline: none; width: 220px; }
+  input[type=text]:focus,input[type=password]:focus { border-color: #3498db; }
 
   /* LOBBY */
   #lobbyScreen { text-align: center; }
@@ -158,25 +164,47 @@
 </head>
 <body>
 
-<!-- LOGIN -->
+<!-- AUTH -->
 <div id="loginScreen" class="screen active">
   <h1>LeSuperFlair</h1>
   <p>Le jeu des indices malins</p>
-  <div class="input-group">
-    <input type="text" id="pseudoInput" placeholder="Ton pseudo..." maxlength="16" />
-    <button class="btn btn-blue" onclick="login()">Jouer</button>
+
+  <div class="auth-tabs">
+    <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Se connecter</div>
+    <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Créer un compte</div>
   </div>
-  <div id="loginMsg"></div>
+
+  <div id="loginForm">
+    <div class="auth-form">
+      <input type="text" id="loginPseudo" placeholder="Pseudo" maxlength="16" autocomplete="username" />
+      <input type="password" id="loginPassword" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginUser()" />
+      <button class="btn btn-blue" onclick="loginUser()">Se connecter</button>
+    </div>
+    <div id="loginMsg"></div>
+  </div>
+
+  <div id="registerForm" style="display:none">
+    <div class="auth-form">
+      <input type="text" id="regPseudo" placeholder="Pseudo (2–16 caractères)" maxlength="16" autocomplete="username" />
+      <input type="password" id="regPassword" placeholder="Mot de passe (6+ caractères)" autocomplete="new-password" />
+      <input type="password" id="regPassword2" placeholder="Confirmer le mot de passe" autocomplete="new-password" onkeydown="if(event.key==='Enter')registerUser()" />
+      <button class="btn btn-green" onclick="registerUser()">Créer le compte</button>
+    </div>
+    <div id="registerMsg"></div>
+  </div>
 </div>
 
 <!-- LOBBY -->
 <div id="lobbyScreen" class="screen">
   <div class="lobby-title">Bienvenue,</div>
-  <div class="pseudo-badge" id="pseudoDisplay"></div>
+  <div style="margin-bottom:24px">
+    <span class="pseudo-badge" id="pseudoDisplay"></span>
+    <span class="global-score-badge" id="globalScoreBadge">⭐ 0 pts</span>
+  </div>
   <div class="lobby-btns">
     <button class="btn btn-green" onclick="openCreateModal()">+ Créer une partie</button>
     <button class="btn btn-blue btn-sm" onclick="showScreen('leaderboardScreen');loadLeaderboard()">🏆 Classement</button>
-    <button class="btn btn-gray btn-sm" onclick="logout()">Changer de pseudo</button>
+    <button class="btn btn-gray btn-sm" onclick="logout()">Déconnexion</button>
   </div>
   <div class="game-list">
     <h3>Parties disponibles</h3>
@@ -280,8 +308,11 @@
 
 <!-- LEADERBOARD -->
 <div id="leaderboardScreen" class="screen">
-  <h2 style="margin-bottom:6px">🏆 Classement</h2>
-  <p style="color:#888;font-size:0.9em;margin-bottom:16px">Mode infini — top 10 des meilleures parties</p>
+  <h2 style="margin-bottom:12px">🏆 Classement</h2>
+  <div class="auth-tabs" style="margin-bottom:16px">
+    <div class="auth-tab active" id="lbTabGlobal" onclick="switchLbTab('global')">⭐ Top joueurs</div>
+    <div class="auth-tab" id="lbTabInfinite" onclick="switchLbTab('infinite')">♾️ Mode infini</div>
+  </div>
   <div id="lbContent"><p style="color:#aaa;text-align:center;padding:30px">Chargement…</p></div>
   <br>
   <button class="btn btn-blue btn-sm" onclick="showScreen('lobbyScreen')">← Retour</button>
@@ -293,6 +324,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, update, remove, onValue }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAfHnD9E7qfQuYMlbFTLET_IlwekGkd-PU",
@@ -306,6 +339,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
 // ── Dictionnaires ──
 const DICTIONARIES = {
@@ -810,22 +844,89 @@ window.showScreen = function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
-// ── LOGIN ──
-window.login = function() {
-  const name = document.getElementById('pseudoInput').value.trim();
-  if (!name || name.length < 2) { showMsg('loginMsg','Pseudo trop court','error'); return; }
-  if (!myId) myId = uid();
-  myName = name;
-  localStorage.setItem('lsf_name', myName);
-  document.getElementById('pseudoDisplay').textContent = myName;
-  showScreen('lobbyScreen');
-  startLobbyListener();
+// ── AUTH ──
+function pseudoToEmail(pseudo) {
+  // Derive a deterministic internal email from pseudo (never shown to user)
+  return pseudo.toLowerCase().replace(/[^a-z0-9]/g, '') + '@lsf.game';
+}
+
+window.switchAuthTab = function(tab) {
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+  document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
 };
-window.logout = function() {
+
+window.registerUser = async function() {
+  const pseudo = document.getElementById('regPseudo').value.trim();
+  const pass   = document.getElementById('regPassword').value;
+  const pass2  = document.getElementById('regPassword2').value;
+  if (pseudo.length < 2) { showMsg('registerMsg', 'Pseudo trop court (2 min)', 'error'); return; }
+  if (pass.length < 6)   { showMsg('registerMsg', 'Mot de passe trop court (6 min)', 'error'); return; }
+  if (pass !== pass2)    { showMsg('registerMsg', 'Les mots de passe ne correspondent pas', 'error'); return; }
+  try {
+    const email = pseudoToEmail(pseudo);
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await updateProfile(cred.user, { displayName: pseudo });
+    await set(ref(db, 'lsf_users/' + cred.user.uid), {
+      name: pseudo, globalScore: 0, gamesPlayed: 0, createdAt: Date.now()
+    });
+    // onAuthStateChanged handles the redirect
+  } catch(e) {
+    const msg = e.code === 'auth/email-already-in-use'
+      ? 'Ce pseudo est déjà utilisé'
+      : 'Erreur : ' + e.message;
+    showMsg('registerMsg', msg, 'error');
+  }
+};
+
+window.loginUser = async function() {
+  const pseudo = document.getElementById('loginPseudo').value.trim();
+  const pass   = document.getElementById('loginPassword').value;
+  if (!pseudo || !pass) { showMsg('loginMsg', 'Pseudo et mot de passe requis', 'error'); return; }
+  try {
+    await signInWithEmailAndPassword(auth, pseudoToEmail(pseudo), pass);
+    // onAuthStateChanged handles the redirect
+  } catch(e) {
+    showMsg('loginMsg', 'Pseudo ou mot de passe incorrect', 'error');
+  }
+};
+
+window.logout = async function() {
   stopLobbyListener();
+  await signOut(auth);
   showScreen('loginScreen');
-  document.getElementById('pseudoInput').value = myName || '';
 };
+
+// ── AUTH STATE — déclenché au chargement et à chaque connexion/déconnexion ──
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    myId   = user.uid;
+    myName = user.displayName || user.email.split('@')[0];
+    localStorage.setItem('lsf_name', myName);
+    document.getElementById('pseudoDisplay').textContent = myName;
+    // Charge le score global
+    const snap = await get(ref(db, 'lsf_users/' + myId + '/globalScore'));
+    updateScoreBadge(snap.val() || 0);
+    showScreen('lobbyScreen');
+    startLobbyListener();
+  }
+});
+
+function updateScoreBadge(score) {
+  const badge = document.getElementById('globalScoreBadge');
+  if (badge) badge.textContent = '⭐ ' + score + ' pts';
+}
+
+async function updateGlobalScore(uid, delta) {
+  if (!uid || delta === 0) return;
+  const scoreRef = ref(db, 'lsf_users/' + uid + '/globalScore');
+  const snap = await get(scoreRef);
+  const current = snap.val() || 0;
+  const next = Math.max(0, current + delta);
+  await set(scoreRef, next);
+  if (uid === myId) updateScoreBadge(next);
+}
 
 // ── MODAL CRÉER ──
 window.openCreateModal = function() {
@@ -1257,9 +1358,22 @@ function markReady() {
 }
 
 // Appelé par le listener quand les deux joueurs sont prêts (hôte seulement pour éviter la double écriture)
-function doNextRound(g) {
+async function doNextRound(g) {
   const next = (g.round||1) + 1;
   lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0;
+
+  // ── Mise à jour des scores globaux pour la manche qui vient de se terminer ──
+  const guesserUid    = g.clueGiver === g.host ? g.guest : g.host;
+  const clueGiverUid  = g.clueGiver;
+  if (g.roundResult === 'win') {
+    const cluesUsed = typeof g.lastClues === 'number' ? g.lastClues : 4;
+    const bonus = Math.max(0, 4 - cluesUsed) * 2; // +0 à +8 selon nb d'indices
+    await updateGlobalScore(guesserUid,   10 + bonus);
+    await updateGlobalScore(clueGiverUid, 5);
+  } else if (g.roundResult === 'lose') {
+    await updateGlobalScore(guesserUid,   -5);
+    await updateGlobalScore(clueGiverUid, -2);
+  }
 
   const isInfinite = g.totalRounds === 'infinite';
 
@@ -1350,29 +1464,63 @@ async function saveLeaderboard(g) {
   set(ref(db,'lsf_leaderboard'), obj);
 }
 
+let currentLbTab = 'global';
+
+window.switchLbTab = function(tab) {
+  currentLbTab = tab;
+  document.getElementById('lbTabGlobal').classList.toggle('active', tab === 'global');
+  document.getElementById('lbTabInfinite').classList.toggle('active', tab === 'infinite');
+  window.loadLeaderboard();
+};
+
 window.loadLeaderboard = function() {
   const el = document.getElementById('lbContent');
   el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Chargement…</p>';
-  get(ref(db,'lsf_leaderboard')).then(snap => {
-    const data = snap.val();
-    if (!data) { el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Aucune partie enregistrée</p>'; return; }
-    const entries = Object.values(data).sort((a,b) => b.score - a.score);
-    const medals = ['🥇','🥈','🥉'];
-    el.innerHTML = `
-      <div class="lb-table">
-        <div class="lb-header"><span>#</span><span>Joueur 1</span><span>Joueur 2</span><span>Score</span><span>Manches</span></div>
-        ${entries.map((e,i) => `
-          <div class="lb-row">
-            <span class="lb-rank">${medals[i]||i+1}</span>
-            <span>${e.player1}</span>
-            <span>${e.player2}</span>
-            <span class="lb-score">${e.score}</span>
-            <span style="color:#888">${e.rounds}</span>
-          </div>
-          <div style="padding:2px 16px 8px;font-size:0.78em;color:#aaa;border-bottom:1px solid #f0f0f0">${e.dict}</div>
-        `).join('')}
-      </div>`;
-  });
+  const medals = ['🥇','🥈','🥉'];
+
+  if (currentLbTab === 'global') {
+    // Top joueurs par score global
+    get(ref(db,'lsf_users')).then(snap => {
+      const data = snap.val();
+      if (!data) { el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Aucun joueur enregistré</p>'; return; }
+      const entries = Object.values(data)
+        .filter(u => u.globalScore > 0)
+        .sort((a,b) => b.globalScore - a.globalScore)
+        .slice(0, 10);
+      if (!entries.length) { el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Aucun score pour l\'instant</p>'; return; }
+      el.innerHTML = `
+        <div class="lb-table">
+          <div class="lb-header" style="grid-template-columns:40px 1fr 80px 80px"><span>#</span><span>Joueur</span><span>Score</span><span>Parties</span></div>
+          ${entries.map((e,i) => `
+            <div class="lb-row ${e.name===myName?'highlight':''}" style="grid-template-columns:40px 1fr 80px 80px">
+              <span class="lb-rank">${medals[i]||i+1}</span>
+              <span>${e.name}${e.name===myName?' 👤':''}</span>
+              <span class="lb-score">⭐ ${e.globalScore}</span>
+              <span style="color:#888">${e.gamesPlayed||0}</span>
+            </div>`).join('')}
+        </div>`;
+    });
+  } else {
+    // Mode infini — top 10 des meilleures parties
+    get(ref(db,'lsf_leaderboard')).then(snap => {
+      const data = snap.val();
+      if (!data) { el.innerHTML = '<p style="color:#aaa;text-align:center;padding:30px">Aucune partie enregistrée</p>'; return; }
+      const entries = Object.values(data).sort((a,b) => b.score - a.score);
+      el.innerHTML = `
+        <div class="lb-table">
+          <div class="lb-header"><span>#</span><span>Joueur 1</span><span>Joueur 2</span><span>Score</span><span>Manches</span></div>
+          ${entries.map((e,i) => `
+            <div class="lb-row">
+              <span class="lb-rank">${medals[i]||i+1}</span>
+              <span>${e.player1}</span><span>${e.player2}</span>
+              <span class="lb-score">${e.score}</span>
+              <span style="color:#888">${e.rounds}</span>
+            </div>
+            <div style="padding:2px 16px 8px;font-size:0.78em;color:#aaa;border-bottom:1px solid #f0f0f0">${e.dict}</div>
+          `).join('')}
+        </div>`;
+    });
+  }
 };
 
 window.goLobby = function() {
