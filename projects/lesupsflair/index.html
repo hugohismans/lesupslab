@@ -256,6 +256,53 @@
   body.dark .online-pill { background: #1e1e28; border-color: #2a2a38; color: #b0b8c8; }
   body.dark .online-pill.me { background: #1a2535; border-color: #3498db; color: #5b9bd5; }
   body.dark .online-pill.guest-pill { color: #6a7090; }
+
+  /* ── MULTI MODE ── */
+  .pcount-btn { flex:1; min-width:48px; padding:10px 6px; border:2px solid #e0e0e0; border-radius:10px; cursor:pointer; text-align:center; background:white; font-size:0.9em; font-weight:700; color:#555; transition:all 0.15s; }
+  .pcount-btn:hover { border-color:#9b59b6; }
+  .pcount-btn.selected { border-color:#9b59b6; background:#f5eef8; color:#9b59b6; }
+  .player-count-selector { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+
+  .waiting-players-list { margin:12px 0; }
+  .waiting-player-item { display:flex; align-items:center; gap:8px; padding:8px 14px; background:white; border-radius:8px; margin-bottom:6px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  .waiting-player-name { font-weight:600; flex:1; font-size:0.95em; }
+  .waiting-player-badge { font-size:0.78em; color:#888; background:#f0f0f0; padding:2px 8px; border-radius:8px; }
+
+  .multi-hints-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; }
+  .hint-slot { background:white; border:2px solid #e0e0e0; border-radius:8px; padding:10px 6px; text-align:center; min-height:64px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .hint-slot.unlocked { border-color:#3498db; background:#f0f8ff; }
+  .hint-slot.filled { border-color:#2ecc71; background:#f0fdf4; }
+  .hint-slot.locked { background:#f9f9f9; }
+  .hint-number { font-size:0.72em; color:#888; margin-bottom:3px; }
+  .hint-time { font-size:0.78em; color:#bbb; }
+  .hint-word { font-size:1em; font-weight:700; color:#2c3e50; }
+
+  .multi-players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-bottom:14px; }
+  .player-status-card { background:white; border-radius:8px; padding:10px 8px; border:2px solid #e0e0e0; text-align:center; }
+  .player-status-card.is-me { border-color:#3498db; }
+  .player-status-card.found { border-color:#2ecc71; background:#f0fdf4; }
+  .player-status-card.failed { border-color:#e74c3c; background:#fdf0ef; }
+  .player-status-card.is-clue-giver { border-color:#9b59b6; background:#f9f4ff; }
+  .psc-name { font-weight:700; font-size:0.82em; color:#2c3e50; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .psc-icon { font-size:1.4em; }
+  .psc-sub { font-size:0.72em; color:#888; margin-top:2px; }
+
+  body.dark .pcount-btn { background:#1e1e28; border-color:#2a2a38; color:#c0c8dc; }
+  body.dark .pcount-btn.selected { background:#22182a; border-color:#9b59b6; color:#b07fd8; }
+  body.dark .waiting-player-item { background:#1e1e28; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  body.dark .waiting-player-name { color:#e0e4ef; }
+  body.dark .waiting-player-badge { background:#252530; color:#6a7090; }
+  body.dark .hint-slot { background:#1e1e28; border-color:#2a2a38; }
+  body.dark .hint-slot.unlocked { background:#1a2535; border-color:#3498db; }
+  body.dark .hint-slot.filled { background:#142018; border-color:#2ecc71; }
+  body.dark .hint-slot.locked { background:#181820; }
+  body.dark .hint-word { color:#e0e4ef; }
+  body.dark .player-status-card { background:#1e1e28; border-color:#2a2a38; }
+  body.dark .player-status-card.is-me { border-color:#3498db; }
+  body.dark .player-status-card.found { background:#142018; border-color:#2ecc71; }
+  body.dark .player-status-card.failed { background:#2a1a1a; border-color:#e74c3c; }
+  body.dark .player-status-card.is-clue-giver { background:#22182a; border-color:#9b59b6; }
+  body.dark .psc-name { color:#e0e4ef; }
 </style>
 </head>
 <body>
@@ -331,6 +378,9 @@
     <div class="modal-section-title">Nombre de manches</div>
     <div class="round-selector" id="roundSelector"></div>
 
+    <div class="modal-section-title" id="playerCountTitle">Nombre de joueurs</div>
+    <div class="player-count-selector" id="playerCountSelector"></div>
+
     <div class="modal-section-title">Dictionnaire</div>
     <div class="dict-grid" id="dictGrid"></div>
 
@@ -352,9 +402,15 @@
 <div id="waitingScreen" class="screen">
   <h2>Partie créée !</h2>
   <div class="waiting-dict-badge" id="waitingDictBadge"></div>
-  <p>En attente d'un adversaire <span class="waiting-dots"></span></p>
+  <p id="waitingNormalMsg">En attente d'un adversaire <span class="waiting-dots"></span></p>
+  <div id="waitingMultiInfo" style="display:none">
+    <div id="waitingPlayersCount" style="color:#888;font-size:0.9em;margin-bottom:10px"></div>
+    <div id="waitingPlayersList" class="waiting-players-list"></div>
+    <button id="startMultiBtn" class="btn btn-green" onclick="startMultiGame()" style="display:none;margin-bottom:12px">▶ Démarrer la partie</button>
+    <p style="color:#aaa;font-size:0.82em" id="waitingMultiHint">En attente d'autres joueurs <span class="waiting-dots"></span></p>
+  </div>
   <br>
-  <button class="btn btn-gray btn-sm" onclick="cancelGame()">Annuler</button>
+  <button class="btn btn-gray btn-sm" onclick="cancelGame()">Annuler / Quitter</button>
 </div>
 
 <!-- GAME -->
@@ -397,7 +453,7 @@
     <button class="btn-reaction btn-nimp" onclick="sendReaction('nimp')">😤 Tu fais nimp</button>
   </div>
 
-  <div class="tables-row">
+  <div class="tables-row" id="tablesRow">
     <div class="table-box">
       <div class="table-header">Indices</div>
       <div id="cluesList"></div>
@@ -407,6 +463,35 @@
       <div id="guessesList"></div>
     </div>
   </div>
+
+  <!-- MULTI-PLAYER SECTIONS -->
+  <div id="multiHintsSection" style="display:none">
+    <div style="font-weight:700;color:#555;font-size:0.9em;margin-bottom:8px">Indices :</div>
+    <div class="multi-hints-grid" id="multiHintsGrid"></div>
+    <div class="clue-input-area" id="multiHintInput" style="display:none">
+      <label id="multiHintInputLabel">Indice 1 :</label>
+      <div class="clue-row">
+        <input type="text" id="multiHintField" placeholder="Votre indice..." maxlength="30" onkeydown="if(event.key==='Enter')submitHint()" />
+        <button class="btn btn-blue btn-sm" onclick="submitHint()">Valider</button>
+      </div>
+      <div class="reject-reason" id="multiRejectReason"></div>
+    </div>
+  </div>
+  <div id="multiPlayersSection" style="display:none">
+    <div class="multi-players-grid" id="multiPlayersGrid"></div>
+  </div>
+  <div id="multiGuessSection" style="display:none">
+    <div class="guess-input-area">
+      <label>Proposez votre réponse :</label>
+      <div class="clue-row">
+        <input type="text" id="multiGuessInput" placeholder="Votre réponse..." maxlength="30" onkeydown="if(event.key==='Enter')submitMultiGuess()" />
+        <button class="btn btn-orange btn-sm" onclick="submitMultiGuess()">Deviner</button>
+      </div>
+      <div id="multiGuessAttemptsInfo" style="font-size:0.82em;color:#888;margin-top:4px"></div>
+      <div id="multiGuessesDone" style="margin-top:6px"></div>
+    </div>
+  </div>
+
   <div id="gameMsg"></div>
 </div>
 
@@ -871,6 +956,8 @@ let lastGuessCount = 0;
 let selectedDictKey = 'general';
 let customWords = null;
 let selectedRounds = 3; // 1, 3, 5, 10, ou 'infinite'
+let selectedMaxPlayers = 2; // 2 = mode duo, 3-6 = mode multi
+let multiHintInterval = null;
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
@@ -1094,6 +1181,7 @@ window.openCreateModal = function() {
   selectedDictKey = 'general';
   customWords = null;
   selectedRounds = 3;
+  selectedMaxPlayers = 2;
   renderRoundSelector();
   renderDictGrid();
   document.getElementById('uploadPreview').textContent = 'Fichier .txt ou .csv — un mot par ligne';
@@ -1114,11 +1202,12 @@ function renderRoundSelector() {
       <span class="rb-label">${o.label}</span>
       <span class="rb-sub">${o.sub}</span>
     </div>`).join('');
+  renderPlayerCountSelector();
 }
 
 window.selectRounds = function(v) {
   selectedRounds = v;
-  renderRoundSelector();
+  renderRoundSelector(); // appelle aussi renderPlayerCountSelector
 };
 window.closeCreateModal = function() {
   document.getElementById('createModal').classList.remove('open');
@@ -1236,12 +1325,17 @@ function startLobbyListener() {
     }
 
     // Parties en attente (rejoignables)
-    const open = Object.entries(data).filter(([,g]) => g.status === 'waiting' && g.host !== myId);
+    const open = Object.entries(data).filter(([,g]) =>
+      g.status === 'waiting' && g.host !== myId &&
+      !(g.mode === 'multi' && (g.players||[]).includes(myId))
+    );
     waitList.innerHTML = open.length ? open.map(([id, g]) => {
       const dictInfo = g.dictKey === 'custom'
         ? `📂 Personnalisé (${g.dictWordCount||'?'} mots)`
         : `${DICTIONARIES[g.dictKey]?.emoji||'📚'} ${DICTIONARIES[g.dictKey]?.label||g.dictKey}`;
-      const modeInfo = g.totalRounds === 'infinite' ? '♾️ Infini' : `${g.totalRounds||3} manches`;
+      const modeInfo = g.mode === 'multi'
+        ? `👥 Multi · ${(g.players||[]).length}/${g.maxPlayers} joueurs`
+        : g.totalRounds === 'infinite' ? '♾️ Infini' : `${g.totalRounds||3} manches`;
       return `<div class="game-item">
         <div class="game-item-info">
           <span>Partie de <strong>${g.hostName}</strong></span>
@@ -1253,16 +1347,24 @@ function startLobbyListener() {
 
     // Parties en cours (regardables)
     const ongoing = Object.entries(data).filter(([,g]) =>
-      ['playing','round_end'].includes(g.status) && g.host !== myId && g.guest !== myId
+      ['playing','round_end'].includes(g.status) &&
+      (g.mode === 'multi'
+        ? !(g.players||[]).includes(myId)
+        : g.host !== myId && g.guest !== myId)
     );
     ongoingList.innerHTML = ongoing.length ? ongoing.map(([id, g]) => {
       const dictInfo = g.dictKey === 'custom'
         ? `📂 Personnalisé`
         : `${DICTIONARIES[g.dictKey]?.emoji||'📚'} ${DICTIONARIES[g.dictKey]?.label||g.dictKey}`;
-      const modeInfo = g.totalRounds === 'infinite' ? '♾️ Infini' : `Manche ${g.round||1}/${g.totalRounds||3}`;
+      const modeInfo = g.mode === 'multi'
+        ? `Manche ${g.round||1}/${g.totalRounds||'?'} · ${(g.players||[]).length} joueurs`
+        : g.totalRounds === 'infinite' ? '♾️ Infini' : `Manche ${g.round||1}/${g.totalRounds||3}`;
+      const playersStr = g.mode === 'multi'
+        ? Object.values(g.names||{}).join(', ')
+        : `<strong>${g.hostName}</strong> vs <strong>${g.guestName}</strong>`;
       return `<div class="game-item game-item-live">
         <div class="game-item-info">
-          <span><span class="live-dot"></span><strong>${g.hostName}</strong> vs <strong>${g.guestName}</strong></span>
+          <span><span class="live-dot"></span>${playersStr}</span>
           <span class="game-item-dict">${dictInfo} · ${modeInfo}</span>
         </div>
         <button class="btn btn-orange btn-sm" onclick="spectateGame('${id}')">👁 Regarder</button>
@@ -1277,6 +1379,7 @@ function stopLobbyListener() {
 
 // ── CREATE GAME ──
 function createGame() {
+  if (selectedMaxPlayers > 2) { createMultiGame(); return; }
   const dictKey = selectedDictKey;
   const words = dictKey === 'custom' ? customWords : DICTIONARIES[dictKey].words;
   const word = pickWordFrom(words);
@@ -1324,15 +1427,28 @@ window.joinGame = function(gameId) {
   get(ref(db,'lsf_games/'+gameId)).then(snap => {
     const g = snap.val();
     if (!g || g.status !== 'waiting') { alert("Partie non disponible"); return; }
-    update(ref(db,'lsf_games/'+gameId), {
-      status: 'playing',
-      guest: myId,
-      guestName: myName,
-      [`scores/${myId}`]: 0,
-      [`names/${myId}`]: myName,
-      timerStart: Date.now(),
-      timerEnd: Date.now() + 60000,
-    });
+    if (g.mode === 'multi') {
+      const players = g.players || [];
+      if (players.includes(myId)) { /* déjà dedans, on écoute juste */ }
+      else if (players.length >= g.maxPlayers) { alert("Partie complète !"); return; }
+      else {
+        update(ref(db,'lsf_games/'+gameId), {
+          players: [...players, myId],
+          [`names/${myId}`]: myName,
+          [`scores/${myId}`]: 0,
+        });
+      }
+    } else {
+      update(ref(db,'lsf_games/'+gameId), {
+        status: 'playing',
+        guest: myId,
+        guestName: myName,
+        [`scores/${myId}`]: 0,
+        [`names/${myId}`]: myName,
+        timerStart: Date.now(),
+        timerEnd: Date.now() + 60000,
+      });
+    }
     currentGameId = gameId;
     stopLobbyListener();
     listenGame(gameId);
@@ -1356,7 +1472,20 @@ window.leaveSpectator = function() {
 };
 
 window.cancelGame = function() {
-  if (currentGameId) { remove(ref(db,'lsf_games/'+currentGameId)); currentGameId = null; }
+  if (currentGameId) {
+    const g = currentGame;
+    if (g?.mode === 'multi' && g.host !== myId && g.status === 'waiting') {
+      // Non-hôte en salle d'attente multi : on se retire de la liste
+      const players = (g.players||[]).filter(p => p !== myId);
+      const updates = { players };
+      updates[`names/${myId}`] = null;
+      updates[`scores/${myId}`] = null;
+      update(ref(db,'lsf_games/'+currentGameId), updates);
+    } else {
+      remove(ref(db,'lsf_games/'+currentGameId));
+    }
+    currentGameId = null;
+  }
   stopGameListener();
   showScreen('lobbyScreen');
   startLobbyListener();
@@ -1380,6 +1509,25 @@ function listenGame(gameId) {
       return;
     }
     currentGame = g;
+
+    // ── Mode multi-joueurs ──
+    if (g.mode === 'multi') {
+      if (g.status === 'waiting') { renderMultiWaiting(g); return; }
+      if (g.status === 'playing' || g.status === 'round_end') renderMultiGame(g);
+      if (g.status === 'finished') renderMultiResult(g);
+      if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
+        showScreen('gameScreen');
+      // L'hôte déclenche la fin de manche si tous les devineurs ont terminé
+      if (g.status === 'playing' && g.host === myId) checkAllGuessersDone(g);
+      // L'hôte passe à la manche suivante si tous sont prêts
+      if (g.status === 'round_end' && g.host === myId) {
+        const players = g.players || [];
+        if (players.length > 0 && players.every(p => g.readyForNext?.[p])) doNextRoundMulti(g);
+      }
+      return;
+    }
+
+    // ── Mode duo (existant) ──
     if (g.status === 'waiting') return;
     if (g.status === 'playing' || g.status === 'round_end') renderGame(g);
     if (g.status === 'finished') renderResult(g);
@@ -1397,11 +1545,17 @@ function listenGame(gameId) {
 function stopGameListener() {
   if (gameListener) { gameListener(); gameListener = null; }
   clearInterval(timerInterval);
+  clearInterval(multiHintInterval);
 }
 
 // ── GAME RENDER ──
 function renderGame(g) {
   showScreen('gameScreen');
+  // Affiche les éléments duo, cache les sections multi
+  document.getElementById('tablesRow').style.display = '';
+  document.getElementById('multiHintsSection').style.display = 'none';
+  document.getElementById('multiPlayersSection').style.display = 'none';
+  document.getElementById('multiGuessSection').style.display = 'none';
 
   const clueCount = (g.clues||[]).length;
   const guessCount = (g.guesses||[]).length;
@@ -1562,7 +1716,10 @@ function startTimer(end) {
     fill.style.background = pct > 50 ? '#2ecc71' : pct > 20 ? '#f39c12' : '#e74c3c';
     if (left <= 0) {
       clearInterval(timerInterval);
-      if (currentGame?.status === 'playing' && currentGame.host === myId) endRound(false);
+      if (currentGame?.status === 'playing' && currentGame.host === myId) {
+        if (currentGame.mode === 'multi') forceEndRoundMulti(currentGame);
+        else endRound(false);
+      }
     }
   }
   tick(); timerInterval = setInterval(tick, 500);
@@ -1834,6 +1991,374 @@ function showMsg(id, msg, type) {
   const el = document.getElementById(id);
   el.innerHTML = `<div class="msg msg-${type}">${msg}</div>`;
   setTimeout(() => el.innerHTML = '', 3000);
+}
+
+// ══════════════════════════════════════════════
+// ── MODE MULTI-JOUEURS ──
+// ══════════════════════════════════════════════
+
+function renderPlayerCountSelector() {
+  const container = document.getElementById('playerCountSelector');
+  const title = document.getElementById('playerCountTitle');
+  if (selectedRounds === 'infinite') {
+    container.style.display = 'none'; title.style.display = 'none';
+    selectedMaxPlayers = 2; return;
+  }
+  container.style.display = ''; title.style.display = '';
+  container.innerHTML = [2,3,4,5,6].map(n => `
+    <div class="pcount-btn ${selectedMaxPlayers===n?'selected':''}" onclick="selectMaxPlayers(${n})">
+      <span class="rb-label">${n}</span>
+      <span class="rb-sub">${n===2?'duo':'joueurs'}</span>
+    </div>`).join('');
+}
+window.selectMaxPlayers = function(n) { selectedMaxPlayers = n; renderPlayerCountSelector(); };
+
+// ── Création partie multi ──
+function createMultiGame() {
+  const dictKey = selectedDictKey;
+  const words = dictKey === 'custom' ? customWords : DICTIONARIES[dictKey].words;
+  const gameId = uid();
+  const roundsPerPlayer = typeof selectedRounds === 'number' ? selectedRounds : 3;
+  const gameData = {
+    mode: 'multi', status: 'waiting',
+    host: myId, hostName: myName,
+    maxPlayers: selectedMaxPlayers, roundsPerPlayer,
+    players: [myId],
+    names: { [myId]: myName },
+    scores: { [myId]: 0 },
+    dictKey,
+    dictLabel: dictKey === 'custom' ? 'Personnalisé' : DICTIONARIES[dictKey].label,
+    dictEmoji: dictKey === 'custom' ? '📂' : DICTIONARIES[dictKey].emoji,
+    dictWordCount: words.length,
+    createdAt: Date.now(),
+  };
+  if (dictKey === 'custom') gameData.customWords = words.slice(0, 200);
+  set(ref(db,'lsf_games/'+gameId), gameData);
+  currentGameId = gameId;
+  onDisconnect(ref(db,'lsf_games/'+gameId)).remove();
+  document.getElementById('waitingDictBadge').textContent = `${gameData.dictEmoji} ${gameData.dictLabel}`;
+  stopLobbyListener();
+  showScreen('waitingScreen');
+  listenGame(gameId);
+}
+
+// ── Démarrer la partie multi (hôte seulement) ──
+window.startMultiGame = async function() {
+  const g = currentGame;
+  if (!g || g.host !== myId) return;
+  const players = g.players || [];
+  if (players.length < 2) { alert('Il faut au moins 2 joueurs !'); return; }
+  const words = g.dictKey === 'custom' ? (g.customWords||[]) : DICTIONARIES[g.dictKey].words;
+  const word = pickWordFrom(words);
+  const totalRounds = players.length * (g.roundsPerPlayer || 3);
+  update(ref(db,'lsf_games/'+currentGameId), {
+    status: 'playing', round: 1, totalRounds,
+    clueGiverIndex: 0, clueGiverId: players[0],
+    currentWord: word.w, wordDifficulty: word.d,
+    hints: [], playerGuesses: {}, playerDone: {}, playerFoundAt: {},
+    timerStart: Date.now(), timerEnd: Date.now() + 60000,
+    roundResult: null, readyForNext: null,
+  });
+};
+
+// ── Rendu salle d'attente multi ──
+function renderMultiWaiting(g) {
+  showScreen('waitingScreen');
+  const players = g.players || [];
+  document.getElementById('waitingDictBadge').textContent = `${g.dictEmoji||'📚'} ${g.dictLabel||''}`;
+  document.getElementById('waitingNormalMsg').style.display = 'none';
+  document.getElementById('waitingMultiInfo').style.display = 'block';
+  document.getElementById('waitingPlayersCount').textContent = `${players.length} / ${g.maxPlayers} joueurs rejoints`;
+  document.getElementById('waitingPlayersList').innerHTML = players.map((pid, i) => `
+    <div class="waiting-player-item">
+      <span class="waiting-player-name">${i===0?'👑 ':''}${g.names?.[pid]||pid}${pid===myId?' (moi)':''}</span>
+      ${i===0?'<span class="waiting-player-badge">Hôte</span>':''}
+    </div>`).join('');
+  const startBtn = document.getElementById('startMultiBtn');
+  const hint = document.getElementById('waitingMultiHint');
+  const canStart = g.host === myId && players.length >= 2;
+  startBtn.style.display = canStart ? 'inline-block' : 'none';
+  hint.style.display = (players.length < g.maxPlayers) ? 'block' : 'none';
+}
+
+// ── Grille des indices (partagé entre rendu initial + interval) ──
+function updateHintsGrid(hints, unlockedSlots) {
+  const grid = document.getElementById('multiHintsGrid');
+  if (!grid) return;
+  grid.innerHTML = Array.from({length:4}, (_, i) => {
+    const txt = hints[i] || null;
+    const unlocked = i < unlockedSlots;
+    const cls = 'hint-slot' + (txt?' filled':unlocked?' unlocked':' locked');
+    const timeLabel = i===0 ? 'Dès le début' : `+${i*10}s`;
+    return `<div class="${cls}">
+      <div class="hint-number">Indice ${i+1}</div>
+      ${txt ? `<div class="hint-word">${txt}</div>`
+        : unlocked ? `<div class="hint-time">disponible</div>`
+        : `<div class="hint-time">${timeLabel}</div>`}
+    </div>`;
+  }).join('');
+}
+
+// ── Timer de déverrouillage des slots d'indices ──
+function startMultiHintTimer() {
+  clearInterval(multiHintInterval);
+  multiHintInterval = setInterval(() => {
+    if (!currentGame || currentGame.status !== 'playing' || currentGame.mode !== 'multi') {
+      clearInterval(multiHintInterval); return;
+    }
+    const elapsed = currentGame.timerStart ? Date.now() - currentGame.timerStart : 0;
+    const unlockedSlots = Math.min(4, Math.floor(elapsed / 10000) + 1);
+    const hints = currentGame.hints || [];
+    updateHintsGrid(hints, unlockedSlots);
+    const nextSlotIdx = hints.length;
+    const canSubmit = currentGame.clueGiverId === myId && nextSlotIdx < 4 && nextSlotIdx < unlockedSlots;
+    const inp = document.getElementById('multiHintInput');
+    if (inp) {
+      inp.style.display = canSubmit ? 'block' : 'none';
+      if (canSubmit) document.getElementById('multiHintInputLabel').textContent = `Indice ${nextSlotIdx+1} :`;
+    }
+  }, 500);
+}
+
+// ── Rendu jeu multi ──
+function renderMultiGame(g) {
+  showScreen('gameScreen');
+  // Cacher éléments duo, montrer multi
+  document.getElementById('tablesRow').style.display = 'none';
+  document.getElementById('clueArea').style.display = 'none';
+  document.getElementById('guessArea').style.display = 'none';
+  document.getElementById('waitForClueMsg').style.display = 'none';
+  document.getElementById('multiHintsSection').style.display = 'block';
+  document.getElementById('multiPlayersSection').style.display = 'block';
+
+  const players = g.players || [];
+  const clueGiverId = g.clueGiverId;
+  const isClueGiver = clueGiverId === myId && !isSpectator;
+  const hints = g.hints || [];
+  const elapsed = g.timerStart ? Date.now() - g.timerStart : 0;
+  const unlockedSlots = Math.min(4, Math.floor(elapsed / 10000) + 1);
+
+  document.getElementById('roundInfo').textContent = `Manche ${g.round} / ${g.totalRounds}`;
+  document.getElementById('playersRow').innerHTML = players.map(pid => {
+    const name = g.names?.[pid]||pid, isMe = pid===myId, isCG = pid===clueGiverId;
+    return `<span style="${isMe?'font-weight:700':''}${isCG?';color:#9b59b6':''}">${isCG?'✏️':'🔍'} ${name}</span>`;
+  }).join('<span style="color:#ccc;margin:0 4px">·</span>');
+
+  document.getElementById('livesBar').style.display = 'none';
+  document.getElementById('spectatorBanner').style.display = isSpectator ? 'block' : 'none';
+  if (isSpectator) document.getElementById('spectatorNames').textContent = players.map(p=>g.names?.[p]||p).join(' · ');
+
+  if (!isSpectator) {
+    const rb = document.getElementById('roleBadge');
+    rb.style.background = rb.style.color = '';
+    rb.textContent = isClueGiver ? 'Vous faites deviner' : 'Vous devinez';
+    rb.className = 'role-badge '+(isClueGiver?'role-clue':'role-guess');
+  }
+  document.getElementById('dictTag').textContent = `${g.dictEmoji||'📚'} ${g.dictLabel||''}`;
+
+  if (isSpectator || isClueGiver) {
+    document.getElementById('wordDisplay').textContent = g.currentWord;
+    document.getElementById('wordDisplay').className = 'word-display';
+  } else {
+    document.getElementById('wordDisplay').textContent = '? ? ? ? ?';
+    document.getElementById('wordDisplay').className = 'word-hidden';
+  }
+
+  if (g.status === 'playing') { startTimer(g.timerEnd); startMultiHintTimer(); }
+  else { clearInterval(timerInterval); clearInterval(multiHintInterval); }
+
+  // Grille des indices
+  updateHintsGrid(hints, unlockedSlots);
+  const nextSlotIdx = hints.length;
+  const canSubmitHint = isClueGiver && g.status === 'playing' && nextSlotIdx < 4 && nextSlotIdx < unlockedSlots;
+  const hintInp = document.getElementById('multiHintInput');
+  hintInp.style.display = canSubmitHint ? 'block' : 'none';
+  if (canSubmitHint) document.getElementById('multiHintInputLabel').textContent = `Indice ${nextSlotIdx+1} :`;
+
+  // Statut de chaque joueur
+  document.getElementById('multiPlayersGrid').innerHTML = players.map(pid => {
+    const name = g.names?.[pid]||pid, isCG = pid===clueGiverId, isMe = pid===myId;
+    const done = g.playerDone?.[pid], found = g.playerFoundAt?.[pid] != null;
+    const guesses = (g.playerGuesses?.[pid]||[]).length;
+    const cls = 'player-status-card' + (isCG?' is-clue-giver':found?' found':done?' failed':'') + (isMe&&!isCG?' is-me':'');
+    const icon = isCG?'✏️':found?'✅':done?'❌':g.status==='playing'?'🤔':'—';
+    const sub = isCG?'fait deviner':found?`✓ ${g.playerFoundAt[pid]}s`:done?'pas trouvé':`${guesses}/4 essais`;
+    return `<div class="${cls}"><div class="psc-name">${name}${isMe?' (moi)':''}</div><div class="psc-icon">${icon}</div><div class="psc-sub">${sub}</div></div>`;
+  }).join('');
+
+  // Zone de devinette pour les non-clue-givers
+  const guessSection = document.getElementById('multiGuessSection');
+  if (!isSpectator && !isClueGiver) {
+    const myGuesses = g.playerGuesses?.[myId]||[];
+    const amDone = g.playerDone?.[myId];
+    const canGuess = !amDone && hints.length > 0 && g.status === 'playing';
+    guessSection.style.display = canGuess ? 'block' : 'none';
+    const attLeft = 4 - myGuesses.length;
+    document.getElementById('multiGuessAttemptsInfo').textContent =
+      amDone ? '' : `${attLeft} essai${attLeft>1?'s':''} restant${attLeft>1?'s':''}`;
+    document.getElementById('multiGuessesDone').innerHTML = myGuesses.length
+      ? myGuesses.map(w=>`<div class="table-row">${w}</div>`).join('')
+      : '';
+  } else {
+    guessSection.style.display = 'none';
+  }
+
+  // Boutons action fin de manche
+  const btns = document.getElementById('actionBtns');
+  btns.innerHTML = '';
+  if (g.status === 'round_end') {
+    const guessers = players.filter(p=>p!==clueGiverId);
+    const foundCount = guessers.filter(p=>g.playerFoundAt?.[p]!=null).length;
+    const banner = document.createElement('div');
+    banner.className = `result-banner result-${foundCount>0?'win':'lose'}`;
+    banner.textContent = `${foundCount}/${guessers.length} joueur${guessers.length>1?'s':''} ont trouvé "${g.currentWord}"`;
+    document.getElementById('gameMsg').innerHTML = '';
+    document.getElementById('gameMsg').appendChild(banner);
+    if (!isSpectator) {
+      const iReady = !!(g.readyForNext?.[myId]);
+      if (!iReady) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-blue';
+        btn.textContent = (g.round >= g.totalRounds ? 'Voir les résultats' : 'Manche suivante') + ' →';
+        btn.onclick = markReady;
+        btns.appendChild(btn);
+      } else {
+        const w = document.createElement('div');
+        w.style.cssText = 'color:#888;font-size:0.9em;padding:8px';
+        const rc = players.filter(p=>g.readyForNext?.[p]).length;
+        w.textContent = `✓ Prêt (${rc}/${players.length})`;
+        btns.appendChild(w);
+      }
+    }
+  } else {
+    document.getElementById('gameMsg').innerHTML = '';
+  }
+}
+
+// ── Soumettre un indice (clue giver) ──
+window.submitHint = function() {
+  const inp = document.getElementById('multiHintField');
+  const word = inp.value.trim().toLowerCase();
+  if (!word) return;
+  const formCheck = validateClueForm(word);
+  const check = formCheck.bad ? formCheck : isTooClose(word, currentGame.currentWord);
+  const rejectEl = document.getElementById('multiRejectReason');
+  if (check.bad) {
+    rejectEl.textContent = '❌ '+check.reason; rejectEl.style.display = 'block';
+    setTimeout(()=>rejectEl.style.display='none',3000); return;
+  }
+  rejectEl.style.display = 'none';
+  soundMyClue();
+  const hints = [...(currentGame.hints||[]), word];
+  update(ref(db,'lsf_games/'+currentGameId), { hints });
+  inp.value = '';
+};
+
+// ── Soumettre une réponse (guesser) ──
+window.submitMultiGuess = function() {
+  const inp = document.getElementById('multiGuessInput');
+  const word = inp.value.trim().toLowerCase();
+  if (!word) return;
+  const myGuesses = currentGame.playerGuesses?.[myId]||[];
+  if (myGuesses.length >= 4 || currentGame.playerDone?.[myId]) return;
+  soundMyGuess();
+  const newGuesses = [...myGuesses, word];
+  const won = isCloseEnough(word, currentGame.currentWord);
+  const timeSpent = Math.round((Date.now()-(currentGame.timerStart||Date.now()))/1000);
+  const updates = { [`playerGuesses/${myId}`]: newGuesses };
+  if (won || newGuesses.length >= 4) {
+    updates[`playerDone/${myId}`] = true;
+    if (won) {
+      updates[`playerFoundAt/${myId}`] = timeSpent;
+      updates[`scores/${myId}`] = (currentGame.scores?.[myId]||0) + computeMultiGuesserScore(newGuesses.length, timeSpent);
+    }
+  }
+  update(ref(db,'lsf_games/'+currentGameId), updates);
+  inp.value = '';
+};
+
+// ── Calcul des scores ──
+function computeMultiGuesserScore(attempts, timeSeconds) {
+  const base = [100, 70, 45, 25][attempts-1] || 0;
+  return base + Math.max(0, Math.round((60 - timeSeconds) / 3));
+}
+function computeMultiClueGiverScore(timeSeconds) {
+  return 15 + Math.max(0, Math.round((60 - timeSeconds) / 4));
+}
+
+// ── Vérifier si tous les devineurs ont terminé ──
+function checkAllGuessersDone(g) {
+  const players = g.players||[];
+  const guessers = players.filter(p => p !== g.clueGiverId);
+  if (!guessers.length || !guessers.every(p => g.playerDone?.[p])) return;
+  let cgScore = 0;
+  guessers.forEach(p => {
+    if (g.playerFoundAt?.[p] != null) cgScore += computeMultiClueGiverScore(g.playerFoundAt[p]);
+  });
+  update(ref(db,'lsf_games/'+currentGameId), {
+    status: 'round_end',
+    [`scores/${g.clueGiverId}`]: (g.scores?.[g.clueGiverId]||0) + cgScore,
+  });
+}
+
+// ── Fin de manche forcée (timer expiré) ──
+function forceEndRoundMulti(g) {
+  const players = g.players||[];
+  const guessers = players.filter(p => p !== g.clueGiverId);
+  const updates = { status: 'round_end' };
+  let cgScore = 0;
+  guessers.forEach(p => {
+    if (!g.playerDone?.[p]) updates[`playerDone/${p}`] = true;
+    if (g.playerFoundAt?.[p] != null) cgScore += computeMultiClueGiverScore(g.playerFoundAt[p]);
+  });
+  updates[`scores/${g.clueGiverId}`] = (g.scores?.[g.clueGiverId]||0) + cgScore;
+  update(ref(db,'lsf_games/'+currentGameId), updates);
+}
+
+// ── Manche suivante (rotation cyclique) ──
+async function doNextRoundMulti(g) {
+  const players = g.players||[];
+  const nextRound = (g.round||1) + 1;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0;
+  if (nextRound > g.totalRounds) {
+    update(ref(db,'lsf_games/'+currentGameId), { status: 'finished' });
+    return;
+  }
+  const nextIdx = ((g.clueGiverIndex||0) + 1) % players.length;
+  const words = g.dictKey === 'custom' ? (g.customWords||[]) : DICTIONARIES[g.dictKey].words;
+  const word = pickWordFrom(words);
+  update(ref(db,'lsf_games/'+currentGameId), {
+    round: nextRound, status: 'playing',
+    clueGiverIndex: nextIdx, clueGiverId: players[nextIdx],
+    currentWord: word.w, wordDifficulty: word.d,
+    hints: [], playerGuesses: {}, playerDone: {}, playerFoundAt: {},
+    timerStart: Date.now(), timerEnd: Date.now() + 60000,
+    roundResult: null, readyForNext: null, reaction: null,
+  });
+}
+
+// ── Résultats finaux multi ──
+function renderMultiResult(g) {
+  showScreen('resultScreen');
+  clearInterval(timerInterval); clearInterval(multiHintInterval);
+  audioCtx.resume();
+  const players = g.players||[];
+  const sorted = [...players].sort((a,b)=>(g.scores?.[b]||0)-(g.scores?.[a]||0));
+  const medals = ['🥇','🥈','🥉'];
+  setTimeout(() => (myId === sorted[0] ? soundWin : soundLose)(), 400);
+  document.getElementById('resultBanner').className = 'result-banner result-'+(myId===sorted[0]?'win':'lose');
+  document.getElementById('resultBanner').textContent = myId===sorted[0] ? '🏆 Victoire !' : '🏁 Partie terminée';
+  document.getElementById('resultTable').innerHTML =
+    sorted.map((pid,i) => `
+      <div class="result-row${pid===myId?' highlight':''}">
+        <span>${medals[i]||(i+1)+'.'} ${g.names?.[pid]||'?'}</span>
+        <strong>${g.scores?.[pid]||0} pts</strong>
+      </div>`).join('') +
+    `<div class="result-row total">
+      <span>${g.dictEmoji||''} ${g.dictLabel||''}</span>
+      <span>${g.totalRounds} manches · ${players.length} joueurs</span>
+    </div>`;
+  document.getElementById('resultMsg').textContent = '';
 }
 
 // ── INIT ──
