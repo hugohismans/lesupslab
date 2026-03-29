@@ -45,11 +45,12 @@
   body {
     font-family: 'Poppins', sans-serif;
     background: var(--bg);
+    color: var(--text);
     min-height: 100vh;
     display: flex; align-items: flex-start; justify-content: center;
     padding: 24px 0;
     position: relative; overflow-x: hidden;
-    transition: background 0.4s;
+    transition: background 0.4s, color 0.4s;
   }
 
   /* Animated blobs */
@@ -409,7 +410,17 @@
 
   /* DARK MODE */
   body.dark #loginScreen h1 { background: linear-gradient(130deg, #a78bfa, #67e8f9, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  body.dark h2 { color: var(--text); }
+  body.dark h2, body.dark h3 { color: var(--text); }
+  body.dark .role-clue  { color: #4ade80; background: rgba(74,222,128,.12); border-color: rgba(74,222,128,.3); }
+  body.dark .role-guess { color: #fb923c; background: rgba(251,146,60,.1);  border-color: rgba(251,146,60,.3); }
+  body.dark .result-win  { color: #4ade80; background: linear-gradient(135deg, rgba(74,222,128,.12), rgba(6,182,212,.08)); border-color: rgba(74,222,128,.3); }
+  body.dark .result-lose { color: #f87171; background: linear-gradient(135deg, rgba(248,113,113,.1), rgba(249,115,22,.06)); border-color: rgba(248,113,113,.3); }
+  body.dark .btn-continue { color: #4ade80; background: rgba(74,222,128,.1);  border-color: rgba(74,222,128,.3); }
+  body.dark .btn-main     { color: #fb923c; background: rgba(251,146,60,.08); border-color: rgba(251,146,60,.3); }
+  body.dark .btn-nimp     { color: #f87171; background: rgba(248,113,113,.09);border-color: rgba(248,113,113,.3); }
+  body.dark .score-panel-row.spr-me     { background: rgba(124,58,237,.22); }
+  body.dark .hint-slot.unlocked         { background: rgba(124,58,237,.2); border-color: var(--pur-l); }
+  body.dark .pcount-btn.selected        { background: rgba(124,58,237,.2); color: var(--pur-l); }
   body.dark .modal { background: var(--card-s); }
   body.dark .dict-card { background: rgba(124,58,237,.06); }
   body.dark .dict-card .dict-name { color: var(--text); }
@@ -680,7 +691,7 @@
       <div class="round-info" id="roundInfo">Manche 1</div>
       <button class="btn-quit-game" id="quitGameBtn" onclick="quitMultiGame()" style="display:none">✖ Quitter</button>
     </div>
-    <div id="playersRow" style="font-size:0.85em;color:#777;margin:3px 0 2px"></div>
+    <div id="playersRow" style="font-size:0.85em;color:var(--muted);margin:3px 0 2px"></div>
     <div id="livesBar" class="lives-bar" style="display:none"></div>
     <div id="wordDisplay" class="word-display"></div>
     <span class="role-badge" id="roleBadge"></span>
@@ -709,7 +720,7 @@
     ⏳ En attente d'un nouvel indice…
   </div>
 
-  <div class="reaction-bar">
+  <div class="reaction-bar" id="reactionBar">
     <button class="btn-reaction btn-continue" onclick="sendReaction('continue')">👍 Continue !</button>
     <button class="btn-reaction btn-main" onclick="sendReaction('main')">✋ Demander la main</button>
     <button class="btn-reaction btn-nimp" onclick="sendReaction('nimp')">😤 Tu fais nimp</button>
@@ -728,7 +739,7 @@
 
   <!-- MULTI-PLAYER SECTIONS -->
   <div id="multiHintsSection" style="display:none">
-    <div style="font-weight:700;color:#555;font-size:0.9em;margin-bottom:8px">Indices :</div>
+    <div style="font-weight:700;color:var(--muted);font-size:0.9em;margin-bottom:8px">Indices :</div>
     <div class="multi-hints-grid" id="multiHintsGrid"></div>
     <div class="clue-input-area" id="multiHintInput" style="display:none">
       <label id="multiHintInputLabel">Indice 1 :</label>
@@ -1925,6 +1936,7 @@ function renderGame(g) {
   }
   document.getElementById('tablesRow').style.display = '';
   document.getElementById('multiHintsSection').style.display = 'none';
+  document.getElementById('reactionBar').style.display = '';
   setGameChatEnabled(g.status === 'round_end' && !isSpectator);
   document.getElementById('multiPlayersSection').style.display = 'none';
   document.getElementById('multiGuessSection').style.display = 'none';
@@ -2332,7 +2344,7 @@ window.loadLeaderboard = function() {
               <span class="lb-score">${e.score}</span>
               <span style="color:#888">${e.rounds}</span>
             </div>
-            <div style="padding:2px 16px 8px;font-size:0.78em;color:#aaa;border-bottom:1px solid #f0f0f0">${e.dict}</div>
+            <div style="padding:2px 16px 8px;font-size:0.78em;color:#aaa;border-bottom:1px solid var(--border)">${e.dict}</div>
           `).join('')}
         </div>`;
     });
@@ -2630,6 +2642,7 @@ function renderMultiGame(g) {
   document.getElementById('clueArea').style.display = 'none';
   document.getElementById('guessArea').style.display = 'none';
   document.getElementById('waitForClueMsg').style.display = 'none';
+  document.getElementById('reactionBar').style.display = 'none';
   document.getElementById('multiHintsSection').style.display = 'block';
   document.getElementById('multiPlayersSection').style.display = 'block';
 
