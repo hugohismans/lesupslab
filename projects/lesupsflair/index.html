@@ -68,7 +68,7 @@
     font-weight: 700;
     color: var(--pur);
     opacity: 0;
-    filter: blur(3.5px);
+    filter: blur(1px);
     white-space: nowrap;
     user-select: none;
     animation: bgword-float linear infinite;
@@ -2986,7 +2986,7 @@ document.getElementById('createModal').addEventListener('click', e => {
     const delay  = Math.random() * 30;                // stagger
     const dur    = 18 + Math.random() * 30;           // 18–48s
     const rot    = (Math.random() * 40 - 20) + 'deg'; // -20 à +20°
-    const blur   = (2 + Math.random() * 5).toFixed(1) + 'px'; // 2–7px
+    const blur   = (0.5 + Math.random() * 1.5).toFixed(1) + 'px'; // 0.5–2px
     const op     = (0.06 + Math.random() * 0.13).toFixed(2);  // 0.06–0.19
 
     span.style.cssText = `
