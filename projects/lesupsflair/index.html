@@ -1586,8 +1586,9 @@ function startLobbyListener() {
   presenceListener = onValue(ref(db, 'lsf_presence'), snap => {
     const el = document.getElementById('onlinePlayersList');
     if (!el) return;
+    const sy = window.scrollY;
     const data = snap.val();
-    if (!data) { el.innerHTML = '<div class="no-games">Aucun joueur en ligne</div>'; return; }
+    if (!data) { el.innerHTML = '<div class="no-games">Aucun joueur en ligne</div>'; window.scrollTo(0, sy); return; }
     const players = Object.entries(data).sort(([,a],[,b]) => (a.connectedAt||0) - (b.connectedAt||0));
     el.innerHTML = '<div class="online-players">' + players.map(([uid, p]) => {
       const isMe = uid === myId;
@@ -1595,9 +1596,11 @@ function startLobbyListener() {
       const label = (p.isGuest ? '👤 ' : '🔵 ') + (p.name || '?') + (isMe ? ' (moi)' : '');
       return `<span class="${cls}"><span class="online-dot"></span>${label}</span>`;
     }).join('') + '</div>';
+    window.scrollTo(0, sy);
   });
 
   lobbyListener = onValue(ref(db,'lsf_games'), snap => {
+    const sy = window.scrollY;
     const data = snap.val();
     const waitList    = document.getElementById('gamesList');
     const ongoingList = document.getElementById('ongoingGamesList');
@@ -1605,6 +1608,7 @@ function startLobbyListener() {
     if (!data) {
       waitList.innerHTML    = '<div class="no-games">Aucune partie en attente</div>';
       ongoingList.innerHTML = '<div class="no-games">Aucune partie en cours</div>';
+      window.scrollTo(0, sy);
       return;
     }
 
@@ -1654,6 +1658,7 @@ function startLobbyListener() {
         <button class="btn btn-orange btn-sm" onclick="spectateGame('${id}')">👁 Regarder</button>
       </div>`;
     }).join('') : '<div class="no-games">Aucune partie en cours</div>';
+    window.scrollTo(0, sy);
   });
 }
 function stopLobbyListener() {
@@ -2443,8 +2448,10 @@ function setGameChatEnabled(enabled) {
 function renderChatMessages(containerId, entries, showCount) {
   const el = document.getElementById(containerId);
   if (!el) return;
+  const sy = window.scrollY;
   if (!entries.length) {
     el.innerHTML = '<div class="chat-no-msg">Aucun message pour l\'instant</div>';
+    window.scrollTo(0, sy);
     return;
   }
   // Limiter à 80 messages affichés
@@ -2457,6 +2464,7 @@ function renderChatMessages(containerId, entries, showCount) {
     </div>`;
   }).join('');
   el.scrollTop = el.scrollHeight;
+  window.scrollTo(0, sy);
 }
 
 // ══════════════════════════════════════════════
