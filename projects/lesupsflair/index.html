@@ -523,6 +523,21 @@
     .word-display { font-size: 2em; }
   }
 
+  /* Désactive tous les effets hover sur écrans tactiles (évite le "surlignage" au scroll) */
+  @media (hover: none) {
+    .btn-google:hover, .game-item:hover, .dict-card:hover, .upload-section:hover,
+    .round-btn:hover, .lb-row:hover, .btn-reaction:hover, .btn:hover,
+    #darkToggle:hover, .pcount-btn:hover, .btn-quit-game:hover,
+    body.dark .lb-row:hover, body.dark .round-btn:hover {
+      transform: none;
+      box-shadow: none;
+      filter: none;
+      border-color: var(--border);
+      background-color: initial;
+      color: inherit;
+    }
+  }
+
   /* CHAT */
   .chat-box {
     background: var(--card); border: 1.5px solid var(--border);
