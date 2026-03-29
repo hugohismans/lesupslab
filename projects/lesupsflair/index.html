@@ -1298,6 +1298,7 @@ let lastRoundStatus = null;
 let lastClueCount = 0;
 let lastGuessCount = 0;
 let lastRoundNumber = 0;
+let nextRoundPending = false;
 let lastLeftTs = 0;
 let gameDisconnectSetup = false;
 let dcGameId = null;
@@ -1896,9 +1897,12 @@ function listenGame(gameId) {
       // L'hôte déclenche la fin de manche si tous les devineurs ont terminé
       if (g.status === 'playing' && g.host === myId) checkAllGuessersDone(g);
       // L'hôte passe à la manche suivante si tous sont prêts
-      if (g.status === 'round_end' && g.host === myId) {
+      if (g.status === 'round_end' && g.host === myId && !nextRoundPending) {
         const players = g.players || [];
-        if (players.length > 0 && players.every(p => g.readyForNext?.[p])) doNextRoundMulti(g);
+        if (players.length > 0 && players.every(p => g.readyForNext?.[p])) {
+          nextRoundPending = true;
+          doNextRoundMulti(g).finally(() => { nextRoundPending = false; });
+        }
       }
       return;
     }
@@ -1926,8 +1930,9 @@ function listenGame(gameId) {
     // Les deux joueurs sont prêts → l'hôte déclenche la manche suivante
     if (g.status === 'round_end' && g.host && g.guest
         && g.readyForNext?.[g.host] && g.readyForNext?.[g.guest]
-        && g.host === myId) {
-      doNextRound(g);
+        && g.host === myId && !nextRoundPending) {
+      nextRoundPending = true;
+      doNextRound(g).finally(() => { nextRoundPending = false; });
     }
   });
 }
@@ -2235,20 +2240,22 @@ function markReady() {
 // Appelé par le listener quand les deux joueurs sont prêts (hôte seulement pour éviter la double écriture)
 async function doNextRound(g) {
   const next = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0; lastRoundNumber = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0; lastRoundNumber = 0; nextRoundPending = false;
 
   // ── Mise à jour des scores globaux pour la manche qui vient de se terminer ──
   const guesserUid    = g.clueGiver === g.host ? g.guest : g.host;
   const clueGiverUid  = g.clueGiver;
-  if (g.roundResult === 'win') {
-    const cluesUsed = typeof g.lastClues === 'number' ? g.lastClues : 4;
-    const bonus = Math.max(0, 4 - cluesUsed) * 2; // +0 à +8 selon nb d'indices
-    await updateGlobalScore(guesserUid,   10 + bonus);
-    await updateGlobalScore(clueGiverUid, 5);
-  } else if (g.roundResult === 'lose') {
-    await updateGlobalScore(guesserUid,   -5);
-    await updateGlobalScore(clueGiverUid, -2);
-  }
+  try {
+    if (g.roundResult === 'win') {
+      const cluesUsed = typeof g.lastClues === 'number' ? g.lastClues : 4;
+      const bonus = Math.max(0, 4 - cluesUsed) * 2;
+      await updateGlobalScore(guesserUid,   10 + bonus);
+      await updateGlobalScore(clueGiverUid, 5);
+    } else if (g.roundResult === 'lose') {
+      await updateGlobalScore(guesserUid,   -5);
+      await updateGlobalScore(clueGiverUid, -2);
+    }
+  } catch(e) { console.warn('Score update failed, continuing anyway:', e); }
 
   const isInfinite = g.totalRounds === 'infinite';
 
@@ -2912,7 +2919,7 @@ function forceEndRoundMulti(g) {
 async function doNextRoundMulti(g) {
   const players = g.players||[];
   const nextRound = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0; lastRoundNumber = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0; lastRoundNumber = 0; nextRoundPending = false;
   if (nextRound > g.totalRounds) {
     update(ref(db,'lsf_games/'+currentGameId), { status: 'finished' });
     return;
