@@ -532,10 +532,14 @@
   /* Désactive les effets hover sur écrans tactiles (évite le surlignage au scroll) */
   /* et les remplace par des états :active pour un feedback immédiat au toucher */
   @media (hover: none) {
-    .btn-google:hover, .game-item:hover, .dict-card:hover, .upload-section:hover,
-    .round-btn:hover, .lb-row:hover, .btn-reaction:hover, .btn:hover,
-    #darkToggle:hover, .pcount-btn:hover, .btn-quit-game:hover,
-    body.dark .lb-row:hover, body.dark .round-btn:hover {
+    .btn-google:hover, .game-item:hover, .upload-section:hover,
+    .lb-row:hover, .btn-reaction:hover, .btn:hover,
+    #darkToggle:hover, .btn-quit-game:hover,
+    body.dark .lb-row:hover,
+    .dict-card:not(.selected):hover,
+    .round-btn:not(.selected):hover,
+    .pcount-btn:not(.selected):hover,
+    body.dark .round-btn:not(.selected):hover {
       transform: none;
       box-shadow: none;
       filter: none;
