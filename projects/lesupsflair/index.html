@@ -56,6 +56,31 @@
   @keyframes gblob1 { to { transform: translate(100px,80px) scale(1.14); } }
   @keyframes gblob2 { to { transform: translate(-80px,-60px) scale(1.1); } }
 
+  /* ── Background floating words ── */
+  #bg-words {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  #bg-words span {
+    position: absolute;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: var(--pur);
+    opacity: 0;
+    filter: blur(3.5px);
+    white-space: nowrap;
+    user-select: none;
+    animation: bgword-float linear infinite;
+  }
+  body.dark #bg-words span { color: var(--pur-l); }
+  @keyframes bgword-float {
+    0%   { transform: translateY(0px) rotate(var(--rot)); opacity: 0; }
+    8%   { opacity: var(--op); }
+    88%  { opacity: var(--op); }
+    100% { transform: translateY(-110vh) rotate(var(--rot)); opacity: 0; }
+  }
+
   .screen {
     display: none; width: 100%; max-width: 720px;
     margin: 0 auto; padding: 20px;
@@ -512,6 +537,7 @@
 </style>
 </head>
 <body>
+<div id="bg-words"></div>
 
 <button id="darkToggle" title="Mode sombre" onclick="toggleDark()">🌙</button>
 
@@ -2918,6 +2944,64 @@ document.getElementById('createModal').addEventListener('click', e => {
     document.getElementById('darkToggle').textContent = on ? '☀️' : '🌙';
     localStorage.setItem('lsf_dark', on ? '1' : '0');
   }
+</script>
+
+<script>
+// ── Background floating words ──
+(function() {
+  const WORDS = [
+    // FR
+    "chat","chien","maison","soleil","arbre","fleur","oiseau","voiture","eau","pain",
+    "table","livre","musique","jardin","voyage","forêt","plage","nuit","lumière","joie",
+    "amour","paix","feu","neige","pluie","nuage","vent","mer","montagne","château",
+    "chanson","danse","fête","gâteau","ballon","étoile","lune","rivière","pont","ville",
+    "pommme","lapin","cheval","papillon","abeille","tortue","renard","loup","vache","mouton",
+    "rouge","bleu","vert","jaune","violet","rose","blanc","noir","gris","orange",
+    "cercle","carré","triangle","coeur","cube","spirale",
+    "matin","soir","minuit","printemps","été","automne","hiver",
+    "bonheur","tristesse","peur","colère","liberté","justice",
+    "tableau","peinture","sculpture","crayon","toile","galerie",
+    "lettre","mot","phrase","roman","poème","conte","histoire",
+    // EN
+    "cat","dog","house","sun","tree","flower","bird","water","bread","school",
+    "music","garden","journey","forest","beach","night","light","joy","love","peace",
+    "fire","snow","rain","cloud","wind","sea","mountain","castle","song","dance",
+    "star","moon","river","bridge","city","rabbit","horse","butterfly","bee","wolf",
+    "red","blue","green","yellow","purple","pink","white","black","circle","heart",
+    "morning","evening","spring","summer","autumn","winter","happiness","freedom",
+    "apple","pear","banana","strawberry","orange","lemon","mango",
+    "mystery","adventure","whisper","rainbow","thunderstorm","telescope","labyrinth",
+  ];
+
+  const container = document.getElementById('bg-words');
+  const COUNT = 55;
+
+  for (let i = 0; i < COUNT; i++) {
+    const span = document.createElement('span');
+    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    span.textContent = word;
+
+    const size   = 10 + Math.random() * 22;          // 10–32px
+    const left   = Math.random() * 100;               // 0–100vw
+    const delay  = Math.random() * 30;                // stagger
+    const dur    = 18 + Math.random() * 30;           // 18–48s
+    const rot    = (Math.random() * 40 - 20) + 'deg'; // -20 à +20°
+    const blur   = (2 + Math.random() * 5).toFixed(1) + 'px'; // 2–7px
+    const op     = (0.06 + Math.random() * 0.13).toFixed(2);  // 0.06–0.19
+
+    span.style.cssText = `
+      left:${left}vw;
+      bottom:-5vh;
+      font-size:${size}px;
+      --rot:${rot};
+      --op:${op};
+      filter:blur(${blur});
+      animation-duration:${dur}s;
+      animation-delay:-${delay}s;
+    `;
+    container.appendChild(span);
+  }
+})();
 </script>
 </body>
 </html>
