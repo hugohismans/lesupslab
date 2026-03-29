@@ -523,7 +523,14 @@
     .word-display { font-size: 2em; }
   }
 
-  /* Désactive tous les effets hover sur écrans tactiles (évite le "surlignage" au scroll) */
+  /* Supprime le délai 300ms sur les éléments interactifs */
+  button, .btn, .game-item, .dict-card, .round-btn, .lb-row, .pcount-btn,
+  .btn-reaction, .btn-quit-game, .btn-google, #darkToggle {
+    touch-action: manipulation;
+  }
+
+  /* Désactive les effets hover sur écrans tactiles (évite le surlignage au scroll) */
+  /* et les remplace par des états :active pour un feedback immédiat au toucher */
   @media (hover: none) {
     .btn-google:hover, .game-item:hover, .dict-card:hover, .upload-section:hover,
     .round-btn:hover, .lb-row:hover, .btn-reaction:hover, .btn:hover,
@@ -536,6 +543,13 @@
       background-color: initial;
       color: inherit;
     }
+    .btn:active          { transform: scale(0.96); filter: brightness(0.9); }
+    .btn-reaction:active { transform: scale(0.94); opacity: 0.85; }
+    .game-item:active    { border-color: rgba(124,58,237,.4); box-shadow: 0 4px 16px rgba(124,58,237,.18); }
+    .dict-card:active    { border-color: var(--pur); background: var(--pur-xl); }
+    .round-btn:active    { border-color: var(--pur); color: var(--pur); }
+    .lb-row:active       { background: var(--pur-xl); }
+    #darkToggle:active   { transform: scale(0.93); }
   }
 
   /* CHAT */
