@@ -89,6 +89,8 @@
     animation: bgword-float linear infinite;
   }
   body.dark #bg-words span { color: var(--pur-l); }
+  /* Pause toutes les animations quand la page est cachée (économie batterie) */
+  body.page-hidden * { animation-play-state: paused !important; }
   @keyframes bgword-float {
     0%   { transform: translateY(0px) rotate(var(--rot)); opacity: 0; }
     8%   { opacity: var(--op); }
@@ -521,6 +523,14 @@
     #gameSidebar { width: 100%; position: static; }
     #loginScreen h1 { font-size: 2.8em; }
     .word-display { font-size: 2em; }
+  }
+
+  /* Mobile : supprime les animations GPU coûteuses (batterie) */
+  @media (hover: none) {
+    body::before, body::after { animation: none; }
+    .game-header::before { animation: none; }
+    .timer-fill { animation: none; }
+    #bg-words span { animation-duration: calc(var(--dur, 30s) * 1.5); }
   }
 
   /* Supprime le délai 300ms sur les éléments interactifs */
@@ -3046,6 +3056,11 @@ document.getElementById('createModal').addEventListener('click', e => {
 </script>
 
 <script>
+// ── Pause animations quand la page est en arrière-plan ──
+document.addEventListener('visibilitychange', () => {
+  document.body.classList.toggle('page-hidden', document.hidden);
+});
+
 // ── Background floating words ──
 (function() {
   const WORDS = [
@@ -3073,7 +3088,8 @@ document.getElementById('createModal').addEventListener('click', e => {
   ];
 
   const container = document.getElementById('bg-words');
-  const COUNT = 55;
+  const isMobile = window.matchMedia('(hover: none)').matches;
+  const COUNT = isMobile ? 20 : 55;
 
   for (let i = 0; i < COUNT; i++) {
     const span = document.createElement('span');
