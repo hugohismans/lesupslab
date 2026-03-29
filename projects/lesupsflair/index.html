@@ -760,7 +760,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, update, remove, onValue, onDisconnect }
+import { getDatabase, ref, set, get, update, remove, onValue, onDisconnect, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -1187,6 +1187,8 @@ let lastRoundStatus = null;
 let lastClueCount = 0;
 let lastGuessCount = 0;
 let lastLeftTs = 0;
+let gameDisconnectSetup = false;
+let dcGameId = null;
 
 // État modal création
 let selectedDictKey = 'general';
@@ -1765,6 +1767,8 @@ function listenGame(gameId) {
       if (g.status === 'finished') renderMultiResult(g);
       if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
         showScreen('gameScreen');
+      if ((g.status === 'playing' || g.status === 'round_end') && !gameDisconnectSetup && !isSpectator)
+        setupGameDisconnect(gameId, g);
       // L'hôte déclenche la fin de manche si tous les devineurs ont terminé
       if (g.status === 'playing' && g.host === myId) checkAllGuessersDone(g);
       // L'hôte passe à la manche suivante si tous sont prêts
@@ -1792,6 +1796,8 @@ function listenGame(gameId) {
     if (g.status === 'finished') renderResult(g);
     if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
       showScreen('gameScreen');
+    if ((g.status === 'playing' || g.status === 'round_end') && !gameDisconnectSetup && !isSpectator)
+      setupGameDisconnect(gameId, g);
 
     // Les deux joueurs sont prêts → l'hôte déclenche la manche suivante
     if (g.status === 'round_end' && g.host && g.guest
@@ -1802,10 +1808,43 @@ function listenGame(gameId) {
   });
 }
 function stopGameListener() {
+  cancelGameDisconnect();
   if (gameListener) { gameListener(); gameListener = null; }
   if (gameChatListener) { gameChatListener(); gameChatListener = null; }
   clearInterval(timerInterval);
   clearInterval(multiHintInterval);
+}
+
+function setupGameDisconnect(gameId, g) {
+  if (gameDisconnectSetup || isSpectator) return;
+  gameDisconnectSetup = true;
+  dcGameId = gameId;
+  const gameRef = ref(db, 'lsf_games/' + gameId);
+  // Annuler le onDisconnect de la phase d'attente (remove) avant d'enregistrer le nouveau
+  onDisconnect(gameRef).cancel();
+  const myName = g.mode === 'multi'
+    ? (g.names?.[myId] || myPseudo || 'Joueur')
+    : (g.host === myId ? g.hostName : g.guestName);
+  if (g.mode === 'multi') {
+    onDisconnect(gameRef).update({
+      'lastLeft/id': myId,
+      'lastLeft/name': myName,
+      'lastLeft/ts': serverTimestamp(),
+    });
+  } else {
+    onDisconnect(gameRef).update({
+      abandoned: true,
+      abandonedByName: myName,
+      abandonedById: myId,
+    });
+  }
+}
+
+function cancelGameDisconnect() {
+  if (!gameDisconnectSetup || !dcGameId) return;
+  onDisconnect(ref(db, 'lsf_games/' + dcGameId)).cancel();
+  gameDisconnectSetup = false;
+  dcGameId = null;
 }
 
 // ── GAME RENDER ──
@@ -2117,6 +2156,7 @@ function endRound(won) {
 
 // ── RESULT ──
 function renderResult(g) {
+  cancelGameDisconnect();
   showScreen('resultScreen');
   clearInterval(timerInterval);
   audioCtx.resume();
@@ -2821,6 +2861,7 @@ window.quitMultiGame = function() {
 
 // ── Résultats finaux multi ──
 function renderMultiResult(g) {
+  cancelGameDisconnect();
   showScreen('resultScreen');
   clearInterval(timerInterval); clearInterval(multiHintInterval);
   audioCtx.resume();
