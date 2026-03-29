@@ -1186,6 +1186,7 @@ let lastReactionTs = 0;
 let lastRoundStatus = null;
 let lastClueCount = 0;
 let lastGuessCount = 0;
+let lastLeftTs = 0;
 
 // État modal création
 let selectedDictKey = 'general';
@@ -1755,6 +1756,11 @@ function listenGame(gameId) {
     // ── Mode multi-joueurs ──
     if (g.mode === 'multi') {
       if (g.status === 'waiting') { renderMultiWaiting(g); return; }
+      // Notification quand un joueur quitte
+      if (g.lastLeft && g.lastLeft.ts > lastLeftTs && g.lastLeft.id !== myId) {
+        lastLeftTs = g.lastLeft.ts;
+        showReactionToast(`🚪 ${g.lastLeft.name} a quitté la partie`);
+      }
       if (g.status === 'playing' || g.status === 'round_end') renderMultiGame(g);
       if (g.status === 'finished') renderMultiResult(g);
       if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
@@ -1771,6 +1777,17 @@ function listenGame(gameId) {
 
     // ── Mode duo (existant) ──
     if (g.status === 'waiting') return;
+    // Détection abandon duo
+    if (g.abandoned && g.abandonedById !== myId
+        && !document.getElementById('resultScreen').classList.contains('active')) {
+      stopGameListener();
+      showScreen('resultScreen');
+      document.getElementById('resultBanner').className = 'result-banner result-lose';
+      document.getElementById('resultBanner').textContent = '🚪 Partie abandonnée';
+      document.getElementById('resultTable').innerHTML = '';
+      document.getElementById('resultMsg').textContent = `${g.abandonedByName} a quitté la partie.`;
+      return;
+    }
     if (g.status === 'playing' || g.status === 'round_end') renderGame(g);
     if (g.status === 'finished') renderResult(g);
     if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
@@ -1797,7 +1814,13 @@ function renderGame(g) {
   // Affiche les éléments duo, cache les sections multi
   document.getElementById('gameScreen').classList.remove('has-sidebar');
   document.getElementById('gameSidebar').style.display = 'none';
-  document.getElementById('quitGameBtn').style.display = 'none';
+  const qBtn = document.getElementById('quitGameBtn');
+  if (!isSpectator) {
+    qBtn.style.display = '';
+    qBtn.onclick = quitDuoGame;
+  } else {
+    qBtn.style.display = 'none';
+  }
   document.getElementById('tablesRow').style.display = '';
   document.getElementById('multiHintsSection').style.display = 'none';
   setGameChatEnabled(g.status === 'round_end' && !isSpectator);
@@ -2039,7 +2062,7 @@ function markReady() {
 // Appelé par le listener quand les deux joueurs sont prêts (hôte seulement pour éviter la double écriture)
 async function doNextRound(g) {
   const next = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0;
 
   // ── Mise à jour des scores globaux pour la manche qui vient de se terminer ──
   const guesserUid    = g.clueGiver === g.host ? g.guest : g.host;
@@ -2697,7 +2720,7 @@ function forceEndRoundMulti(g) {
 async function doNextRoundMulti(g) {
   const players = g.players||[];
   const nextRound = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0;
   if (nextRound > g.totalRounds) {
     update(ref(db,'lsf_games/'+currentGameId), { status: 'finished' });
     return;
@@ -2716,6 +2739,28 @@ async function doNextRoundMulti(g) {
 }
 
 // ── Quitter une partie multi en cours ──
+window.quitDuoGame = function() {
+  if (!confirm('Abandonner la partie ?')) return;
+  const gameId = currentGameId;
+  const g = currentGame;
+  const myName = g ? (g.host === myId ? g.hostName : g.guestName) : (myPseudo || 'Joueur');
+
+  stopGameListener();
+  document.getElementById('gameChatSection').style.display = 'none';
+  currentGameId = null; currentGame = null;
+  showScreen('lobbyScreen');
+  startLobbyListener();
+  initLobbyChat();
+
+  if (!gameId || !g) return;
+  // Signaler l'abandon à l'adversaire encore en jeu
+  update(ref(db, 'lsf_games/' + gameId), {
+    abandoned: true,
+    abandonedByName: myName,
+    abandonedById: myId,
+  });
+};
+
 window.quitMultiGame = function() {
   if (!confirm('Quitter la partie ? Tu seras absent(e) des prochaines manches.')) return;
 
@@ -2741,7 +2786,8 @@ window.quitMultiGame = function() {
     return;
   }
 
-  const updates = { players };
+  const myName = g.names?.[myId] || myPseudo || 'Joueur';
+  const updates = { players, lastLeft: { id: myId, name: myName, ts: Date.now() } };
 
   // Effacer notre "prêt" pour ne pas bloquer la progression
   updates[`readyForNext/${myId}`] = null;
