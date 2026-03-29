@@ -1888,6 +1888,18 @@ function listenGame(gameId) {
         lastLeftTs = g.lastLeft.ts;
         showReactionToast(`🚪 ${g.lastLeft.name} a quitté la partie`);
       }
+
+      // Joueurs actifs = players sans ceux marqués "gone" (déconnexion inattendue)
+      const activePlayers = (g.players || []).filter(p => !g.gone?.[p]);
+      if ((g.status === 'playing' || g.status === 'round_end') && activePlayers.length < 2) {
+        // Plus assez de joueurs → terminer la partie
+        if (g.host === myId) {
+          update(ref(db, 'lsf_games/' + gameId), { status: 'finished' });
+        }
+        renderMultiResult(g);
+        return;
+      }
+
       if (g.status === 'playing' || g.status === 'round_end') renderMultiGame(g);
       if (g.status === 'finished') renderMultiResult(g);
       if (g.status === 'playing' && document.getElementById('waitingScreen').classList.contains('active'))
@@ -1959,6 +1971,7 @@ function setupGameDisconnect(gameId, g) {
       'lastLeft/id': myId,
       'lastLeft/name': myName,
       'lastLeft/ts': serverTimestamp(),
+      [`gone/${myId}`]: true,
     });
   } else {
     onDisconnect(gameRef).update({
@@ -2986,7 +2999,7 @@ window.quitMultiGame = function() {
   }
 
   const myName = g.names?.[myId] || myPseudo || 'Joueur';
-  const updates = { players, lastLeft: { id: myId, name: myName, ts: Date.now() } };
+  const updates = { players, lastLeft: { id: myId, name: myName, ts: Date.now() }, [`gone/${myId}`]: true };
 
   // Effacer notre "prêt" pour ne pas bloquer la progression
   updates[`readyForNext/${myId}`] = null;
