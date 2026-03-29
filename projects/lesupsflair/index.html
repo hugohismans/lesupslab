@@ -1229,6 +1229,7 @@ let lastReactionTs = 0;
 let lastRoundStatus = null;
 let lastClueCount = 0;
 let lastGuessCount = 0;
+let lastRoundNumber = 0;
 let lastLeftTs = 0;
 let gameDisconnectSetup = false;
 let dcGameId = null;
@@ -1919,10 +1920,19 @@ function renderGame(g) {
   const roundJustEnded = g.status === 'round_end' && lastRoundStatus !== 'round_end';
   const newOpponentClue = clueCount > lastClueCount && g.clueGiver !== myId;
   const newOpponentGuess = guessCount > lastGuessCount && g.clueGiver === myId;
+  const roundChanged = (g.round||1) !== lastRoundNumber && lastRoundNumber !== 0;
+
+  if (roundChanged) {
+    const ci = document.getElementById('clueInput');
+    const gi = document.getElementById('guessInput');
+    if (ci) ci.value = '';
+    if (gi) gi.value = '';
+  }
 
   lastRoundStatus = g.status;
   lastClueCount = clueCount;
   lastGuessCount = guessCount;
+  lastRoundNumber = g.round||1;
 
   audioCtx.resume().then(() => {
     if (roundJustEnded) g.roundResult === 'win' ? soundWin() : soundLose();
@@ -2149,7 +2159,7 @@ function markReady() {
 // Appelé par le listener quand les deux joueurs sont prêts (hôte seulement pour éviter la double écriture)
 async function doNextRound(g) {
   const next = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0; lastRoundNumber = 0;
 
   // ── Mise à jour des scores globaux pour la manche qui vient de se terminer ──
   const guesserUid    = g.clueGiver === g.host ? g.guest : g.host;
@@ -2616,6 +2626,14 @@ function renderMultiGame(g) {
   const elapsed = g.timerStart ? Date.now() - g.timerStart : 0;
   const unlockedSlots = Math.min(4, Math.floor(elapsed / 10000) + 1);
 
+  if ((g.round||1) !== lastRoundNumber && lastRoundNumber !== 0) {
+    const ci = document.getElementById('multiHintInput');
+    const gi = document.getElementById('multiGuessInput');
+    if (ci) ci.value = '';
+    if (gi) gi.value = '';
+  }
+  lastRoundNumber = g.round||1;
+
   document.getElementById('roundInfo').textContent = `Manche ${g.round} / ${g.totalRounds}`;
   document.getElementById('playersRow').innerHTML = players.map(pid => {
     const name = g.names?.[pid]||pid, isMe = pid===myId, isCG = pid===clueGiverId;
@@ -2811,7 +2829,7 @@ function forceEndRoundMulti(g) {
 async function doNextRoundMulti(g) {
   const players = g.players||[];
   const nextRound = (g.round||1) + 1;
-  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0;
+  lastRoundStatus = null; lastClueCount = 0; lastGuessCount = 0; lastLeftTs = 0; lastRoundNumber = 0;
   if (nextRound > g.totalRounds) {
     update(ref(db,'lsf_games/'+currentGameId), { status: 'finished' });
     return;
