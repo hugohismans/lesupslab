@@ -1546,7 +1546,12 @@ function renderRoundSelector() {
 
 window.selectRounds = function(v) {
   selectedRounds = v;
-  renderRoundSelector(); // appelle aussi renderPlayerCountSelector
+  document.querySelectorAll('#roundSelector .round-btn').forEach(el => {
+    const elV = el.getAttribute('onclick').match(/selectRounds\((.+)\)/)[1];
+    const parsed = elV === `'infinite'` ? 'infinite' : Number(elV);
+    el.classList.toggle('selected', parsed === v);
+  });
+  renderPlayerCountSelector();
 };
 window.closeCreateModal = function() {
   document.getElementById('createModal').classList.remove('open');
@@ -1575,7 +1580,9 @@ window.selectDict = function(key) {
     return;
   }
   selectedDictKey = key;
-  renderDictGrid();
+  document.querySelectorAll('#dictGrid .dict-card').forEach(el => {
+    el.classList.toggle('selected', el.getAttribute('onclick') === `selectDict('${key}')`);
+  });
 };
 
 window.handleFileUpload = function(event) {
@@ -2550,7 +2557,13 @@ function renderPlayerCountSelector() {
       <span class="rb-sub">${n===2?'duo':'joueurs'}</span>
     </div>`).join('');
 }
-window.selectMaxPlayers = function(n) { selectedMaxPlayers = n; renderPlayerCountSelector(); };
+window.selectMaxPlayers = function(n) {
+  selectedMaxPlayers = n;
+  document.querySelectorAll('#playerCountSelector .pcount-btn').forEach(el => {
+    const elN = Number(el.getAttribute('onclick').match(/selectMaxPlayers\((\d+)\)/)[1]);
+    el.classList.toggle('selected', elN === n);
+  });
+};
 
 // ── Création partie multi ──
 function createMultiGame() {
