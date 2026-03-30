@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>ElecGame</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #08080f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #00ffcc;
+    user-select: none;
+  }
+  canvas { display: block; }
+  #level-select {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 800px;
+  }
+  .lvl-sep {
+    width: 1px;
+    background: #1a5a3a;
+    align-self: stretch;
+    margin: 0 2px;
+  }
+  .lvl-group-label {
+    font-size: 10px;
+    color: #224433;
+    letter-spacing: 2px;
+    align-self: center;
+    text-transform: uppercase;
+  }
+  .lvl-btn {
+    background: #0a1a14;
+    border: 1px solid #1a5a3a;
+    color: #446655;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 5px 16px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .lvl-btn:hover { border-color: #336655; color: #00bb99; }
+  .lvl-btn.active {
+    border-color: #00ffcc;
+    color: #00ffcc;
+    background: #0d2a1e;
+    box-shadow: 0 0 8px #00ffcc44;
+  }
+  #hint {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #446655;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<canvas id="c" width="800" height="300"></canvas>
+<div id="level-select"></div>
+<div id="hint"></div>
+<input type="file" id="ext-level-input" accept=".json" style="display:none">
+
+<script>
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ── CONSTANTS ──────────────────────────────────────────────
+const WIRE_START = 60;
+const WIRE_END   = 740;
+const WIRE_Y     = H / 2;     // 150
+const BALL_R     = 9;
+const BALL_SPEED = 2.2;
+const SW_GAP     = 28;        // half-gap around switch center
+
+// Level 2 split geometry
+const SPLIT_X  = 200;
+const JOIN_X   = 600;
+const TOP_Y    = WIRE_Y - 65; // 85
+const BOT_Y    = WIRE_Y + 65; // 215
+const BEVEL    = 35;          // horizontal extent of the angled connector
+
+const BEVEL_HALF = BEVEL; // alias, already defined
+
+// ── LEVELS ─────────────────────────────────────────────────
+const LEVELS = [
+  {
+    name: 'Tutoriel 1',
+    hint: 'Maintiens [Q] pour fermer l\'interrupteur — [R] pour recommencer',
+    make: () => ({
+      type: 'single',
+      ball: WIRE_START,
+      won: false, dead: false,
+      switches: [{ x: 400, key: 'Q', initOpen: true, open: true }]
+    })
+  },
+  {
+    name: 'Tutoriel 2',
+    hint: 'Maintiens [Q] et [P] simultanément — [R] pour recommencer',
+    make: () => ({
+      type: 'split',
+      ballX: WIRE_START,
+      phase: 'main',
+      won: false, dead: false,
+      switches: [
+        { x: 400, key: 'Q', initOpen: true, open: true, trackY: TOP_Y },
+        { x: 400, key: 'P', initOpen: true, open: true, trackY: BOT_Y }
+      ]
+    })
+  },
+  {
+    name: 'Tutoriel 3',
+    hint: '[Q] ▶ relâche [Q] ▶ [P] ▶ relâche [P] — [R] pour recommencer',
+    make: () => ({
+      type: 'single',
+      ball: WIRE_START,
+      won: false, dead: false,
+      // séquence : hold Q → release Q → hold P → release P
+      switches: [
+        { x: 190, key: 'Q', initOpen: true,  open: true  },  // ouvert  → hold Q
+        { x: 340, key: 'Q', initOpen: false, open: false },  // fermé   → release Q
+        { x: 490, key: 'P', initOpen: true,  open: true  },  // ouvert  → hold P
+        { x: 620, key: 'P', initOpen: false, open: false },  // fermé   → release P
+      ]
+    })
+  }
+];
+
+let currentLevel = 0;
+let state = LEVELS[0].make();
+const keys = {};
+
+function selectLevel(idx) {
+  stopHum(true);
+  currentLevel = idx;
+  try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
+  document.getElementById('hint').textContent = LEVELS[idx].hint || '';
+  document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  if (AC) startHum();
+}
+
+// Build level buttons
+const lsDiv = document.getElementById('level-select');
+
+function addSep() {
+  const s = document.createElement('div'); s.className = 'lvl-sep'; lsDiv.appendChild(s);
+}
+function addGroupLabel(txt) {
+  const s = document.createElement('span'); s.className = 'lvl-group-label'; s.textContent = txt; lsDiv.appendChild(s);
+}
+function addLevelBtn(lv, idx) {
+  const btn = document.createElement('button');
+  btn.className = 'lvl-btn';
+  btn.textContent = lv.name;
+  btn.onclick = () => selectLevel(idx);
+  lsDiv.appendChild(btn);
+  return btn;
+}
+
+addGroupLabel('TUTORIAUX');
+LEVELS.forEach((lv, i) => addLevelBtn(lv, i));
+
+// Separator + levels folder group (populated after fetch)
+addSep();
+addGroupLabel('NIVEAUX');
+
+// Load-external button
+const btnLoadExt = document.createElement('button');
+btnLoadExt.className = 'lvl-btn';
+btnLoadExt.id = 'btn-load-ext';
+btnLoadExt.textContent = '📂';
+lsDiv.appendChild(btnLoadExt);
+
+// Load levels from levels/index.json
+fetch('levels/index.json')
+  .then(r => r.json())
+  .then(list => {
+    list.forEach(entry => {
+      const idx = LEVELS.length;
+      // Placeholder until JSON loaded; make() fetches on demand
+      const lv = {
+        name: entry.name,
+        hint: entry.name + ' — [R] pour recommencer',
+        _file: 'levels/' + entry.file,
+        _json: null,
+        make() {
+          if (!this._json) throw new Error('not loaded');
+          return makeCustomLevel(this._json);
+        }
+      };
+      LEVELS.push(lv);
+      const btn = addLevelBtn(lv, idx);
+      // Fetch JSON when clicked (lazy load)
+      btn.onclick = () => {
+        if (lv._json) { selectLevel(idx); return; }
+        fetch(lv._file)
+          .then(r => r.json())
+          .then(json => { lv._json = json; lv.hint = json.name + ' — [R] pour recommencer'; selectLevel(idx); })
+          .catch(() => alert('Impossible de charger ' + entry.file));
+      };
+    });
+  })
+  .catch(() => {}); // silently ignore if no levels/index.json
+
+// Space spam counter — consumed each frame by resistance logic
+let spacePressCount = 0;
+
+document.addEventListener('keydown', e => {
+  keys[e.key.toUpperCase()] = true;
+  if (e.key === ' ') spacePressCount++;
+  if (e.key.toUpperCase() === 'R') selectLevel(currentLevel);
+  resumeAudio();
+  if (!humOsc) startHum();
+  e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.key.toUpperCase()] = false; });
+
+// ── AUDIO ──────────────────────────────────────────────────
+let AC = null;
+let humOsc = null, humGain = null;
+let noiseBuffer = null;
+
+function resumeAudio() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+}
+
+function getNoise() {
+  if (noiseBuffer) return noiseBuffer;
+  const buf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  noiseBuffer = buf;
+  return buf;
+}
+
+function startHum() {
+  if (!AC || humOsc) return;
+  // 60 Hz sawtooth (sector hum) + 120 Hz harmonic
+  humOsc = AC.createOscillator();
+  humOsc.type = 'sawtooth';
+  humOsc.frequency.value = 60;
+  const h2 = AC.createOscillator();
+  h2.type = 'square';
+  h2.frequency.value = 120;
+  const g2 = AC.createGain();
+  g2.gain.value = 0.004;
+  humGain = AC.createGain();
+  humGain.gain.setValueAtTime(0.001, AC.currentTime);
+  humGain.gain.linearRampToValueAtTime(0.010, AC.currentTime + 0.6);
+  humOsc.connect(humGain);
+  h2.connect(g2); g2.connect(humGain);
+  humGain.connect(AC.destination);
+  humOsc.start(); h2.start();
+  humOsc._h2 = h2; // keep ref for cleanup
+}
+
+function stopHum(fast) {
+  if (!humGain) return;
+  const t = fast ? 0.08 : 0.4;
+  humGain.gain.setValueAtTime(humGain.gain.value, AC.currentTime);
+  humGain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + t);
+  const h = humOsc;
+  setTimeout(() => { try { h.stop(); h._h2.stop(); } catch(e){} }, (t + 0.05) * 1000);
+  humOsc = null; humGain = null;
+}
+
+function noiseBurst(freq, q, vol, dur) {
+  if (!AC) return;
+  const src = AC.createBufferSource();
+  src.buffer = getNoise();
+  src.loop = true;
+  const f = AC.createBiquadFilter();
+  f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  src.connect(f); f.connect(g); g.connect(AC.destination);
+  src.start(); src.stop(AC.currentTime + dur);
+}
+
+function toneBlip(freq, endFreq, type, vol, dur) {
+  if (!AC) return;
+  const osc = AC.createOscillator();
+  const g   = AC.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, AC.currentTime);
+  if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  osc.connect(g); g.connect(AC.destination);
+  osc.start(); osc.stop(AC.currentTime + dur + 0.01);
+}
+
+// Switch closes: sharp electric snap
+function sfxSwitchClose() {
+  toneBlip(1400, 80, 'square', 0.22, 0.055);
+  noiseBurst(4000, 3, 0.12, 0.04);
+}
+
+// Switch opens: lighter click
+function sfxSwitchOpen() {
+  toneBlip(600, 200, 'square', 0.10, 0.04);
+}
+
+// Ball passes a closed switch: brief crackle spark
+function sfxSpark() {
+  noiseBurst(3500, 5, 0.09, 0.06);
+  toneBlip(900, 300, 'sawtooth', 0.07, 0.05);
+}
+
+// Resistance buzz (called each frame ball is in resistance)
+function sfxResistance() {
+  noiseBurst(200 + Math.random() * 300, 2, 0.06, 0.04);
+}
+
+// Ball splits into two
+function sfxSplit() {
+  toneBlip(440, 880, 'sine', 0.10, 0.12);
+  setTimeout(() => toneBlip(440, 880, 'sine', 0.07, 0.10), 30);
+}
+
+// Ball rejoins
+function sfxJoin() {
+  toneBlip(660, 330, 'sine', 0.09, 0.10);
+}
+
+// Court-circuit
+function sfxDead() {
+  stopHum(true);
+  // Burst of crackles
+  [0, 40, 90, 150, 220].forEach((ms, i) => {
+    setTimeout(() => noiseBurst(800 - i * 120, 1.5, 0.35 - i * 0.05, 0.12), ms);
+  });
+  toneBlip(180, 25, 'sawtooth', 0.3, 0.7);
+}
+
+// Circuit complet
+function sfxWin() {
+  stopHum(true);
+  const notes = [261, 329, 392, 523, 659, 784, 1046];
+  notes.forEach((f, i) => {
+    const t = AC.currentTime + i * 0.075;
+    const osc = AC.createOscillator(), g = AC.createGain();
+    osc.type = 'sine'; osc.frequency.value = f;
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.13, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+    osc.connect(g); g.connect(AC.destination);
+    osc.start(t); osc.stop(t + 0.56);
+  });
+  // Final sustained chord
+  [523, 659, 784].forEach(f => {
+    const t = AC.currentTime + 0.6;
+    const osc = AC.createOscillator(), g = AC.createGain();
+    osc.type = 'sine'; osc.frequency.value = f;
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.09, t + 0.1);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+    osc.connect(g); g.connect(AC.destination);
+    osc.start(t); osc.stop(t + 1.5);
+  });
+}
+
+// ── UPDATE ─────────────────────────────────────────────────
+function update() {
+  if (state.won || state.dead) return;
+
+  if (state.type === 'custom') { updateCustom(); return; }
+
+  // Switch state + sound on change
+  for (const sw of state.switches) {
+    const wasOpen = sw.open;
+    sw.open = sw.initOpen !== !!keys[sw.key];
+    if (sw.open !== wasOpen) {
+      if (!sw.open) sfxSwitchClose();
+      else          sfxSwitchOpen();
+    }
+  }
+
+  if (state.type === 'single') {
+    state.ball += BALL_SPEED;
+    for (const sw of state.switches) {
+      if (sw.open && state.ball >= sw.x - SW_GAP && state.ball <= sw.x + SW_GAP) {
+        state.dead = true; sfxDead(); return;
+      }
+      // Spark as ball exits a closed switch
+      if (!sw.open && Math.abs(state.ball - (sw.x + SW_GAP)) < BALL_SPEED + 1) sfxSpark();
+    }
+    if (state.ball >= WIRE_END - BALL_R) {
+      state.ball = WIRE_END - BALL_R; state.won = true; sfxWin();
+    }
+
+  } else {
+    state.ballX += BALL_SPEED;
+    const prevPhase = state.phase;
+
+    // Phase transitions
+    if (state.phase === 'main'      && state.ballX >= SPLIT_X)          state.phase = 'splitting';
+    if (state.phase === 'splitting' && state.ballX >= SPLIT_X + BEVEL)  state.phase = 'split';
+    if (state.phase === 'split'     && state.ballX >= JOIN_X - BEVEL)   state.phase = 'joining';
+    if (state.phase === 'joining'   && state.ballX >= JOIN_X)           state.phase = 'join';
+
+    if (prevPhase !== state.phase) {
+      if (state.phase === 'splitting') sfxSplit();
+      if (state.phase === 'join')      sfxJoin();
+    }
+
+    // Only check switches on the horizontal tracks
+    if (state.phase === 'split') {
+      for (const sw of state.switches) {
+        if (sw.open && state.ballX >= sw.x - SW_GAP && state.ballX <= sw.x + SW_GAP) {
+          state.dead = true; sfxDead(); return;
+        }
+        if (!sw.open && Math.abs(state.ballX - (sw.x + SW_GAP)) < BALL_SPEED + 1) sfxSpark();
+      }
+    }
+
+    if (state.ballX >= WIRE_END - BALL_R) {
+      state.ballX = WIRE_END - BALL_R; state.won = true; sfxWin();
+    }
+  }
+}
+
+// ── DRAW HELPERS ───────────────────────────────────────────
+function line(x1, y1, x2, y2, color, width, glow) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  if (glow) { ctx.shadowBlur = glow; ctx.shadowColor = color; }
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  ctx.restore();
+}
+
+function wire(x1, x2, y, active, y2) {
+  const color = active ? '#00ffcc' : '#1a4035';
+  const glow  = active ? 12 : 0;
+  const width = active ? 3 : 2;
+  if (y2 === undefined) line(x1, y, x2, y, color, width, glow);
+  else                  line(x1, y, x2, y2, color, width, glow);
+}
+
+// Color per key
+const KEY_COLOR = {
+  Q: { main: '#ffaa00', glow: '#ff6600', dim: '#3a2a00' },
+  P: { main: '#cc44ff', glow: '#8800ff', dim: '#2a0040' },
+};
+function keyColor(key) { return KEY_COLOR[key] || { main: '#00ffcc', glow: '#00ffcc', dim: '#1a4035' }; }
+
+function dot(x, y, active) {
+  ctx.save();
+  ctx.fillStyle = active ? '#00ffcc' : '#1a4035';
+  if (active) { ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc'; }
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawSwitch(sw) {
+  const { x, open } = sw;
+  const y = sw.trackY !== undefined ? sw.trackY : WIRE_Y;
+  const g = SW_GAP;
+  const isTop = sw.trackY !== undefined && sw.trackY < WIRE_Y;
+  const c = keyColor(sw.key);
+
+  // Terminals
+  ctx.save();
+  ctx.shadowBlur = 8; ctx.shadowColor = c.main;
+  ctx.fillStyle = c.main;
+  ctx.beginPath(); ctx.arc(x - g, y, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + g, y, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  if (!open) {
+    line(x - g, y, x + g, y, c.main, 3, 14);
+  } else {
+    ctx.save();
+    ctx.strokeStyle = c.main; ctx.lineWidth = 2.5;
+    ctx.shadowBlur = 8; ctx.shadowColor = c.glow;
+    ctx.beginPath();
+    ctx.moveTo(x - g, y);
+    ctx.lineTo(x + g * 0.4, y - 32);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Label: above for top track, below for others
+  const labelY = isTop ? y - 42 : y + 44;
+  ctx.save();
+  ctx.font = 'bold 12px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = c.main;
+  ctx.shadowBlur = open ? 0 : 6; ctx.shadowColor = c.glow;
+  ctx.fillText('[' + sw.key + '] ' + (open ? 'ouvert' : 'fermé'), x, labelY);
+  ctx.restore();
+}
+
+function drawBall(x, y) {
+  const grd = ctx.createRadialGradient(x, y, 0, x, y, 26);
+  grd.addColorStop(0, 'rgba(80,180,255,0.6)');
+  grd.addColorStop(1, 'rgba(0,80,255,0)');
+  ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2);
+  ctx.fillStyle = grd; ctx.fill();
+
+  ctx.save();
+  ctx.shadowBlur = 18; ctx.shadowColor = '#88ddff';
+  const core = ctx.createRadialGradient(x - 3, y - 3, 1, x, y, BALL_R);
+  core.addColorStop(0, '#ffffff');
+  core.addColorStop(0.5, '#88ccff');
+  core.addColorStop(1, '#0055ff');
+  ctx.beginPath(); ctx.arc(x, y, BALL_R, 0, Math.PI * 2);
+  ctx.fillStyle = core; ctx.fill();
+  ctx.restore();
+}
+
+function drawBulb(lit, x, y) {
+  if (x === undefined) { x = WIRE_END; y = WIRE_Y; }
+  if (lit) {
+    const grd = ctx.createRadialGradient(x, y - 16, 5, x, y - 16, 55);
+    grd.addColorStop(0, 'rgba(255,255,120,0.7)');
+    grd.addColorStop(1, 'rgba(255,200,0,0)');
+    ctx.beginPath(); ctx.arc(x, y - 16, 55, 0, Math.PI * 2);
+    ctx.fillStyle = grd; ctx.fill();
+  }
+  ctx.save();
+  if (lit) { ctx.shadowBlur = 20; ctx.shadowColor = '#ffff00'; }
+  ctx.beginPath(); ctx.arc(x, y - 16, 16, 0, Math.PI * 2);
+  ctx.fillStyle = lit ? '#ffff88' : '#1a2a1a'; ctx.fill();
+  ctx.strokeStyle = lit ? '#ffdd00' : '#336633'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = lit ? '#cccccc' : '#334433';
+  ctx.fillRect(x - 9, y, 18, 10); ctx.fillRect(x - 6, y + 10, 12, 5);
+  ctx.save();
+  ctx.strokeStyle = lit ? '#ff8800' : '#224422'; ctx.lineWidth = 1.5;
+  if (lit) { ctx.shadowBlur = 8; ctx.shadowColor = '#ff8800'; }
+  ctx.beginPath();
+  ctx.moveTo(x - 4, y - 6); ctx.lineTo(x - 1, y - 14);
+  ctx.lineTo(x + 2, y - 8); ctx.lineTo(x + 5, y - 16);
+  ctx.stroke(); ctx.restore();
+}
+
+function drawSource(x, y) {
+  if (x === undefined) { x = WIRE_START; y = WIRE_Y; }
+  ctx.save();
+  ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
+  ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
+  ctx.strokeRect(x - 14, y - 18, 28, 36);
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = 'bold 16px Courier New';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('⚡', x, y);
+  ctx.restore();
+}
+
+function drawKeyIndicator(key, px, py) {
+  const held = !!keys[key];
+  const c = keyColor(key);
+  ctx.save();
+  ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'left';
+  ctx.fillStyle = held ? c.main : c.dim;
+  ctx.shadowBlur = held ? 10 : 0; ctx.shadowColor = c.glow;
+  ctx.fillText(key + '  ' + (held ? '█ FERMÉ' : '░ OUVERT'), px, py);
+  ctx.restore();
+}
+
+function drawOverlay(text, color, glow) {
+  ctx.save();
+  ctx.font = 'bold 30px Courier New'; ctx.textAlign = 'center';
+  ctx.shadowBlur = 20; ctx.shadowColor = glow;
+  ctx.fillStyle = color;
+  ctx.fillText(text, W / 2, 40);
+  ctx.font = '15px Courier New'; ctx.fillStyle = '#aaaaaa'; ctx.shadowBlur = 0;
+  ctx.fillText('[R] pour recommencer', W / 2, 66);
+  ctx.restore();
+}
+
+// ── DRAW LEVEL 1 (single line, N switches) ─────────────────
+function drawLevel1() {
+  const ball = state.ball;
+  const sws  = state.switches;
+
+  // Build ordered segment list: source → [left, right terminal per switch] → bulb
+  const points = [WIRE_START + 14];
+  for (const sw of sws) { points.push(sw.x - SW_GAP); points.push(sw.x + SW_GAP); }
+  points.push(WIRE_END - 2);
+  // Draw each gap-free segment
+  for (let i = 0; i < points.length - 1; i += 2) {
+    const x1 = points[i], x2 = points[i + 1];
+    wire(x1, x2, WIRE_Y, ball > x1 || state.won);
+  }
+
+  drawSource();
+  for (const sw of sws) drawSwitch(sw);
+  drawBulb(state.won);
+  if (!state.won && !state.dead) drawBall(ball, WIRE_Y);
+
+  // Key indicators
+  const usedKeys = [...new Set(sws.map(sw => sw.key))];
+  usedKeys.forEach((k, i) => drawKeyIndicator(k, 20, 28 + i * 22));
+}
+
+// ── DRAW LEVEL 2 ───────────────────────────────────────────
+function drawLevel2() {
+  const bx    = state.ballX;
+  const phase = state.phase;
+  const swQ   = state.switches[0]; // top
+  const swP   = state.switches[1]; // bottom
+
+  const pastSplit = bx > SPLIT_X;
+  const pastQ     = bx > swQ.x + SW_GAP;
+  const pastP     = bx > swP.x + SW_GAP;
+  const pastJoin  = bx > JOIN_X;
+
+  // Main wire before split
+  wire(WIRE_START + 14, SPLIT_X, WIRE_Y, true);
+
+  // Angled connectors: split → tracks
+  wire(SPLIT_X, SPLIT_X + BEVEL, WIRE_Y, pastSplit, TOP_Y);
+  wire(SPLIT_X, SPLIT_X + BEVEL, WIRE_Y, pastSplit, BOT_Y);
+
+  // Horizontal tracks
+  wire(SPLIT_X + BEVEL, swQ.x - SW_GAP, TOP_Y, pastSplit);
+  wire(SPLIT_X + BEVEL, swP.x - SW_GAP, BOT_Y, pastSplit);
+
+  drawSwitch(swQ);
+  drawSwitch(swP);
+
+  wire(swQ.x + SW_GAP, JOIN_X - BEVEL, TOP_Y, pastQ || state.won);
+  wire(swP.x + SW_GAP, JOIN_X - BEVEL, BOT_Y, pastP || state.won);
+
+  // Angled connectors: tracks → join
+  wire(JOIN_X - BEVEL, JOIN_X, TOP_Y, pastQ || state.won, WIRE_Y);
+  wire(JOIN_X - BEVEL, JOIN_X, BOT_Y, pastP || state.won, WIRE_Y);
+
+  // Main wire after join
+  wire(JOIN_X, WIRE_END - 2, WIRE_Y, pastJoin || state.won);
+
+  // Junction dots
+  dot(SPLIT_X, WIRE_Y, pastSplit);
+  dot(JOIN_X,  WIRE_Y, pastJoin || state.won);
+
+  drawSource();
+  drawBulb(state.won);
+
+  // Ball(s) — interpolate Y along angled connectors
+  if (!state.won && !state.dead) {
+    if (phase === 'main' || phase === 'join') {
+      drawBall(bx, WIRE_Y);
+    } else if (phase === 'split') {
+      drawBall(bx, TOP_Y); drawBall(bx, BOT_Y);
+    } else if (phase === 'splitting') {
+      const t = (bx - SPLIT_X) / BEVEL;
+      drawBall(bx, WIRE_Y + t * (TOP_Y - WIRE_Y));
+      drawBall(bx, WIRE_Y + t * (BOT_Y - WIRE_Y));
+    } else if (phase === 'joining') {
+      const t = (bx - (JOIN_X - BEVEL)) / BEVEL;
+      drawBall(bx, TOP_Y + t * (WIRE_Y - TOP_Y));
+      drawBall(bx, BOT_Y + t * (WIRE_Y - BOT_Y));
+    }
+  }
+
+  drawKeyIndicator('Q', 20, 28);
+  drawKeyIndicator('P', 20, 50);
+}
+
+// ── MAIN DRAW ──────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#08080f'; ctx.fillRect(0, 0, W, H);
+
+  if (state.type === 'custom') { drawCustom(); return; }
+
+  if (state.type === 'single') drawLevel1();
+  else                         drawLevel2();
+
+  if (state.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
+  if (state.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
+}
+
+// ── CUSTOM LEVEL HELPERS ───────────────────────────────────
+
+// Returns flat [x0,y0,x1,y1,...] array for an edge
+function edgePolyline(edge, nodes) {
+  const from = nodes.find(n => n.id === edge.from);
+  const to   = nodes.find(n => n.id === edge.to);
+  if (!from || !to) return [];
+  if (edge.wayY == null) {
+    return [from.x, from.y, to.x, to.y];
+  }
+  const wy = edge.wayY;
+  const dyfrom = Math.abs(wy - from.y);
+  const dyto   = Math.abs(wy - to.y);
+  const dirX   = Math.sign(to.x - from.x) || 1;
+  const xmid1  = from.x + Math.min(dyfrom, BEVEL) * dirX;
+  const xmid2  = to.x   - Math.min(dyto,   BEVEL) * dirX;
+  return [
+    from.x, from.y,
+    xmid1, wy,
+    xmid2, wy,
+    to.x, to.y
+  ];
+}
+
+// Total length of a flat polyline array [x0,y0,x1,y1,...]
+function polylineLength(pts) {
+  let len = 0;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const dx = pts[i+2] - pts[i], dy = pts[i+3] - pts[i+1];
+    len += Math.sqrt(dx*dx + dy*dy);
+  }
+  return len;
+}
+
+// Returns {x, y} at progress t (0..1) along a flat polyline
+function posOnEdge(t, edge, nodes) {
+  const pts = edgePolyline(edge, nodes);
+  if (pts.length < 4) return { x: 0, y: 0 };
+  const total = polylineLength(pts);
+  let dist = t * total;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const dx = pts[i+2] - pts[i], dy = pts[i+3] - pts[i+1];
+    const segLen = Math.sqrt(dx*dx + dy*dy);
+    if (dist <= segLen || i >= pts.length - 4) {
+      const tt = segLen > 0 ? Math.min(dist / segLen, 1) : 0;
+      return { x: pts[i] + tt * dx, y: pts[i+1] + tt * dy };
+    }
+    dist -= segLen;
+  }
+  return { x: pts[pts.length-2], y: pts[pts.length-1] };
+}
+
+// Build game state from JSON level descriptor
+// Resistance constants
+const RES_HALF      = 50;   // half-length of the resistance zone on the wire
+const RES_DRAIN     = 0.025; // speed lost per frame inside resistance
+const RES_BOOST     = 0.35;  // speed gained per spacebar press
+const RES_SPEED_MAX = BALL_SPEED;
+const RES_SPEED_MIN = 0;
+
+function makeCustomLevel(json) {
+  const nodes = json.nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y }));
+  const edges = json.edges.map(e => ({
+    id: e.id, from: e.from, to: e.to,
+    wayY: e.wayY ?? null,
+    switch: e.switch ? { key: e.switch.key, initOpen: e.switch.initOpen } : null,
+    resistance: e.resistance === true,
+    resDuration: e.resDuration ?? 3
+  }));
+
+  // Build switch map
+  const switchMap = new Map();
+  for (const e of edges) {
+    if (e.switch) {
+      switchMap.set(e.id, {
+        key: e.switch.key,
+        initOpen: e.switch.initOpen,
+        open: e.switch.initOpen
+      });
+    }
+  }
+
+  // Build resistance map: edgeId → drain per frame
+  // drain = 1/duration/60 so speed goes 1→0 in `duration` seconds without spam
+  const resistanceSet = new Set(edges.filter(e => e.resistance).map(e => e.id));
+  // resistanceDrain stores the target traversal speed: zone_length / (duration * 60 frames)
+  const resistanceDrain = new Map(
+    edges.filter(e => e.resistance).map(e => [e.id, (2 * RES_HALF) / ((e.resDuration ?? 3) * 60)])
+  );
+
+  // Find source node(s) — start balls from outgoing edges of each source
+  const balls = [];
+  for (const node of nodes) {
+    if (node.type === 'source') {
+      const outgoing = edges.filter(e => e.from === node.id);
+      for (const e of outgoing) {
+        balls.push({ edgeId: e.id, t: 0, x: node.x, y: node.y, speed: BALL_SPEED });
+      }
+    }
+  }
+
+  return {
+    type: 'custom',
+    graph: { nodes, edges },
+    switchMap,
+    resistanceSet,
+    resistanceDrain,
+    balls,
+    edgesLit: new Set(),
+    joinWait: new Map(),
+    arrived: 0,
+    won: false,
+    dead: false,
+    _name: json.name || 'Custom'
+  };
+}
+
+// ── CUSTOM UPDATE ──────────────────────────────────────────
+function updateCustom() {
+  const st = state;
+  if (st.won || st.dead) return;
+  const { graph, switchMap, resistanceSet, resistanceDrain, balls, edgesLit, joinWait } = st;
+  const { nodes, edges } = graph;
+
+  // Update switch states
+  for (const [eid, sw] of switchMap) {
+    const wasOpen = sw.open;
+    sw.open = sw.initOpen !== !!keys[sw.key];
+    if (sw.open !== wasOpen) {
+      if (!sw.open) sfxSwitchClose();
+      else          sfxSwitchOpen();
+    }
+  }
+
+  // Consume spacebar presses for resistance this frame
+  const spaceThisFrame = spacePressCount;
+  spacePressCount = 0;
+
+  const toRemove = [];
+  const toAdd = [];
+
+  for (let bi = 0; bi < balls.length; bi++) {
+    const ball = balls[bi];
+    const edge = edges.find(e => e.id === ball.edgeId);
+    if (!edge) { toRemove.push(bi); continue; }
+
+    const len = polylineLength(edgePolyline(edge, nodes));
+
+    // Resistance logic
+    if (resistanceSet.has(edge.id)) {
+      const tEntry = len > 0 ? Math.max(0, (len / 2 - RES_HALF) / len) : 0.5;
+      const tExit  = len > 0 ? Math.min(1, (len / 2 + RES_HALF) / len) : 0.5;
+      const inZone = ball.t >= tEntry && ball.t <= tExit;
+      if (inZone) {
+        // resSpeed = speed needed to cross the zone in exactly resDuration seconds
+        const resSpeed = (resistanceDrain && resistanceDrain.get(edge.id)) ?? RES_DRAIN;
+        // Clamp to resSpeed on entry, space presses push back up, drain pulls down
+        const drain = resSpeed / 80; // dies in ~1.3s without any input
+        const boost = resSpeed / 3;  // ~3 presses/s keeps the ball stable
+        if (ball.t === tEntry || ball.speed > resSpeed) ball.speed = resSpeed;
+        ball.speed = Math.min(resSpeed, ball.speed + spaceThisFrame * boost);
+        ball.speed = Math.max(0, ball.speed - drain);
+        if (spaceThisFrame > 0) sfxSpark();
+        else if (Math.random() < 0.25) sfxResistance();
+        if (ball.speed <= 0) { st.dead = true; sfxDead(); return; }
+      } else {
+        ball.speed = Math.min(BALL_SPEED, ball.speed + BALL_SPEED / 20);
+      }
+    } else {
+      ball.speed = BALL_SPEED;
+    }
+
+    const step = len > 0 ? ball.speed / len : 0;
+    const prevT = ball.t;
+    ball.t += step;
+
+    // Check switch: trigger at the entry edge of the gap
+    const sw = switchMap.get(edge.id);
+    if (sw) {
+      const len = polylineLength(edgePolyline(edge, nodes));
+      const tEntry  = len > 0 ? Math.max(0, (len / 2 - SW_GAP) / len) : 0.5;
+      const tCenter = 0.5;
+      if (prevT < tEntry && ball.t >= tEntry) {
+        if (sw.open) {
+          st.dead = true; sfxDead(); return;
+        }
+      }
+      if (!sw.open && prevT < tCenter && ball.t >= tCenter) {
+        sfxSpark();
+      }
+    }
+
+    if (ball.t >= 1) {
+      ball.t = 1;
+      toRemove.push(bi);
+
+      // Mark edge lit
+      edgesLit.add(edge.id);
+
+      const toNode = nodes.find(n => n.id === edge.to);
+      if (!toNode) continue;
+
+      if (toNode.type === 'bulb') {
+        st.arrived++;
+        // don't spawn more balls
+
+      } else {
+        const outEdges = edges.filter(e => e.from === toNode.id);
+        const inEdges  = edges.filter(e => e.to   === toNode.id);
+
+        if (outEdges.length === 0) {
+          // dead end — nothing
+        } else if (outEdges.length === 1) {
+          const outE = outEdges[0];
+          // Check if this is a join node (2+ incoming edges)
+          if (inEdges.length >= 2) {
+            // join logic: wait for all incoming to arrive
+            const waited = (joinWait.get(toNode.id) || 0) + 1;
+            joinWait.set(toNode.id, waited);
+            if (waited >= inEdges.length) {
+              joinWait.delete(toNode.id);
+              sfxJoin();
+              toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED });
+            }
+          } else {
+            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED });
+          }
+        } else {
+          // Split: spawn a ball on each outgoing edge
+          sfxSplit();
+          for (const outE of outEdges) {
+            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED });
+          }
+        }
+      }
+    } else {
+      // Update ball position
+      const pos = posOnEdge(ball.t, edge, nodes);
+      ball.x = pos.x; ball.y = pos.y;
+    }
+  }
+
+  // Remove finished balls (in reverse order)
+  for (let i = toRemove.length - 1; i >= 0; i--) balls.splice(toRemove[i], 1);
+  for (const b of toAdd) balls.push(b);
+
+  // Update positions for new balls
+  for (const ball of balls) {
+    if (ball.x === undefined || toAdd.includes(ball)) {
+      const edge = edges.find(e => e.id === ball.edgeId);
+      if (edge) {
+        const pos = posOnEdge(ball.t, edge, nodes);
+        ball.x = pos.x; ball.y = pos.y;
+      }
+    }
+  }
+
+  // Win check
+  if (balls.length === 0 && st.arrived > 0 && !st.won && !st.dead) {
+    st.won = true;
+    sfxWin();
+  }
+}
+
+// ── DRAW RESISTANCE SYMBOL ─────────────────────────────────
+function drawResistance(edge, nodes, ballInside, ballSpeed) {
+  const sp  = posOnEdge(0.5,  edge, nodes);
+  const sp1 = posOnEdge(0.48, edge, nodes);
+  const sp2 = posOnEdge(0.52, edge, nodes);
+  const angle = Math.atan2(sp2.y - sp1.y, sp2.x - sp1.x);
+
+  const energyRatio = ballInside ? Math.max(0, ballSpeed / BALL_SPEED) : 1;
+  const hue     = Math.round(energyRatio * 110); // 110=green → 0=red
+  const col     = ballInside ? `hsl(${hue},100%,55%)` : '#cc8800';
+  const colDim  = ballInside ? `hsl(${hue},60%,18%)`  : '#2a1a00';
+  const glowCol = ballInside ? col : '#664400';
+
+  const RW = RES_HALF - 4; // body half-width along wire axis
+  const RH = 13;            // body half-height perpendicular
+
+  ctx.save();
+  ctx.translate(sp.x, sp.y);
+  ctx.rotate(angle);
+
+  // Connector stubs (wire endpoints touching body)
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 3;
+  ctx.shadowBlur = 8; ctx.shadowColor = col;
+  ctx.beginPath(); ctx.moveTo(-RES_HALF, 0); ctx.lineTo(-RW, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( RW, 0);       ctx.lineTo( RES_HALF, 0); ctx.stroke();
+  ctx.restore();
+
+  // Body fill
+  ctx.save();
+  ctx.shadowBlur = ballInside ? 22 : 8; ctx.shadowColor = glowCol;
+  ctx.fillStyle = colDim;
+  ctx.fillRect(-RW, -RH, RW * 2, RH * 2);
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.strokeRect(-RW, -RH, RW * 2, RH * 2);
+  ctx.restore();
+
+  // Resistor bands (4 colored stripes) — clipped to body
+  const bandColors = ['#ff3333', '#ff8800', '#ffee00', '#4488ff'];
+  const nBands = bandColors.length;
+  const bandW  = 6;
+  const spacing = (RW * 2 - nBands * bandW) / (nBands + 1);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(-RW + 1, -RH + 1, RW * 2 - 2, RH * 2 - 2); ctx.clip();
+  for (let i = 0; i < nBands; i++) {
+    const bx = -RW + spacing * (i + 1) + bandW * i;
+    ctx.fillStyle = ballInside ? bandColors[i] : '#443300';
+    ctx.globalAlpha = ballInside ? 0.85 : 0.5;
+    ctx.fillRect(bx, -RH, bandW, RH * 2);
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+
+  // Energy gauge bar (unrotated, below body)
+  ctx.rotate(-angle);
+  if (ballInside) {
+    const bw = RW * 2, bh = 5, by = RH + 7;
+    ctx.fillStyle = '#1a0800';
+    ctx.fillRect(-bw / 2, by, bw, bh);
+    ctx.fillStyle = col;
+    ctx.shadowBlur = 10; ctx.shadowColor = col;
+    ctx.fillRect(-bw / 2, by, bw * energyRatio, bh);
+    ctx.strokeStyle = '#554400'; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+    ctx.strokeRect(-bw / 2, by, bw, bh);
+  }
+
+  // Label
+  ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
+  ctx.fillStyle = col; ctx.shadowBlur = ballInside ? 6 : 0; ctx.shadowColor = col;
+  ctx.fillText(ballInside ? '[ ESPACE ]' : 'résistance', 0, RH + (ballInside ? 28 : 16));
+
+  ctx.restore();
+}
+
+// ── CUSTOM DRAW ────────────────────────────────────────────
+function drawCustom() {
+  const st = state;
+  const { graph, switchMap, resistanceSet, balls, edgesLit } = st;
+  const { nodes, edges } = graph;
+
+  const edgesWithBall = new Set(balls.map(b => b.edgeId));
+
+  const drawPolylinePts = (pts, col, w, gl) => {
+    if (!pts || pts.length < 4) return;
+    ctx.save();
+    if (gl) { ctx.shadowBlur = gl; ctx.shadowColor = col; }
+    ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
+    ctx.stroke(); ctx.restore();
+  };
+
+  // Draw edges
+  for (const edge of edges) {
+    // Fully lit only when completed; active ball edge stays dim until traversed
+    const fullyLit = edgesLit.has(edge.id);
+    const dimColor = '#1a4035';
+    const litColor = '#00ffcc';
+    const sw    = switchMap.get(edge.id);
+    const hasRes = resistanceSet && resistanceSet.has(edge.id);
+    const gapHalf = sw ? SW_GAP : (hasRes ? RES_HALF : 0);
+
+    // Helper: draw one segment, split around obstacle gap if needed
+    const drawSegment = (tFrom, tTo, col, w, gl) => {
+      if (tTo <= tFrom) return;
+      if (gapHalf > 0) {
+        const total = polylineLength(edgePolyline(edge, nodes));
+        const tLeft  = total > 0 ? Math.max(0, (total / 2 - gapHalf) / total) : 0.5;
+        const tRight = total > 0 ? Math.min(1, (total / 2 + gapHalf) / total) : 0.5;
+        // left of gap
+        if (tFrom < tLeft)
+          drawPolylinePts(edgePolylineBetween(edge, nodes, tFrom, Math.min(tTo, tLeft)), col, w, gl);
+        // right of gap
+        if (tTo > tRight)
+          drawPolylinePts(edgePolylineBetween(edge, nodes, Math.max(tFrom, tRight), tTo), col, w, gl);
+      } else {
+        drawPolylinePts(edgePolylineBetween(edge, nodes, tFrom, tTo), col, w, gl);
+      }
+    };
+
+    const ball = balls.find(b => b.edgeId === edge.id);
+
+    if (fullyLit) {
+      // Entire edge lit
+      drawSegment(0, 1, litColor, 3, 12);
+    } else if (ball) {
+      // Dim base wire
+      drawSegment(0, 1, dimColor, 2, 0);
+      // Lit trail behind the ball (from 0 to ball.t)
+      if (ball.t > 0)
+        drawSegment(0, ball.t, litColor, 3, 12);
+    } else {
+      // No ball, not completed → fully dim
+      drawSegment(0, 1, dimColor, 2, 0);
+    }
+
+    // Draw resistance
+    if (resistanceSet && resistanceSet.has(edge.id)) {
+      const ball = balls.find(b => b.edgeId === edge.id);
+      const len2 = polylineLength(edgePolyline(edge, nodes));
+      const tEntry = len2 > 0 ? Math.max(0, (len2 / 2 - RES_HALF) / len2) : 0.5;
+      const tExit  = len2 > 0 ? Math.min(1, (len2 / 2 + RES_HALF) / len2) : 0.5;
+      const inside = ball && ball.t >= tEntry && ball.t <= tExit;
+      drawResistance(edge, nodes, inside, inside ? ball.speed : BALL_SPEED);
+    }
+
+    // Draw switch — aligned to wire direction
+    if (sw) {
+      const sp  = posOnEdge(0.5, edge, nodes);
+      const sp1 = posOnEdge(0.48, edge, nodes);
+      const sp2 = posOnEdge(0.52, edge, nodes);
+      const angle = Math.atan2(sp2.y - sp1.y, sp2.x - sp1.x);
+      const c = keyColor(sw.key);
+      const g = SW_GAP;
+
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.rotate(angle);
+
+      // Terminals
+      ctx.save();
+      ctx.shadowBlur = 8; ctx.shadowColor = c.main; ctx.fillStyle = c.main;
+      ctx.beginPath(); ctx.arc(-g, 0, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc( g, 0, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      if (!sw.open) {
+        // Closed: lever along wire axis
+        ctx.save();
+        ctx.strokeStyle = c.main; ctx.lineWidth = 3;
+        ctx.shadowBlur = 14; ctx.shadowColor = c.main;
+        ctx.beginPath(); ctx.moveTo(-g, 0); ctx.lineTo(g, 0); ctx.stroke();
+        ctx.restore();
+      } else {
+        // Open: lever rotated ~50° away from wire axis
+        ctx.save();
+        ctx.strokeStyle = c.main; ctx.lineWidth = 2.5;
+        ctx.shadowBlur = 8; ctx.shadowColor = c.glow;
+        ctx.beginPath();
+        ctx.moveTo(-g, 0);
+        ctx.lineTo(g * 0.4 * Math.cos(-1.0) * 2, g * 0.4 * Math.sin(-1.0) * 2 - 18);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Label: perpendicular to wire, offset to the side
+      ctx.save();
+      ctx.rotate(-angle); // unrotate for readable text
+      ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
+      ctx.fillStyle = c.main;
+      ctx.shadowBlur = sw.open ? 0 : 6; ctx.shadowColor = c.glow;
+      ctx.fillText('[' + sw.key + '] ' + (sw.open ? 'ouvert' : 'fermé'), 0, 44);
+      ctx.restore();
+
+      ctx.restore(); // undo translate+rotate
+    }
+  }
+
+  // Draw nodes
+  for (const node of nodes) {
+    if (node.type === 'source') {
+      drawSource(node.x, node.y);
+    } else if (node.type === 'bulb') {
+      // Check if this bulb has been arrived at
+      const inEdges = edges.filter(e => e.to === node.id);
+      const bulbLit = st.won || inEdges.some(e => edgesLit.has(e.id));
+      drawBulb(bulbLit, node.x, node.y);
+    } else {
+      // junction nodes are invisible in play mode
+    }
+  }
+
+  // Draw balls
+  for (const ball of balls) {
+    drawBall(ball.x, ball.y);
+  }
+
+  // Key indicators for keys used in this level
+  const usedKeys = [...new Set([...switchMap.values()].map(sw => sw.key))];
+  usedKeys.forEach((k, i) => drawKeyIndicator(k, 20, 28 + i * 22));
+
+  // Space indicator if level has resistances
+  if (resistanceSet && resistanceSet.size > 0) {
+    const hasRes = balls.some(b => {
+      const edge = edges.find(e => e.id === b.edgeId);
+      if (!edge || !resistanceSet.has(edge.id)) return false;
+      const l = polylineLength(edgePolyline(edge, nodes));
+      const tE = l > 0 ? Math.max(0, (l / 2 - RES_HALF) / l) : 0.5;
+      const tX = l > 0 ? Math.min(1, (l / 2 + RES_HALF) / l) : 0.5;
+      return b.t >= tE && b.t <= tX;
+    });
+    const py = 28 + usedKeys.length * 22;
+    ctx.save();
+    ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'left';
+    ctx.fillStyle = hasRes ? '#ff8800' : '#3a2000';
+    ctx.shadowBlur = hasRes ? 10 : 0; ctx.shadowColor = '#ff6600';
+    ctx.fillText('ESPACE  ' + (hasRes ? '█ SPAM !' : '░'), 20, py);
+    ctx.restore();
+  }
+
+  // Overlays
+  if (st.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
+  if (st.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
+}
+
+// Helper: returns flat polyline points between two t parameters
+function edgePolylineBetween(edge, nodes, tFrom, tTo) {
+  const pts = edgePolyline(edge, nodes);
+  if (pts.length < 4) return [];
+  const total = polylineLength(pts);
+  if (total === 0) return [];
+  const dFrom = tFrom * total;
+  const dTo   = tTo   * total;
+  const result = [];
+  let walked = 0;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const dx = pts[i+2] - pts[i], dy = pts[i+3] - pts[i+1];
+    const segLen = Math.sqrt(dx*dx + dy*dy);
+    const segEnd = walked + segLen;
+    if (segEnd <= dFrom) { walked = segEnd; continue; }
+    if (walked >= dTo) break;
+    const t0 = segLen > 0 ? Math.max(0, (dFrom - walked) / segLen) : 0;
+    const t1 = segLen > 0 ? Math.min(1, (dTo   - walked) / segLen) : 1;
+    if (result.length === 0) result.push(pts[i] + t0 * dx, pts[i+1] + t0 * dy);
+    result.push(pts[i] + t1 * dx, pts[i+1] + t1 * dy);
+    walked = segEnd;
+  }
+  return result;
+}
+
+// Helper: returns flat polyline points from start up to parameter t
+function edgePolylineTo(edge, nodes, t) {
+  const pts = edgePolyline(edge, nodes);
+  if (pts.length < 4) return pts;
+  const total = polylineLength(pts);
+  const dist  = t * total;
+  const result = [pts[0], pts[1]];
+  let walked = 0;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const dx = pts[i+2] - pts[i], dy = pts[i+3] - pts[i+1];
+    const segLen = Math.sqrt(dx*dx + dy*dy);
+    if (walked + segLen >= dist) {
+      const tt = segLen > 0 ? (dist - walked) / segLen : 0;
+      result.push(pts[i] + tt * dx, pts[i+1] + tt * dy);
+      break;
+    }
+    walked += segLen;
+    result.push(pts[i+2], pts[i+3]);
+  }
+  return result;
+}
+
+// Helper: returns flat polyline points from parameter t to end
+function edgePolylineFrom(edge, nodes, t) {
+  const pts = edgePolyline(edge, nodes);
+  if (pts.length < 4) return pts;
+  const total = polylineLength(pts);
+  const dist  = t * total;
+  const result = [];
+  let walked = 0;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const dx = pts[i+2] - pts[i], dy = pts[i+3] - pts[i+1];
+    const segLen = Math.sqrt(dx*dx + dy*dy);
+    if (result.length === 0 && walked + segLen >= dist) {
+      const tt = segLen > 0 ? (dist - walked) / segLen : 0;
+      result.push(pts[i] + tt * dx, pts[i+1] + tt * dy);
+    }
+    if (result.length > 0) result.push(pts[i+2], pts[i+3]);
+    walked += segLen;
+  }
+  return result;
+}
+
+// ── LOOP ───────────────────────────────────────────────────
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+// ── LOAD TEST LEVEL FROM localStorage ──────────────────────
+if (new URLSearchParams(location.search).has('test')) {
+  const saved = localStorage.getItem('elecgame_test_level');
+  if (saved) {
+    try {
+      const json = JSON.parse(saved);
+      const customLv = {
+        name: json.name || 'Test',
+        hint: 'Niveau custom — [R] pour recommencer',
+        _json: json,
+        make: function() { return makeCustomLevel(this._json); }
+      };
+      LEVELS.push(customLv);
+      const btn = document.createElement('button');
+      btn.className = 'lvl-btn';
+      btn.textContent = customLv.name;
+      const idx = LEVELS.length - 1;
+      btn.onclick = () => selectLevel(idx);
+      // Insert before the load button
+      lsDiv.insertBefore(btn, btnLoadExt);
+      selectLevel(idx);
+    } catch(e) {
+      console.error('Could not load test level', e);
+    }
+  }
+}
+
+// ── FILE LOAD BUTTON ────────────────────────────────────────
+document.getElementById('btn-load-ext').addEventListener('click', () => {
+  document.getElementById('ext-level-input').click();
+});
+
+document.getElementById('ext-level-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const json = JSON.parse(ev.target.result);
+      const customLv = {
+        name: json.name || file.name.replace('.json', ''),
+        hint: (json.name || 'Niveau custom') + ' — [R] pour recommencer',
+        _json: json,
+        make: function() { return makeCustomLevel(this._json); }
+      };
+      LEVELS.push(customLv);
+      const btn = document.createElement('button');
+      btn.className = 'lvl-btn';
+      btn.textContent = customLv.name;
+      const idx = LEVELS.length - 1;
+      btn.onclick = () => selectLevel(idx);
+      lsDiv.insertBefore(btn, btnLoadExt);
+      selectLevel(idx);
+    } catch(err) {
+      alert('Fichier JSON invalide');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+selectLevel(0);
+loop();
+</script>
+</body>
+</html>

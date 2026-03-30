@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Die and Relight</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #06060e;
+  color: #00ffcc;
+  font-family: 'Courier New', monospace;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+canvas#bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+}
+
+#title-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#title {
+  font-size: 52px;
+  font-weight: bold;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  color: #00ffcc;
+  text-shadow:
+    0 0 20px #00ffcc,
+    0 0 60px #00ffcc66,
+    0 0 120px #00ffcc22;
+  animation: pulse 3s ease-in-out infinite;
+}
+
+#subtitle {
+  font-size: 13px;
+  letter-spacing: 5px;
+  color: #224433;
+  text-transform: uppercase;
+}
+
+@keyframes pulse {
+  0%, 100% { text-shadow: 0 0 20px #00ffcc, 0 0 60px #00ffcc44; }
+  50%       { text-shadow: 0 0 30px #00ffcc, 0 0 80px #00ffcc88, 0 0 140px #00ffcc33; }
+}
+
+#keys {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.key-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.key-box {
+  width: 52px;
+  height: 52px;
+  border: 2px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 0;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.key-box.q { color: #ffaa00; box-shadow: 0 0 12px #ffaa0055; }
+.key-box.p { color: #cc44ff; box-shadow: 0 0 12px #cc44ff55; }
+.key-box.space {
+  width: 120px;
+  height: 52px;
+  color: #aaaaaa;
+  border-color: #aaaaaa;
+  box-shadow: 0 0 8px #aaaaaa33;
+}
+
+.key-desc {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #224433;
+  text-align: center;
+  text-transform: uppercase;
+  max-width: 100px;
+}
+
+.key-sep {
+  color: #1a4035;
+  font-size: 20px;
+  padding-bottom: 20px;
+}
+
+#play-btn {
+  background: transparent;
+  border: 2px solid #00ffcc;
+  color: #00ffcc;
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  padding: 16px 60px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+  box-shadow: 0 0 20px #00ffcc33;
+}
+
+#play-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #00ffcc;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease;
+  z-index: -1;
+}
+
+#play-btn:hover {
+  color: #06060e;
+  box-shadow: 0 0 40px #00ffcc88;
+}
+#play-btn:hover::before { transform: scaleX(1); }
+
+#play-btn:active { transform: scale(0.97); }
+
+#editor-link {
+  font-size: 11px;
+  color: #1a4035;
+  letter-spacing: 2px;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.2s;
+  margin-top: -20px;
+}
+#editor-link:hover { color: #446655; }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div id="content">
+  <div id="title-wrap">
+    <div id="title">Die and Relight</div>
+    <div id="subtitle">un jeu de circuit électrique</div>
+  </div>
+
+  <div id="keys">
+    <div class="key-item">
+      <div class="key-box q">Q</div>
+      <div class="key-desc">Interrupteur gauche</div>
+    </div>
+    <div class="key-sep">+</div>
+    <div class="key-item">
+      <div class="key-box p">P</div>
+      <div class="key-desc">Interrupteur droit</div>
+    </div>
+    <div class="key-sep">+</div>
+    <div class="key-item">
+      <div class="key-box space">ESPACE</div>
+      <div class="key-desc">Passer les résistances</div>
+    </div>
+  </div>
+
+  <button id="play-btn" onclick="startGame()">Jouer maintenant</button>
+  <a id="editor-link" href="editor.html">éditeur de niveaux →</a>
+</div>
+
+<script>
+// ── BACKGROUND ANIMATION ───────────────────────────────────
+const canvas = document.getElementById('bg');
+const ctx = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Floating wire segments
+const wires = Array.from({ length: 14 }, () => makeWire());
+
+function makeWire() {
+  const y = Math.random() * H;
+  return {
+    x: Math.random() * W,
+    y,
+    len: 80 + Math.random() * 200,
+    speed: 0.3 + Math.random() * 0.5,
+    alpha: 0.04 + Math.random() * 0.1,
+    lit: Math.random() < 0.3,
+    litProgress: Math.random(),
+    litSpeed: 0.003 + Math.random() * 0.006,
+    sparkT: -1,
+  };
+}
+
+function drawBg() {
+  ctx.clearRect(0, 0, W, H);
+
+  for (const w of wires) {
+    w.x += w.speed;
+    if (w.x > W + w.len) { Object.assign(w, makeWire()); w.x = -w.len; }
+
+    if (w.lit) {
+      w.litProgress += w.litSpeed;
+      if (w.litProgress > 1.2) { w.lit = false; w.litProgress = 0; }
+    } else if (Math.random() < 0.002) {
+      w.lit = true; w.litProgress = 0;
+    }
+
+    const p = Math.min(w.litProgress, 1);
+    const litLen = w.len * p;
+
+    ctx.save();
+    ctx.globalAlpha = w.alpha;
+    // Dim wire
+    ctx.strokeStyle = '#1a4035'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + w.len, w.y); ctx.stroke();
+    // Lit portion
+    if (w.lit && litLen > 0) {
+      ctx.globalAlpha = w.alpha * 4;
+      ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 8; ctx.shadowColor = '#00ffcc';
+      ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + litLen, w.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ── AUDIO ──────────────────────────────────────────────────
+let AC = null;
+
+function initAudio() {
+  if (AC) return;
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  startAmbient();
+}
+
+function startAmbient() {
+  // Low hum
+  const osc = AC.createOscillator();
+  const g   = AC.createGain();
+  osc.type = 'sawtooth'; osc.frequency.value = 60;
+  g.gain.setValueAtTime(0.001, AC.currentTime);
+  g.gain.linearRampToValueAtTime(0.008, AC.currentTime + 2);
+  osc.connect(g); g.connect(AC.destination);
+  osc.start();
+
+  // Occasional soft crackles
+  scheduleRandomCrackle();
+}
+
+function scheduleRandomCrackle() {
+  const delay = 1500 + Math.random() * 4000;
+  setTimeout(() => {
+    if (!AC) return;
+    playCrackle(0.03 + Math.random() * 0.05);
+    scheduleRandomCrackle();
+  }, delay);
+}
+
+function playCrackle(vol) {
+  const buf = AC.createBuffer(1, AC.sampleRate * 0.06, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = AC.createBufferSource();
+  src.buffer = buf;
+  const filt = AC.createBiquadFilter();
+  filt.type = 'bandpass'; filt.frequency.value = 2000 + Math.random() * 3000; filt.Q.value = 2;
+  const g = AC.createGain();
+  g.gain.value = vol;
+  src.connect(filt); filt.connect(g); g.connect(AC.destination);
+  src.start();
+}
+
+function playButtonSound() {
+  if (!AC) return;
+  // Rising tone
+  const osc = AC.createOscillator();
+  const g   = AC.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(220, AC.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(880, AC.currentTime + 0.18);
+  g.gain.setValueAtTime(0.15, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.3);
+  osc.connect(g); g.connect(AC.destination);
+  osc.start(); osc.stop(AC.currentTime + 0.31);
+  // Spark burst
+  setTimeout(() => playCrackle(0.12), 80);
+}
+
+document.addEventListener('mousemove', initAudio, { once: true });
+document.addEventListener('keydown',   initAudio, { once: true });
+
+// ── KEY GLOW ON HOVER ──────────────────────────────────────
+document.querySelectorAll('.key-box').forEach(box => {
+  box.addEventListener('mouseenter', () => {
+    initAudio();
+    if (AC) playCrackle(0.06);
+  });
+});
+
+// ── START GAME ─────────────────────────────────────────────
+function startGame() {
+  initAudio();
+  playButtonSound();
+  setTimeout(() => { window.location.href = 'game.html'; }, 320);
+}
+</script>
+</body>
+</html>

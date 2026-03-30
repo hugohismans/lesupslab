@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>ElecGame — Level Editor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #08080f;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    color: #00ffcc;
+    user-select: none;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 16px;
+    letter-spacing: 3px;
+    color: #00ffcc;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  #toolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .tool-btn {
+    background: #0a1a14;
+    border: 1px solid #1a5a3a;
+    color: #446655;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 5px 12px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .tool-btn:hover { border-color: #336655; color: #00bb99; }
+  .tool-btn.active {
+    border-color: #00ffcc;
+    color: #00ffcc;
+    background: #0d2a1e;
+    box-shadow: 0 0 8px #00ffcc44;
+  }
+  .sep { width: 1px; height: 28px; background: #1a5a3a; }
+  #node-type-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12px;
+    color: #446655;
+  }
+  #node-type-row label { cursor: pointer; }
+  #node-type-row input[type=radio] { accent-color: #00ffcc; cursor: pointer; }
+  canvas {
+    display: block;
+    border: 1px solid #1a5a3a;
+    cursor: crosshair;
+  }
+  #props-panel {
+    width: 800px;
+    background: #060610;
+    border: 1px solid #1a5a3a;
+    border-top: none;
+    padding: 10px 16px;
+    font-size: 12px;
+    min-height: 56px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  #props-panel label { color: #446655; margin-right: 4px; }
+  #props-panel input, #props-panel select {
+    background: #0a1a14;
+    border: 1px solid #1a5a3a;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 3px 8px;
+    width: 100px;
+  }
+  #props-panel input[type=checkbox] { width: auto; accent-color: #00ffcc; cursor: pointer; }
+  #props-title { color: #00ffcc; font-weight: bold; margin-right: 8px; white-space: nowrap; }
+  #status {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #446655;
+    letter-spacing: 1px;
+    height: 16px;
+  }
+  #level-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  #level-name-row label { font-size: 12px; color: #446655; }
+  #level-name-row input {
+    background: #0a1a14;
+    border: 1px solid #1a5a3a;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 4px 10px;
+    width: 220px;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ ElecGame — Level Editor</h1>
+
+<div id="level-name-row">
+  <label>Nom du niveau :</label>
+  <input id="level-name" type="text" value="Mon niveau" />
+</div>
+
+<div id="toolbar">
+  <button class="tool-btn active" id="btn-select" onclick="setTool('select')">✦ Select</button>
+  <button class="tool-btn" id="btn-node"   onclick="setTool('node')">+ Node</button>
+  <button class="tool-btn" id="btn-wire"   onclick="setTool('wire')">⌇ Wire</button>
+  <button class="tool-btn" id="btn-delete" onclick="setTool('delete')">✕ Delete</button>
+  <div class="sep"></div>
+  <div id="node-type-row">
+    <span style="color:#446655">Type:</span>
+    <label><input type="radio" name="ntype" value="source" id="nt-source"> ⚡ source</label>
+    <label><input type="radio" name="ntype" value="node"   id="nt-node" checked> ● junction</label>
+    <label><input type="radio" name="ntype" value="bulb"   id="nt-bulb"> 💡 bulb</label>
+  </div>
+  <div class="sep"></div>
+  <button class="tool-btn" onclick="clearLevel()">⟳ Clear</button>
+  <button class="tool-btn" onclick="loadFile()">📂 Load</button>
+  <button class="tool-btn" onclick="saveFile()">💾 Save</button>
+  <button class="tool-btn" onclick="testLevel()" style="border-color:#00ffcc44;color:#00cc99">▶ Test</button>
+</div>
+
+<canvas id="c" width="800" height="300"></canvas>
+<div id="props-panel"><span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil pour éditer ses propriétés</span></div>
+<div id="status"></div>
+
+<input type="file" id="file-input" accept=".json" style="display:none">
+
+<script>
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const GRID   = 20;
+const BEVEL  = 35;
+const SW_GAP = 28;
+
+// ── DATA ───────────────────────────────────────────────────
+let nodes = [
+  { id: 0, type: 'source', x: 60,  y: 150 },
+  { id: 1, type: 'bulb',   x: 740, y: 150 }
+];
+let edges = [];
+let nextNodeId = 2;
+let nextEdgeId = 0;
+
+// ── TOOL STATE ─────────────────────────────────────────────
+let tool = 'select';
+let wireFrom = null;   // node id for wire start
+let selectedNode = null;
+let selectedEdge = null;
+let dragging = null;   // { node, ox, oy }
+
+function setTool(t) {
+  tool = t;
+  wireFrom = null;
+  document.querySelectorAll('.tool-btn[id^=btn]').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('btn-' + t);
+  if (el) el.classList.add('active');
+  status('');
+  if (t === 'wire') status('Clique sur un nœud source du fil');
+}
+
+function getNodeType() {
+  return document.querySelector('input[name=ntype]:checked')?.value || 'node';
+}
+
+function snap(v) { return Math.round(v / GRID) * GRID; }
+
+function status(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+// ── HIT TESTING ────────────────────────────────────────────
+function nodeAt(x, y) {
+  for (const n of nodes) {
+    const dx = x - n.x, dy = y - n.y;
+    if (dx * dx + dy * dy <= 16 * 16) return n;
+  }
+  return null;
+}
+
+function edgeNear(x, y) {
+  for (const e of edges) {
+    const pts = edgePts(e);
+    for (let i = 0; i < pts.length - 2; i += 2) {
+      const x1 = pts[i], y1 = pts[i+1], x2 = pts[i+2], y2 = pts[i+3];
+      const dx = x2 - x1, dy = y2 - y1;
+      const len2 = dx*dx + dy*dy;
+      if (len2 < 1) continue;
+      const t = Math.max(0, Math.min(1, ((x-x1)*dx + (y-y1)*dy) / len2));
+      const px = x1 + t*dx - x, py = y1 + t*dy - y;
+      if (px*px + py*py < 49) return e;
+    }
+  }
+  return null;
+}
+
+// ── EDGE GEOMETRY ──────────────────────────────────────────
+function edgePts(e) {
+  const from = nodes.find(n => n.id === e.from);
+  const to   = nodes.find(n => n.id === e.to);
+  if (!from || !to) return [];
+  if (e.wayY == null) {
+    return [from.x, from.y, to.x, to.y];
+  }
+  // diagonal → horizontal at wayY → diagonal
+  const wy = e.wayY;
+  const bevel = BEVEL;
+  // x where from's diagonal meets wayY
+  const signFrom = wy > from.y ? 1 : -1;
+  const dyfrom = Math.abs(wy - from.y);
+  const xmid1 = from.x + Math.min(dyfrom, bevel) * Math.sign(to.x - from.x);
+  // x where to's diagonal meets wayY
+  const dyto   = Math.abs(wy - to.y);
+  const xmid2  = to.x - Math.min(dyto, bevel) * Math.sign(to.x - from.x);
+  return [
+    from.x, from.y,
+    xmid1, wy,
+    xmid2, wy,
+    to.x, to.y
+  ];
+}
+
+function polylinePts(e) {
+  // Returns array of {x,y}
+  const flat = edgePts(e);
+  const pts = [];
+  for (let i = 0; i < flat.length; i += 2) pts.push({ x: flat[i], y: flat[i+1] });
+  return pts;
+}
+
+function polylineLength(pts) {
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+    len += Math.sqrt(dx*dx + dy*dy);
+  }
+  return len;
+}
+
+function posOnEdge(t, e) {
+  const pts = polylinePts(e);
+  const total = polylineLength(pts);
+  let dist = t * total;
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+    const segLen = Math.sqrt(dx*dx + dy*dy);
+    if (dist <= segLen || i === pts.length - 1) {
+      const tt = segLen > 0 ? dist / segLen : 0;
+      return { x: pts[i-1].x + tt * dx, y: pts[i-1].y + tt * dy };
+    }
+    dist -= segLen;
+  }
+  return pts[pts.length - 1];
+}
+
+// ── AUTO PARALLEL EDGE OFFSET ──────────────────────────────
+function checkParallel(newEdge) {
+  const parallel = edges.filter(e =>
+    e.id !== newEdge.id &&
+    ((e.from === newEdge.from && e.to === newEdge.to) ||
+     (e.from === newEdge.to   && e.to === newEdge.from))
+  );
+  if (parallel.length > 0) {
+    const from = nodes.find(n => n.id === newEdge.from);
+    if (from) newEdge.wayY = from.y - 60;
+  }
+}
+
+// ── CANVAS EVENTS ──────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const sx = snap(mx), sy = snap(my);
+  const hit = nodeAt(mx, my);
+  const hitEdge = edgeNear(mx, my);
+
+  if (tool === 'select') {
+    selectedNode = null; selectedEdge = null;
+    if (hit) {
+      selectedNode = hit;
+      dragging = { node: hit, ox: mx - hit.x, oy: my - hit.y };
+    } else if (hitEdge) {
+      selectedEdge = hitEdge;
+    }
+    buildProps();
+
+  } else if (tool === 'node') {
+    if (!hit) {
+      const id = nextNodeId++;
+      const n = { id, type: getNodeType(), x: sx, y: sy };
+      nodes.push(n);
+      selectedNode = n; selectedEdge = null;
+      buildProps();
+    }
+
+  } else if (tool === 'wire') {
+    if (hit) {
+      if (wireFrom === null) {
+        wireFrom = hit;
+        status('Clique maintenant sur le nœud de destination');
+      } else if (hit.id !== wireFrom.id) {
+        const id = nextEdgeId++;
+        const ne = { id, from: wireFrom.id, to: hit.id, wayY: null, switch: null };
+        checkParallel(ne);
+        edges.push(ne);
+        selectedEdge = ne; selectedNode = null;
+        wireFrom = null;
+        buildProps();
+        status('Fil créé — clique sur un nœud pour en commencer un autre');
+      }
+    }
+
+  } else if (tool === 'delete') {
+    if (hit) {
+      nodes = nodes.filter(n => n.id !== hit.id);
+      edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
+      if (selectedNode?.id === hit.id) selectedNode = null;
+    } else if (hitEdge) {
+      edges = edges.filter(ed => ed.id !== hitEdge.id);
+      if (selectedEdge?.id === hitEdge.id) selectedEdge = null;
+    }
+    buildProps();
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  dragging.node.x = snap(mx - dragging.ox + GRID/2);
+  dragging.node.y = snap(my - dragging.oy + GRID/2);
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; });
+
+// ── PROPERTIES PANEL ───────────────────────────────────────
+function buildProps() {
+  const panel = document.getElementById('props-panel');
+  panel.innerHTML = '';
+
+  if (selectedNode) {
+    const n = selectedNode;
+    panel.innerHTML = `
+      <span id="props-title">Nœud #${n.id}</span>
+      <label>Type:
+        <select id="p-ntype">
+          <option value="source" ${n.type==='source'?'selected':''}>⚡ source</option>
+          <option value="node"   ${n.type==='node'  ?'selected':''}>● junction</option>
+          <option value="bulb"   ${n.type==='bulb'  ?'selected':''}>💡 bulb</option>
+        </select>
+      </label>
+      <label>X: <input id="p-nx" type="number" value="${n.x}" step="20" min="0" max="800"></label>
+      <label>Y: <input id="p-ny" type="number" value="${n.y}" step="20" min="0" max="300"></label>
+    `;
+    document.getElementById('p-ntype').onchange = ev => { n.type = ev.target.value; };
+    document.getElementById('p-nx').oninput = ev => { n.x = snap(+ev.target.value); };
+    document.getElementById('p-ny').oninput = ev => { n.y = snap(+ev.target.value); };
+
+  } else if (selectedEdge) {
+    const ed = selectedEdge;
+    const swKey   = ed.switch?.key      ?? 'none';
+    const swInit  = ed.switch?.initOpen ?? true;
+    const wayYVal = ed.wayY != null ? ed.wayY : '';
+    const resChecked  = !!ed.resistance;
+    const resDur      = ed.resDuration ?? 3;
+    panel.innerHTML = `
+      <span id="props-title">Fil #${ed.id}</span>
+      <label>wayY: <input id="p-wayY" type="number" value="${wayYVal}" step="20" min="0" max="300" placeholder="aucun"></label>
+      <label>Switch:
+        <select id="p-swkey">
+          <option value="none" ${swKey==='none'?'selected':''}>— aucun —</option>
+          <option value="Q"    ${swKey==='Q'   ?'selected':''}>Q (orange)</option>
+          <option value="P"    ${swKey==='P'   ?'selected':''}>P (violet)</option>
+        </select>
+      </label>
+      <label id="p-initopen-lbl" style="${swKey==='none'?'display:none':''}">
+        initOpen: <input type="checkbox" id="p-initopen" ${swInit?'checked':''}>
+      </label>
+      <span style="color:#446655;margin-left:8px">|</span>
+      <label>Résistance: <input type="checkbox" id="p-res" ${resChecked?'checked':''}></label>
+      <label id="p-res-dur-lbl" style="${resChecked?'':'display:none'}">
+        Durée: <input id="p-res-dur" type="number" value="${resDur}" min="1" max="10" step="0.5" style="width:52px">s
+      </label>
+    `;
+    document.getElementById('p-wayY').oninput = ev => {
+      const v = ev.target.value.trim();
+      ed.wayY = v === '' ? null : snap(+v);
+    };
+    document.getElementById('p-swkey').onchange = ev => {
+      const k = ev.target.value;
+      if (k === 'none') {
+        ed.switch = null;
+        document.getElementById('p-initopen-lbl').style.display = 'none';
+      } else {
+        ed.switch = { key: k, initOpen: document.getElementById('p-initopen')?.checked ?? true };
+        document.getElementById('p-initopen-lbl').style.display = '';
+      }
+    };
+    const initBox = document.getElementById('p-initopen');
+    if (initBox) initBox.onchange = ev => { if (ed.switch) ed.switch.initOpen = ev.target.checked; };
+    document.getElementById('p-res').onchange = ev => {
+      ed.resistance = ev.target.checked;
+      document.getElementById('p-res-dur-lbl').style.display = ev.target.checked ? '' : 'none';
+    };
+    document.getElementById('p-res-dur').oninput = ev => {
+      ed.resDuration = Math.max(1, Math.min(10, +ev.target.value));
+    };
+
+  } else {
+    panel.innerHTML = '<span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil pour éditer ses propriétés</span>';
+  }
+}
+
+// ── DRAW ───────────────────────────────────────────────────
+const KEY_COLOR = {
+  Q: { main: '#ffaa00', glow: '#ff6600', dim: '#3a2a00' },
+  P: { main: '#cc44ff', glow: '#8800ff', dim: '#2a0040' },
+};
+function keyColor(key) { return KEY_COLOR[key] || { main: '#00ffcc', glow: '#00ffcc', dim: '#1a4035' }; }
+
+function drawGrid() {
+  ctx.save();
+  ctx.strokeStyle = '#0d1c18';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= W; x += GRID) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y <= H; y += GRID) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawEdge(e, selected) {
+  const pts = edgePts(e);
+  if (pts.length < 4) return;
+  const c = selected ? '#00ffcc' : '#2a6a50';
+  const glow = selected ? 10 : 0;
+
+  ctx.save();
+  if (glow) { ctx.shadowBlur = glow; ctx.shadowColor = c; }
+  ctx.strokeStyle = c; ctx.lineWidth = selected ? 3 : 2;
+  ctx.beginPath();
+  ctx.moveTo(pts[0], pts[1]);
+  for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
+  ctx.stroke();
+  ctx.restore();
+
+  // Direction arrow at midpoint
+  const mid = posOnEdge(0.5, e);
+  const a = posOnEdge(0.48, e), b = posOnEdge(0.52, e);
+  const angle = Math.atan2(b.y - a.y, b.x - a.x);
+  ctx.save();
+  ctx.translate(mid.x, mid.y);
+  ctx.rotate(angle);
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.moveTo(7, 0); ctx.lineTo(-4, -4); ctx.lineTo(-4, 4);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  // Draw switch if any
+  if (e.switch) {
+    const sp = posOnEdge(0.5, e);
+    const sc = keyColor(e.switch.key);
+    ctx.save();
+    ctx.strokeStyle = sc.main; ctx.lineWidth = 2; ctx.shadowBlur = 8; ctx.shadowColor = sc.main;
+    if (e.switch.initOpen) {
+      // Diamond (open)
+      const s = 8;
+      ctx.beginPath();
+      ctx.moveTo(sp.x, sp.y - s); ctx.lineTo(sp.x + s, sp.y);
+      ctx.lineTo(sp.x, sp.y + s); ctx.lineTo(sp.x - s, sp.y);
+      ctx.closePath(); ctx.stroke();
+    } else {
+      // Circle (closed)
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, 8, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+    ctx.fillStyle = sc.main; ctx.shadowBlur = 0;
+    ctx.fillText(e.switch.key, sp.x, sp.y + 20);
+    ctx.restore();
+  }
+
+  // Draw resistance if any
+  if (e.resistance) {
+    const sp   = posOnEdge(0.5, e);
+    const sp1  = posOnEdge(0.48, e);
+    const sp2  = posOnEdge(0.52, e);
+    const angle = Math.atan2(sp2.y - sp1.y, sp2.x - sp1.x);
+    const RW = 46, RH = 12;
+    const dur = e.resDuration ?? 3;
+    const bandColors = ['#ff3333','#ff8800','#ffee00','#4488ff'];
+    ctx.save();
+    ctx.translate(sp.x, sp.y);
+    ctx.rotate(angle);
+    // Body
+    ctx.fillStyle = '#2a1a00';
+    ctx.strokeStyle = '#cc8800'; ctx.lineWidth = 2;
+    ctx.shadowBlur = 8; ctx.shadowColor = '#cc8800';
+    ctx.fillRect(-RW, -RH, RW * 2, RH * 2);
+    ctx.strokeRect(-RW, -RH, RW * 2, RH * 2);
+    // Bands (clipped)
+    ctx.save();
+    ctx.beginPath(); ctx.rect(-RW + 1, -RH + 1, RW * 2 - 2, RH * 2 - 2); ctx.clip();
+    const nBands = bandColors.length, bandW = 6;
+    const spacing = (RW * 2 - nBands * bandW) / (nBands + 1);
+    for (let i = 0; i < nBands; i++) {
+      const bx = -RW + spacing * (i + 1) + bandW * i;
+      ctx.fillStyle = bandColors[i]; ctx.globalAlpha = 0.7;
+      ctx.fillRect(bx, -RH, bandW, RH * 2);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // Stubs
+    ctx.strokeStyle = '#cc8800'; ctx.lineWidth = 3; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.moveTo(-50, 0); ctx.lineTo(-RW, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(RW, 0);  ctx.lineTo(50, 0);  ctx.stroke();
+    // Label (unrotated)
+    ctx.rotate(-angle);
+    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center'; ctx.shadowBlur = 0;
+    ctx.fillStyle = '#cc8800';
+    ctx.fillText('R ' + dur + 's', 0, RH + 14);
+    ctx.restore();
+  }
+
+  // wayY indicator
+  if (e.wayY != null) {
+    const from = nodes.find(n => n.id === e.from);
+    if (from) {
+      ctx.save();
+      ctx.strokeStyle = '#334455'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(from.x, e.wayY); ctx.lineTo(800, e.wayY); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+function drawNode(n, selected) {
+  const { x, y, type } = n;
+  ctx.save();
+
+  if (type === 'source') {
+    ctx.shadowBlur = selected ? 18 : 10; ctx.shadowColor = '#00ffcc';
+    ctx.strokeStyle = selected ? '#00ffff' : '#00ffcc'; ctx.lineWidth = 2;
+    ctx.strokeRect(x - 14, y - 18, 28, 36);
+    ctx.fillStyle = selected ? '#00ffee' : '#00ffcc';
+    ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('⚡', x, y);
+
+  } else if (type === 'bulb') {
+    ctx.shadowBlur = selected ? 20 : 10; ctx.shadowColor = '#ffff00';
+    ctx.strokeStyle = selected ? '#ffff55' : '#ffdd00'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y - 16, 16, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = selected ? '#333300' : '#1a2a1a'; ctx.fill();
+    ctx.fillStyle = selected ? '#cccc88' : '#334433';
+    ctx.fillRect(x - 9, y, 18, 10); ctx.fillRect(x - 6, y + 10, 12, 5);
+    ctx.font = '10px Courier New'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffdd00';
+    ctx.fillText('💡', x, y);
+
+  } else {
+    // junction
+    ctx.shadowBlur = selected ? 14 : 6; ctx.shadowColor = '#00ffcc';
+    ctx.fillStyle = selected ? '#00ffff' : '#00ffcc';
+    ctx.beginPath(); ctx.arc(x, y, selected ? 8 : 6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Id label
+  ctx.shadowBlur = 0;
+  ctx.font = '9px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#446655';
+  ctx.fillText('#' + n.id, x, y + 20);
+  ctx.restore();
+}
+
+function drawLegend() {
+  ctx.save();
+  ctx.font = '10px Courier New'; ctx.fillStyle = '#2a5a45';
+  const items = ['⚡ source', '● junction', '💡 bulb', '◇ switch ouvert', '○ switch fermé'];
+  items.forEach((txt, i) => {
+    ctx.fillText(txt, 8 + i * 158, H - 14);
+  });
+  ctx.restore();
+}
+
+function drawWirePreview(mx, my) {
+  if (tool !== 'wire' || !wireFrom) return;
+  ctx.save();
+  ctx.strokeStyle = '#00ffcc66'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.moveTo(wireFrom.x, wireFrom.y); ctx.lineTo(mx, my); ctx.stroke();
+  ctx.restore();
+}
+
+let mousePos = { x: 0, y: 0 };
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+});
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#08080f'; ctx.fillRect(0, 0, W, H);
+  drawGrid();
+
+  // Draw edges
+  for (const e of edges) drawEdge(e, selectedEdge?.id === e.id);
+
+  // Wire preview
+  drawWirePreview(mousePos.x, mousePos.y);
+  if (wireFrom) {
+    ctx.save();
+    ctx.shadowBlur = 16; ctx.shadowColor = '#00ffcc';
+    ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(wireFrom.x, wireFrom.y, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Draw nodes
+  for (const n of nodes) drawNode(n, selectedNode?.id === n.id);
+
+  drawLegend();
+  requestAnimationFrame(draw);
+}
+
+draw();
+
+// ── ACTIONS ────────────────────────────────────────────────
+function clearLevel() {
+  if (!confirm('Effacer le niveau ?')) return;
+  nodes = [
+    { id: 0, type: 'source', x: 60,  y: 150 },
+    { id: 1, type: 'bulb',   x: 740, y: 150 }
+  ];
+  edges = [];
+  nextNodeId = 2; nextEdgeId = 0;
+  selectedNode = null; selectedEdge = null;
+  wireFrom = null;
+  buildProps();
+  document.getElementById('level-name').value = 'Mon niveau';
+}
+
+function toJSON() {
+  return {
+    name: document.getElementById('level-name').value || 'Mon niveau',
+    nodes: nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y })),
+    edges: edges.map(e => ({ id: e.id, from: e.from, to: e.to, wayY: e.wayY ?? null, switch: e.switch ?? null, resistance: !!e.resistance, resDuration: e.resistance ? (e.resDuration ?? 3) : undefined }))
+  };
+}
+
+function saveFile() {
+  const json = JSON.stringify(toJSON(), null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (document.getElementById('level-name').value || 'level') + '.json';
+  a.click();
+}
+
+function loadFile() {
+  document.getElementById('file-input').click();
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      loadFromJSON(data);
+    } catch(err) {
+      alert('Fichier JSON invalide');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+function loadFromJSON(data) {
+  nodes = (data.nodes || []).map(n => ({ id: n.id, type: n.type || 'node', x: n.x, y: n.y }));
+  edges = (data.edges || []).map(e => ({
+    id: e.id, from: e.from, to: e.to,
+    wayY: e.wayY ?? null,
+    switch: e.switch ?? null,
+    resistance: !!e.resistance,
+    resDuration: e.resDuration ?? 3
+  }));
+  nextNodeId = nodes.reduce((m, n) => Math.max(m, n.id + 1), 0);
+  nextEdgeId = edges.reduce((m, e) => Math.max(m, e.id + 1), 0);
+  document.getElementById('level-name').value = data.name || 'Mon niveau';
+  selectedNode = null; selectedEdge = null; wireFrom = null;
+  buildProps();
+  status('Niveau chargé : ' + (data.name || ''));
+}
+
+function testLevel() {
+  localStorage.setItem('elecgame_test_level', JSON.stringify(toJSON()));
+  window.open('index.html?test=1', '_blank');
+}
+
+buildProps();
+</script>
+</body>
+</html>

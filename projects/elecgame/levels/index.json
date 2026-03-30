@@ -1,0 +1,7 @@
+[
+  { "file": "eclair.json",          "name": "Éclair" },
+  { "file": "double_boucle.json",   "name": "Double boucle" },
+  { "file": "zigzag.json",          "name": "Zigzag" },
+  { "file": "sequenceur.json",      "name": "Séquenceur" },
+  { "file": "resistance_test.json", "name": "Résistance" }
+]
