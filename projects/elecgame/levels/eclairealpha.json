@@ -1,0 +1,129 @@
+{
+  "name": "Mon niveau",
+  "nodes": [
+    {
+      "id": 1,
+      "type": "bulb",
+      "x": 740,
+      "y": 150
+    },
+    {
+      "id": 11,
+      "type": "node",
+      "x": 240,
+      "y": 20
+    },
+    {
+      "id": 12,
+      "type": "node",
+      "x": 200,
+      "y": 80
+    },
+    {
+      "id": 13,
+      "type": "node",
+      "x": 260,
+      "y": 80
+    },
+    {
+      "id": 14,
+      "type": "node",
+      "x": 180,
+      "y": 180
+    },
+    {
+      "id": 16,
+      "type": "source",
+      "x": 160,
+      "y": 20
+    },
+    {
+      "id": 18,
+      "type": "node",
+      "x": 180,
+      "y": 120
+    },
+    {
+      "id": 19,
+      "type": "node",
+      "x": 120,
+      "y": 120
+    },
+    {
+      "id": 21,
+      "type": "bulb",
+      "x": 140,
+      "y": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": 7,
+      "from": 16,
+      "to": 11,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 8,
+      "from": 11,
+      "to": 12,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 9,
+      "from": 12,
+      "to": 13,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 10,
+      "from": 13,
+      "to": 14,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 12,
+      "from": 14,
+      "to": 18,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 13,
+      "from": 18,
+      "to": 19,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 14,
+      "from": 19,
+      "to": 21,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    }
+  ]
+}

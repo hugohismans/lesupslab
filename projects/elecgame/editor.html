@@ -123,10 +123,10 @@
 </div>
 
 <div id="toolbar">
-  <button class="tool-btn active" id="btn-select" onclick="setTool('select')">✦ Select</button>
-  <button class="tool-btn" id="btn-node"   onclick="setTool('node')">+ Node</button>
-  <button class="tool-btn" id="btn-wire"   onclick="setTool('wire')">⌇ Wire</button>
-  <button class="tool-btn" id="btn-delete" onclick="setTool('delete')">✕ Delete</button>
+  <button class="tool-btn active" id="btn-select" onclick="setTool('select')" title="[S]">✦ Select</button>
+  <button class="tool-btn" id="btn-node"   onclick="setTool('node')"   title="[N]">+ Node</button>
+  <button class="tool-btn" id="btn-wire"   onclick="setTool('wire')"   title="[W]">⌇ Wire</button>
+  <button class="tool-btn" id="btn-delete" onclick="setTool('delete')" title="[D] ou Clic droit">✕ Delete</button>
   <div class="sep"></div>
   <div id="node-type-row">
     <span style="color:#446655">Type:</span>
@@ -170,6 +170,24 @@ let wireFrom = null;   // node id for wire start
 let selectedNode = null;
 let selectedEdge = null;
 let dragging = null;   // { node, ox, oy }
+let hoveredNode = null;
+let hoveredEdge = null;
+
+// ── UNDO ───────────────────────────────────────────────────
+const undoStack = [];
+function saveUndo() {
+  undoStack.push(JSON.stringify({ nodes: nodes.map(n=>({...n})), edges: edges.map(e=>({...e})) }));
+  if (undoStack.length > 40) undoStack.shift();
+}
+function undo() {
+  if (!undoStack.length) { status('Rien à annuler'); return; }
+  const prev = JSON.parse(undoStack.pop());
+  nodes = prev.nodes; edges = prev.edges;
+  nextNodeId = nodes.reduce((m, n) => Math.max(m, n.id + 1), 0);
+  nextEdgeId = edges.reduce((m, e) => Math.max(m, e.id + 1), 0);
+  selectedNode = null; selectedEdge = null;
+  buildProps(); status('Annulé (Ctrl+Z)');
+}
 
 function setTool(t) {
   tool = t;
@@ -308,6 +326,7 @@ canvas.addEventListener('mousedown', e => {
 
   } else if (tool === 'node') {
     if (!hit) {
+      saveUndo();
       const id = nextNodeId++;
       const n = { id, type: getNodeType(), x: sx, y: sy };
       nodes.push(n);
@@ -321,23 +340,26 @@ canvas.addEventListener('mousedown', e => {
         wireFrom = hit;
         status('Clique maintenant sur le nœud de destination');
       } else if (hit.id !== wireFrom.id) {
+        saveUndo();
         const id = nextEdgeId++;
         const ne = { id, from: wireFrom.id, to: hit.id, wayY: null, switch: null };
         checkParallel(ne);
         edges.push(ne);
         selectedEdge = ne; selectedNode = null;
-        wireFrom = null;
+        wireFrom = hit; // chain: destination becomes next source
         buildProps();
-        status('Fil créé — clique sur un nœud pour en commencer un autre');
+        status('Fil créé — clique sur le prochain nœud de destination');
       }
     }
 
   } else if (tool === 'delete') {
     if (hit) {
+      saveUndo();
       nodes = nodes.filter(n => n.id !== hit.id);
       edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
       if (selectedNode?.id === hit.id) selectedNode = null;
     } else if (hitEdge) {
+      saveUndo();
       edges = edges.filter(ed => ed.id !== hitEdge.id);
       if (selectedEdge?.id === hitEdge.id) selectedEdge = null;
     }
@@ -346,15 +368,92 @@ canvas.addEventListener('mousedown', e => {
 });
 
 canvas.addEventListener('mousemove', e => {
-  if (!dragging) return;
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  dragging.node.x = snap(mx - dragging.ox + GRID/2);
-  dragging.node.y = snap(my - dragging.oy + GRID/2);
+  mousePos = { x: mx, y: my };
+  if (dragging) {
+    dragging.node.x = snap(mx - dragging.ox + GRID/2);
+    dragging.node.y = snap(my - dragging.oy + GRID/2);
+  }
+  hoveredNode = nodeAt(mx, my);
+  hoveredEdge = hoveredNode ? null : edgeNear(mx, my);
+  // Update cursor
+  canvas.style.cursor = hoveredNode ? (tool === 'delete' ? 'not-allowed' : 'grab') : 'crosshair';
 });
 
 canvas.addEventListener('mouseup', () => { dragging = null; });
-canvas.addEventListener('mouseleave', () => { dragging = null; });
+canvas.addEventListener('mouseleave', () => { dragging = null; hoveredNode = null; hoveredEdge = null; });
+
+// Right-click to delete
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const hit = nodeAt(mx, my);
+  const hitEdge = hit ? null : edgeNear(mx, my);
+  if (hit) {
+    saveUndo();
+    nodes = nodes.filter(n => n.id !== hit.id);
+    edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
+    if (selectedNode?.id === hit.id) selectedNode = null;
+    buildProps(); status('Nœud supprimé');
+  } else if (hitEdge) {
+    saveUndo();
+    edges = edges.filter(ed => ed.id !== hitEdge.id);
+    if (selectedEdge?.id === hitEdge.id) selectedEdge = null;
+    buildProps(); status('Fil supprimé');
+  }
+});
+
+// Double-click on empty canvas to add node
+canvas.addEventListener('dblclick', e => {
+  if (tool !== 'select' && tool !== 'node') return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  if (!nodeAt(mx, my)) {
+    saveUndo();
+    const id = nextNodeId++;
+    const n = { id, type: getNodeType(), x: snap(mx), y: snap(my) };
+    nodes.push(n);
+    selectedNode = n; selectedEdge = null;
+    buildProps(); status('Nœud ajouté (double-clic)');
+  }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+    e.preventDefault(); undo(); return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    if (selectedNode) {
+      saveUndo();
+      nodes = nodes.filter(n => n.id !== selectedNode.id);
+      edges = edges.filter(ed => ed.from !== selectedNode.id && ed.to !== selectedNode.id);
+      selectedNode = null; buildProps(); status('Nœud supprimé [Suppr]');
+    } else if (selectedEdge) {
+      saveUndo();
+      edges = edges.filter(ed => ed.id !== selectedEdge.id);
+      selectedEdge = null; buildProps(); status('Fil supprimé [Suppr]');
+    }
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (wireFrom) { wireFrom = null; status('Wire annulé'); }
+    else { selectedNode = null; selectedEdge = null; buildProps(); }
+    return;
+  }
+  if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    switch (e.key.toUpperCase()) {
+      case 'S': setTool('select'); break;
+      case 'N': setTool('node');   break;
+      case 'W': setTool('wire');   break;
+      case 'D': setTool('delete'); break;
+    }
+  }
+});;
 
 // ── PROPERTIES PANEL ───────────────────────────────────────
 function buildProps() {
@@ -454,11 +553,11 @@ function drawGrid() {
   ctx.restore();
 }
 
-function drawEdge(e, selected) {
+function drawEdge(e, selected, hovered) {
   const pts = edgePts(e);
   if (pts.length < 4) return;
-  const c = selected ? '#00ffcc' : '#2a6a50';
-  const glow = selected ? 10 : 0;
+  const c = selected ? '#00ffcc' : hovered ? '#4aaa70' : '#2a6a50';
+  const glow = selected ? 10 : hovered ? 5 : 0;
 
   ctx.save();
   if (glow) { ctx.shadowBlur = glow; ctx.shadowColor = c; }
@@ -559,21 +658,21 @@ function drawEdge(e, selected) {
   }
 }
 
-function drawNode(n, selected) {
+function drawNode(n, selected, hovered) {
   const { x, y, type } = n;
   ctx.save();
 
   if (type === 'source') {
-    ctx.shadowBlur = selected ? 18 : 10; ctx.shadowColor = '#00ffcc';
-    ctx.strokeStyle = selected ? '#00ffff' : '#00ffcc'; ctx.lineWidth = 2;
+    ctx.shadowBlur = selected ? 18 : hovered ? 14 : 10; ctx.shadowColor = '#00ffcc';
+    ctx.strokeStyle = selected ? '#00ffff' : hovered ? '#66ffdd' : '#00ffcc'; ctx.lineWidth = 2;
     ctx.strokeRect(x - 14, y - 18, 28, 36);
     ctx.fillStyle = selected ? '#00ffee' : '#00ffcc';
     ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('⚡', x, y);
 
   } else if (type === 'bulb') {
-    ctx.shadowBlur = selected ? 20 : 10; ctx.shadowColor = '#ffff00';
-    ctx.strokeStyle = selected ? '#ffff55' : '#ffdd00'; ctx.lineWidth = 2;
+    ctx.shadowBlur = selected ? 20 : hovered ? 14 : 10; ctx.shadowColor = '#ffff00';
+    ctx.strokeStyle = selected ? '#ffff55' : hovered ? '#ffff77' : '#ffdd00'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x, y - 16, 16, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = selected ? '#333300' : '#1a2a1a'; ctx.fill();
     ctx.fillStyle = selected ? '#cccc88' : '#334433';
@@ -583,8 +682,8 @@ function drawNode(n, selected) {
 
   } else {
     // junction
-    ctx.shadowBlur = selected ? 14 : 6; ctx.shadowColor = '#00ffcc';
-    ctx.fillStyle = selected ? '#00ffff' : '#00ffcc';
+    ctx.shadowBlur = selected ? 14 : hovered ? 10 : 6; ctx.shadowColor = '#00ffcc';
+    ctx.fillStyle = selected ? '#00ffff' : hovered ? '#66ffdd' : '#00ffcc';
     ctx.beginPath(); ctx.arc(x, y, selected ? 8 : 6, 0, Math.PI * 2); ctx.fill();
   }
 
@@ -599,10 +698,11 @@ function drawNode(n, selected) {
 function drawLegend() {
   ctx.save();
   ctx.font = '10px Courier New'; ctx.fillStyle = '#2a5a45';
-  const items = ['⚡ source', '● junction', '💡 bulb', '◇ switch ouvert', '○ switch fermé'];
-  items.forEach((txt, i) => {
-    ctx.fillText(txt, 8 + i * 158, H - 14);
-  });
+  const left = ['⚡ source', '● junction', '💡 bulb', '◇ switch ouvert', '○ switch fermé'];
+  left.forEach((txt, i) => ctx.fillText(txt, 8 + i * 158, H - 14));
+  ctx.fillStyle = '#1a3a2a';
+  ctx.textAlign = 'right';
+  ctx.fillText('S/N/W/D · Suppr · Ctrl+Z · Echap · Clic droit=suppr · Dbl-clic=nœud', W - 6, H - 14);
   ctx.restore();
 }
 
@@ -615,10 +715,6 @@ function drawWirePreview(mx, my) {
 }
 
 let mousePos = { x: 0, y: 0 };
-canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-});
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
@@ -626,7 +722,7 @@ function draw() {
   drawGrid();
 
   // Draw edges
-  for (const e of edges) drawEdge(e, selectedEdge?.id === e.id);
+  for (const e of edges) drawEdge(e, selectedEdge?.id === e.id, hoveredEdge?.id === e.id);
 
   // Wire preview
   drawWirePreview(mousePos.x, mousePos.y);
@@ -639,7 +735,7 @@ function draw() {
   }
 
   // Draw nodes
-  for (const n of nodes) drawNode(n, selectedNode?.id === n.id);
+  for (const n of nodes) drawNode(n, selectedNode?.id === n.id, hoveredNode?.id === n.id);
 
   drawLegend();
   requestAnimationFrame(draw);
@@ -718,7 +814,7 @@ function loadFromJSON(data) {
 
 function testLevel() {
   localStorage.setItem('elecgame_test_level', JSON.stringify(toJSON()));
-  window.open('index.html?test=1', '_blank');
+  window.open('game.html?test=1', '_blank');
 }
 
 buildProps();

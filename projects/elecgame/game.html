@@ -62,6 +62,21 @@
     color: #446655;
     letter-spacing: 1px;
   }
+  .replay-btn {
+    background: transparent;
+    border: 1px solid #446655;
+    color: #446655;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 6px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin: 2px;
+  }
+  .replay-btn:hover { border-color: #00ffcc; color: #00ffcc; }
+  .replay-btn.save { border-color: #ffaa00; color: #ffaa00; }
+  .replay-btn.save:hover { border-color: #ffdd44; color: #ffdd44; box-shadow: 0 0 12px #ffaa0044; }
 </style>
 </head>
 <body>
@@ -69,6 +84,8 @@
 <div id="level-select"></div>
 <div id="hint"></div>
 <input type="file" id="ext-level-input" accept=".json" style="display:none">
+<input type="file" id="replay-input" accept=".json" style="display:none">
+<div id="replay-save-wrap" style="display:none; margin-top:8px; text-align:center;"></div>
 
 <script>
 const canvas = document.getElementById('c');
@@ -141,11 +158,15 @@ let state = LEVELS[0].make();
 const keys = {};
 
 function selectLevel(idx) {
+  replayMode = false;
+  for (const k in keys) keys[k] = false;
   stopHum(true);
   currentLevel = idx;
   try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
   document.getElementById('hint').textContent = LEVELS[idx].hint || '';
   document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  document.getElementById('replay-save-wrap').style.display = 'none';
+  startRecording();
   if (AC) startHum();
 }
 
@@ -181,6 +202,14 @@ btnLoadExt.id = 'btn-load-ext';
 btnLoadExt.textContent = '📂';
 lsDiv.appendChild(btnLoadExt);
 
+// Replay load button
+const btnLoadReplay = document.createElement('button');
+btnLoadReplay.className = 'lvl-btn';
+btnLoadReplay.title = 'Charger un replay';
+btnLoadReplay.textContent = '▶ Replay';
+lsDiv.appendChild(btnLoadReplay);
+btnLoadReplay.onclick = () => document.getElementById('replay-input').click();
+
 // Load levels from levels/index.json
 fetch('levels/index.json')
   .then(r => r.json())
@@ -215,15 +244,151 @@ fetch('levels/index.json')
 // Space spam counter — consumed each frame by resistance logic
 let spacePressCount = 0;
 
+// ── RECORDER ───────────────────────────────────────────────
+let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJSON: null, wonTime: 0 };
+
+function startRecording() {
+  const lv = LEVELS[currentLevel];
+  recorder = {
+    active: true,
+    startTime: Date.now(),
+    inputs: [],
+    levelName: lv ? lv.name : 'Unknown',
+    levelJSON: (lv && lv._json) ? lv._json : null,
+    wonTime: 0
+  };
+}
+
+function recordKey(type, key) {
+  if (!recorder.active) return;
+  recorder.inputs.push({ type, key, t: Date.now() - recorder.startTime });
+}
+
+function stopRecordingWin() {
+  if (!recorder.active) return;
+  recorder.active = false;
+  recorder.wonTime = Date.now() - recorder.startTime;
+  const wrap = document.getElementById('replay-save-wrap');
+  wrap.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'replay-btn save';
+  btn.textContent = '💾 Sauvegarder le replay';
+  btn.onclick = downloadReplay;
+  wrap.appendChild(btn);
+  wrap.style.display = '';
+}
+
+function downloadReplay() {
+  const data = {
+    levelName: recorder.levelName,
+    levelJSON: recorder.levelJSON,
+    duration: recorder.wonTime,
+    inputs: recorder.inputs
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = recorder.levelName.toLowerCase().replace(/\s+/g, '_') + '_replay.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── REPLAY PLAYBACK ────────────────────────────────────────
+let replayMode = false;
+let replayData = null;
+let replayStartTime = 0;
+let replayInputIdx = 0;
+
+function loadReplayFile(json) {
+  // Load level first (selectLevel resets replayMode and starts recording)
+  if (json.levelJSON) {
+    const existing = LEVELS.findIndex(l => l._json && l.name === json.levelName);
+    if (existing >= 0) {
+      selectLevel(existing);
+    } else {
+      const lv = {
+        name: json.levelName || 'Replay',
+        hint: (json.levelName || 'Replay') + ' — replay',
+        _json: json.levelJSON,
+        make: function() { return makeCustomLevel(this._json); }
+      };
+      const idx = LEVELS.length;
+      LEVELS.push(lv);
+      const btn = document.createElement('button');
+      btn.className = 'lvl-btn';
+      btn.textContent = lv.name;
+      btn.onclick = () => selectLevel(idx);
+      lsDiv.insertBefore(btn, btnLoadExt);
+      selectLevel(idx);
+    }
+  }
+
+  // Override to replay mode AFTER selectLevel
+  replayMode = true;
+  replayData = json;
+  replayInputIdx = 0;
+  replayStartTime = Date.now();
+  for (const k in keys) keys[k] = false;
+  spacePressCount = 0;
+  recorder.active = false;
+}
+
+function updateReplay() {
+  if (!replayMode || !replayData) return;
+  const elapsed = Date.now() - replayStartTime;
+  while (replayInputIdx < replayData.inputs.length) {
+    const inp = replayData.inputs[replayInputIdx];
+    if (inp.t > elapsed) break;
+    const k = inp.key === ' ' ? ' ' : inp.key.toUpperCase();
+    if (inp.type === 'keydown') {
+      keys[k] = true;
+      if (inp.key === ' ') spacePressCount++;
+    } else {
+      keys[k] = false;
+    }
+    replayInputIdx++;
+  }
+  // Auto-end replay 2s after last input
+  if (replayInputIdx >= replayData.inputs.length &&
+      elapsed > (replayData.duration || 0) + 2000) {
+    replayMode = false;
+    for (const k in keys) keys[k] = false;
+  }
+}
+
+// Exit replay on any click anywhere (capture phase, before onclick fires)
+document.addEventListener('click', e => {
+  if (!replayMode) return;
+  replayMode = false;
+  for (const k in keys) keys[k] = false;
+  recorder.active = false;
+  // If clicked element is a level button, let its onclick fire normally
+  // (selectLevel will be called, which also resets replayMode — harmless double-reset)
+}, true);
+
 document.addEventListener('keydown', e => {
-  keys[e.key.toUpperCase()] = true;
-  if (e.key === ' ') spacePressCount++;
-  if (e.key.toUpperCase() === 'R') selectLevel(currentLevel);
+  const k = e.key.toUpperCase();
+  if (replayMode) {
+    if (k === 'R') { replayMode = false; for (const k2 in keys) keys[k2] = false; selectLevel(currentLevel); }
+    e.preventDefault();
+    return;
+  }
+  keys[k] = true;
+  if (e.key === ' ') { spacePressCount++; recordKey('keydown', ' '); }
+  else if (k !== 'R') recordKey('keydown', k);
+  if (k === 'R') selectLevel(currentLevel);
   resumeAudio();
   if (!humOsc) startHum();
   e.preventDefault();
 });
-document.addEventListener('keyup', e => { keys[e.key.toUpperCase()] = false; });
+document.addEventListener('keyup', e => {
+  if (replayMode) return;
+  const k = e.key.toUpperCase();
+  keys[k] = false;
+  if (e.key === ' ') recordKey('keyup', ' ');
+  else if (k !== 'R') recordKey('keyup', k);
+});
 
 // ── AUDIO ──────────────────────────────────────────────────
 let AC = null;
@@ -347,6 +512,7 @@ function sfxDead() {
 
 // Circuit complet
 function sfxWin() {
+  if (!AC) return;
   stopHum(true);
   const notes = [261, 329, 392, 523, 659, 784, 1046];
   notes.forEach((f, i) => {
@@ -676,13 +842,24 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = '#08080f'; ctx.fillRect(0, 0, W, H);
 
-  if (state.type === 'custom') { drawCustom(); return; }
+  if (state.type === 'custom') drawCustom();
+  else if (state.type === 'single') drawLevel1();
+  else drawLevel2();
 
-  if (state.type === 'single') drawLevel1();
-  else                         drawLevel2();
+  if (state.type !== 'custom') {
+    if (state.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
+    if (state.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
+  }
 
-  if (state.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
-  if (state.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
+  if (replayMode) {
+    ctx.save();
+    ctx.font = 'bold 13px Courier New';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ff4444';
+    ctx.shadowBlur = 8; ctx.shadowColor = '#ff0000';
+    ctx.fillText('● REPLAY', W - 16, 24);
+    ctx.restore();
+  }
 }
 
 // ── CUSTOM LEVEL HELPERS ───────────────────────────────────
@@ -1263,7 +1440,14 @@ function edgePolylineFrom(edge, nodes, t) {
 }
 
 // ── LOOP ───────────────────────────────────────────────────
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+function loop() {
+  if (replayMode) updateReplay();
+  const wasWon = state.won;
+  update();
+  if (!wasWon && state.won && !replayMode) stopRecordingWin();
+  draw();
+  requestAnimationFrame(loop);
+}
 
 // ── LOAD TEST LEVEL FROM localStorage ──────────────────────
 if (new URLSearchParams(location.search).has('test')) {
@@ -1320,6 +1504,24 @@ document.getElementById('ext-level-input').addEventListener('change', e => {
       selectLevel(idx);
     } catch(err) {
       alert('Fichier JSON invalide');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ── REPLAY FILE LOADER ──────────────────────────────────────
+document.getElementById('replay-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const json = JSON.parse(ev.target.result);
+      if (!json.inputs || !Array.isArray(json.inputs)) throw new Error('invalid');
+      loadReplayFile(json);
+    } catch(err) {
+      alert('Fichier replay invalide');
     }
   };
   reader.readAsText(file);

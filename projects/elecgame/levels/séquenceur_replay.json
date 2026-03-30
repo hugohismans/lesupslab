@@ -1,0 +1,241 @@
+{
+  "levelName": "Séquenceur",
+  "levelJSON": {
+    "name": "Séquenceur",
+    "nodes": [
+      {
+        "id": 0,
+        "type": "source",
+        "x": 60,
+        "y": 80
+      },
+      {
+        "id": 1,
+        "type": "node",
+        "x": 220,
+        "y": 80
+      },
+      {
+        "id": 2,
+        "type": "node",
+        "x": 500,
+        "y": 220
+      },
+      {
+        "id": 3,
+        "type": "node",
+        "x": 660,
+        "y": 220
+      },
+      {
+        "id": 4,
+        "type": "node",
+        "x": 660,
+        "y": 80
+      },
+      {
+        "id": 5,
+        "type": "bulb",
+        "x": 760,
+        "y": 150
+      }
+    ],
+    "edges": [
+      {
+        "id": 0,
+        "from": 0,
+        "to": 1,
+        "wayY": null,
+        "switch": null
+      },
+      {
+        "id": 1,
+        "from": 1,
+        "to": 2,
+        "wayY": null,
+        "switch": {
+          "key": "Q",
+          "initOpen": true
+        }
+      },
+      {
+        "id": 2,
+        "from": 2,
+        "to": 3,
+        "wayY": null,
+        "switch": {
+          "key": "P",
+          "initOpen": true
+        }
+      },
+      {
+        "id": 3,
+        "from": 3,
+        "to": 4,
+        "wayY": null,
+        "switch": {
+          "key": "Q",
+          "initOpen": false
+        }
+      },
+      {
+        "id": 4,
+        "from": 4,
+        "to": 5,
+        "wayY": null,
+        "switch": {
+          "key": "P",
+          "initOpen": false
+        }
+      }
+    ]
+  },
+  "duration": 2833,
+  "inputs": [
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 175
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 679
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 711
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 741
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 788
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 818
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 850
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 881
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 911
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 943
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 974
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1020
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1052
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1083
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1114
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1143
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1174
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1205
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1251
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1282
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1313
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1343
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1374
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1406
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1436
+    },
+    {
+      "type": "keydown",
+      "key": "Q",
+      "t": 1483
+    },
+    {
+      "type": "keyup",
+      "key": "Q",
+      "t": 1512
+    },
+    {
+      "type": "keydown",
+      "key": "P",
+      "t": 1512
+    },
+    {
+      "type": "keyup",
+      "key": "P",
+      "t": 1857
+    }
+  ]
+}

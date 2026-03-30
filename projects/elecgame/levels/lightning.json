@@ -1,0 +1,203 @@
+{
+  "name": "Mon niveau",
+  "nodes": [
+    {
+      "id": 0,
+      "type": "source",
+      "x": 60,
+      "y": 150
+    },
+    {
+      "id": 1,
+      "type": "bulb",
+      "x": 740,
+      "y": 150
+    },
+    {
+      "id": 2,
+      "type": "node",
+      "x": 260,
+      "y": 40
+    },
+    {
+      "id": 3,
+      "type": "node",
+      "x": 320,
+      "y": 40
+    },
+    {
+      "id": 4,
+      "type": "node",
+      "x": 300,
+      "y": 80
+    },
+    {
+      "id": 5,
+      "type": "node",
+      "x": 320,
+      "y": 120
+    },
+    {
+      "id": 6,
+      "type": "node",
+      "x": 280,
+      "y": 160
+    },
+    {
+      "id": 7,
+      "type": "node",
+      "x": 300,
+      "y": 220
+    },
+    {
+      "id": 8,
+      "type": "node",
+      "x": 220,
+      "y": 180
+    },
+    {
+      "id": 9,
+      "type": "node",
+      "x": 240,
+      "y": 120
+    },
+    {
+      "id": 10,
+      "type": "bulb",
+      "x": 280,
+      "y": 120
+    },
+    {
+      "id": 13,
+      "type": "node",
+      "x": 60,
+      "y": 280
+    },
+    {
+      "id": 14,
+      "type": "node",
+      "x": 740,
+      "y": 280
+    }
+  ],
+  "edges": [
+    {
+      "id": 0,
+      "from": 0,
+      "to": 9,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false
+    },
+    {
+      "id": 1,
+      "from": 9,
+      "to": 2,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false
+    },
+    {
+      "id": 2,
+      "from": 2,
+      "to": 3,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 3,
+      "from": 3,
+      "to": 4,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false
+    },
+    {
+      "id": 4,
+      "from": 4,
+      "to": 5,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false
+    },
+    {
+      "id": 5,
+      "from": 5,
+      "to": 6,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 6,
+      "from": 6,
+      "to": 7,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false
+    },
+    {
+      "id": 7,
+      "from": 7,
+      "to": 8,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 8,
+      "from": 8,
+      "to": 10,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 9,
+      "from": 0,
+      "to": 13,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 11,
+      "from": 14,
+      "to": 1,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 13,
+      "from": 13,
+      "to": 14,
+      "wayY": null,
+      "switch": null,
+      "resistance": true,
+      "resDuration": 10
+    }
+  ]
+}
