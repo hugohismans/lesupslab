@@ -520,22 +520,28 @@ canvas.addEventListener('mousedown', e => {
     }
 
   } else if (tool === 'wire') {
-    if (hit) {
-      if (wireFrom === null) {
-        wireFrom = hit;
-        flash('Clique sur le nœud de destination');
-      } else if (hit.id !== wireFrom.id) {
-        saveUndo();
-        const id = nextEdgeId++;
-        const ne = { id, from: wireFrom.id, to: hit.id, wayY: null, switch: null };
-        checkParallel(ne);
-        edges.push(ne);
-        selectedEdge = ne; selectedNode = null;
-        wireFrom = hit;
-        buildProps(); validate();
-        flash('Fil créé — continue vers le prochain nœud');
-      }
+    saveUndo();
+    // Résoudre la cible : nœud existant, ou nouveau nœud créé sur place
+    let target = hit;
+    if (!target) {
+      const id = nextNodeId++;
+      target = { id, type: getNodeType(), x: sx2, y: sy2 };
+      nodes.push(target);
     }
+
+    if (wireFrom === null) {
+      wireFrom = target;
+      flash('Clique sur le nœud de destination');
+    } else if (target.id !== wireFrom.id) {
+      const id = nextEdgeId++;
+      const ne = { id, from: wireFrom.id, to: target.id, wayY: null, switch: null };
+      checkParallel(ne);
+      edges.push(ne);
+      selectedEdge = ne; selectedNode = null;
+      wireFrom = target;
+      flash('Fil créé — continue vers le prochain nœud');
+    }
+    buildProps(); validate();
 
   } else if (tool === 'delete') {
     deleteHit(hit, hitEdge);
