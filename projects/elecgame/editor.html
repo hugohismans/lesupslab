@@ -528,9 +528,21 @@ canvas.addEventListener('mousedown', e => {
 
   } else if (tool === 'wire') {
     saveUndo();
-    // Résoudre la cible : nœud existant, ou nouveau nœud créé sur place
+    // Résoudre la cible : nœud existant, nœud inséré sur un fil, ou nouveau nœud créé sur place
     let target = hit;
-    if (!target) {
+    if (!target && hitEdge) {
+      // Même comportement qu'en mode node : séparer le fil en deux
+      const id = nextNodeId++;
+      target = { id, type: getNodeType(), x: sx2, y: sy2 };
+      nodes.push(target);
+      const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
+        wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
+        resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration };
+      const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
+        wayY: null, switch: null, resistance: false };
+      edges = edges.filter(ed => ed.id !== hitEdge.id);
+      edges.push(e1, e2);
+    } else if (!target) {
       const id = nextNodeId++;
       target = { id, type: getNodeType(), x: sx2, y: sy2 };
       nodes.push(target);
