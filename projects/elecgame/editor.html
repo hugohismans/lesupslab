@@ -481,14 +481,21 @@ canvas.addEventListener('mousedown', e => {
   const hitEdge = hit ? null : edgeNear(wx, wy);
 
   if (tool === 'select') {
-    selectedNode = null; selectedEdge = null;
     if (hit) {
-      selectedNode = hit;
+      selectedNode = hit; selectedEdge = null;
       dragging = { node: hit, ox: wx - hit.x, oy: wy - hit.y };
+      buildProps();
     } else if (hitEdge) {
-      selectedEdge = hitEdge;
+      selectedNode = null; selectedEdge = hitEdge;
+      buildProps();
+    } else {
+      // Clic dans le vide → pan
+      selectedNode = null; selectedEdge = null;
+      panning = true;
+      panStart = { x: e.clientX - viewX, y: e.clientY - viewY };
+      canvas.style.cursor = 'grabbing';
+      buildProps();
     }
-    buildProps();
 
   } else if (tool === 'node') {
     if (hit) {
