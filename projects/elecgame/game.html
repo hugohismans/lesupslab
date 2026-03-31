@@ -1440,8 +1440,7 @@ function drawResistance(edge, nodes, ballInside, ballSpeed) {
   ctx.fillText(ballInside ? '[ ESPACE ]' : 'résistance', 0, RH + 14);
   ctx.restore();
 
-  // Energy gauge bar (dérotée pour rester horizontale sous la résistance)
-  ctx.rotate(-angle);
+  // Energy gauge bar (alignée avec le fil)
   if (ballInside) {
     const bw = RW * 2, bh = 5, by = RH + 7;
     ctx.fillStyle = '#1a0800';
