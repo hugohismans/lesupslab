@@ -3,5 +3,13 @@
   { "file": "double_boucle.json",   "name": "Double boucle" },
   { "file": "zigzag.json",          "name": "Zigzag" },
   { "file": "sequenceur.json",      "name": "Séquenceur" },
-  { "file": "resistance_test.json", "name": "Résistance" }
+  { "file": "resistance_test.json", "name": "Résistance" },
+  { "file": "duo.json",             "name": "★ Duo" },
+  { "file": "detente.json",         "name": "★ Détente" },
+  { "file": "croisement.json",      "name": "★★ Le Croisement" },
+  { "file": "vagues.json",          "name": "★★ Les Vagues" },
+  { "file": "noeud.json",           "name": "★★ Le Nœud" },
+  { "file": "minuterie.json",       "name": "★★★ La Minuterie" },
+  { "file": "hydre.json",           "name": "★★★ L'Hydre" },
+  { "file": "megawatt.json",        "name": "★★★ Megawatt" }
 ]

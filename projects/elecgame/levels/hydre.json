@@ -1,0 +1,25 @@
+{
+  "name": "L'Hydre",
+  "nodes": [
+    { "id": 0, "type": "source", "x": 60,  "y": 150 },
+    { "id": 1, "type": "node",   "x": 200, "y": 150 },
+    { "id": 2, "type": "node",   "x": 540, "y": 30  },
+    { "id": 3, "type": "node",   "x": 420, "y": 90  },
+    { "id": 4, "type": "node",   "x": 420, "y": 210 },
+    { "id": 5, "type": "node",   "x": 540, "y": 270 },
+    { "id": 6, "type": "node",   "x": 660, "y": 150 },
+    { "id": 7, "type": "bulb",   "x": 760, "y": 150 }
+  ],
+  "edges": [
+    { "id": 0, "from": 0, "to": 1, "wayY": null, "switch": null, "resistance": false },
+    { "id": 1, "from": 1, "to": 2, "wayY": 30,   "switch": { "key": "Q", "initOpen": false }, "resistance": false },
+    { "id": 2, "from": 1, "to": 3, "wayY": 90,   "switch": { "key": "Q", "initOpen": true  }, "resistance": false },
+    { "id": 3, "from": 1, "to": 4, "wayY": 210,  "switch": { "key": "P", "initOpen": true  }, "resistance": false },
+    { "id": 4, "from": 1, "to": 5, "wayY": 270,  "switch": { "key": "P", "initOpen": false }, "resistance": false },
+    { "id": 5, "from": 2, "to": 6, "wayY": 150,  "switch": null, "resistance": false },
+    { "id": 6, "from": 3, "to": 6, "wayY": 150,  "switch": null, "resistance": false },
+    { "id": 7, "from": 4, "to": 6, "wayY": 150,  "switch": null, "resistance": false },
+    { "id": 8, "from": 5, "to": 6, "wayY": 150,  "switch": null, "resistance": false },
+    { "id": 9, "from": 6, "to": 7, "wayY": null, "switch": null, "resistance": false }
+  ]
+}

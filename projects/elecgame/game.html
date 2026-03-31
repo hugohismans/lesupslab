@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>ElecGame</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,12 +12,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    min-height: 100svh;
+    min-height: 100vh;
     font-family: 'Courier New', monospace;
     color: #00ffcc;
     user-select: none;
+    touch-action: pan-y;
+    padding: 12px 0;
   }
-  canvas { display: block; }
+  canvas { display: block; max-width: 100%; height: auto; }
   #level-select {
     display: flex;
     gap: 8px;
@@ -77,20 +81,83 @@
   .replay-btn:hover { border-color: #00ffcc; color: #00ffcc; }
   .replay-btn.save { border-color: #ffaa00; color: #ffaa00; }
   .replay-btn.save:hover { border-color: #ffdd44; color: #ffdd44; box-shadow: 0 0 12px #ffaa0044; }
+
+  /* ── TOUCH CONTROLS ─────────────────────────────────────── */
+  #touch-controls {
+    display: none;
+    gap: 12px;
+    margin-top: 16px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  @media (hover: none) and (pointer: coarse) {
+    #touch-controls { display: flex; }
+    .lvl-btn { padding: 8px 18px; font-size: 14px; }
+    #hint { font-size: 12px; }
+  }
+  .touch-btn {
+    height: 68px;
+    width: 80px;
+    border: 2px solid currentColor;
+    background: transparent;
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s, box-shadow 0.1s;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
+  .touch-btn.q-btn  { color: #ffaa00; box-shadow: 0 0 12px #ffaa0033; }
+  .touch-btn.p-btn  { color: #cc44ff; box-shadow: 0 0 12px #cc44ff33; }
+  .touch-btn.q-btn.pressed  { background: #ffaa0033; box-shadow: 0 0 22px #ffaa0077; }
+  .touch-btn.p-btn.pressed  { background: #cc44ff33; box-shadow: 0 0 22px #cc44ff77; }
+  .touch-btn.space-btn {
+    color: #aaaaaa; box-shadow: 0 0 8px #aaaaaa22;
+    width: 130px; font-size: 14px; letter-spacing: 2px;
+  }
+  .touch-btn.space-btn.pressed { background: #aaaaaa22; }
+  .touch-btn.restart-btn {
+    color: #00ffcc; box-shadow: 0 0 8px #00ffcc22;
+    width: 60px; font-size: 24px;
+  }
+  .touch-btn.restart-btn.pressed { background: #00ffcc22; }
 </style>
 </head>
 <body>
-<canvas id="c" width="800" height="300"></canvas>
+<canvas id="c" width="800" height="300" style="max-width:100%"></canvas>
 <div id="level-select"></div>
 <div id="hint"></div>
 <input type="file" id="ext-level-input" accept=".json" style="display:none">
 <input type="file" id="replay-input" accept=".json" style="display:none">
 <div id="replay-save-wrap" style="display:none; margin-top:8px; text-align:center;"></div>
 
+<div id="touch-controls">
+  <button class="touch-btn q-btn"      id="btn-q">Q</button>
+  <button class="touch-btn space-btn"  id="btn-space">ESPACE</button>
+  <button class="touch-btn p-btn"      id="btn-p">P</button>
+  <button class="touch-btn restart-btn" id="btn-restart">↺</button>
+</div>
+
 <script>
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
+let W = canvas.width, H = canvas.height;
+
+function setCanvasSize(w, h) {
+  W = w; H = h;
+  canvas.width  = w;
+  canvas.height = h;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+}
 
 // ── CONSTANTS ──────────────────────────────────────────────
 const WIRE_START = 60;
@@ -108,6 +175,22 @@ const BOT_Y    = WIRE_Y + 65; // 215
 const BEVEL    = 35;          // horizontal extent of the angled connector
 
 const BEVEL_HALF = BEVEL; // alias, already defined
+
+// ── CAMERA (custom levels only) ────────────────────────────
+let camTX = 0, camTY = 0, camScale = 1; // applied via ctx.setTransform
+
+function fitCustomLevel(st) {
+  const ns = st.graph.nodes;
+  if (!ns.length) return;
+  const PAD = 60;
+  const xs = ns.map(n => n.x), ys = ns.map(n => n.y);
+  const minX = Math.min(...xs) - PAD, maxX = Math.max(...xs) + PAD;
+  const minY = Math.min(...ys) - PAD, maxY = Math.max(...ys) + PAD;
+  const ww = maxX - minX, wh = maxY - minY;
+  camScale = Math.min(W / ww, H / wh, 2); // cap at 2× to avoid huge nodes
+  camTX = W / 2 - (minX + ww / 2) * camScale;
+  camTY = H / 2 - (minY + wh / 2) * camScale;
+}
 
 // ── LEVELS ─────────────────────────────────────────────────
 const LEVELS = [
@@ -163,6 +246,18 @@ function selectLevel(idx) {
   stopHum(true);
   currentLevel = idx;
   try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
+  // Resize canvas and compute fit transform for custom levels
+  if (state.type === 'custom') {
+    const cw = Math.max(800, Math.min(window.innerWidth, window.screen.width));
+    const ch = Math.max(300, window.innerHeight - canvas.getBoundingClientRect().top - 80);
+    setCanvasSize(cw, ch);
+    fitCustomLevel(state);
+  } else {
+    setCanvasSize(800, 300);
+    canvas.style.width = '';   // let CSS max-width:100% scale it on mobile
+    canvas.style.height = '';
+    camTX = 0; camTY = 0; camScale = 1;
+  }
   document.getElementById('hint').textContent = LEVELS[idx].hint || '';
   document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
   document.getElementById('replay-save-wrap').style.display = 'none';
@@ -984,6 +1079,7 @@ function updateCustom() {
   const st = state;
   if (st.won || st.dead) return;
   const { graph, switchMap, resistanceSet, resistanceDrain, balls, edgesLit, joinWait } = st;
+
   const { nodes, edges } = graph;
 
   // Update switch states
@@ -1206,6 +1302,10 @@ function drawCustom() {
   const { graph, switchMap, resistanceSet, balls, edgesLit } = st;
   const { nodes, edges } = graph;
 
+  // Apply fit transform so entire level is visible
+  ctx.save();
+  ctx.setTransform(camScale, 0, 0, camScale, camTX, camTY);
+
   const edgesWithBall = new Set(balls.map(b => b.edgeId));
 
   const drawPolylinePts = (pts, col, w, gl) => {
@@ -1342,6 +1442,8 @@ function drawCustom() {
   for (const ball of balls) {
     drawBall(ball.x, ball.y);
   }
+
+  ctx.restore(); // end camera transform — UI draws in screen space
 
   // Key indicators for keys used in this level
   const usedKeys = [...new Set([...switchMap.values()].map(sw => sw.key))];
@@ -1528,7 +1630,64 @@ document.getElementById('replay-input').addEventListener('change', e => {
   e.target.value = '';
 });
 
-selectLevel(0);
+// ── TOUCH CONTROLS ─────────────────────────────────────────
+let spaceHoldInterval = null;
+
+function setupTouchBtn(id, keyName, opts = {}) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+
+  function press(e) {
+    e.preventDefault();
+    resumeAudio();
+    btn.classList.add('pressed');
+    if (opts.isRestart) {
+      selectLevel(currentLevel);
+      return;
+    }
+    if (opts.isSpace) {
+      spacePressCount++;
+      if (!replayMode) recordKey('keydown', ' ');
+      if (!spaceHoldInterval) {
+        spaceHoldInterval = setInterval(() => {
+          spacePressCount++;
+          if (!replayMode) recordKey('keydown', ' ');
+        }, 180);
+      }
+    } else {
+      if (!replayMode) { keys[keyName] = true; recordKey('keydown', keyName); }
+    }
+    if (!humOsc) startHum();
+  }
+
+  function release(e) {
+    e.preventDefault();
+    btn.classList.remove('pressed');
+    if (opts.isRestart) return;
+    if (opts.isSpace) {
+      clearInterval(spaceHoldInterval);
+      spaceHoldInterval = null;
+      if (!replayMode) recordKey('keyup', ' ');
+    } else {
+      if (!replayMode) { keys[keyName] = false; recordKey('keyup', keyName); }
+    }
+  }
+
+  btn.addEventListener('touchstart',  press,   { passive: false });
+  btn.addEventListener('touchend',    release, { passive: false });
+  btn.addEventListener('touchcancel', release, { passive: false });
+  // Also mouse for desktop testing
+  btn.addEventListener('mousedown', press);
+  btn.addEventListener('mouseup',   release);
+  btn.addEventListener('mouseleave',release);
+}
+
+setupTouchBtn('btn-q',       'Q');
+setupTouchBtn('btn-p',       'P');
+setupTouchBtn('btn-space',   ' ', { isSpace: true });
+setupTouchBtn('btn-restart', null, { isRestart: true });
+
+if (!new URLSearchParams(location.search).has('test')) selectLevel(0);
 loop();
 </script>
 </body>

@@ -4,156 +4,247 @@
 <meta charset="UTF-8">
 <title>ElecGame — Level Editor</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #08080f;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px;
-    font-family: 'Courier New', monospace;
-    color: #00ffcc;
-    user-select: none;
-    min-height: 100vh;
-  }
-  h1 {
-    font-size: 16px;
-    letter-spacing: 3px;
-    color: #00ffcc;
-    margin-bottom: 14px;
-    text-transform: uppercase;
-  }
-  #toolbar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .tool-btn {
-    background: #0a1a14;
-    border: 1px solid #1a5a3a;
-    color: #446655;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    padding: 5px 12px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: all 0.15s;
-  }
-  .tool-btn:hover { border-color: #336655; color: #00bb99; }
-  .tool-btn.active {
-    border-color: #00ffcc;
-    color: #00ffcc;
-    background: #0d2a1e;
-    box-shadow: 0 0 8px #00ffcc44;
-  }
-  .sep { width: 1px; height: 28px; background: #1a5a3a; }
-  #node-type-row {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    font-size: 12px;
-    color: #446655;
-  }
-  #node-type-row label { cursor: pointer; }
-  #node-type-row input[type=radio] { accent-color: #00ffcc; cursor: pointer; }
-  canvas {
-    display: block;
-    border: 1px solid #1a5a3a;
-    cursor: crosshair;
-  }
-  #props-panel {
-    width: 800px;
-    background: #060610;
-    border: 1px solid #1a5a3a;
-    border-top: none;
-    padding: 10px 16px;
-    font-size: 12px;
-    min-height: 56px;
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  #props-panel label { color: #446655; margin-right: 4px; }
-  #props-panel input, #props-panel select {
-    background: #0a1a14;
-    border: 1px solid #1a5a3a;
-    color: #00ffcc;
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    padding: 3px 8px;
-    width: 100px;
-  }
-  #props-panel input[type=checkbox] { width: auto; accent-color: #00ffcc; cursor: pointer; }
-  #props-title { color: #00ffcc; font-weight: bold; margin-right: 8px; white-space: nowrap; }
-  #status {
-    margin-top: 8px;
-    font-size: 11px;
-    color: #446655;
-    letter-spacing: 1px;
-    height: 16px;
-  }
-  #level-name-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-  #level-name-row label { font-size: 12px; color: #446655; }
-  #level-name-row input {
-    background: #0a1a14;
-    border: 1px solid #1a5a3a;
-    color: #00ffcc;
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    padding: 4px 10px;
-    width: 220px;
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #08080f;
+  font-family: 'Courier New', monospace;
+  color: #00ffcc;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+#toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #060610;
+  border-bottom: 1px solid #1a5a3a;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.tool-btn {
+  background: #0a1a14;
+  border: 1px solid #1a5a3a;
+  color: #446655;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 4px 11px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tool-btn:hover { border-color: #336655; color: #00bb99; }
+.tool-btn.active {
+  border-color: #00ffcc;
+  color: #00ffcc;
+  background: #0d2a1e;
+  box-shadow: 0 0 8px #00ffcc44;
+}
+.sep { width: 1px; height: 26px; background: #1a5a3a; flex-shrink: 0; }
+#node-type-row {
+  display: flex; gap: 6px; align-items: center; font-size: 12px; color: #446655;
+}
+#node-type-row label { cursor: pointer; white-space: nowrap; }
+#node-type-row input[type=radio] { accent-color: #00ffcc; cursor: pointer; }
+#level-name {
+  background: #0a1a14;
+  border: 1px solid #1a5a3a;
+  color: #00ffcc;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 3px 8px;
+  width: 160px;
+}
+#validator {
+  font-size: 11px;
+  padding: 3px 10px;
+  border: 1px solid #1a5a3a;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+#canvas-wrap {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+#c {
+  display: block;
+  position: absolute;
+  top: 0; left: 0;
+}
+#props-panel {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: #060610ee;
+  border-top: 1px solid #1a5a3a;
+  padding: 8px 14px;
+  font-size: 12px;
+  min-height: 44px;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+  z-index: 5;
+}
+#props-panel label { color: #446655; margin-right: 3px; }
+#props-panel input, #props-panel select {
+  background: #0a1a14;
+  border: 1px solid #1a5a3a;
+  color: #00ffcc;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 2px 7px;
+  width: 90px;
+}
+#props-panel input[type=checkbox] { width: auto; accent-color: #00ffcc; cursor: pointer; }
+#props-title { color: #00ffcc; font-weight: bold; white-space: nowrap; }
+#status-bar {
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #446655;
+  letter-spacing: 1px;
+  background: #060610cc;
+  padding: 3px 12px;
+  pointer-events: none;
+  z-index: 6;
+  border: 1px solid #1a5a3a;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#zoom-label {
+  position: absolute;
+  bottom: 52px; right: 180px;
+  font-size: 10px;
+  color: #2a5a45;
+  pointer-events: none;
+  z-index: 6;
+}
+/* Minimap */
+#minimap {
+  position: absolute;
+  bottom: 52px; right: 8px;
+  width: 160px;
+  height: 100px;
+  background: #060610cc;
+  border: 1px solid #1a5a3a;
+  z-index: 6;
+  overflow: hidden;
+}
+#minimap canvas { display: block; }
+
+/* Test overlay */
+#test-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #06060eee;
+  z-index: 100;
+  flex-direction: column;
+}
+#test-overlay.visible { display: flex; }
+#test-toolbar {
+  display: flex;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #060610;
+  border-bottom: 1px solid #00ffcc33;
+  align-items: center;
+}
+#test-toolbar span { color: #446655; font-size: 12px; letter-spacing: 1px; }
+#test-iframe {
+  flex: 1;
+  border: none;
+  background: #08080f;
+}
 </style>
 </head>
 <body>
 
-<h1>⚡ ElecGame — Level Editor</h1>
-
-<div id="level-name-row">
-  <label>Nom du niveau :</label>
-  <input id="level-name" type="text" value="Mon niveau" />
-</div>
-
 <div id="toolbar">
+  <input id="level-name" type="text" value="Mon niveau" title="Nom du niveau" />
+  <div class="sep"></div>
   <button class="tool-btn active" id="btn-select" onclick="setTool('select')" title="[S]">✦ Select</button>
   <button class="tool-btn" id="btn-node"   onclick="setTool('node')"   title="[N]">+ Node</button>
   <button class="tool-btn" id="btn-wire"   onclick="setTool('wire')"   title="[W]">⌇ Wire</button>
-  <button class="tool-btn" id="btn-delete" onclick="setTool('delete')" title="[D] ou Clic droit">✕ Delete</button>
+  <button class="tool-btn" id="btn-delete" onclick="setTool('delete')" title="[D]">✕ Delete</button>
   <div class="sep"></div>
   <div id="node-type-row">
-    <span style="color:#446655">Type:</span>
-    <label><input type="radio" name="ntype" value="source" id="nt-source"> ⚡ source</label>
-    <label><input type="radio" name="ntype" value="node"   id="nt-node" checked> ● junction</label>
-    <label><input type="radio" name="ntype" value="bulb"   id="nt-bulb"> 💡 bulb</label>
+    <label><input type="radio" name="ntype" value="source" id="nt-source"> ⚡</label>
+    <label><input type="radio" name="ntype" value="node"   id="nt-node" checked> ●</label>
+    <label><input type="radio" name="ntype" value="bulb"   id="nt-bulb"> 💡</label>
   </div>
   <div class="sep"></div>
-  <button class="tool-btn" onclick="clearLevel()">⟳ Clear</button>
-  <button class="tool-btn" onclick="loadFile()">📂 Load</button>
-  <button class="tool-btn" onclick="saveFile()">💾 Save</button>
-  <button class="tool-btn" onclick="testLevel()" style="border-color:#00ffcc44;color:#00cc99">▶ Test</button>
+  <button class="tool-btn" onclick="clearLevel()" title="Effacer">⟳ Clear</button>
+  <button class="tool-btn" onclick="loadFile()"   title="Charger JSON">📂 Load</button>
+  <button class="tool-btn" onclick="saveFile()"   title="Sauvegarder JSON">💾 Save</button>
+  <button class="tool-btn" onclick="openTest()" style="border-color:#00ffcc55;color:#00cc99" title="Tester">▶ Test</button>
+  <button class="tool-btn" onclick="fitView()"  title="Recentrer [F]">⊡ Fit</button>
+  <div class="sep"></div>
+  <div id="validator" title="Validation du circuit">…</div>
 </div>
 
-<canvas id="c" width="800" height="300"></canvas>
-<div id="props-panel"><span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil pour éditer ses propriétés</span></div>
-<div id="status"></div>
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="props-panel">
+    <span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan</span>
+  </div>
+  <div id="status-bar"></div>
+  <div id="zoom-label">100%</div>
+  <div id="minimap"><canvas id="minimap-c" width="160" height="100"></canvas></div>
+</div>
+
+<!-- Test overlay -->
+<div id="test-overlay">
+  <div id="test-toolbar">
+    <button class="tool-btn" onclick="closeTest()" style="border-color:#ff4444;color:#ff4444">✕ Retour à l'éditeur</button>
+    <span>TEST — Les modifications de l'éditeur ne s'appliquent pas en direct</span>
+    <button class="tool-btn" onclick="reloadTest()">↺ Relancer</button>
+  </div>
+  <iframe id="test-iframe" src="about:blank"></iframe>
+</div>
 
 <input type="file" id="file-input" accept=".json" style="display:none">
 
 <script>
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
-const W = canvas.width, H = canvas.height;
+const mmCanvas = document.getElementById('minimap-c');
+const mmCtx    = mmCanvas.getContext('2d');
+
+// ── VIEWPORT ───────────────────────────────────────────────
+let VW, VH;
+let viewX = 0, viewY = 0, viewScale = 1;
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  const panelH = document.getElementById('props-panel').offsetHeight;
+  VW = wrap.clientWidth;
+  VH = wrap.clientHeight - panelH;
+  canvas.width  = VW;
+  canvas.height = VH;
+  canvas.style.width  = VW + 'px';
+  canvas.style.height = VH + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', () => { resizeCanvas(); });
+
 const GRID   = 20;
 const BEVEL  = 35;
 const SW_GAP = 28;
+
+function screenToWorld(sx, sy) {
+  return { x: (sx - viewX) / viewScale, y: (sy - viewY) / viewScale };
+}
+function worldToScreen(wx, wy) {
+  return { x: wx * viewScale + viewX, y: wy * viewScale + viewY };
+}
+function snap(v) { return Math.round(v / GRID) * GRID; }
 
 // ── DATA ───────────────────────────────────────────────────
 let nodes = [
@@ -164,29 +255,44 @@ let edges = [];
 let nextNodeId = 2;
 let nextEdgeId = 0;
 
-// ── TOOL STATE ─────────────────────────────────────────────
-let tool = 'select';
-let wireFrom = null;   // node id for wire start
-let selectedNode = null;
-let selectedEdge = null;
-let dragging = null;   // { node, ox, oy }
-let hoveredNode = null;
-let hoveredEdge = null;
-
 // ── UNDO ───────────────────────────────────────────────────
 const undoStack = [];
 function saveUndo() {
   undoStack.push(JSON.stringify({ nodes: nodes.map(n=>({...n})), edges: edges.map(e=>({...e})) }));
-  if (undoStack.length > 40) undoStack.shift();
+  if (undoStack.length > 60) undoStack.shift();
 }
 function undo() {
-  if (!undoStack.length) { status('Rien à annuler'); return; }
+  if (!undoStack.length) { flash('Rien à annuler'); return; }
   const prev = JSON.parse(undoStack.pop());
   nodes = prev.nodes; edges = prev.edges;
   nextNodeId = nodes.reduce((m, n) => Math.max(m, n.id + 1), 0);
   nextEdgeId = edges.reduce((m, e) => Math.max(m, e.id + 1), 0);
   selectedNode = null; selectedEdge = null;
-  buildProps(); status('Annulé (Ctrl+Z)');
+  buildProps(); flash('Annulé (Ctrl+Z)');
+}
+
+// ── TOOL STATE ─────────────────────────────────────────────
+let tool = 'select';
+let wireFrom = null;
+let selectedNode = null;
+let selectedEdge = null;
+let dragging = null;
+let hoveredNode = null;
+let hoveredEdge = null;
+
+// Pan state
+let panning = false;
+let spaceHeld = false;
+let panStart = null;
+
+// Status flash
+let statusTimer = null;
+function flash(msg) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.style.opacity = 1;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { el.style.opacity = 0; }, 2000);
 }
 
 function setTool(t) {
@@ -195,40 +301,68 @@ function setTool(t) {
   document.querySelectorAll('.tool-btn[id^=btn]').forEach(b => b.classList.remove('active'));
   const el = document.getElementById('btn-' + t);
   if (el) el.classList.add('active');
-  status('');
-  if (t === 'wire') status('Clique sur un nœud source du fil');
+  if (t === 'wire') flash('Clique sur un nœud source du fil');
 }
 
 function getNodeType() {
   return document.querySelector('input[name=ntype]:checked')?.value || 'node';
 }
 
-function snap(v) { return Math.round(v / GRID) * GRID; }
+// ── VALIDATION ─────────────────────────────────────────────
+function validate() {
+  const el = document.getElementById('validator');
+  const sources = nodes.filter(n => n.type === 'source');
+  const bulbs   = nodes.filter(n => n.type === 'bulb');
+  const issues = [];
+  if (sources.length === 0) issues.push('pas de source');
+  if (bulbs.length === 0)   issues.push('pas d\'ampoule');
+  // Check every non-source node is reachable from a source
+  const reachable = new Set(sources.map(n => n.id));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const e of edges) {
+      if (reachable.has(e.from) && !reachable.has(e.to)) { reachable.add(e.to); changed = true; }
+    }
+  }
+  const unreachable = nodes.filter(n => n.type !== 'source' && !reachable.has(n.id));
+  if (unreachable.length) issues.push(unreachable.length + ' nœud(s) non atteignable(s)');
+  // Isolated nodes (no edges)
+  const connected = new Set(edges.flatMap(e => [e.from, e.to]));
+  const isolated = nodes.filter(n => !connected.has(n.id) && nodes.length > 1);
+  if (isolated.length) issues.push(isolated.length + ' nœud(s) isolé(s)');
 
-function status(msg) {
-  document.getElementById('status').textContent = msg;
+  if (issues.length === 0) {
+    el.textContent = '✓ Circuit valide';
+    el.style.color = '#00ffcc'; el.style.borderColor = '#00ffcc44';
+  } else {
+    el.textContent = '⚠ ' + issues.join(' · ');
+    el.style.color = '#ff8800'; el.style.borderColor = '#ff880044';
+  }
 }
 
-// ── HIT TESTING ────────────────────────────────────────────
-function nodeAt(x, y) {
+// ── HIT TESTING (world coords) ─────────────────────────────
+function nodeAt(wx, wy) {
+  const r = 16 / viewScale; // hit radius grows when zoomed out
+  const rr = Math.max(12, Math.min(r, 24));
   for (const n of nodes) {
-    const dx = x - n.x, dy = y - n.y;
-    if (dx * dx + dy * dy <= 16 * 16) return n;
+    const dx = wx - n.x, dy = wy - n.y;
+    if (dx*dx + dy*dy <= rr*rr) return n;
   }
   return null;
 }
 
-function edgeNear(x, y) {
+function edgeNear(wx, wy) {
+  const threshold = (7 / viewScale);
   for (const e of edges) {
     const pts = edgePts(e);
     for (let i = 0; i < pts.length - 2; i += 2) {
-      const x1 = pts[i], y1 = pts[i+1], x2 = pts[i+2], y2 = pts[i+3];
-      const dx = x2 - x1, dy = y2 - y1;
-      const len2 = dx*dx + dy*dy;
+      const x1=pts[i],y1=pts[i+1],x2=pts[i+2],y2=pts[i+3];
+      const dx=x2-x1,dy=y2-y1,len2=dx*dx+dy*dy;
       if (len2 < 1) continue;
-      const t = Math.max(0, Math.min(1, ((x-x1)*dx + (y-y1)*dy) / len2));
-      const px = x1 + t*dx - x, py = y1 + t*dy - y;
-      if (px*px + py*py < 49) return e;
+      const t = Math.max(0,Math.min(1,((wx-x1)*dx+(wy-y1)*dy)/len2));
+      const px=x1+t*dx-wx, py=y1+t*dy-wy;
+      if (px*px+py*py < threshold*threshold) return e;
     }
   }
   return null;
@@ -239,66 +373,50 @@ function edgePts(e) {
   const from = nodes.find(n => n.id === e.from);
   const to   = nodes.find(n => n.id === e.to);
   if (!from || !to) return [];
-  if (e.wayY == null) {
-    return [from.x, from.y, to.x, to.y];
-  }
-  // diagonal → horizontal at wayY → diagonal
+  if (e.wayY == null) return [from.x, from.y, to.x, to.y];
   const wy = e.wayY;
-  const bevel = BEVEL;
-  // x where from's diagonal meets wayY
-  const signFrom = wy > from.y ? 1 : -1;
   const dyfrom = Math.abs(wy - from.y);
-  const xmid1 = from.x + Math.min(dyfrom, bevel) * Math.sign(to.x - from.x);
-  // x where to's diagonal meets wayY
+  const xmid1  = from.x + Math.min(dyfrom, BEVEL) * Math.sign(to.x - from.x);
   const dyto   = Math.abs(wy - to.y);
-  const xmid2  = to.x - Math.min(dyto, bevel) * Math.sign(to.x - from.x);
-  return [
-    from.x, from.y,
-    xmid1, wy,
-    xmid2, wy,
-    to.x, to.y
-  ];
+  const xmid2  = to.x - Math.min(dyto, BEVEL) * Math.sign(to.x - from.x);
+  return [from.x, from.y, xmid1, wy, xmid2, wy, to.x, to.y];
 }
 
 function polylinePts(e) {
-  // Returns array of {x,y}
   const flat = edgePts(e);
   const pts = [];
   for (let i = 0; i < flat.length; i += 2) pts.push({ x: flat[i], y: flat[i+1] });
   return pts;
 }
-
 function polylineLength(pts) {
   let len = 0;
   for (let i = 1; i < pts.length; i++) {
-    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
-    len += Math.sqrt(dx*dx + dy*dy);
+    const dx=pts[i].x-pts[i-1].x, dy=pts[i].y-pts[i-1].y;
+    len += Math.sqrt(dx*dx+dy*dy);
   }
   return len;
 }
-
 function posOnEdge(t, e) {
   const pts = polylinePts(e);
   const total = polylineLength(pts);
   let dist = t * total;
   for (let i = 1; i < pts.length; i++) {
-    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
-    const segLen = Math.sqrt(dx*dx + dy*dy);
-    if (dist <= segLen || i === pts.length - 1) {
-      const tt = segLen > 0 ? dist / segLen : 0;
-      return { x: pts[i-1].x + tt * dx, y: pts[i-1].y + tt * dy };
+    const dx=pts[i].x-pts[i-1].x, dy=pts[i].y-pts[i-1].y;
+    const segLen = Math.sqrt(dx*dx+dy*dy);
+    if (dist <= segLen || i === pts.length-1) {
+      const tt = segLen > 0 ? dist/segLen : 0;
+      return { x: pts[i-1].x+tt*dx, y: pts[i-1].y+tt*dy };
     }
     dist -= segLen;
   }
-  return pts[pts.length - 1];
+  return pts[pts.length-1];
 }
 
-// ── AUTO PARALLEL EDGE OFFSET ──────────────────────────────
 function checkParallel(newEdge) {
   const parallel = edges.filter(e =>
     e.id !== newEdge.id &&
-    ((e.from === newEdge.from && e.to === newEdge.to) ||
-     (e.from === newEdge.to   && e.to === newEdge.from))
+    ((e.from===newEdge.from && e.to===newEdge.to) ||
+     (e.from===newEdge.to   && e.to===newEdge.from))
   );
   if (parallel.length > 0) {
     const from = nodes.find(n => n.id === newEdge.from);
@@ -306,19 +424,33 @@ function checkParallel(newEdge) {
   }
 }
 
-// ── CANVAS EVENTS ──────────────────────────────────────────
+// ── MOUSE EVENTS ───────────────────────────────────────────
+let mousePos = { x: 0, y: 0 }; // screen coords
+
 canvas.addEventListener('mousedown', e => {
+  // Middle mouse or Space = pan
+  if (e.button === 1 || (e.button === 0 && spaceHeld)) {
+    e.preventDefault();
+    panning = true;
+    panStart = { x: e.clientX - viewX, y: e.clientY - viewY };
+    canvas.style.cursor = 'grabbing';
+    return;
+  }
+  if (e.button !== 0) return;
+
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const sx = snap(mx), sy = snap(my);
-  const hit = nodeAt(mx, my);
-  const hitEdge = edgeNear(mx, my);
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+  const wx = w.x, wy = w.y;
+  const sx2 = snap(wx), sy2 = snap(wy);
+  const hit = nodeAt(wx, wy);
+  const hitEdge = hit ? null : edgeNear(wx, wy);
 
   if (tool === 'select') {
     selectedNode = null; selectedEdge = null;
     if (hit) {
       selectedNode = hit;
-      dragging = { node: hit, ox: mx - hit.x, oy: my - hit.y };
+      dragging = { node: hit, ox: wx - hit.x, oy: wy - hit.y };
     } else if (hitEdge) {
       selectedEdge = hitEdge;
     }
@@ -328,17 +460,17 @@ canvas.addEventListener('mousedown', e => {
     if (!hit) {
       saveUndo();
       const id = nextNodeId++;
-      const n = { id, type: getNodeType(), x: sx, y: sy };
+      const n = { id, type: getNodeType(), x: sx2, y: sy2 };
       nodes.push(n);
       selectedNode = n; selectedEdge = null;
-      buildProps();
+      buildProps(); validate();
     }
 
   } else if (tool === 'wire') {
     if (hit) {
       if (wireFrom === null) {
         wireFrom = hit;
-        status('Clique maintenant sur le nœud de destination');
+        flash('Clique sur le nœud de destination');
       } else if (hit.id !== wireFrom.id) {
         saveUndo();
         const id = nextEdgeId++;
@@ -346,105 +478,131 @@ canvas.addEventListener('mousedown', e => {
         checkParallel(ne);
         edges.push(ne);
         selectedEdge = ne; selectedNode = null;
-        wireFrom = hit; // chain: destination becomes next source
-        buildProps();
-        status('Fil créé — clique sur le prochain nœud de destination');
+        wireFrom = hit;
+        buildProps(); validate();
+        flash('Fil créé — continue vers le prochain nœud');
       }
     }
 
   } else if (tool === 'delete') {
-    if (hit) {
-      saveUndo();
-      nodes = nodes.filter(n => n.id !== hit.id);
-      edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
-      if (selectedNode?.id === hit.id) selectedNode = null;
-    } else if (hitEdge) {
-      saveUndo();
-      edges = edges.filter(ed => ed.id !== hitEdge.id);
-      if (selectedEdge?.id === hitEdge.id) selectedEdge = null;
-    }
-    buildProps();
+    deleteHit(hit, hitEdge);
   }
 });
 
-canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  mousePos = { x: mx, y: my };
-  if (dragging) {
-    dragging.node.x = snap(mx - dragging.ox + GRID/2);
-    dragging.node.y = snap(my - dragging.oy + GRID/2);
-  }
-  hoveredNode = nodeAt(mx, my);
-  hoveredEdge = hoveredNode ? null : edgeNear(mx, my);
-  // Update cursor
-  canvas.style.cursor = hoveredNode ? (tool === 'delete' ? 'not-allowed' : 'grab') : 'crosshair';
-});
-
-canvas.addEventListener('mouseup', () => { dragging = null; });
-canvas.addEventListener('mouseleave', () => { dragging = null; hoveredNode = null; hoveredEdge = null; });
-
-// Right-click to delete
-canvas.addEventListener('contextmenu', e => {
-  e.preventDefault();
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const hit = nodeAt(mx, my);
-  const hitEdge = hit ? null : edgeNear(mx, my);
+function deleteHit(hit, hitEdge) {
   if (hit) {
     saveUndo();
     nodes = nodes.filter(n => n.id !== hit.id);
     edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
     if (selectedNode?.id === hit.id) selectedNode = null;
-    buildProps(); status('Nœud supprimé');
+    buildProps(); validate(); flash('Nœud supprimé');
   } else if (hitEdge) {
     saveUndo();
     edges = edges.filter(ed => ed.id !== hitEdge.id);
     if (selectedEdge?.id === hitEdge.id) selectedEdge = null;
-    buildProps(); status('Fil supprimé');
+    buildProps(); validate(); flash('Fil supprimé');
   }
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+  if (panning && panStart) {
+    viewX = e.clientX - panStart.x;
+    viewY = e.clientY - panStart.y;
+    return;
+  }
+  if (dragging) {
+    const w = screenToWorld(mousePos.x, mousePos.y);
+    dragging.node.x = snap(w.x - dragging.ox + GRID/2);
+    dragging.node.y = snap(w.y - dragging.oy + GRID/2);
+    validate();
+    return;
+  }
+  const w = screenToWorld(mousePos.x, mousePos.y);
+  hoveredNode = nodeAt(w.x, w.y);
+  hoveredEdge = hoveredNode ? null : edgeNear(w.x, w.y);
+
+  if (spaceHeld || panning) canvas.style.cursor = 'grab';
+  else if (hoveredNode) canvas.style.cursor = tool === 'delete' ? 'not-allowed' : 'grab';
+  else canvas.style.cursor = 'crosshair';
 });
 
-// Double-click on empty canvas to add node
+canvas.addEventListener('mouseup', e => {
+  if (panning) { panning = false; canvas.style.cursor = spaceHeld ? 'grab' : 'crosshair'; }
+  dragging = null;
+  panStart = null;
+});
+canvas.addEventListener('mouseleave', () => {
+  panning = false; dragging = null; panStart = null;
+  hoveredNode = null; hoveredEdge = null;
+});
+
+// Zoom with scroll
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  const newScale = Math.max(0.15, Math.min(4, viewScale * factor));
+  // Zoom toward mouse position
+  viewX = sx - (sx - viewX) * (newScale / viewScale);
+  viewY = sy - (sy - viewY) * (newScale / viewScale);
+  viewScale = newScale;
+  document.getElementById('zoom-label').textContent = Math.round(viewScale * 100) + '%';
+}, { passive: false });
+
+// Right-click delete
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const w = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const hit = nodeAt(w.x, w.y);
+  const hitEdge = hit ? null : edgeNear(w.x, w.y);
+  deleteHit(hit, hitEdge);
+});
+
+// Double-click add node
 canvas.addEventListener('dblclick', e => {
   if (tool !== 'select' && tool !== 'node') return;
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  if (!nodeAt(mx, my)) {
+  const w = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+  if (!nodeAt(w.x, w.y)) {
     saveUndo();
     const id = nextNodeId++;
-    const n = { id, type: getNodeType(), x: snap(mx), y: snap(my) };
+    const n = { id, type: getNodeType(), x: snap(w.x), y: snap(w.y) };
     nodes.push(n);
     selectedNode = n; selectedEdge = null;
-    buildProps(); status('Nœud ajouté (double-clic)');
+    buildProps(); validate(); flash('Nœud ajouté');
   }
 });
 
-// Keyboard shortcuts
+// Keyboard
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-    e.preventDefault(); undo(); return;
-  }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === ' ') { e.preventDefault(); spaceHeld = true; canvas.style.cursor = 'grab'; return; }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
     if (selectedNode) {
       saveUndo();
       nodes = nodes.filter(n => n.id !== selectedNode.id);
       edges = edges.filter(ed => ed.from !== selectedNode.id && ed.to !== selectedNode.id);
-      selectedNode = null; buildProps(); status('Nœud supprimé [Suppr]');
+      selectedNode = null; buildProps(); validate(); flash('Nœud supprimé [Suppr]');
     } else if (selectedEdge) {
       saveUndo();
       edges = edges.filter(ed => ed.id !== selectedEdge.id);
-      selectedEdge = null; buildProps(); status('Fil supprimé [Suppr]');
+      selectedEdge = null; buildProps(); validate(); flash('Fil supprimé [Suppr]');
     }
     return;
   }
   if (e.key === 'Escape') {
-    if (wireFrom) { wireFrom = null; status('Wire annulé'); }
+    if (wireFrom) { wireFrom = null; flash('Wire annulé'); }
     else { selectedNode = null; selectedEdge = null; buildProps(); }
     return;
   }
+  if (e.key === 'f' || e.key === 'F') { fitView(); return; }
   if (!e.ctrlKey && !e.metaKey && !e.altKey) {
     switch (e.key.toUpperCase()) {
       case 'S': setTool('select'); break;
@@ -453,7 +611,28 @@ document.addEventListener('keydown', e => {
       case 'D': setTool('delete'); break;
     }
   }
-});;
+});
+document.addEventListener('keyup', e => {
+  if (e.key === ' ') {
+    spaceHeld = false; panning = false; panStart = null;
+    canvas.style.cursor = 'crosshair';
+  }
+});
+
+// ── FIT VIEW ───────────────────────────────────────────────
+function fitView() {
+  if (!nodes.length) return;
+  const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+  const minX = Math.min(...xs) - 60, maxX = Math.max(...xs) + 60;
+  const minY = Math.min(...ys) - 60, maxY = Math.max(...ys) + 60;
+  const ww = maxX - minX, wh = maxY - minY;
+  if (ww <= 0 || wh <= 0) return;
+  const s = Math.min(4, Math.min(VW / ww, VH / wh)) * 0.9;
+  viewScale = s;
+  viewX = VW/2 - (minX + ww/2) * s;
+  viewY = VH/2 - (minY + wh/2) * s;
+  document.getElementById('zoom-label').textContent = Math.round(viewScale * 100) + '%';
+}
 
 // ── PROPERTIES PANEL ───────────────────────────────────────
 function buildProps() {
@@ -471,25 +650,25 @@ function buildProps() {
           <option value="bulb"   ${n.type==='bulb'  ?'selected':''}>💡 bulb</option>
         </select>
       </label>
-      <label>X: <input id="p-nx" type="number" value="${n.x}" step="20" min="0" max="800"></label>
-      <label>Y: <input id="p-ny" type="number" value="${n.y}" step="20" min="0" max="300"></label>
+      <label>X: <input id="p-nx" type="number" value="${n.x}" step="20"></label>
+      <label>Y: <input id="p-ny" type="number" value="${n.y}" step="20"></label>
     `;
-    document.getElementById('p-ntype').onchange = ev => { n.type = ev.target.value; };
+    document.getElementById('p-ntype').onchange = ev => { n.type = ev.target.value; validate(); };
     document.getElementById('p-nx').oninput = ev => { n.x = snap(+ev.target.value); };
     document.getElementById('p-ny').oninput = ev => { n.y = snap(+ev.target.value); };
 
   } else if (selectedEdge) {
     const ed = selectedEdge;
-    const swKey   = ed.switch?.key      ?? 'none';
-    const swInit  = ed.switch?.initOpen ?? true;
+    const swKey  = ed.switch?.key      ?? 'none';
+    const swInit = ed.switch?.initOpen ?? true;
     const wayYVal = ed.wayY != null ? ed.wayY : '';
-    const resChecked  = !!ed.resistance;
-    const resDur      = ed.resDuration ?? 3;
+    const resChecked = !!ed.resistance;
+    const resDur = ed.resDuration ?? 3;
     panel.innerHTML = `
       <span id="props-title">Fil #${ed.id}</span>
-      <label>wayY: <input id="p-wayY" type="number" value="${wayYVal}" step="20" min="0" max="300" placeholder="aucun"></label>
+      <label>wayY: <input id="p-wayY" type="number" value="${wayYVal}" step="20" placeholder="aucun" style="width:70px"></label>
       <label>Switch:
-        <select id="p-swkey">
+        <select id="p-swkey" style="width:100px">
           <option value="none" ${swKey==='none'?'selected':''}>— aucun —</option>
           <option value="Q"    ${swKey==='Q'   ?'selected':''}>Q (orange)</option>
           <option value="P"    ${swKey==='P'   ?'selected':''}>P (violet)</option>
@@ -498,15 +677,14 @@ function buildProps() {
       <label id="p-initopen-lbl" style="${swKey==='none'?'display:none':''}">
         initOpen: <input type="checkbox" id="p-initopen" ${swInit?'checked':''}>
       </label>
-      <span style="color:#446655;margin-left:8px">|</span>
+      <span style="color:#446655">|</span>
       <label>Résistance: <input type="checkbox" id="p-res" ${resChecked?'checked':''}></label>
       <label id="p-res-dur-lbl" style="${resChecked?'':'display:none'}">
         Durée: <input id="p-res-dur" type="number" value="${resDur}" min="1" max="10" step="0.5" style="width:52px">s
       </label>
     `;
     document.getElementById('p-wayY').oninput = ev => {
-      const v = ev.target.value.trim();
-      ed.wayY = v === '' ? null : snap(+v);
+      ed.wayY = ev.target.value.trim() === '' ? null : snap(+ev.target.value);
     };
     document.getElementById('p-swkey').onchange = ev => {
       const k = ev.target.value;
@@ -529,26 +707,41 @@ function buildProps() {
     };
 
   } else {
-    panel.innerHTML = '<span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil pour éditer ses propriétés</span>';
+    panel.innerHTML = '<span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Suppr] supprimer</span>';
   }
 }
 
-// ── DRAW ───────────────────────────────────────────────────
+// ── DRAWING ────────────────────────────────────────────────
 const KEY_COLOR = {
-  Q: { main: '#ffaa00', glow: '#ff6600', dim: '#3a2a00' },
-  P: { main: '#cc44ff', glow: '#8800ff', dim: '#2a0040' },
+  Q: { main: '#ffaa00', glow: '#ff6600' },
+  P: { main: '#cc44ff', glow: '#8800ff' },
 };
-function keyColor(key) { return KEY_COLOR[key] || { main: '#00ffcc', glow: '#00ffcc', dim: '#1a4035' }; }
+function keyColor(key) { return KEY_COLOR[key] || { main: '#00ffcc', glow: '#00ffcc' }; }
 
 function drawGrid() {
+  // Adaptive grid: show sub-grid at high zoom
+  const step = GRID;
+  const startX = Math.floor((-viewX / viewScale) / step) * step;
+  const startY = Math.floor((-viewY / viewScale) / step) * step;
+  const endX = startX + VW / viewScale + step * 2;
+  const endY = startY + VH / viewScale + step * 2;
+
   ctx.save();
   ctx.strokeStyle = '#0d1c18';
-  ctx.lineWidth = 0.5;
-  for (let x = 0; x <= W; x += GRID) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  ctx.lineWidth = 0.5 / viewScale;
+  for (let x = startX; x <= endX; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
   }
-  for (let y = 0; y <= H; y += GRID) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  for (let y = startY; y <= endY; y += step) {
+    ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
+  }
+  // Brighter every 5 steps
+  ctx.strokeStyle = '#122018';
+  for (let x = Math.floor(startX/(step*5))*(step*5); x <= endX; x += step*5) {
+    ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, endY); ctx.stroke();
+  }
+  for (let y = Math.floor(startY/(step*5))*(step*5); y <= endY; y += step*5) {
+    ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(endX, y); ctx.stroke();
   }
   ctx.restore();
 }
@@ -557,102 +750,99 @@ function drawEdge(e, selected, hovered) {
   const pts = edgePts(e);
   if (pts.length < 4) return;
   const c = selected ? '#00ffcc' : hovered ? '#4aaa70' : '#2a6a50';
-  const glow = selected ? 10 : hovered ? 5 : 0;
-
+  const lw = (selected ? 3 : 2) / viewScale;
   ctx.save();
-  if (glow) { ctx.shadowBlur = glow; ctx.shadowColor = c; }
-  ctx.strokeStyle = c; ctx.lineWidth = selected ? 3 : 2;
+  if (selected) { ctx.shadowBlur = 10; ctx.shadowColor = c; }
+  else if (hovered) { ctx.shadowBlur = 5; ctx.shadowColor = c; }
+  ctx.strokeStyle = c; ctx.lineWidth = lw;
   ctx.beginPath();
   ctx.moveTo(pts[0], pts[1]);
   for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
   ctx.stroke();
   ctx.restore();
 
-  // Direction arrow at midpoint
+  // Direction arrow
   const mid = posOnEdge(0.5, e);
   const a = posOnEdge(0.48, e), b = posOnEdge(0.52, e);
-  const angle = Math.atan2(b.y - a.y, b.x - a.x);
+  const angle = Math.atan2(b.y-a.y, b.x-a.x);
+  const arr = 7 / viewScale;
   ctx.save();
-  ctx.translate(mid.x, mid.y);
-  ctx.rotate(angle);
+  ctx.translate(mid.x, mid.y); ctx.rotate(angle);
   ctx.fillStyle = c;
   ctx.beginPath();
-  ctx.moveTo(7, 0); ctx.lineTo(-4, -4); ctx.lineTo(-4, 4);
+  ctx.moveTo(arr, 0); ctx.lineTo(-arr*0.6, -arr*0.55); ctx.lineTo(-arr*0.6, arr*0.55);
   ctx.closePath(); ctx.fill();
   ctx.restore();
 
-  // Draw switch if any
+  // Switch
   if (e.switch) {
     const sp = posOnEdge(0.5, e);
     const sc = keyColor(e.switch.key);
+    const s = 8 / viewScale;
     ctx.save();
-    ctx.strokeStyle = sc.main; ctx.lineWidth = 2; ctx.shadowBlur = 8; ctx.shadowColor = sc.main;
+    ctx.strokeStyle = sc.main; ctx.lineWidth = 2/viewScale;
+    ctx.shadowBlur = 8; ctx.shadowColor = sc.main;
     if (e.switch.initOpen) {
-      // Diamond (open)
-      const s = 8;
       ctx.beginPath();
-      ctx.moveTo(sp.x, sp.y - s); ctx.lineTo(sp.x + s, sp.y);
-      ctx.lineTo(sp.x, sp.y + s); ctx.lineTo(sp.x - s, sp.y);
+      ctx.moveTo(sp.x, sp.y-s); ctx.lineTo(sp.x+s, sp.y);
+      ctx.lineTo(sp.x, sp.y+s); ctx.lineTo(sp.x-s, sp.y);
       ctx.closePath(); ctx.stroke();
     } else {
-      // Circle (closed)
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, s, 0, Math.PI*2); ctx.stroke();
     }
-    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
-    ctx.fillStyle = sc.main; ctx.shadowBlur = 0;
-    ctx.fillText(e.switch.key, sp.x, sp.y + 20);
+    ctx.shadowBlur = 0;
+    ctx.font = `bold ${11/viewScale}px Courier New`; ctx.textAlign = 'center';
+    ctx.fillStyle = sc.main;
+    ctx.fillText(e.switch.key, sp.x, sp.y + s*2.2);
     ctx.restore();
   }
 
-  // Draw resistance if any
+  // Resistance
   if (e.resistance) {
-    const sp   = posOnEdge(0.5, e);
-    const sp1  = posOnEdge(0.48, e);
-    const sp2  = posOnEdge(0.52, e);
-    const angle = Math.atan2(sp2.y - sp1.y, sp2.x - sp1.x);
-    const RW = 46, RH = 12;
+    const sp  = posOnEdge(0.5, e);
+    const sp1 = posOnEdge(0.48, e), sp2 = posOnEdge(0.52, e);
+    const angle2 = Math.atan2(sp2.y-sp1.y, sp2.x-sp1.x);
+    const RW = 46/viewScale, RH = 12/viewScale;
     const dur = e.resDuration ?? 3;
     const bandColors = ['#ff3333','#ff8800','#ffee00','#4488ff'];
     ctx.save();
-    ctx.translate(sp.x, sp.y);
-    ctx.rotate(angle);
-    // Body
+    ctx.translate(sp.x, sp.y); ctx.rotate(angle2);
     ctx.fillStyle = '#2a1a00';
-    ctx.strokeStyle = '#cc8800'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#cc8800'; ctx.lineWidth = 2/viewScale;
     ctx.shadowBlur = 8; ctx.shadowColor = '#cc8800';
-    ctx.fillRect(-RW, -RH, RW * 2, RH * 2);
-    ctx.strokeRect(-RW, -RH, RW * 2, RH * 2);
-    // Bands (clipped)
+    ctx.fillRect(-RW, -RH, RW*2, RH*2);
+    ctx.strokeRect(-RW, -RH, RW*2, RH*2);
     ctx.save();
-    ctx.beginPath(); ctx.rect(-RW + 1, -RH + 1, RW * 2 - 2, RH * 2 - 2); ctx.clip();
-    const nBands = bandColors.length, bandW = 6;
-    const spacing = (RW * 2 - nBands * bandW) / (nBands + 1);
-    for (let i = 0; i < nBands; i++) {
-      const bx = -RW + spacing * (i + 1) + bandW * i;
-      ctx.fillStyle = bandColors[i]; ctx.globalAlpha = 0.7;
-      ctx.fillRect(bx, -RH, bandW, RH * 2);
+    ctx.beginPath(); ctx.rect(-RW+1/viewScale, -RH+1/viewScale, RW*2-2/viewScale, RH*2-2/viewScale); ctx.clip();
+    const nB=4, bW=6/viewScale;
+    const sp3=(RW*2-nB*bW)/(nB+1);
+    for (let i=0;i<nB;i++) {
+      const bx=-RW+sp3*(i+1)+bW*i;
+      ctx.fillStyle=bandColors[i]; ctx.globalAlpha=0.7;
+      ctx.fillRect(bx,-RH,bW,RH*2);
     }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-    // Stubs
-    ctx.strokeStyle = '#cc8800'; ctx.lineWidth = 3; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.moveTo(-50, 0); ctx.lineTo(-RW, 0); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(RW, 0);  ctx.lineTo(50, 0);  ctx.stroke();
-    // Label (unrotated)
-    ctx.rotate(-angle);
-    ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center'; ctx.shadowBlur = 0;
-    ctx.fillStyle = '#cc8800';
-    ctx.fillText('R ' + dur + 's', 0, RH + 14);
+    ctx.globalAlpha=1; ctx.restore();
+    ctx.strokeStyle='#cc8800'; ctx.lineWidth=3/viewScale; ctx.shadowBlur=6;
+    ctx.beginPath(); ctx.moveTo(-50/viewScale,0); ctx.lineTo(-RW,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(RW,0); ctx.lineTo(50/viewScale,0); ctx.stroke();
+    ctx.rotate(-angle2);
+    ctx.shadowBlur=0; ctx.font=`bold ${10/viewScale}px Courier New`; ctx.textAlign='center';
+    ctx.fillStyle='#cc8800';
+    ctx.fillText('R '+dur+'s', 0, RH+14/viewScale);
     ctx.restore();
   }
 
-  // wayY indicator
-  if (e.wayY != null) {
+  // wayY dashed line indicator
+  if (e.wayY != null && selected) {
     const from = nodes.find(n => n.id === e.from);
     if (from) {
       ctx.save();
-      ctx.strokeStyle = '#334455'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
-      ctx.beginPath(); ctx.moveTo(from.x, e.wayY); ctx.lineTo(800, e.wayY); ctx.stroke();
+      ctx.strokeStyle = '#334455'; ctx.lineWidth = 1/viewScale;
+      ctx.setLineDash([3/viewScale, 4/viewScale]);
+      ctx.beginPath();
+      ctx.moveTo(Math.min(...nodes.map(n=>n.x))-100, e.wayY);
+      ctx.lineTo(Math.max(...nodes.map(n=>n.x))+100, e.wayY);
+      ctx.stroke();
       ctx.restore();
     }
   }
@@ -663,106 +853,152 @@ function drawNode(n, selected, hovered) {
   ctx.save();
 
   if (type === 'source') {
-    ctx.shadowBlur = selected ? 18 : hovered ? 14 : 10; ctx.shadowColor = '#00ffcc';
-    ctx.strokeStyle = selected ? '#00ffff' : hovered ? '#66ffdd' : '#00ffcc'; ctx.lineWidth = 2;
-    ctx.strokeRect(x - 14, y - 18, 28, 36);
+    const sz = 14/viewScale, sh = 18/viewScale;
+    ctx.shadowBlur = selected ? 18 : hovered ? 14 : 10;
+    ctx.shadowColor = '#00ffcc';
+    ctx.strokeStyle = selected ? '#00ffff' : hovered ? '#66ffdd' : '#00ffcc';
+    ctx.lineWidth = 2/viewScale;
+    ctx.strokeRect(x-sz, y-sh, sz*2, sh*2);
     ctx.fillStyle = selected ? '#00ffee' : '#00ffcc';
-    ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `bold ${16/viewScale}px Courier New`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('⚡', x, y);
 
   } else if (type === 'bulb') {
-    ctx.shadowBlur = selected ? 20 : hovered ? 14 : 10; ctx.shadowColor = '#ffff00';
-    ctx.strokeStyle = selected ? '#ffff55' : hovered ? '#ffff77' : '#ffdd00'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(x, y - 16, 16, 0, Math.PI * 2); ctx.stroke();
+    const r = 16/viewScale;
+    ctx.shadowBlur = selected ? 20 : hovered ? 14 : 10;
+    ctx.shadowColor = '#ffff00';
+    ctx.strokeStyle = selected ? '#ffff55' : hovered ? '#ffff77' : '#ffdd00';
+    ctx.lineWidth = 2/viewScale;
+    ctx.beginPath(); ctx.arc(x, y-r, r, 0, Math.PI*2); ctx.stroke();
     ctx.fillStyle = selected ? '#333300' : '#1a2a1a'; ctx.fill();
     ctx.fillStyle = selected ? '#cccc88' : '#334433';
-    ctx.fillRect(x - 9, y, 18, 10); ctx.fillRect(x - 6, y + 10, 12, 5);
-    ctx.font = '10px Courier New'; ctx.textAlign = 'center'; ctx.fillStyle = '#ffdd00';
+    ctx.fillRect(x-9/viewScale, y, 18/viewScale, 10/viewScale);
+    ctx.fillRect(x-6/viewScale, y+10/viewScale, 12/viewScale, 5/viewScale);
+    ctx.font = `${10/viewScale}px Courier New`; ctx.textAlign='center'; ctx.fillStyle='#ffdd00';
     ctx.fillText('💡', x, y);
 
   } else {
-    // junction
-    ctx.shadowBlur = selected ? 14 : hovered ? 10 : 6; ctx.shadowColor = '#00ffcc';
+    const r = selected ? 8/viewScale : hovered ? 7/viewScale : 6/viewScale;
+    ctx.shadowBlur = selected ? 14 : hovered ? 10 : 6;
+    ctx.shadowColor = '#00ffcc';
     ctx.fillStyle = selected ? '#00ffff' : hovered ? '#66ffdd' : '#00ffcc';
-    ctx.beginPath(); ctx.arc(x, y, selected ? 8 : 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
   }
 
-  // Id label
   ctx.shadowBlur = 0;
-  ctx.font = '9px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.font = `9px Courier New`; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillStyle = '#446655';
-  ctx.fillText('#' + n.id, x, y + 20);
+  ctx.fillText('#'+n.id, x, y + 20/viewScale);
   ctx.restore();
 }
 
-function drawLegend() {
-  ctx.save();
-  ctx.font = '10px Courier New'; ctx.fillStyle = '#2a5a45';
-  const left = ['⚡ source', '● junction', '💡 bulb', '◇ switch ouvert', '○ switch fermé'];
-  left.forEach((txt, i) => ctx.fillText(txt, 8 + i * 158, H - 14));
-  ctx.fillStyle = '#1a3a2a';
-  ctx.textAlign = 'right';
-  ctx.fillText('S/N/W/D · Suppr · Ctrl+Z · Echap · Clic droit=suppr · Dbl-clic=nœud', W - 6, H - 14);
-  ctx.restore();
-}
-
-function drawWirePreview(mx, my) {
+function drawWirePreview() {
   if (tool !== 'wire' || !wireFrom) return;
+  const w = screenToWorld(mousePos.x, mousePos.y);
   ctx.save();
-  ctx.strokeStyle = '#00ffcc66'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
-  ctx.beginPath(); ctx.moveTo(wireFrom.x, wireFrom.y); ctx.lineTo(mx, my); ctx.stroke();
+  ctx.strokeStyle = '#00ffcc66'; ctx.lineWidth = 1.5/viewScale;
+  ctx.setLineDash([5/viewScale, 5/viewScale]);
+  ctx.beginPath(); ctx.moveTo(wireFrom.x, wireFrom.y); ctx.lineTo(w.x, w.y); ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.shadowBlur = 16; ctx.shadowColor = '#00ffcc';
+  ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2/viewScale;
+  ctx.beginPath(); ctx.arc(wireFrom.x, wireFrom.y, 10/viewScale, 0, Math.PI*2); ctx.stroke();
   ctx.restore();
 }
 
-let mousePos = { x: 0, y: 0 };
+// ── MINIMAP ────────────────────────────────────────────────
+function drawMinimap() {
+  if (!nodes.length) return;
+  const mW = 160, mH = 100;
+  mmCtx.clearRect(0, 0, mW, mH);
+  mmCtx.fillStyle = '#08080f';
+  mmCtx.fillRect(0, 0, mW, mH);
 
-function draw() {
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#08080f'; ctx.fillRect(0, 0, W, H);
-  drawGrid();
+  const xs = nodes.map(n=>n.x), ys = nodes.map(n=>n.y);
+  const minX = Math.min(...xs)-60, maxX = Math.max(...xs)+60;
+  const minY = Math.min(...ys)-60, maxY = Math.max(...ys)+60;
+  const ww = maxX-minX || 1, wh = maxY-minY || 1;
+  const ms = Math.min(mW/ww, mH/wh)*0.85;
+  const mox = mW/2 - (minX+ww/2)*ms;
+  const moy = mH/2 - (minY+wh/2)*ms;
 
-  // Draw edges
-  for (const e of edges) drawEdge(e, selectedEdge?.id === e.id, hoveredEdge?.id === e.id);
-
-  // Wire preview
-  drawWirePreview(mousePos.x, mousePos.y);
-  if (wireFrom) {
-    ctx.save();
-    ctx.shadowBlur = 16; ctx.shadowColor = '#00ffcc';
-    ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(wireFrom.x, wireFrom.y, 10, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
+  // Edges
+  mmCtx.strokeStyle = '#2a6a50'; mmCtx.lineWidth = 1;
+  for (const e of edges) {
+    const pts = edgePts(e);
+    if (pts.length < 4) continue;
+    mmCtx.beginPath();
+    mmCtx.moveTo(pts[0]*ms+mox, pts[1]*ms+moy);
+    for (let i=2; i<pts.length; i+=2) mmCtx.lineTo(pts[i]*ms+mox, pts[i+1]*ms+moy);
+    mmCtx.stroke();
   }
 
-  // Draw nodes
-  for (const n of nodes) drawNode(n, selectedNode?.id === n.id, hoveredNode?.id === n.id);
+  // Nodes
+  for (const n of nodes) {
+    const nx = n.x*ms+mox, ny = n.y*ms+moy;
+    mmCtx.fillStyle = n.type==='source' ? '#00ffcc' : n.type==='bulb' ? '#ffdd00' : '#446655';
+    mmCtx.beginPath(); mmCtx.arc(nx, ny, 3, 0, Math.PI*2); mmCtx.fill();
+  }
 
-  drawLegend();
+  // Viewport rectangle
+  const vx0 = (-viewX/viewScale)*ms+mox, vy0 = (-viewY/viewScale)*ms+moy;
+  const vx1 = (VW/viewScale)*ms, vy1 = (VH/viewScale)*ms;
+  mmCtx.strokeStyle = '#00ffcc88'; mmCtx.lineWidth = 1;
+  mmCtx.strokeRect(vx0, vy0, vx1, vy1);
+}
+
+// ── MAIN DRAW LOOP ─────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0, 0, VW, VH);
+  ctx.fillStyle = '#08080f'; ctx.fillRect(0, 0, VW, VH);
+
+  ctx.save();
+  ctx.setTransform(viewScale, 0, 0, viewScale, viewX, viewY);
+
+  drawGrid();
+  for (const e of edges) drawEdge(e, selectedEdge?.id===e.id, hoveredEdge?.id===e.id);
+  drawWirePreview();
+  for (const n of nodes) drawNode(n, selectedNode?.id===n.id, hoveredNode?.id===n.id);
+
+  ctx.restore();
+
+  drawMinimap();
   requestAnimationFrame(draw);
 }
-
 draw();
 
-// ── ACTIONS ────────────────────────────────────────────────
-function clearLevel() {
-  if (!confirm('Effacer le niveau ?')) return;
-  nodes = [
-    { id: 0, type: 'source', x: 60,  y: 150 },
-    { id: 1, type: 'bulb',   x: 740, y: 150 }
-  ];
-  edges = [];
-  nextNodeId = 2; nextEdgeId = 0;
-  selectedNode = null; selectedEdge = null;
-  wireFrom = null;
-  buildProps();
-  document.getElementById('level-name').value = 'Mon niveau';
+// ── TEST OVERLAY ───────────────────────────────────────────
+function openTest() {
+  const json = toJSON();
+  localStorage.setItem('elecgame_test_level', JSON.stringify(json));
+  const overlay = document.getElementById('test-overlay');
+  overlay.classList.add('visible');
+  document.getElementById('test-iframe').src = 'game.html?test=1';
+}
+function closeTest() {
+  document.getElementById('test-overlay').classList.remove('visible');
+  document.getElementById('test-iframe').src = 'about:blank';
+}
+function reloadTest() {
+  const json = toJSON();
+  localStorage.setItem('elecgame_test_level', JSON.stringify(json));
+  document.getElementById('test-iframe').src = 'game.html?test=1';
 }
 
+// ── SERIALIZATION ──────────────────────────────────────────
 function toJSON() {
   return {
     name: document.getElementById('level-name').value || 'Mon niveau',
     nodes: nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y })),
-    edges: edges.map(e => ({ id: e.id, from: e.from, to: e.to, wayY: e.wayY ?? null, switch: e.switch ?? null, resistance: !!e.resistance, resDuration: e.resistance ? (e.resDuration ?? 3) : undefined }))
+    edges: edges.map(e => ({
+      id: e.id, from: e.from, to: e.to,
+      wayY: e.wayY ?? null,
+      switch: e.switch ?? null,
+      resistance: !!e.resistance,
+      resDuration: e.resistance ? (e.resDuration ?? 3) : undefined
+    }))
   };
 }
 
@@ -775,49 +1011,54 @@ function saveFile() {
   a.click();
 }
 
-function loadFile() {
-  document.getElementById('file-input').click();
-}
+function loadFile() { document.getElementById('file-input').click(); }
 
 document.getElementById('file-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      loadFromJSON(data);
-    } catch(err) {
-      alert('Fichier JSON invalide');
-    }
+    try { loadFromJSON(JSON.parse(ev.target.result)); }
+    catch(err) { alert('Fichier JSON invalide'); }
   };
   reader.readAsText(file);
   e.target.value = '';
 });
 
 function loadFromJSON(data) {
-  nodes = (data.nodes || []).map(n => ({ id: n.id, type: n.type || 'node', x: n.x, y: n.y }));
-  edges = (data.edges || []).map(e => ({
+  nodes = (data.nodes||[]).map(n => ({ id: n.id, type: n.type||'node', x: n.x, y: n.y }));
+  edges = (data.edges||[]).map(e => ({
     id: e.id, from: e.from, to: e.to,
     wayY: e.wayY ?? null,
     switch: e.switch ?? null,
     resistance: !!e.resistance,
     resDuration: e.resDuration ?? 3
   }));
-  nextNodeId = nodes.reduce((m, n) => Math.max(m, n.id + 1), 0);
-  nextEdgeId = edges.reduce((m, e) => Math.max(m, e.id + 1), 0);
+  nextNodeId = nodes.reduce((m,n) => Math.max(m,n.id+1), 0);
+  nextEdgeId = edges.reduce((m,e) => Math.max(m,e.id+1), 0);
   document.getElementById('level-name').value = data.name || 'Mon niveau';
   selectedNode = null; selectedEdge = null; wireFrom = null;
-  buildProps();
-  status('Niveau chargé : ' + (data.name || ''));
+  buildProps(); validate();
+  fitView();
+  flash('Niveau chargé : ' + (data.name||''));
 }
 
-function testLevel() {
-  localStorage.setItem('elecgame_test_level', JSON.stringify(toJSON()));
-  window.open('game.html?test=1', '_blank');
+function clearLevel() {
+  if (!confirm('Effacer le niveau ?')) return;
+  nodes = [
+    { id: 0, type: 'source', x: 60,  y: 150 },
+    { id: 1, type: 'bulb',   x: 740, y: 150 }
+  ];
+  edges = []; nextNodeId = 2; nextEdgeId = 0;
+  selectedNode = null; selectedEdge = null; wireFrom = null;
+  document.getElementById('level-name').value = 'Mon niveau';
+  buildProps(); validate(); fitView();
 }
 
+// Init
 buildProps();
+validate();
+fitView();
 </script>
 </body>
 </html>

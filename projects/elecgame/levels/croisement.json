@@ -1,0 +1,22 @@
+{
+  "name": "Le Croisement",
+  "nodes": [
+    { "id": 0, "type": "source", "x": 60,  "y": 150 },
+    { "id": 1, "type": "node",   "x": 200, "y": 150 },
+    { "id": 2, "type": "node",   "x": 420, "y": 40  },
+    { "id": 3, "type": "node",   "x": 420, "y": 150 },
+    { "id": 4, "type": "node",   "x": 420, "y": 260 },
+    { "id": 5, "type": "node",   "x": 580, "y": 150 },
+    { "id": 6, "type": "bulb",   "x": 720, "y": 150 }
+  ],
+  "edges": [
+    { "id": 0, "from": 0, "to": 1, "wayY": null, "switch": null, "resistance": false },
+    { "id": 1, "from": 1, "to": 2, "wayY": 40,   "switch": { "key": "Q", "initOpen": true }, "resistance": false },
+    { "id": 2, "from": 1, "to": 3, "wayY": null, "switch": { "key": "P", "initOpen": true }, "resistance": false },
+    { "id": 3, "from": 1, "to": 4, "wayY": 260,  "switch": null, "resistance": false },
+    { "id": 4, "from": 2, "to": 5, "wayY": 150,  "switch": null, "resistance": false },
+    { "id": 5, "from": 3, "to": 5, "wayY": null, "switch": null, "resistance": false },
+    { "id": 6, "from": 4, "to": 5, "wayY": 150,  "switch": null, "resistance": false },
+    { "id": 7, "from": 5, "to": 6, "wayY": null, "switch": null, "resistance": false }
+  ]
+}

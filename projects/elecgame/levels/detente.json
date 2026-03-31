@@ -1,0 +1,14 @@
+{
+  "name": "Détente",
+  "nodes": [
+    { "id": 0, "type": "source", "x": 60,  "y": 150 },
+    { "id": 1, "type": "node",   "x": 320, "y": 150 },
+    { "id": 2, "type": "node",   "x": 560, "y": 150 },
+    { "id": 3, "type": "bulb",   "x": 740, "y": 150 }
+  ],
+  "edges": [
+    { "id": 0, "from": 0, "to": 1, "wayY": null, "switch": { "key": "Q", "initOpen": true  }, "resistance": false },
+    { "id": 1, "from": 1, "to": 2, "wayY": null, "switch": { "key": "Q", "initOpen": false }, "resistance": false },
+    { "id": 2, "from": 2, "to": 3, "wayY": null, "switch": null, "resistance": false }
+  ]
+}
