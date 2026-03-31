@@ -1310,16 +1310,16 @@ function updateCustom(dt) {
             if (waited >= inEdges.length) {
               joinWait.delete(toNode.id);
               sfxJoin();
-              toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED });
+              toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED, gauge: 1.0 });
             }
           } else {
-            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED });
+            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED, gauge: 1.0 });
           }
         } else {
           // Split: spawn a ball on each outgoing edge
           sfxSplit();
           for (const outE of outEdges) {
-            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED });
+            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: BALL_SPEED, gauge: 1.0 });
           }
         }
       }
