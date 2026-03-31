@@ -11,5 +11,6 @@
   { "file": "noeud.json",           "name": "★★ Le Nœud" },
   { "file": "minuterie.json",       "name": "★★★ La Minuterie" },
   { "file": "hydre.json",           "name": "★★★ L'Hydre" },
-  { "file": "megawatt.json",        "name": "★★★ Megawatt" }
+  { "file": "megawatt.json",        "name": "★★★ Megawatt" },
+  { "file": "levelHard.json",       "name": "★★★ Level Hard" }
 ]
