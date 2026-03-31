@@ -12,5 +12,6 @@
   { "file": "minuterie.json",       "name": "★★★ La Minuterie" },
   { "file": "hydre.json",           "name": "★★★ L'Hydre" },
   { "file": "megawatt.json",        "name": "★★★ Megawatt" },
-  { "file": "levelHard.json",       "name": "★★★ Level Hard" }
+  { "file": "levelHard.json",              "name": "★★★ Level Hard" },
+  { "file": "tuto_resistance_eclair.json", "name": "Résistance Éclair" }
 ]
