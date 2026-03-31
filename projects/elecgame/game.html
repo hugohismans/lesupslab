@@ -326,7 +326,7 @@ const LEVELS = [
     make: () => ({
       type: 'single',
       ball: WIRE_START,
-      won: false, dead: false,
+      won: false, dead: false, waiting: true,
       switches: [{ x: 400, key: 'Q', initOpen: true, open: true }]
     })
   },
@@ -337,7 +337,7 @@ const LEVELS = [
       type: 'split',
       ballX: WIRE_START,
       phase: 'main',
-      won: false, dead: false,
+      won: false, dead: false, waiting: true,
       switches: [
         { x: 400, key: 'Q', initOpen: true, open: true, trackY: TOP_Y },
         { x: 400, key: 'P', initOpen: true, open: true, trackY: BOT_Y }
@@ -350,7 +350,7 @@ const LEVELS = [
     make: () => ({
       type: 'single',
       ball: WIRE_START,
-      won: false, dead: false,
+      won: false, dead: false, waiting: true,
       // séquence : hold Q → release Q → hold P → release P
       switches: [
         { x: 190, key: 'Q', initOpen: true,  open: true  },  // ouvert  → hold Q
@@ -552,6 +552,7 @@ function loadReplayFile(json) {
   }
 
   // Override to replay mode AFTER selectLevel
+  state.waiting = false; // replay starts immediately
   replayMode = true;
   replayData = json;
   replayInputIdx = 0;
@@ -768,6 +769,11 @@ function sfxWin() {
 // ── UPDATE ─────────────────────────────────────────────────
 function update(dt) {
   if (state.won || state.dead) return;
+  if (state.waiting) {
+    const anyKey = Object.values(keys).some(v => v);
+    if (!anyKey) return;
+    state.waiting = false;
+  }
 
   if (state.type === 'custom') { updateCustom(dt); return; }
 
@@ -974,6 +980,21 @@ function drawOverlay(text, color, glow) {
   ctx.restore();
 }
 
+function drawWaiting() {
+  const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 400);
+  ctx.save();
+  ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center';
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = '#00ffcc';
+  ctx.shadowBlur = 18; ctx.shadowColor = '#00ffcc';
+  ctx.fillText('▶  APPUIE SUR UNE TOUCHE', W / 2, H / 2 - 18);
+  ctx.globalAlpha = pulse * 0.6;
+  ctx.font = '11px Courier New'; ctx.fillStyle = '#446655'; ctx.shadowBlur = 0;
+  ctx.fillText('Q   ESPACE   P', W / 2, H / 2 + 8);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 // ── DRAW LEVEL 1 (single line, N switches) ─────────────────
 function drawLevel1() {
   const ball = state.ball;
@@ -1076,6 +1097,8 @@ function draw() {
     if (state.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
     if (state.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
   }
+
+  if (state.waiting && !replayMode) drawWaiting();
 
   if (replayMode) {
     ctx.save();
@@ -1199,6 +1222,7 @@ function makeCustomLevel(json) {
     arrived: 0,
     won: false,
     dead: false,
+    waiting: true,
     ballSpeedMult: json.ballSpeedMult ?? 1.0,
     _name: json.name || 'Custom'
   };
