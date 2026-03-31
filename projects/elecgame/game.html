@@ -1246,8 +1246,8 @@ function updateCustom(dt) {
         ball.speed = (2 * RES_HALF) / duration;
         // Jauge : démarre pleine, se vide en `duration` secondes sans input
         // ~3 pressions/s suffisent pour la maintenir (indépendant de la durée)
-        const drainPerSec = 1 / duration;
-        const boostPerPress = drainPerSec / 3;
+        const drainPerSec = 1.0; // jauge se vide en 1s sans input, quelle que soit la durée
+        const boostPerPress = drainPerSec / 3; // ~3 pressions/s pour maintenir
         ball.gauge = Math.min(1.0, ball.gauge + spaceThisFrame * boostPerPress);
         ball.gauge = Math.max(0, ball.gauge - drainPerSec * dt);
         if (spaceThisFrame > 0) sfxSpark();
