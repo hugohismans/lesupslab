@@ -186,6 +186,14 @@ body {
   <button class="tool-btn" onclick="openTest()" style="border-color:#00ffcc55;color:#00cc99" title="Tester">▶ Test</button>
   <button class="tool-btn" onclick="fitView()"  title="Recentrer [F]">⊡ Fit</button>
   <div class="sep"></div>
+  <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#446655;white-space:nowrap">
+    ⚡ Vitesse
+    <input type="range" id="ball-speed" min="0.25" max="4" step="0.25" value="1"
+      style="width:80px;accent-color:#00ffcc;cursor:pointer"
+      oninput="document.getElementById('ball-speed-val').textContent='×'+parseFloat(this.value).toFixed(2)">
+    <span id="ball-speed-val" style="color:#00ffcc;min-width:36px">×1.00</span>
+  </label>
+  <div class="sep"></div>
   <div id="validator" title="Validation du circuit">…</div>
 </div>
 
@@ -457,7 +465,26 @@ canvas.addEventListener('mousedown', e => {
     buildProps();
 
   } else if (tool === 'node') {
-    if (!hit) {
+    if (hit) {
+      // nothing — don't place on existing node
+    } else if (hitEdge) {
+      // Split edge: insert node at click position
+      saveUndo();
+      const id = nextNodeId++;
+      const n = { id, type: getNodeType(), x: sx2, y: sy2 };
+      nodes.push(n);
+      // First segment inherits all properties of the original edge
+      const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
+        wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
+        resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration };
+      // Second segment: plain wire
+      const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
+        wayY: null, switch: null, resistance: false };
+      edges = edges.filter(ed => ed.id !== hitEdge.id);
+      edges.push(e1, e2);
+      selectedNode = n; selectedEdge = null;
+      buildProps(); validate(); flash('Nœud inséré sur le fil');
+    } else {
       saveUndo();
       const id = nextNodeId++;
       const n = { id, type: getNodeType(), x: sx2, y: sy2 };
@@ -563,19 +590,33 @@ canvas.addEventListener('contextmenu', e => {
   deleteHit(hit, hitEdge);
 });
 
-// Double-click add node
+// Double-click add node (or split edge)
 canvas.addEventListener('dblclick', e => {
   if (tool !== 'select' && tool !== 'node') return;
   const rect = canvas.getBoundingClientRect();
   const w = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-  if (!nodeAt(w.x, w.y)) {
-    saveUndo();
-    const id = nextNodeId++;
-    const n = { id, type: getNodeType(), x: snap(w.x), y: snap(w.y) };
-    nodes.push(n);
-    selectedNode = n; selectedEdge = null;
-    buildProps(); validate(); flash('Nœud ajouté');
+  const hit = nodeAt(w.x, w.y);
+  if (hit) return;
+  const hitEdge = edgeNear(w.x, w.y);
+  const sx2 = snap(w.x), sy2 = snap(w.y);
+  saveUndo();
+  const id = nextNodeId++;
+  const n = { id, type: getNodeType(), x: sx2, y: sy2 };
+  nodes.push(n);
+  if (hitEdge) {
+    const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
+      wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
+      resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration };
+    const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
+      wayY: null, switch: null, resistance: false };
+    edges = edges.filter(ed => ed.id !== hitEdge.id);
+    edges.push(e1, e2);
+    flash('Nœud inséré sur le fil');
+  } else {
+    flash('Nœud ajouté');
   }
+  selectedNode = n; selectedEdge = null;
+  buildProps(); validate();
 });
 
 // Keyboard
@@ -991,6 +1032,7 @@ function reloadTest() {
 function toJSON() {
   return {
     name: document.getElementById('level-name').value || 'Mon niveau',
+    ballSpeedMult: parseFloat(document.getElementById('ball-speed').value) || 1.0,
     nodes: nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y })),
     edges: edges.map(e => ({
       id: e.id, from: e.from, to: e.to,
@@ -1037,6 +1079,9 @@ function loadFromJSON(data) {
   nextNodeId = nodes.reduce((m,n) => Math.max(m,n.id+1), 0);
   nextEdgeId = edges.reduce((m,e) => Math.max(m,e.id+1), 0);
   document.getElementById('level-name').value = data.name || 'Mon niveau';
+  const spd = data.ballSpeedMult ?? 1.0;
+  document.getElementById('ball-speed').value = spd;
+  document.getElementById('ball-speed-val').textContent = '×' + spd.toFixed(2);
   selectedNode = null; selectedEdge = null; wireFrom = null;
   buildProps(); validate();
   fitView();
@@ -1052,6 +1097,8 @@ function clearLevel() {
   edges = []; nextNodeId = 2; nextEdgeId = 0;
   selectedNode = null; selectedEdge = null; wireFrom = null;
   document.getElementById('level-name').value = 'Mon niveau';
+  document.getElementById('ball-speed').value = 1.0;
+  document.getElementById('ball-speed-val').textContent = '×1.00';
   buildProps(); validate(); fitView();
 }
 
