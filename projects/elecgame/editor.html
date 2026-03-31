@@ -102,6 +102,32 @@ body {
 }
 #props-panel input[type=checkbox] { width: auto; accent-color: #00ffcc; cursor: pointer; }
 #props-title { color: #00ffcc; font-weight: bold; white-space: nowrap; }
+
+/* Edge props visual buttons */
+.prop-group { display: flex; flex-direction: column; gap: 4px; }
+.prop-group-label { font-size: 10px; color: #2a5a40; letter-spacing: 2px; text-transform: uppercase; }
+.prop-btns { display: flex; gap: 5px; }
+.prop-btn {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 5px 12px;
+  border: 1px solid #1a5a3a;
+  background: #0a1a14;
+  color: #446655;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border-radius: 3px;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.prop-btn:hover { border-color: #336655; color: #00bb99; }
+.prop-btn.active-none  { border-color: #446655; color: #aaaaaa; background: #1a1a2a; }
+.prop-btn.active-q     { border-color: #ffaa00; color: #ffaa00; background: #2a1a00; box-shadow: 0 0 8px #ffaa0044; }
+.prop-btn.active-p     { border-color: #cc44ff; color: #cc44ff; background: #1a0030; box-shadow: 0 0 8px #cc44ff44; }
+.prop-btn.active-open  { border-color: #00cc88; color: #00cc88; background: #001a12; }
+.prop-btn.active-closed{ border-color: #ff5544; color: #ff5544; background: #2a0800; }
+.prop-btn.active-res   { border-color: #ff8800; color: #ff8800; background: #2a1400; box-shadow: 0 0 8px #ff880044; }
+.prop-sep-v { width: 1px; background: #1a5a3a; align-self: stretch; margin: 0 6px; }
 #status-bar {
   position: absolute;
   top: 8px; left: 50%;
@@ -701,50 +727,92 @@ function buildProps() {
   } else if (selectedEdge) {
     const ed = selectedEdge;
     const swKey  = ed.switch?.key      ?? 'none';
-    const swInit = ed.switch?.initOpen ?? true;
-    const wayYVal = ed.wayY != null ? ed.wayY : '';
-    const resChecked = !!ed.resistance;
+    const swOpen = ed.switch?.initOpen ?? true;
+    const hasRes = !!ed.resistance;
     const resDur = ed.resDuration ?? 3;
+    const wayYVal = ed.wayY != null ? ed.wayY : '';
+
     panel.innerHTML = `
       <span id="props-title">Fil #${ed.id}</span>
-      <label>wayY: <input id="p-wayY" type="number" value="${wayYVal}" step="20" placeholder="aucun" style="width:70px"></label>
-      <label>Switch:
-        <select id="p-swkey" style="width:100px">
-          <option value="none" ${swKey==='none'?'selected':''}>— aucun —</option>
-          <option value="Q"    ${swKey==='Q'   ?'selected':''}>Q (orange)</option>
-          <option value="P"    ${swKey==='P'   ?'selected':''}>P (violet)</option>
-        </select>
-      </label>
-      <label id="p-initopen-lbl" style="${swKey==='none'?'display:none':''}">
-        initOpen: <input type="checkbox" id="p-initopen" ${swInit?'checked':''}>
-      </label>
-      <span style="color:#446655">|</span>
-      <label>Résistance: <input type="checkbox" id="p-res" ${resChecked?'checked':''}></label>
-      <label id="p-res-dur-lbl" style="${resChecked?'':'display:none'}">
-        Durée: <input id="p-res-dur" type="number" value="${resDur}" min="1" max="10" step="0.5" style="width:52px">s
-      </label>
+
+      <div class="prop-sep-v"></div>
+
+      <div class="prop-group">
+        <div class="prop-group-label">Switch</div>
+        <div class="prop-btns">
+          <button class="prop-btn ${swKey==='none'?'active-none':''}" id="psw-none">— Aucun</button>
+          <button class="prop-btn ${swKey==='Q'?'active-q':''}"    id="psw-q">Q</button>
+          <button class="prop-btn ${swKey==='P'?'active-p':''}"    id="psw-p">P</button>
+        </div>
+      </div>
+
+      <div class="prop-group" id="p-state-group" style="${swKey==='none'?'display:none':''}">
+        <div class="prop-group-label">État initial</div>
+        <div class="prop-btns">
+          <button class="prop-btn ${swOpen?'active-open':''}"   id="psw-open">🔓 Ouvert</button>
+          <button class="prop-btn ${!swOpen?'active-closed':''}" id="psw-closed">🔒 Fermé</button>
+        </div>
+      </div>
+
+      <div class="prop-sep-v"></div>
+
+      <div class="prop-group">
+        <div class="prop-group-label">Résistance</div>
+        <div class="prop-btns">
+          <button class="prop-btn ${hasRes?'active-res':''}" id="p-res-btn">${hasRes?'⬛ Active':'◻ Inactive'}</button>
+          <span id="p-res-dur-wrap" style="${hasRes?'':'display:none'};display:${hasRes?'flex':'none'};align-items:center;gap:4px;color:#ff8800;font-size:12px">
+            <input id="p-res-dur" type="number" value="${resDur}" min="1" max="30" step="0.5" style="width:48px;background:#2a1400;border:1px solid #ff8800;color:#ff8800;font-family:'Courier New';font-size:12px;padding:4px 6px"> s
+          </span>
+        </div>
+      </div>
+
+      <div class="prop-sep-v"></div>
+
+      <div class="prop-group">
+        <div class="prop-group-label">Coude wayY</div>
+        <div class="prop-btns">
+          <input id="p-wayY" type="number" value="${wayYVal}" step="20" placeholder="aucun" style="width:68px;background:#0a1a14;border:1px solid #1a5a3a;color:#00ffcc;font-family:'Courier New';font-size:12px;padding:4px 6px">
+        </div>
+      </div>
     `;
-    document.getElementById('p-wayY').oninput = ev => {
-      ed.wayY = ev.target.value.trim() === '' ? null : snap(+ev.target.value);
-    };
-    document.getElementById('p-swkey').onchange = ev => {
-      const k = ev.target.value;
+
+    // Switch key buttons
+    function setSwitchKey(k) {
+      saveUndo();
       if (k === 'none') {
         ed.switch = null;
-        document.getElementById('p-initopen-lbl').style.display = 'none';
       } else {
-        ed.switch = { key: k, initOpen: document.getElementById('p-initopen')?.checked ?? true };
-        document.getElementById('p-initopen-lbl').style.display = '';
+        ed.switch = { key: k, initOpen: ed.switch?.initOpen ?? true };
       }
+      buildProps(); validate();
+    }
+    document.getElementById('psw-none').onclick = () => setSwitchKey('none');
+    document.getElementById('psw-q').onclick    = () => setSwitchKey('Q');
+    document.getElementById('psw-p').onclick    = () => setSwitchKey('P');
+
+    // Open/closed buttons
+    function setSwitchState(isOpen) {
+      saveUndo();
+      if (ed.switch) ed.switch.initOpen = isOpen;
+      buildProps(); validate();
+    }
+    document.getElementById('psw-open').onclick   = () => setSwitchState(true);
+    document.getElementById('psw-closed').onclick = () => setSwitchState(false);
+
+    // Resistance toggle
+    document.getElementById('p-res-btn').onclick = () => {
+      saveUndo();
+      ed.resistance = !ed.resistance;
+      buildProps(); validate();
     };
-    const initBox = document.getElementById('p-initopen');
-    if (initBox) initBox.onchange = ev => { if (ed.switch) ed.switch.initOpen = ev.target.checked; };
-    document.getElementById('p-res').onchange = ev => {
-      ed.resistance = ev.target.checked;
-      document.getElementById('p-res-dur-lbl').style.display = ev.target.checked ? '' : 'none';
+    const resDurInput = document.getElementById('p-res-dur');
+    if (resDurInput) resDurInput.oninput = ev => {
+      ed.resDuration = Math.max(1, +ev.target.value);
     };
-    document.getElementById('p-res-dur').oninput = ev => {
-      ed.resDuration = Math.max(1, Math.min(10, +ev.target.value));
+
+    // wayY
+    document.getElementById('p-wayY').oninput = ev => {
+      ed.wayY = ev.target.value.trim() === '' ? null : snap(+ev.target.value);
     };
 
   } else {
