@@ -25,21 +25,11 @@
     min-height: 0;
     width: 100%;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  /* Wrapper qui absorbe l'espace restant, canvas s'y adapte */
-  #canvas-wrap {
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  canvas { display: block; max-width: 100%; max-height: 100%; }
+  canvas { display: block; max-width: 100%; height: auto; }
 
   /* ── HAMBURGER BUTTON ────────────────────────────────────── */
   #menu-btn {
@@ -196,14 +186,21 @@
   /* ── TOUCH CONTROLS ──────────────────────────────────────── */
   #touch-controls {
     display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     gap: 12px;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    padding: 12px 0;
+    padding: 10px 12px;
+    background: rgba(6, 6, 14, 0.88);
+    border-top: 1px solid #1a4035;
+    z-index: 100;
   }
   @media (hover: none) and (pointer: coarse) {
     #touch-controls { display: flex; }
+    body { padding-bottom: 100px; }
   }
   .touch-btn {
     height: 72px;
@@ -266,9 +263,7 @@
 
 <!-- Main game area -->
 <div id="game-area">
-  <div id="canvas-wrap">
-    <canvas id="c" width="800" height="300"></canvas>
-  </div>
+  <canvas id="c" width="800" height="300"></canvas>
   <div id="touch-controls">
     <button class="touch-btn q-btn"       id="btn-q">Q</button>
     <button class="touch-btn space-btn"   id="btn-space">ESPACE</button>
@@ -378,18 +373,17 @@ function selectLevel(idx) {
   currentLevel = idx;
   try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
   // Resize canvas and compute fit transform for custom levels
-  const canvasWrap = document.getElementById('canvas-wrap');
+  const touchH = window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 100 : 0;
   if (state.type === 'custom') {
-    const cw = Math.max(300, canvasWrap.clientWidth  || window.innerWidth);
-    const ch = Math.max(200, canvasWrap.clientHeight || window.innerHeight * 0.7);
+    const cw = window.innerWidth;
+    const ch = Math.max(200, window.innerHeight - touchH);
     setCanvasSize(cw, ch);
-    // Let CSS size the canvas element — only internal resolution is set
-    canvas.style.width  = '';
-    canvas.style.height = '';
+    canvas.style.width  = cw + 'px';
+    canvas.style.height = ch + 'px';
     fitCustomLevel(state);
   } else {
     setCanvasSize(800, 300);
-    canvas.style.width  = '';  // CSS max-width:100% gère le scaling visuel
+    canvas.style.width  = '';
     canvas.style.height = '';
     camTX = 0; camTY = 0; camScale = 1;
   }
