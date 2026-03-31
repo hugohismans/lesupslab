@@ -1,0 +1,244 @@
+{
+  "name": "Mon niveau",
+  "nodes": [
+    {
+      "id": 0,
+      "type": "source",
+      "x": 60,
+      "y": 140
+    },
+    {
+      "id": 1,
+      "type": "bulb",
+      "x": 740,
+      "y": 150
+    },
+    {
+      "id": 3,
+      "type": "node",
+      "x": 200,
+      "y": 140
+    },
+    {
+      "id": 6,
+      "type": "node",
+      "x": 300,
+      "y": 140
+    },
+    {
+      "id": 9,
+      "type": "node",
+      "x": 400,
+      "y": 140
+    },
+    {
+      "id": 12,
+      "type": "node",
+      "x": 500,
+      "y": 140
+    },
+    {
+      "id": 15,
+      "type": "node",
+      "x": 600,
+      "y": 140
+    },
+    {
+      "id": 18,
+      "type": "node",
+      "x": 120,
+      "y": 60
+    },
+    {
+      "id": 19,
+      "type": "node",
+      "x": 120,
+      "y": 220
+    },
+    {
+      "id": 20,
+      "type": "node",
+      "x": 60,
+      "y": 220
+    },
+    {
+      "id": 21,
+      "type": "node",
+      "x": 60,
+      "y": 60
+    },
+    {
+      "id": 22,
+      "type": "bulb",
+      "x": 740,
+      "y": 220
+    },
+    {
+      "id": 23,
+      "type": "bulb",
+      "x": 740,
+      "y": 60
+    },
+    {
+      "id": 25,
+      "type": "node",
+      "x": 220,
+      "y": 60
+    },
+    {
+      "id": 26,
+      "type": "node",
+      "x": 320,
+      "y": 60
+    },
+    {
+      "id": 27,
+      "type": "node",
+      "x": 420,
+      "y": 60
+    },
+    {
+      "id": 28,
+      "type": "node",
+      "x": 520,
+      "y": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": 1,
+      "from": 0,
+      "to": 3,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false
+    },
+    {
+      "id": 3,
+      "from": 0,
+      "to": 21,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 4,
+      "from": 21,
+      "to": 18,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false
+    },
+    {
+      "id": 5,
+      "from": 0,
+      "to": 20,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 6,
+      "from": 20,
+      "to": 19,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 7,
+      "from": 3,
+      "to": 6,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 8,
+      "from": 6,
+      "to": 9,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 9,
+      "from": 9,
+      "to": 12,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 10,
+      "from": 12,
+      "to": 15,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 11,
+      "from": 15,
+      "to": 1,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 12,
+      "from": 19,
+      "to": 22,
+      "wayY": null,
+      "switch": null,
+      "resistance": true,
+      "resDuration": 10
+    },
+    {
+      "id": 13,
+      "from": 18,
+      "to": 25,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 14,
+      "from": 25,
+      "to": 26,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 15,
+      "from": 26,
+      "to": 27,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 16,
+      "from": 27,
+      "to": 28,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    },
+    {
+      "id": 17,
+      "from": 28,
+      "to": 23,
+      "wayY": null,
+      "switch": null,
+      "resistance": false
+    }
+  ]
+}
