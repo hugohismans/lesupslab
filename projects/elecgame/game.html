@@ -290,7 +290,7 @@ const WIRE_START = 60;
 const WIRE_END   = 740;
 const WIRE_Y     = H / 2;     // 150
 const BALL_R     = 9;
-const BALL_SPEED = 2.2;
+const BALL_SPEED = 132; // px/s (= 2.2 px/frame × 60 fps)
 const SW_GAP     = 28;        // half-gap around switch center
 
 // Level 2 split geometry
@@ -766,10 +766,10 @@ function sfxWin() {
 }
 
 // ── UPDATE ─────────────────────────────────────────────────
-function update() {
+function update(dt) {
   if (state.won || state.dead) return;
 
-  if (state.type === 'custom') { updateCustom(); return; }
+  if (state.type === 'custom') { updateCustom(dt); return; }
 
   // Switch state + sound on change
   for (const sw of state.switches) {
@@ -781,24 +781,24 @@ function update() {
     }
   }
 
+  const move = BALL_SPEED * dt;
+
   if (state.type === 'single') {
-    state.ball += BALL_SPEED;
+    state.ball += move;
     for (const sw of state.switches) {
       if (sw.open && state.ball >= sw.x - SW_GAP && state.ball <= sw.x + SW_GAP) {
         state.dead = true; sfxDead(); return;
       }
-      // Spark as ball exits a closed switch
-      if (!sw.open && Math.abs(state.ball - (sw.x + SW_GAP)) < BALL_SPEED + 1) sfxSpark();
+      if (!sw.open && Math.abs(state.ball - (sw.x + SW_GAP)) < move + 2) sfxSpark();
     }
     if (state.ball >= WIRE_END - BALL_R) {
       state.ball = WIRE_END - BALL_R; state.won = true; sfxWin();
     }
 
   } else {
-    state.ballX += BALL_SPEED;
+    state.ballX += move;
     const prevPhase = state.phase;
 
-    // Phase transitions
     if (state.phase === 'main'      && state.ballX >= SPLIT_X)          state.phase = 'splitting';
     if (state.phase === 'splitting' && state.ballX >= SPLIT_X + BEVEL)  state.phase = 'split';
     if (state.phase === 'split'     && state.ballX >= JOIN_X - BEVEL)   state.phase = 'joining';
@@ -809,13 +809,12 @@ function update() {
       if (state.phase === 'join')      sfxJoin();
     }
 
-    // Only check switches on the horizontal tracks
     if (state.phase === 'split') {
       for (const sw of state.switches) {
         if (sw.open && state.ballX >= sw.x - SW_GAP && state.ballX <= sw.x + SW_GAP) {
           state.dead = true; sfxDead(); return;
         }
-        if (!sw.open && Math.abs(state.ballX - (sw.x + SW_GAP)) < BALL_SPEED + 1) sfxSpark();
+        if (!sw.open && Math.abs(state.ballX - (sw.x + SW_GAP)) < move + 2) sfxSpark();
       }
     }
 
@@ -1207,7 +1206,7 @@ function makeCustomLevel(json) {
 }
 
 // ── CUSTOM UPDATE ──────────────────────────────────────────
-function updateCustom() {
+function updateCustom(dt) {
   const st = state;
   if (st.won || st.dead) return;
   const { graph, switchMap, resistanceSet, resistanceDrain, balls, edgesLit, joinWait } = st;
@@ -1247,8 +1246,8 @@ function updateCustom() {
         // resSpeed = speed needed to cross the zone in exactly resDuration seconds
         const resSpeed = (resistanceDrain && resistanceDrain.get(edge.id)) ?? RES_DRAIN;
         // Clamp to resSpeed on entry, space presses push back up, drain pulls down
-        const drain = resSpeed / 80; // dies in ~1.3s without any input
-        const boost = resSpeed / 3;  // ~3 presses/s keeps the ball stable
+        const drain = resSpeed * 0.75 * dt; // ~1.3s sans input (indépendant du framerate)
+        const boost = resSpeed / 3;          // par pression (pas par frame)
         if (ball.t === tEntry || ball.speed > resSpeed) ball.speed = resSpeed;
         ball.speed = Math.min(resSpeed, ball.speed + spaceThisFrame * boost);
         ball.speed = Math.max(0, ball.speed - drain);
@@ -1256,13 +1255,13 @@ function updateCustom() {
         else if (Math.random() < 0.25) sfxResistance();
         if (ball.speed <= 0) { st.dead = true; sfxDead(); return; }
       } else {
-        ball.speed = Math.min(BALL_SPEED, ball.speed + BALL_SPEED / 20);
+        ball.speed = Math.min(BALL_SPEED, ball.speed + BALL_SPEED * 3 * dt);
       }
     } else {
       ball.speed = BALL_SPEED;
     }
 
-    const step = len > 0 ? ball.speed / len : 0;
+    const step = len > 0 ? ball.speed * dt / len : 0;
     const prevT = ball.t;
     ball.t += step;
 
@@ -1674,10 +1673,13 @@ function edgePolylineFrom(edge, nodes, t) {
 }
 
 // ── LOOP ───────────────────────────────────────────────────
-function loop() {
+let lastTimestamp = 0;
+function loop(timestamp) {
+  const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.05) : 1 / 60;
+  lastTimestamp = timestamp;
   if (replayMode) updateReplay();
   const wasWon = state.won;
-  update();
+  update(dt);
   if (!wasWon && state.won && !replayMode) stopRecordingWin();
   draw();
   requestAnimationFrame(loop);
