@@ -1431,10 +1431,14 @@ function drawResistance(edge, nodes, ballInside, ballSpeed) {
   ctx.globalAlpha = 1;
   ctx.restore();
 
-  // Label (aligné avec le fil — même rotation que le corps)
+  // Label (aligné avec le fil, toujours à l'endroit)
+  ctx.save();
+  // Si le fil pointe vers la gauche, retourner le texte de 180°
+  if (angle > Math.PI / 2 || angle < -Math.PI / 2) ctx.rotate(Math.PI);
   ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
   ctx.fillStyle = col; ctx.shadowBlur = ballInside ? 6 : 0; ctx.shadowColor = col;
   ctx.fillText(ballInside ? '[ ESPACE ]' : 'résistance', 0, RH + 14);
+  ctx.restore();
 
   // Energy gauge bar (dérotée pour rester horizontale sous la résistance)
   ctx.rotate(-angle);
