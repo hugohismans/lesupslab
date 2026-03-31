@@ -15,16 +15,18 @@
     overflow: hidden;
     height: 100svh;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
 
   /* ── GAME AREA ───────────────────────────────────────────── */
   #game-area {
+    flex: 1;
+    min-height: 0;
     width: 100%;
-    height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
   }
 
   /* Wrapper qui absorbe l'espace restant, canvas s'y adapte */
