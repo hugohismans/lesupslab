@@ -52,6 +52,22 @@
   }
   #menu-btn:hover { border-color: #00ffcc; box-shadow: 0 0 12px #00ffcc44; }
 
+  /* ── LEVEL TITLE ─────────────────────────────────────────── */
+  #level-title {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    color: #336655;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
   /* ── SIDEBAR OVERLAY ─────────────────────────────────────── */
   #sidebar-overlay {
     position: fixed;
@@ -273,6 +289,9 @@
 <!-- Hamburger -->
 <button id="menu-btn">☰</button>
 
+<!-- Level title -->
+<div id="level-title">Tutoriel 1</div>
+
 <!-- Sidebar backdrop -->
 <div id="sidebar-overlay"></div>
 
@@ -473,6 +492,8 @@ function selectLevel(idx) {
   // Update sidebar title
   const sidebarTitle = document.getElementById('sidebar-title');
   if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || 'Niveaux';
+  const levelTitleEl = document.getElementById('level-title');
+  if (levelTitleEl) levelTitleEl.textContent = LEVELS[idx].name || '';
   document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
