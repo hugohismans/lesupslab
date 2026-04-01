@@ -421,16 +421,25 @@ function goNextCampaign(campIdx) {
   if (entry.idx !== undefined) {
     selectLevel(entry.idx);
   } else {
-    const lvIdx = LEVELS.findIndex(lv => lv._file === entry.file);
-    if (lvIdx < 0) { openMenu(); return; }
+    let lvIdx = LEVELS.findIndex(lv => lv._file === entry.file);
+    if (lvIdx < 0) {
+      // Pas dans index.json — créer une entrée dynamique
+      lvIdx = LEVELS.length;
+      LEVELS.push({
+        name: entry.file.split('/').pop().replace('.json', ''),
+        hint: '— [R] pour recommencer',
+        _file: entry.file, _json: null,
+        make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
+      });
+    }
     const lv = LEVELS[lvIdx];
     if (lv._json) {
       selectLevel(lvIdx);
     } else {
       fetch(lv._file)
         .then(r => r.json())
-        .then(json => { lv._json = json; lv.hint = json.name + ' — [R] pour recommencer'; selectLevel(lvIdx); })
-        .catch(() => openMenu());
+        .then(json => { lv._json = json; lv.hint = (json.name || lv.name) + ' — [R] pour recommencer'; selectLevel(lvIdx); })
+        .catch(() => alert('Impossible de charger ' + entry.file));
     }
   }
 }
