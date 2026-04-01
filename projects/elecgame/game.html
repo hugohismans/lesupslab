@@ -613,8 +613,9 @@
     <div id="level-select"></div>
     <div id="hint"></div>
     <div id="replay-save-wrap" style="display:none;"></div>
-    <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a">
-      <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44;margin-bottom:4px">🏆 Hall of Fame</button>
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
+      <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
+      <a href="index.html" style="display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;color:#224433;text-decoration:none;padding:8px 14px;border:1px solid #1a4535;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='#00ffcc';this.style.borderColor='#336655'" onmouseout="this.style.color='#224433';this.style.borderColor='#1a4535'">⌂ Accueil</a>
     </div>
   </div>
 </div>
@@ -753,7 +754,7 @@ const TRANSLATIONS = {
     'resistance.label': 'résistance',
     'micro.title': '— MICROPROCESSEUR —',
     'micro.prompt': '▼  tape le code  ▼',
-    'space.active': 'ESPACE  █ SPAM !',
+    'space.active': 'ESPACE  █',
     'space.inactive': 'ESPACE  ░',
   },
   en: {
@@ -803,7 +804,7 @@ const TRANSLATIONS = {
     'resistance.label': 'resistance',
     'micro.title': '— MICROPROCESSOR —',
     'micro.prompt': '▼  type the code  ▼',
-    'space.active': 'SPACE  █ SPAM!',
+    'space.active': 'SPACE  █',
     'space.inactive': 'SPACE  ░',
   }
 };
@@ -1548,8 +1549,16 @@ function enterMicroDigit(digit) {
     state.dead = true; sfxDead();
   } else if (mc.entered.length === 3) {
     if (mc.ballRef) mc.ballRef.microSolved = true;
-    state.microChallenge = null;
     sfxSwitchClose();
+    const queue = state.microQueue;
+    if (queue && queue.length > 0) {
+      const next = queue.shift();
+      const dur = (state.microDurationMap && state.microDurationMap.get(next.edgeId)) ?? 5;
+      const code = [Math.floor(Math.random()*10), Math.floor(Math.random()*10), Math.floor(Math.random()*10)];
+      state.microChallenge = { edgeId: next.edgeId, code, entered: [], timeLeft: dur, maxTime: dur, ballRef: next.ball };
+    } else {
+      state.microChallenge = null;
+    }
   }
 }
 
@@ -2147,6 +2156,7 @@ const RES_BOOST     = 0.35;  // speed gained per spacebar press
 const RES_SPEED_MAX = BALL_SPEED;
 const RES_SPEED_MIN = 0;
 const MICRO_HALF    = 32;   // half-length of the microprocessor zone on the wire
+const IND_HALF      = 40;   // half-length of the inductance zone on the wire
 
 function makeCustomLevel(json) {
   const nodes = json.nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y }));
@@ -2156,6 +2166,8 @@ function makeCustomLevel(json) {
     switch: e.switch ? { key: e.switch.key, initOpen: e.switch.initOpen } : null,
     resistance: e.resistance === true,
     resDuration: e.resDuration ?? 3,
+    inductance: e.inductance === true,
+    indDuration: e.indDuration ?? 2,
     micro: e.micro === true,
     microDuration: e.microDuration ?? 5
   }));
@@ -2183,6 +2195,11 @@ function makeCustomLevel(json) {
     edges.filter(e => e.micro).map(e => [e.id, e.microDuration ?? 5])
   );
 
+  const inductanceSet = new Set(edges.filter(e => e.inductance).map(e => e.id));
+  const inductanceDurationMap = new Map(
+    edges.filter(e => e.inductance).map(e => [e.id, e.indDuration ?? 2])
+  );
+
   // Find source node(s) — start balls from outgoing edges of each source
   const balls = [];
   for (const node of nodes) {
@@ -2203,6 +2220,9 @@ function makeCustomLevel(json) {
     microSet,
     microDurationMap,
     microChallenge: null,
+    microQueue: [],
+    inductanceSet,
+    inductanceDurationMap,
     balls,
     edgesLit: new Set(),
     joinWait: new Map(),
@@ -2219,7 +2239,7 @@ function makeCustomLevel(json) {
 function updateCustom(dt) {
   const st = state;
   if (st.won || st.dead) return;
-  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, balls, edgesLit, joinWait } = st;
+  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, inductanceSet, inductanceDurationMap, balls, edgesLit, joinWait } = st;
   const levelSpeed = BALL_SPEED * (st.ballSpeedMult ?? 1.0);
 
   const { nodes, edges } = graph;
@@ -2273,6 +2293,23 @@ function updateCustom(dt) {
       ball.speed = levelSpeed;
     }
 
+    // Inductance : pause chronométrée sans interaction
+    if (inductanceSet && inductanceSet.has(edge.id) && !ball.indSolved) {
+      if (ball.t >= 0.5) {
+        ball.t = 0.5;
+        ball.speed = 0;
+        if (ball.indWait === undefined) {
+          ball.indWait = inductanceDurationMap.get(edge.id) ?? 2;
+        }
+        ball.indWait -= dt;
+        if (ball.indWait <= 0) {
+          ball.indSolved = true;
+          ball.indWait = undefined;
+          ball.speed = levelSpeed;
+        }
+      }
+    }
+
     // Microprocesseur : fige la balle au centre et déclenche le défi
     if (microSet && microSet.has(edge.id)) {
       const mc = st.microChallenge;
@@ -2282,6 +2319,13 @@ function updateCustom(dt) {
         const code = [Math.floor(Math.random()*10), Math.floor(Math.random()*10), Math.floor(Math.random()*10)];
         st.microChallenge = { edgeId: edge.id, code, entered: [], timeLeft: dur, maxTime: dur, ballRef: ball };
         sfxSwitchOpen();
+      } else if (mc && mc.edgeId !== edge.id && !ball.microSolved && ball.t >= 0.5) {
+        // Another challenge is active — queue this ball
+        ball.t = 0.5;
+        ball.speed = 0;
+        if (!st.microQueue.some(q => q.ball === ball)) {
+          st.microQueue.push({ edgeId: edge.id, ball });
+        }
       }
       if (st.microChallenge && st.microChallenge.edgeId === edge.id) {
         ball.speed = 0;
@@ -2464,6 +2508,53 @@ function drawResistance(edge, nodes, ballInside, ballSpeed) {
   ctx.restore();
 }
 
+// ── DRAW INDUCTANCE SYMBOL ─────────────────────────────────
+function drawInductance(edge, nodes, ball) {
+  const sp  = posOnEdge(0.5,  edge, nodes);
+  const sp1 = posOnEdge(0.48, edge, nodes);
+  const sp2 = posOnEdge(0.52, edge, nodes);
+  const angle = Math.atan2(sp2.y - sp1.y, sp2.x - sp1.x);
+
+  const waiting = ball && !ball.indSolved && ball.t >= 0.4 && ball.t <= 0.6;
+  const col  = waiting ? '#cc66ff' : '#6622aa';
+  const glow = waiting ? '#aa44ff' : '#441166';
+
+  ctx.save();
+  ctx.translate(sp.x, sp.y);
+  ctx.rotate(angle);
+
+  // Stubs
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+  ctx.shadowBlur = waiting ? 10 : 4; ctx.shadowColor = glow;
+  ctx.beginPath(); ctx.moveTo(-IND_HALF, 0); ctx.lineTo(-IND_HALF + 4, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(IND_HALF - 4, 0); ctx.lineTo(IND_HALF, 0); ctx.stroke();
+
+  // Coil — 4 arcs
+  ctx.shadowBlur = waiting ? 12 : 5;
+  const nBumps = 4, bW = (IND_HALF - 4) * 2 / nBumps;
+  for (let i = 0; i < nBumps; i++) {
+    const bx = -(IND_HALF - 4) + bW * i + bW / 2;
+    ctx.beginPath();
+    ctx.arc(bx, 0, bW / 2, Math.PI, 0);
+    ctx.stroke();
+  }
+
+  // Label (always readable)
+  ctx.rotate(-angle);
+  if (angle > Math.PI / 2 || angle < -Math.PI / 2) ctx.rotate(Math.PI);
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
+  ctx.fillStyle = col;
+
+  if (waiting && ball.indWait !== undefined) {
+    ctx.fillText(ball.indWait.toFixed(1) + 's', 0, 26);
+  } else {
+    ctx.fillText('L', 0, 26);
+  }
+
+  ctx.restore();
+}
+
 // ── DRAW MICROPROCESSOR SYMBOL ─────────────────────────────
 function drawMicroprocessor(edge, nodes, active) {
   const sp  = posOnEdge(0.5,  edge, nodes);
@@ -2615,7 +2706,7 @@ function drawMicroOverlay(mc) {
 // ── CUSTOM DRAW ────────────────────────────────────────────
 function drawCustom() {
   const st = state;
-  const { graph, switchMap, resistanceSet, microSet, microChallenge, balls, edgesLit } = st;
+  const { graph, switchMap, resistanceSet, microSet, inductanceSet, microChallenge, balls, edgesLit } = st;
   const { nodes, edges } = graph;
 
   // Apply fit transform so entire level is visible
@@ -2642,8 +2733,9 @@ function drawCustom() {
     const litColor = '#00ffcc';
     const sw      = switchMap.get(edge.id);
     const hasRes  = resistanceSet && resistanceSet.has(edge.id);
+    const hasInd  = inductanceSet && inductanceSet.has(edge.id);
     const hasMicro = microSet && microSet.has(edge.id);
-    const gapHalf = sw ? SW_GAP : (hasRes ? RES_HALF : (hasMicro ? MICRO_HALF : 0));
+    const gapHalf = sw ? SW_GAP : (hasRes ? RES_HALF : (hasInd ? IND_HALF : (hasMicro ? MICRO_HALF : 0)));
 
     // Helper: draw one segment, split around obstacle gap if needed
     const drawSegment = (tFrom, tTo, col, w, gl) => {
@@ -2687,6 +2779,11 @@ function drawCustom() {
       const tExit  = len2 > 0 ? Math.min(1, (len2 / 2 + RES_HALF) / len2) : 0.5;
       const inside = ball && ball.t >= tEntry && ball.t <= tExit;
       drawResistance(edge, nodes, inside, inside ? ball.gauge : 1.0);
+    }
+
+    // Draw inductance
+    if (hasInd) {
+      drawInductance(edge, nodes, balls.find(b => b.edgeId === edge.id));
     }
 
     // Draw microprocessor
@@ -3025,8 +3122,6 @@ lsDiv.addEventListener('click', e => {
 });
 
 // ── TOUCH CONTROLS ─────────────────────────────────────────
-let spaceHoldInterval = null;
-
 function setupTouchBtn(id, keyName, opts = {}) {
   const btn = document.getElementById(id);
   if (!btn) return;
@@ -3042,12 +3137,6 @@ function setupTouchBtn(id, keyName, opts = {}) {
     if (opts.isSpace) {
       spacePressCount++;
       if (!replayMode) recordKey('keydown', ' ');
-      if (!spaceHoldInterval) {
-        spaceHoldInterval = setInterval(() => {
-          spacePressCount++;
-          if (!replayMode) recordKey('keydown', ' ');
-        }, 180);
-      }
     } else {
       if (!replayMode) { keys[keyName] = true; recordKey('keydown', keyName); }
     }
@@ -3059,8 +3148,6 @@ function setupTouchBtn(id, keyName, opts = {}) {
     btn.classList.remove('pressed');
     if (opts.isRestart) return;
     if (opts.isSpace) {
-      clearInterval(spaceHoldInterval);
-      spaceHoldInterval = null;
       if (!replayMode) recordKey('keyup', ' ');
     } else {
       if (!replayMode) { keys[keyName] = false; recordKey('keyup', keyName); }

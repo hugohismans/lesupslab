@@ -127,6 +127,7 @@ body {
 .prop-btn.active-open  { border-color: #00cc88; color: #00cc88; background: #001a12; }
 .prop-btn.active-closed{ border-color: #ff5544; color: #ff5544; background: #2a0800; }
 .prop-btn.active-res   { border-color: #ff8800; color: #ff8800; background: #2a1400; box-shadow: 0 0 8px #ff880044; }
+.prop-btn.active-ind   { border-color: #aa44ff; color: #cc66ff; background: #1a0a2a; box-shadow: 0 0 8px #aa44ff44; }
 .prop-sep-v { width: 1px; background: #1a5a3a; align-self: stretch; margin: 0 6px; }
 #status-bar {
   position: absolute;
@@ -237,6 +238,7 @@ body {
   <div class="sep"></div>
   <div id="validator">…</div>
   <button id="lang-toggle">EN</button>
+  <a href="index.html" class="tool-btn" style="text-decoration:none;padding:4px 11px" title="Retour à l'accueil">⌂</a>
 </div>
 
 <div id="canvas-wrap">
@@ -310,8 +312,8 @@ const TRANSLATIONS = {
     'btn.fit': '⊡ Fit',
     'speed.label': '⚡ Vitesse',
     'validator.title': 'Validation du circuit',
-    'props.hint': 'Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Suppr] supprimer',
-    'props.hint.short': 'Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan',
+    'props.hint': 'Sélectionne un nœud ou un fil — Clic droit = suppr/désélect — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Ctrl+Shift+Z] redo — [Suppr] supprimer',
+    'props.hint.short': 'Sélectionne un nœud ou un fil — Clic droit = suppr/désélect — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan',
     'props.node': 'Nœud #',
     'props.type': 'Type :',
     'props.x': 'X :',
@@ -328,8 +330,15 @@ const TRANSLATIONS = {
     'props.micro': 'Microprocesseur',
     'props.micro.active': '█ Actif',
     'props.micro.inactive': '◻ Inactif',
+    'props.inductance': 'Inductance',
+    'props.ind.active': '⬛ Active',
+    'props.ind.inactive': '◻ Inactive',
+    'props.reverse': 'Inverser ⇄',
     'props.wayY': 'Coude wayY',
     'props.wayY.placeholder': 'aucun',
+    'flash.redo': 'Rétabli (Ctrl+Shift+Z)',
+    'flash.redo.none': 'Rien à rétablir',
+    'flash.wire.reversed': 'Fil inversé ⇄',
     'flash.wire.start': 'Clique sur un nœud source du fil',
     'flash.wire.dest': 'Clique sur le nœud de destination',
     'flash.wire.done': 'Fil créé — continue vers le prochain nœud',
@@ -367,8 +376,8 @@ const TRANSLATIONS = {
     'btn.fit': '⊡ Fit',
     'speed.label': '⚡ Speed',
     'validator.title': 'Circuit validation',
-    'props.hint': 'Select a node or wire — Right-click = delete — Dbl-click = node — Scroll = zoom — Space+drag = pan — [F] = fit — [S/N/W/D] tools — [Ctrl+Z] undo — [Del] delete',
-    'props.hint.short': 'Select a node or wire — Right-click = delete — Dbl-click = node — Scroll = zoom — Space+drag = pan',
+    'props.hint': 'Select a node or wire — Right-click = delete/deselect — Dbl-click = node — Scroll = zoom — Space+drag = pan — [F] = fit — [S/N/W/D] tools — [Ctrl+Z] undo — [Ctrl+Shift+Z] redo — [Del] delete',
+    'props.hint.short': 'Select a node or wire — Right-click = delete/deselect — Dbl-click = node — Scroll = zoom — Space+drag = pan',
     'props.node': 'Node #',
     'props.type': 'Type:',
     'props.x': 'X:',
@@ -385,8 +394,15 @@ const TRANSLATIONS = {
     'props.micro': 'Microprocessor',
     'props.micro.active': '█ Active',
     'props.micro.inactive': '◻ Inactive',
+    'props.inductance': 'Inductance',
+    'props.ind.active': '⬛ Active',
+    'props.ind.inactive': '◻ Inactive',
+    'props.reverse': 'Reverse ⇄',
     'props.wayY': 'Bend wayY',
     'props.wayY.placeholder': 'none',
+    'flash.redo': 'Redone (Ctrl+Shift+Z)',
+    'flash.redo.none': 'Nothing to redo',
+    'flash.wire.reversed': 'Wire reversed ⇄',
     'flash.wire.start': 'Click on a source node for the wire',
     'flash.wire.dest': 'Click on the destination node',
     'flash.wire.done': 'Wire created — continue to next node',
@@ -462,20 +478,36 @@ let edges = [];
 let nextNodeId = 2;
 let nextEdgeId = 0;
 
-// ── UNDO ───────────────────────────────────────────────────
+// ── UNDO / REDO ───────────────────────────────────────────
 const undoStack = [];
-function saveUndo() {
-  undoStack.push(JSON.stringify({ nodes: nodes.map(n=>({...n})), edges: edges.map(e=>({...e})) }));
-  if (undoStack.length > 60) undoStack.shift();
+const redoStack = [];
+function saveState_() {
+  return JSON.stringify({ nodes: nodes.map(n=>({...n})), edges: edges.map(e=>({...e})) });
 }
-function undo() {
-  if (!undoStack.length) { flash(t('flash.undo.none')); return; }
-  const prev = JSON.parse(undoStack.pop());
-  nodes = prev.nodes; edges = prev.edges;
+function applyState_(json) {
+  const s = JSON.parse(json);
+  nodes = s.nodes; edges = s.edges;
   nextNodeId = nodes.reduce((m, n) => Math.max(m, n.id + 1), 0);
   nextEdgeId = edges.reduce((m, e) => Math.max(m, e.id + 1), 0);
   selectedNode = null; selectedEdge = null;
-  buildProps(); flash(t('flash.undo'));
+  buildProps();
+}
+function saveUndo() {
+  undoStack.push(saveState_());
+  if (undoStack.length > 60) undoStack.shift();
+  redoStack.length = 0;
+}
+function undo() {
+  if (!undoStack.length) { flash(tr('flash.undo.none')); return; }
+  redoStack.push(saveState_());
+  applyState_(undoStack.pop());
+  flash(tr('flash.undo'));
+}
+function redo() {
+  if (!redoStack.length) { flash(tr('flash.redo.none')); return; }
+  undoStack.push(saveState_());
+  applyState_(redoStack.pop());
+  flash(tr('flash.redo'));
 }
 
 // ── TOOL STATE ─────────────────────────────────────────────
@@ -806,14 +838,18 @@ canvas.addEventListener('wheel', e => {
   document.getElementById('zoom-label').textContent = Math.round(viewScale * 100) + '%';
 }, { passive: false });
 
-// Right-click delete
+// Right-click: delete if hit, deselect if empty
 canvas.addEventListener('contextmenu', e => {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
   const w = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
   const hit = nodeAt(w.x, w.y);
   const hitEdge = hit ? null : edgeNear(w.x, w.y);
-  deleteHit(hit, hitEdge);
+  if (!hit && !hitEdge) {
+    selectedNode = null; selectedEdge = null; buildProps();
+  } else {
+    deleteHit(hit, hitEdge);
+  }
 });
 
 // Double-click add node (or split edge)
@@ -833,9 +869,10 @@ canvas.addEventListener('dblclick', e => {
     const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
       wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
       resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration,
+      inductance: !!hitEdge.inductance, indDuration: hitEdge.indDuration,
       micro: !!hitEdge.micro, microDuration: hitEdge.microDuration };
     const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
-      wayY: null, switch: null, resistance: false, micro: false };
+      wayY: null, switch: null, resistance: false, inductance: false, micro: false };
     edges = edges.filter(ed => ed.id !== hitEdge.id);
     edges.push(e1, e2);
     flash(tr('flash.node.insert'));
@@ -850,7 +887,8 @@ canvas.addEventListener('dblclick', e => {
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.key === ' ') { e.preventDefault(); spaceHeld = true; canvas.style.cursor = 'grab'; return; }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
     if (selectedNode) {
@@ -931,12 +969,15 @@ function buildProps() {
     const swOpen = ed.switch?.initOpen ?? true;
     const hasRes  = !!ed.resistance;
     const resDur  = ed.resDuration ?? 3;
+    const hasInd  = !!ed.inductance;
+    const indDur  = ed.indDuration ?? 2;
     const hasMicro = !!ed.micro;
     const microDur = ed.microDuration ?? 5;
     const wayYVal = ed.wayY != null ? ed.wayY : '';
 
     panel.innerHTML = `
       <span id="props-title">${tr('props.wire')}${ed.id}</span>
+      <button class="prop-btn" id="p-rev-btn" title="Swap from↔to">${tr('props.reverse')}</button>
 
       <div class="prop-sep-v"></div>
 
@@ -965,6 +1006,21 @@ function buildProps() {
           <button class="prop-btn ${hasRes?'active-res':''}" id="p-res-btn">${hasRes?tr('props.res.active'):tr('props.res.inactive')}</button>
           <span id="p-res-dur-wrap" style="${hasRes?'':'display:none'};display:${hasRes?'flex':'none'};align-items:center;gap:4px;color:#ff8800;font-size:12px">
             <input id="p-res-dur" type="number" value="${resDur}" min="1" max="30" step="0.5" style="width:48px;background:#2a1400;border:1px solid #ff8800;color:#ff8800;font-family:'Courier New';font-size:12px;padding:4px 6px"> s
+          </span>
+        </div>
+      </div>
+
+      <div class="prop-sep-v"></div>
+
+      <div class="prop-group">
+        <div class="prop-group-label">${tr('props.inductance')}</div>
+        <div class="prop-btns">
+          <button class="prop-btn ${hasInd?'active-ind':''}" id="p-ind-btn">
+            ${hasInd?tr('props.ind.active'):tr('props.ind.inactive')}
+          </button>
+          <span id="p-ind-dur-wrap" style="display:${hasInd?'flex':'none'};align-items:center;gap:4px;color:#aa44ff;font-size:12px">
+            <input id="p-ind-dur" type="number" value="${indDur}" min="0.5" max="30" step="0.5"
+              style="width:48px;background:#150a2a;border:1px solid #8822cc;color:#cc66ff;font-family:'Courier New';font-size:12px;padding:4px 6px"> s
           </span>
         </div>
       </div>
@@ -1017,6 +1073,13 @@ function buildProps() {
     document.getElementById('psw-open').onclick   = () => setSwitchState(true);
     document.getElementById('psw-closed').onclick = () => setSwitchState(false);
 
+    // Reverse wire direction
+    document.getElementById('p-rev-btn').onclick = () => {
+      saveUndo();
+      [ed.from, ed.to] = [ed.to, ed.from];
+      buildProps(); validate(); flash(tr('flash.wire.reversed'));
+    };
+
     // Resistance toggle
     document.getElementById('p-res-btn').onclick = () => {
       saveUndo();
@@ -1026,6 +1089,17 @@ function buildProps() {
     const resDurInput = document.getElementById('p-res-dur');
     if (resDurInput) resDurInput.oninput = ev => {
       ed.resDuration = Math.max(1, +ev.target.value);
+    };
+
+    // Inductance toggle
+    document.getElementById('p-ind-btn').onclick = () => {
+      saveUndo();
+      ed.inductance = !ed.inductance;
+      buildProps(); validate();
+    };
+    const indDurInput = document.getElementById('p-ind-dur');
+    if (indDurInput) indDurInput.oninput = ev => {
+      ed.indDuration = Math.max(0.5, +ev.target.value);
     };
 
     // Micro toggle
@@ -1167,6 +1241,34 @@ function drawEdge(e, selected, hovered) {
     ctx.shadowBlur=0; ctx.font=`bold ${10/viewScale}px Courier New`; ctx.textAlign='center';
     ctx.fillStyle='#cc8800';
     ctx.fillText('R '+dur+'s', 0, RH+14/viewScale);
+    ctx.restore();
+  }
+
+  // Inductance (coil)
+  if (e.inductance) {
+    const sp  = posOnEdge(0.5, e);
+    const sp1 = posOnEdge(0.48, e), sp2 = posOnEdge(0.52, e);
+    const angle2 = Math.atan2(sp2.y-sp1.y, sp2.x-sp1.x);
+    const LW = 40/viewScale, LH = 11/viewScale;
+    const dur = e.indDuration ?? 2;
+    ctx.save();
+    ctx.translate(sp.x, sp.y); ctx.rotate(angle2);
+    // Stubs
+    ctx.strokeStyle = '#aa44ff'; ctx.lineWidth = 2/viewScale;
+    ctx.shadowBlur = 6; ctx.shadowColor = '#8822cc';
+    ctx.beginPath(); ctx.moveTo(-LW-8/viewScale, 0); ctx.lineTo(-LW, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(LW, 0); ctx.lineTo(LW+8/viewScale, 0); ctx.stroke();
+    // Coil bumps (4 arcs)
+    ctx.shadowBlur = 8;
+    const nBumps = 4, bW = LW*2/nBumps;
+    for (let i = 0; i < nBumps; i++) {
+      const bx = -LW + bW*i + bW/2;
+      ctx.beginPath(); ctx.arc(bx, 0, bW/2, Math.PI, 0); ctx.stroke();
+    }
+    ctx.rotate(-angle2);
+    ctx.shadowBlur = 0; ctx.font = `bold ${10/viewScale}px Courier New`; ctx.textAlign = 'center';
+    ctx.fillStyle = '#cc66ff';
+    ctx.fillText('L ' + dur + 's', 0, LH + 14/viewScale);
     ctx.restore();
   }
 
@@ -1373,6 +1475,8 @@ function toJSON() {
       switch: e.switch ?? null,
       resistance: !!e.resistance,
       resDuration: e.resistance ? (e.resDuration ?? 3) : undefined,
+      inductance: !!e.inductance,
+      indDuration: e.inductance ? (e.indDuration ?? 2) : undefined,
       micro: !!e.micro,
       microDuration: e.micro ? (e.microDuration ?? 5) : undefined
     }))
@@ -1410,6 +1514,8 @@ function loadFromJSON(data) {
     switch: e.switch ?? null,
     resistance: !!e.resistance,
     resDuration: e.resDuration ?? 3,
+    inductance: !!e.inductance,
+    indDuration: e.indDuration ?? 2,
     micro: !!e.micro,
     microDuration: e.microDuration ?? 5
   }));

@@ -20,52 +20,85 @@ body {
 
 /* ── SIDE PANELS ─────────────────────────────────────────── */
 .side-panel {
-  width: 220px;
+  width: 250px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 24px 16px;
-  gap: 12px;
+  padding: 24px 16px 16px;
+  gap: 10px;
   z-index: 1;
   overflow: hidden;
 }
-#panel-left  { border-right: 1px solid #0d2218; }
-#panel-right { border-left:  1px solid #0d2218; }
-.side-panel h3 {
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: #224433;
-  text-transform: uppercase;
-  margin: 0;
+#panel-left  { border-right: 1px solid #1a4535; background: linear-gradient(90deg, transparent, #03120e); }
+#panel-right { border-left:  1px solid #1a4535; background: linear-gradient(270deg, transparent, #03120e); }
+.panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   flex-shrink: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1a4535;
 }
+.panel-title {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #00cc99;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px #00ffcc55;
+}
+/* Version tabs */
+.hof-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.hof-tab {
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+  padding: 2px 8px;
+  border: 1px solid #1a4535;
+  background: transparent;
+  color: #446655;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.hof-tab.active {
+  border-color: #00cc99;
+  color: #00ffcc;
+  background: #00ffcc11;
+  text-shadow: 0 0 6px #00ffcc88;
+}
+.hof-tab:hover:not(.active) { border-color: #2a6655; color: #669977; }
+
 .panel-body {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
 }
 .panel-body::-webkit-scrollbar { width: 3px; }
 .panel-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
 
 /* Special Thanks */
-.sp-entry { padding: 6px 0; border-bottom: 1px solid #0d2218; }
-.sp-pseudo { color: #aa44ff; font-size: 12px; letter-spacing: 1px; }
-.sp-level  { color: #2a5a3a; font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
+.sp-entry { padding: 7px 4px; border-bottom: 1px solid #0d2a1a; }
+.sp-entry:first-child { border-top: none; }
+.sp-pseudo { color: #cc66ff; font-size: 13px; letter-spacing: 1px; text-shadow: 0 0 8px #cc44ff44; }
+.sp-level  { color: #448855; font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
 
 /* HOF rows */
-.ihof-row { display: flex; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px solid #0d2218; }
-.ihof-rank   { font-size: 14px; flex-shrink: 0; width: 22px; }
-.ihof-pseudo { color: #00ffcc; font-size: 11px; letter-spacing: 1px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ihof-time   { color: #446655; font-size: 10px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-.ihof-deaths { color: #663333; font-size: 10px; flex-shrink: 0; }
-.ihof-1st .ihof-pseudo { color: #ffdd44; }
-.ihof-2nd .ihof-pseudo { color: #aaaaaa; }
-.ihof-3rd .ihof-pseudo { color: #cc8844; }
-.panel-empty { color: #224433; font-size: 10px; letter-spacing: 1px; padding: 8px 0; }
+.ihof-row { display: flex; align-items: baseline; gap: 6px; padding: 6px 4px; border-bottom: 1px solid #0d2a1a; }
+.ihof-rank   { font-size: 14px; flex-shrink: 0; width: 24px; }
+.ihof-pseudo { color: #00ddbb; font-size: 12px; letter-spacing: 1px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ihof-time   { color: #558866; font-size: 11px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.ihof-deaths { color: #994444; font-size: 11px; flex-shrink: 0; }
+.ihof-1st .ihof-pseudo { color: #ffdd44; text-shadow: 0 0 8px #ffdd4466; }
+.ihof-2nd .ihof-pseudo { color: #cccccc; }
+.ihof-3rd .ihof-pseudo { color: #ee9944; }
+.panel-empty { color: #336644; font-size: 11px; letter-spacing: 1px; padding: 10px 4px; line-height: 1.6; }
 
-@media (max-width: 780px) { .side-panel { display: none; } }
+@media (max-width: 820px) { .side-panel { display: none; } }
 
 /* ── CENTER ──────────────────────────────────────────────── */
 #center {
@@ -233,7 +266,9 @@ canvas#bg {
 
 <!-- Left: Special Thanks -->
 <div class="side-panel" id="panel-left">
-  <h3>✦ Special Thanks</h3>
+  <div class="panel-header">
+    <div class="panel-title">✦ Special Thanks</div>
+  </div>
   <div class="panel-body" id="sp-list"></div>
 </div>
 
@@ -269,7 +304,10 @@ canvas#bg {
 
 <!-- Right: Hall of Fame -->
 <div class="side-panel" id="panel-right">
-  <h3>🏆 Hall of Fame</h3>
+  <div class="panel-header">
+    <div class="panel-title">🏆 Hall of Fame</div>
+    <div class="hof-tabs" id="hof-tabs"></div>
+  </div>
   <div class="panel-body" id="ihof-list"></div>
 </div>
 
@@ -421,8 +459,9 @@ function startGame() {
 }
 
 // ── SIDE PANELS ────────────────────────────────────────────
-const HOF_VERSION  = 'v0_0_1';
+const HOF_VERSIONS = ['v0_0_1'];
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+let hofCurrentVersion = HOF_VERSIONS[0];
 
 // Special thanks / content creators — edit this list manually
 const SPECIAL_THANKS = [
@@ -453,11 +492,29 @@ function renderSpecials() {
   ).join('');
 }
 
+function buildHofTabs() {
+  const tabs = document.getElementById('hof-tabs');
+  if (HOF_VERSIONS.length <= 1) {
+    // Show the single version as a non-clickable badge
+    tabs.innerHTML = `<span class="hof-tab active">${HOF_VERSIONS[0].replace(/_/g,'.')}</span>`;
+    return;
+  }
+  tabs.innerHTML = HOF_VERSIONS.map(v =>
+    `<button class="hof-tab${v === hofCurrentVersion ? ' active' : ''}" onclick="switchHofVersion('${v}')">${v.replace(/_/g,'.')}</button>`
+  ).join('');
+}
+
+function switchHofVersion(v) {
+  hofCurrentVersion = v;
+  buildHofTabs();
+  renderHOF();
+}
+
 async function renderHOF() {
   const el = document.getElementById('ihof-list');
   el.innerHTML = '<div class="panel-empty">Chargement…</div>';
   try {
-    const res = await fetch(`${FB_URL}/${HOF_VERSION}.json`);
+    const res = await fetch(`${FB_URL}/${hofCurrentVersion}.json`);
     const data = res.ok ? await res.json() : null;
     const entries = data
       ? Object.values(data).sort((a, b) => a.time - b.time).slice(0, 20)
@@ -482,6 +539,7 @@ async function renderHOF() {
 }
 
 renderSpecials();
+buildHofTabs();
 renderHOF();
 </script>
 </body>
