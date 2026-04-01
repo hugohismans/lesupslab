@@ -311,6 +311,24 @@
     50%       { box-shadow: 0 0 36px #00ffccaa, inset 0 0 16px #00ffcc22; }
   }
 
+  /* ── LANG TOGGLE ─────────────────────────────────────────── */
+  #lang-toggle {
+    position: fixed;
+    top: 14px;
+    right: 76px;
+    z-index: 150;
+    background: #0a1a14;
+    border: 1px solid #1a5a3a;
+    color: #336655;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #lang-toggle:hover { border-color: #00ffcc; color: #00ffcc; }
+
   /* ── TOUCH CONTROLS ──────────────────────────────────────── */
   #touch-controls {
     display: none;
@@ -375,13 +393,16 @@
 <!-- Death counter -->
 <div id="death-counter">💀 0</div>
 
+<!-- Language toggle -->
+<button id="lang-toggle">EN</button>
+
 <!-- Sidebar backdrop -->
 <div id="sidebar-overlay"></div>
 
 <!-- Sidebar -->
 <div id="sidebar">
   <div id="sidebar-header">
-    <span id="sidebar-title">Niveaux</span>
+    <span id="sidebar-title" data-i18n="sidebar.title">Niveaux</span>
     <button id="sidebar-close">✕</button>
   </div>
   <div id="sidebar-body">
@@ -394,20 +415,20 @@
 <!-- Next level overlay -->
 <div id="next-level-wrap">
   <button id="next-level-btn"></button>
-  <button id="submit-level-btn" style="display:none">📤 SOUMETTRE À L'ADMIN</button>
+  <button id="submit-level-btn" style="display:none" data-i18n="btn.submit_admin">📤 SOUMETTRE À L'ADMIN</button>
 </div>
 
 <!-- Submit overlay -->
 <div id="submit-overlay">
   <div id="submit-box">
-    <h3>📤 SOUMETTRE À L'ADMIN</h3>
-    <p id="submit-desc">Tu viens de résoudre ton niveau — envoie-le à l'admin pour qu'il soit reviewé et potentiellement ajouté au site.<br><br>⏳ Une seule soumission par heure est autorisée.</p>
-    <input id="submit-name" type="text" placeholder="Ton prénom / pseudo" maxlength="40">
-    <textarea id="submit-msg" rows="3" placeholder="Un message ? (optionnel)"></textarea>
+    <h3 id="submit-title" data-i18n="submit.title">📤 SOUMETTRE À L'ADMIN</h3>
+    <p id="submit-desc"></p>
+    <input id="submit-name" type="text" maxlength="40">
+    <textarea id="submit-msg" rows="3"></textarea>
     <div id="submit-status"></div>
     <div class="submit-btns">
-      <button id="submit-cancel">Annuler</button>
-      <button id="submit-send" class="primary">Envoyer →</button>
+      <button id="submit-cancel" data-i18n="submit.cancel">Annuler</button>
+      <button id="submit-send" class="primary" data-i18n="submit.send">Envoyer →</button>
     </div>
   </div>
 </div>
@@ -421,7 +442,7 @@
   <canvas id="c" width="800" height="300" tabindex="0"></canvas>
   <div id="touch-controls">
     <button class="touch-btn q-btn"       id="btn-q">Q</button>
-    <button class="touch-btn space-btn"   id="btn-space">ESPACE</button>
+    <button class="touch-btn space-btn"   id="btn-space" data-i18n="touch.space">ESPACE</button>
     <button class="touch-btn p-btn"       id="btn-p">P</button>
     <button class="touch-btn restart-btn" id="btn-restart">↺</button>
   </div>
@@ -473,11 +494,174 @@ function fitCustomLevel(st) {
   camTY = H / 2 - (minY + wh / 2) * camScale;
 }
 
+// ── I18N ───────────────────────────────────────────────────
+const TRANSLATIONS = {
+  fr: {
+    'sidebar.title': 'Niveaux',
+    'touch.space': 'ESPACE',
+    'submit.title': '📤 SOUMETTRE À L\'ADMIN',
+    'submit.desc': 'Tu viens de résoudre ton niveau — envoie-le à l\'admin pour qu\'il soit reviewé et potentiellement ajouté au site.<br><br>⏳ Une seule soumission par heure est autorisée.',
+    'submit.name.placeholder': 'Ton prénom / pseudo',
+    'submit.msg.placeholder': 'Un message ? (optionnel)',
+    'submit.cancel': 'Annuler',
+    'submit.send': 'Envoyer →',
+    'btn.next_level': 'NIVEAU SUIVANT →',
+    'btn.choose_level': '🗂 CHOISIR UN NIVEAU',
+    'btn.submit_admin': '📤 SOUMETTRE À L\'ADMIN',
+    'group.tutorials': 'TUTORIAUX',
+    'group.levels': 'NIVEAUX',
+    'tuto1.name': 'Tutoriel 1',
+    'tuto1.hint': 'Maintiens [Q] pour fermer l\'interrupteur — [R] pour recommencer',
+    'tuto2.name': 'Tutoriel 2',
+    'tuto2.hint': 'Maintiens [Q] et [P] simultanément — [R] pour recommencer',
+    'tuto3.name': 'Tutoriel 3',
+    'tuto3.hint': '[Q] ▶ relâche [Q] ▶ [P] ▶ relâche [P] — [R] pour recommencer',
+    'hint.restart': '— [R] pour recommencer',
+    'hint.replay_suffix': '— replay',
+    'hint.custom': 'Niveau custom — [R] pour recommencer',
+    'btn.save_replay': '💾 Sauvegarder le replay',
+    'btn.load_replay': '▶ Replay',
+    'replay.title': 'Charger un replay',
+    'submit.sending': 'Envoi en cours…',
+    'submit.sent': '✓ Envoyé !',
+    'submit.error': '✗ Erreur : ',
+    'submit.cooldown': '⏳ Réessaie dans {mins} min',
+    'submit.discord_content': '**Nouvelle soumission de niveau**',
+    'alert.load_failed': 'Impossible de charger ',
+    'alert.invalid_json': 'Fichier JSON invalide',
+    'alert.invalid_replay': 'Fichier replay invalide',
+    'levels': 'Niveaux',
+    'key.closed': '█ FERMÉ',
+    'key.open': '░ OUVERT',
+    'overlay.restart': '[R] pour recommencer',
+    'waiting.key': '▶  APPUIE SUR UNE TOUCHE',
+    'waiting.keys': 'Q   ESPACE   P',
+    'win': 'CIRCUIT COMPLET !',
+    'dead': 'COURT-CIRCUIT !',
+    'replay': '● REPLAY',
+    'resistance.active': '[ ESPACE ]',
+    'resistance.label': 'résistance',
+    'micro.title': '— MICROPROCESSEUR —',
+    'micro.prompt': '▼  tape le code  ▼',
+    'space.active': 'ESPACE  █ SPAM !',
+    'space.inactive': 'ESPACE  ░',
+  },
+  en: {
+    'sidebar.title': 'Levels',
+    'touch.space': 'SPACE',
+    'submit.title': '📤 SUBMIT TO ADMIN',
+    'submit.desc': 'You just solved your level — send it to the admin for review and potential addition to the site.<br><br>⏳ Only one submission per hour is allowed.',
+    'submit.name.placeholder': 'Your name / username',
+    'submit.msg.placeholder': 'A message? (optional)',
+    'submit.cancel': 'Cancel',
+    'submit.send': 'Send →',
+    'btn.next_level': 'NEXT LEVEL →',
+    'btn.choose_level': '🗂 CHOOSE A LEVEL',
+    'btn.submit_admin': '📤 SUBMIT TO ADMIN',
+    'group.tutorials': 'TUTORIALS',
+    'group.levels': 'LEVELS',
+    'tuto1.name': 'Tutorial 1',
+    'tuto1.hint': 'Hold [Q] to close the switch — [R] to restart',
+    'tuto2.name': 'Tutorial 2',
+    'tuto2.hint': 'Hold [Q] and [P] simultaneously — [R] to restart',
+    'tuto3.name': 'Tutorial 3',
+    'tuto3.hint': '[Q] ▶ release [Q] ▶ [P] ▶ release [P] — [R] to restart',
+    'hint.restart': '— [R] to restart',
+    'hint.replay_suffix': '— replay',
+    'hint.custom': 'Custom level — [R] to restart',
+    'btn.save_replay': '💾 Save replay',
+    'btn.load_replay': '▶ Replay',
+    'replay.title': 'Load a replay',
+    'submit.sending': 'Sending…',
+    'submit.sent': '✓ Sent!',
+    'submit.error': '✗ Error: ',
+    'submit.cooldown': '⏳ Try again in {mins} min',
+    'submit.discord_content': '**New level submission**',
+    'alert.load_failed': 'Failed to load ',
+    'alert.invalid_json': 'Invalid JSON file',
+    'alert.invalid_replay': 'Invalid replay file',
+    'levels': 'Levels',
+    'key.closed': '█ CLOSED',
+    'key.open': '░ OPEN',
+    'overlay.restart': '[R] to restart',
+    'waiting.key': '▶  PRESS ANY KEY',
+    'waiting.keys': 'Q   SPACE   P',
+    'win': 'CIRCUIT COMPLETE!',
+    'dead': 'SHORT CIRCUIT!',
+    'replay': '● REPLAY',
+    'resistance.active': '[ SPACE ]',
+    'resistance.label': 'resistance',
+    'micro.title': '— MICROPROCESSOR —',
+    'micro.prompt': '▼  type the code  ▼',
+    'space.active': 'SPACE  █ SPAM!',
+    'space.inactive': 'SPACE  ░',
+  }
+};
+
+let currentLang = localStorage.getItem('elecgame_lang') || 'fr';
+
+function t(key) {
+  return (TRANSLATIONS[currentLang] || TRANSLATIONS.fr)[key] || TRANSLATIONS.fr[key] || key;
+}
+
+function applyLang() {
+  document.documentElement.lang = currentLang;
+  // Update data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = t(key);
+    } else {
+      el.textContent = t(key);
+    }
+  });
+  // submit-desc uses innerHTML (has <br> tags)
+  const descEl = document.getElementById('submit-desc');
+  if (descEl) descEl.innerHTML = t('submit.desc');
+  // submit placeholder attributes
+  const nameInput = document.getElementById('submit-name');
+  if (nameInput) nameInput.placeholder = t('submit.name.placeholder');
+  const msgInput = document.getElementById('submit-msg');
+  if (msgInput) msgInput.placeholder = t('submit.msg.placeholder');
+  // Update built-in level names/hints (via getters, just refresh display)
+  if (typeof LEVELS !== 'undefined') {
+    const lv = LEVELS[currentLevel];
+    const hintEl = document.getElementById('hint');
+    if (hintEl && lv) hintEl.textContent = lv.hint || '';
+    const titleEl = document.getElementById('level-title');
+    if (titleEl && lv) titleEl.textContent = lv.name || '';
+    const sidebarTitleEl = document.getElementById('sidebar-title');
+    if (sidebarTitleEl) sidebarTitleEl.textContent = lv ? (lv.name || t('levels')) : t('levels');
+    // Update tutorial buttons text in sidebar (first 3 buttons = built-in levels)
+    document.querySelectorAll('.lvl-btn').forEach((btn, i) => {
+      if (LEVELS[i]) btn.textContent = LEVELS[i].name;
+    });
+  }
+  // Update group labels
+  if (typeof groupTutorialsEl !== 'undefined') groupTutorialsEl.textContent = t('group.tutorials');
+  if (typeof groupLevelsEl !== 'undefined') groupLevelsEl.textContent = t('group.levels');
+  // Update replay load button
+  if (typeof btnLoadReplay !== 'undefined') {
+    btnLoadReplay.textContent = t('btn.load_replay');
+    btnLoadReplay.title = t('replay.title');
+  }
+  // Lang toggle label: show the language you'll switch TO
+  const langBtn = document.getElementById('lang-toggle');
+  if (langBtn) langBtn.textContent = currentLang === 'fr' ? 'EN' : 'FR';
+}
+
+// Init lang toggle
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  currentLang = currentLang === 'fr' ? 'en' : 'fr';
+  localStorage.setItem('elecgame_lang', currentLang);
+  applyLang();
+});
+
 // ── LEVELS ─────────────────────────────────────────────────
 const LEVELS = [
   {
-    name: 'Tutoriel 1',
-    hint: 'Maintiens [Q] pour fermer l\'interrupteur — [R] pour recommencer',
+    get name() { return t('tuto1.name'); },
+    get hint() { return t('tuto1.hint'); },
     make: () => ({
       type: 'single',
       ball: WIRE_START,
@@ -486,8 +670,8 @@ const LEVELS = [
     })
   },
   {
-    name: 'Tutoriel 2',
-    hint: 'Maintiens [Q] et [P] simultanément — [R] pour recommencer',
+    get name() { return t('tuto2.name'); },
+    get hint() { return t('tuto2.hint'); },
     make: () => ({
       type: 'split',
       ballX: WIRE_START,
@@ -500,18 +684,18 @@ const LEVELS = [
     })
   },
   {
-    name: 'Tutoriel 3',
-    hint: '[Q] ▶ relâche [Q] ▶ [P] ▶ relâche [P] — [R] pour recommencer',
+    get name() { return t('tuto3.name'); },
+    get hint() { return t('tuto3.hint'); },
     make: () => ({
       type: 'single',
       ball: WIRE_START,
       won: false, dead: false, waiting: true,
       // séquence : hold Q → release Q → hold P → release P
       switches: [
-        { x: 190, key: 'Q', initOpen: true,  open: true  },  // ouvert  → hold Q
-        { x: 340, key: 'Q', initOpen: false, open: false },  // fermé   → release Q
-        { x: 490, key: 'P', initOpen: true,  open: true  },  // ouvert  → hold P
-        { x: 620, key: 'P', initOpen: false, open: false },  // fermé   → release P
+        { x: 190, key: 'Q', initOpen: true,  open: true  },
+        { x: 340, key: 'Q', initOpen: false, open: false },
+        { x: 490, key: 'P', initOpen: true,  open: true  },
+        { x: 620, key: 'P', initOpen: false, open: false },
       ]
     })
   }
@@ -547,7 +731,7 @@ function goNextCampaign(campIdx) {
       lvIdx = LEVELS.length;
       LEVELS.push({
         name: entry.file.split('/').pop().replace('.json', ''),
-        hint: '— [R] pour recommencer',
+        get hint() { return t('hint.restart'); },
         _file: entry.file, _json: null,
         make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
       });
@@ -558,8 +742,8 @@ function goNextCampaign(campIdx) {
     } else {
       fetch(lv._file)
         .then(r => r.json())
-        .then(json => { lv._json = json; lv.hint = (json.name || lv.name) + ' — [R] pour recommencer'; selectLevel(lvIdx); })
-        .catch(() => alert('Impossible de charger ' + entry.file));
+        .then(json => { lv._json = json; if (json.name) lv.name = json.name; selectLevel(lvIdx); })
+        .catch(() => alert(t('alert.load_failed') + entry.file));
     }
   }
 }
@@ -592,7 +776,7 @@ function selectLevel(idx) {
   document.getElementById('hint').textContent = LEVELS[idx].hint || '';
   // Update sidebar title
   const sidebarTitle = document.getElementById('sidebar-title');
-  if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || 'Niveaux';
+  if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || t('levels');
   const levelTitleEl = document.getElementById('level-title');
   if (levelTitleEl) levelTitleEl.textContent = LEVELS[idx].name || '';
   document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
@@ -610,7 +794,7 @@ function addSep() {
   const s = document.createElement('div'); s.className = 'lvl-sep'; lsDiv.appendChild(s);
 }
 function addGroupLabel(txt) {
-  const s = document.createElement('span'); s.className = 'lvl-group-label'; s.textContent = txt; lsDiv.appendChild(s);
+  const s = document.createElement('span'); s.className = 'lvl-group-label'; s.textContent = txt; lsDiv.appendChild(s); return s;
 }
 function addLevelBtn(lv, idx) {
   const btn = document.createElement('button');
@@ -621,12 +805,12 @@ function addLevelBtn(lv, idx) {
   return btn;
 }
 
-addGroupLabel('TUTORIAUX');
+const groupTutorialsEl = addGroupLabel(t('group.tutorials'));
 LEVELS.forEach((lv, i) => addLevelBtn(lv, i));
 
 // Separator + levels folder group (populated after fetch)
 addSep();
-addGroupLabel('NIVEAUX');
+const groupLevelsEl = addGroupLabel(t('group.levels'));
 
 // Load-external button
 const btnLoadExt = document.createElement('button');
@@ -638,8 +822,8 @@ lsDiv.appendChild(btnLoadExt);
 // Replay load button
 const btnLoadReplay = document.createElement('button');
 btnLoadReplay.className = 'lvl-btn';
-btnLoadReplay.title = 'Charger un replay';
-btnLoadReplay.textContent = '▶ Replay';
+btnLoadReplay.title = t('replay.title');
+btnLoadReplay.textContent = t('btn.load_replay');
 lsDiv.appendChild(btnLoadReplay);
 btnLoadReplay.onclick = () => document.getElementById('replay-input').click();
 
@@ -652,7 +836,7 @@ fetch('levels/index.json')
       // Placeholder until JSON loaded; make() fetches on demand
       const lv = {
         name: entry.name,
-        hint: entry.name + ' — [R] pour recommencer',
+        get hint() { return this.name + ' ' + t('hint.restart'); },
         _file: 'levels/' + entry.file,
         _json: null,
         make() {
@@ -667,8 +851,8 @@ fetch('levels/index.json')
         if (lv._json) { selectLevel(idx); return; }
         fetch(lv._file)
           .then(r => r.json())
-          .then(json => { lv._json = json; lv.hint = json.name + ' — [R] pour recommencer'; selectLevel(idx); })
-          .catch(() => alert('Impossible de charger ' + entry.file));
+          .then(json => { lv._json = json; if (json.name) lv.name = json.name; selectLevel(idx); })
+          .catch(() => alert(t('alert.load_failed') + entry.file));
       };
     });
   })
@@ -735,7 +919,7 @@ function stopRecordingWin() {
 
   const btn = document.createElement('button');
   btn.className = 'replay-btn save';
-  btn.textContent = '💾 Sauvegarder le replay';
+  btn.textContent = t('btn.save_replay');
   btn.onclick = downloadReplay;
   wrap.appendChild(btn);
   wrap.style.display = '';
@@ -769,7 +953,7 @@ function openSubmitOverlay() {
     const mins = Math.ceil(remaining / 60000);
     document.getElementById('submit-overlay').classList.add('open');
     status.style.color = '#ff8800';
-    status.textContent = `⏳ Réessaie dans ${mins} min`;
+    status.textContent = t('submit.cooldown').replace('{mins}', mins);
     document.getElementById('submit-send').disabled = true;
     return;
   }
@@ -786,7 +970,7 @@ document.getElementById('submit-cancel').onclick = () => {
 
 document.getElementById('submit-send').onclick = async () => {
   if (!SUBMIT_WEBHOOK) return;
-  const name    = document.getElementById('submit-name').value.trim() || 'Anonyme';
+  const name    = document.getElementById('submit-name').value.trim() || (currentLang === 'fr' ? 'Anonyme' : 'Anonymous');
   const msg     = document.getElementById('submit-msg').value.trim();
   const status  = document.getElementById('submit-status');
   const sendBtn = document.getElementById('submit-send');
@@ -801,12 +985,12 @@ document.getElementById('submit-send').onclick = async () => {
   };
 
   status.style.color = '#aa66ff';
-  status.textContent = 'Envoi en cours…';
+  status.textContent = t('submit.sending');
   sendBtn.disabled = true;
 
   try {
     const form = new FormData();
-    const content = `**Nouvelle soumission de niveau**\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s`;
+    const content = `${t('submit.discord_content')}\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s`;
     form.append('payload_json', JSON.stringify({ content }));
     form.append('files[0]', new Blob([JSON.stringify(JSON.parse(levelJSON), null, 2)], { type: 'application/json' }), levelName + '.json');
     form.append('files[1]', new Blob([JSON.stringify(replayData, null, 2)], { type: 'application/json' }), levelName + '_replay.json');
@@ -816,12 +1000,12 @@ document.getElementById('submit-send').onclick = async () => {
 
     writeSave({ lastSubmit: Date.now() });
     status.style.color = '#00ff88';
-    status.textContent = '✓ Envoyé !';
+    status.textContent = t('submit.sent');
     sendBtn.disabled = false;
     setTimeout(() => document.getElementById('submit-overlay').classList.remove('open'), 1500);
   } catch (err) {
     status.style.color = '#ff4444';
-    status.textContent = '✗ Erreur : ' + err.message;
+    status.textContent = t('submit.error') + err.message;
     sendBtn.disabled = false;
   }
 };
@@ -841,7 +1025,7 @@ function loadReplayFile(json) {
     } else {
       const lv = {
         name: json.levelName || 'Replay',
-        hint: (json.levelName || 'Replay') + ' — replay',
+        get hint() { return (this.name) + ' ' + t('hint.replay_suffix'); },
         _json: json.levelJSON,
         make: function() { return makeCustomLevel(this._json); }
       };
@@ -1298,7 +1482,7 @@ function drawKeyIndicator(key, px, py) {
   ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'left';
   ctx.fillStyle = held ? c.main : c.dim;
   ctx.shadowBlur = held ? 10 : 0; ctx.shadowColor = c.glow;
-  ctx.fillText(key + '  ' + (held ? '█ FERMÉ' : '░ OUVERT'), px, py);
+  ctx.fillText(key + '  ' + (held ? t('key.closed') : t('key.open')), px, py);
   ctx.restore();
 }
 
@@ -1309,7 +1493,7 @@ function drawOverlay(text, color, glow) {
   ctx.fillStyle = color;
   ctx.fillText(text, W / 2, 40);
   ctx.font = '15px Courier New'; ctx.fillStyle = '#aaaaaa'; ctx.shadowBlur = 0;
-  ctx.fillText('[R] pour recommencer', W / 2, 66);
+  ctx.fillText(t('overlay.restart'), W / 2, 66);
   ctx.restore();
 }
 
@@ -1320,10 +1504,10 @@ function drawWaiting() {
   ctx.globalAlpha = pulse;
   ctx.fillStyle = '#00ffcc';
   ctx.shadowBlur = 18; ctx.shadowColor = '#00ffcc';
-  ctx.fillText('▶  APPUIE SUR UNE TOUCHE', W / 2, H / 2 - 18);
+  ctx.fillText(t('waiting.key'), W / 2, H / 2 - 18);
   ctx.globalAlpha = pulse * 0.6;
   ctx.font = '11px Courier New'; ctx.fillStyle = '#446655'; ctx.shadowBlur = 0;
-  ctx.fillText('Q   ESPACE   P', W / 2, H / 2 + 8);
+  ctx.fillText(t('waiting.keys'), W / 2, H / 2 + 8);
   ctx.globalAlpha = 1;
   ctx.restore();
 }
@@ -1427,8 +1611,8 @@ function draw() {
   else drawLevel2();
 
   if (state.type !== 'custom') {
-    if (state.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
-    if (state.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
+    if (state.won)  drawOverlay(t('win'),  '#ffff44', '#ffff00');
+    if (state.dead) drawOverlay(t('dead'), '#ff4444', '#ff0000');
   }
 
   if (state.waiting && !replayMode) drawWaiting();
@@ -1439,7 +1623,7 @@ function draw() {
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ff4444';
     ctx.shadowBlur = 8; ctx.shadowColor = '#ff0000';
-    ctx.fillText('● REPLAY', W - 16, 24);
+    ctx.fillText(t('replay'), W - 16, 24);
     ctx.restore();
   }
 }
@@ -1803,7 +1987,7 @@ function drawResistance(edge, nodes, ballInside, ballSpeed) {
   if (angle > Math.PI / 2 || angle < -Math.PI / 2) ctx.rotate(Math.PI);
   ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
   ctx.fillStyle = col; ctx.shadowBlur = ballInside ? 6 : 0; ctx.shadowColor = col;
-  ctx.fillText(ballInside ? '[ ESPACE ]' : 'résistance', 0, RH + 14);
+  ctx.fillText(ballInside ? t('resistance.active') : t('resistance.label'), 0, RH + 14);
   ctx.restore();
 
   // Energy gauge bar (alignée avec le fil)
@@ -1901,7 +2085,7 @@ function drawMicroOverlay(mc) {
   ctx.save();
   ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
   ctx.fillStyle = '#3399ff'; ctx.shadowBlur = 6; ctx.shadowColor = '#0055cc';
-  ctx.fillText('— MICROPROCESSEUR —', cx, by + 6);
+  ctx.fillText(t('micro.title'), cx, by + 6);
   ctx.restore();
 
   // Code à taper (chiffres en boîtes)
@@ -1923,7 +2107,7 @@ function drawMicroOverlay(mc) {
   ctx.save();
   ctx.font = '11px Courier New'; ctx.textAlign = 'center';
   ctx.fillStyle = '#224466';
-  ctx.fillText('▼  tape le code  ▼', cx, codeY + 44);
+  ctx.fillText(t('micro.prompt'), cx, codeY + 44);
   ctx.restore();
 
   // Cases de saisie
@@ -2144,7 +2328,7 @@ function drawCustom() {
     ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'left';
     ctx.fillStyle = hasRes ? '#ff8800' : '#3a2000';
     ctx.shadowBlur = hasRes ? 10 : 0; ctx.shadowColor = '#ff6600';
-    ctx.fillText('ESPACE  ' + (hasRes ? '█ SPAM !' : '░'), 20, py);
+    ctx.fillText(hasRes ? t('space.active') : t('space.inactive'), 20, py);
     ctx.restore();
   }
 
@@ -2152,8 +2336,8 @@ function drawCustom() {
   if (microChallenge && !st.dead && !st.won) drawMicroOverlay(microChallenge);
 
   // Overlays
-  if (st.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');
-  if (st.dead) drawOverlay('COURT-CIRCUIT !',   '#ff4444', '#ff0000');
+  if (st.won)  drawOverlay(t('win'),  '#ffff44', '#ffff00');
+  if (st.dead) drawOverlay(t('dead'), '#ff4444', '#ff0000');
 }
 
 // Helper: returns flat polyline points between two t parameters
@@ -2245,10 +2429,10 @@ function loop(timestamp) {
     nlBtn.style.display = cp >= 0 ? '' : 'none';
     if (cp >= 0) {
       if (cp + 1 < CAMPAIGN.length) {
-        nlBtn.textContent = 'NIVEAU SUIVANT →';
+        nlBtn.textContent = t('btn.next_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
       } else {
-        nlBtn.textContent = '🗂 CHOISIR UN NIVEAU';
+        nlBtn.textContent = t('btn.choose_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
       }
     }
@@ -2277,7 +2461,7 @@ if (new URLSearchParams(location.search).has('test')) {
       const json = JSON.parse(saved);
       const customLv = {
         name: json.name || 'Test',
-        hint: 'Niveau custom — [R] pour recommencer',
+        get hint() { return t('hint.custom'); },
         _json: json,
         make: function() { return makeCustomLevel(this._json); }
       };
@@ -2310,7 +2494,7 @@ document.getElementById('ext-level-input').addEventListener('change', e => {
       const json = JSON.parse(ev.target.result);
       const customLv = {
         name: json.name || file.name.replace('.json', ''),
-        hint: (json.name || 'Niveau custom') + ' — [R] pour recommencer',
+        get hint() { return (this.name) + ' ' + t('hint.restart'); },
         _json: json,
         make: function() { return makeCustomLevel(this._json); }
       };
@@ -2323,7 +2507,7 @@ document.getElementById('ext-level-input').addEventListener('change', e => {
       lsDiv.insertBefore(btn, btnLoadExt);
       selectLevel(idx);
     } catch(err) {
-      alert('Fichier JSON invalide');
+      alert(t('alert.invalid_json'));
     }
   };
   reader.readAsText(file);
@@ -2341,7 +2525,7 @@ document.getElementById('replay-input').addEventListener('change', e => {
       if (!json.inputs || !Array.isArray(json.inputs)) throw new Error('invalid');
       loadReplayFile(json);
     } catch(err) {
-      alert('Fichier replay invalide');
+      alert(t('alert.invalid_replay'));
     }
   };
   reader.readAsText(file);
@@ -2427,6 +2611,7 @@ setupTouchBtn('btn-p',       'P');
 setupTouchBtn('btn-space',   ' ', { isSpace: true });
 setupTouchBtn('btn-restart', null, { isRestart: true });
 
+applyLang();
 if (!new URLSearchParams(location.search).has('test')) selectLevel(0);
 loop();
 </script>

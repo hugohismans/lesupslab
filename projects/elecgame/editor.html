@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>ElecGame — Level Editor</title>
+<title>ElecGame — Editor</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -164,6 +164,21 @@ body {
 }
 #minimap canvas { display: block; }
 
+/* Lang toggle */
+#lang-toggle {
+  background: #0a1a14;
+  border: 1px solid #1a5a3a;
+  color: #336655;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-left: auto;
+}
+#lang-toggle:hover { border-color: #00ffcc; color: #00ffcc; }
+
 /* Test overlay */
 #test-overlay {
   display: none;
@@ -213,20 +228,21 @@ body {
   <button class="tool-btn" onclick="fitView()"  title="Recentrer [F]">⊡ Fit</button>
   <div class="sep"></div>
   <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#446655;white-space:nowrap">
-    ⚡ Vitesse
+    <span id="speed-label">⚡ Vitesse</span>
     <input type="range" id="ball-speed" min="0.25" max="4" step="0.25" value="1"
       style="width:80px;accent-color:#00ffcc;cursor:pointer"
       oninput="document.getElementById('ball-speed-val').textContent='×'+parseFloat(this.value).toFixed(2)">
     <span id="ball-speed-val" style="color:#00ffcc;min-width:36px">×1.00</span>
   </label>
   <div class="sep"></div>
-  <div id="validator" title="Validation du circuit">…</div>
+  <div id="validator">…</div>
+  <button id="lang-toggle">EN</button>
 </div>
 
 <div id="canvas-wrap">
   <canvas id="c"></canvas>
   <div id="props-panel">
-    <span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan</span>
+    <span id="props-default-hint" style="color:#1a5a3a;font-size:11px"></span>
   </div>
   <div id="status-bar"></div>
   <div id="zoom-label">100%</div>
@@ -236,9 +252,9 @@ body {
 <!-- Test overlay -->
 <div id="test-overlay">
   <div id="test-toolbar">
-    <button class="tool-btn" onclick="closeTest()" style="border-color:#ff4444;color:#ff4444">✕ Retour à l'éditeur</button>
-    <span>TEST — Les modifications de l'éditeur ne s'appliquent pas en direct</span>
-    <button class="tool-btn" onclick="reloadTest()">↺ Relancer</button>
+    <button class="tool-btn" id="test-back-btn" onclick="closeTest()" style="border-color:#ff4444;color:#ff4444">✕ Retour à l'éditeur</button>
+    <span id="test-note-span">TEST — Les modifications de l'éditeur ne s'appliquent pas en direct</span>
+    <button class="tool-btn" id="test-reload-btn" onclick="reloadTest()">↺ Relancer</button>
   </div>
   <iframe id="test-iframe" src="about:blank"></iframe>
 </div>
@@ -280,6 +296,163 @@ function worldToScreen(wx, wy) {
 }
 function snap(v) { return Math.round(v / GRID) * GRID; }
 
+// ── I18N ───────────────────────────────────────────────────
+const TRANSLATIONS = {
+  fr: {
+    'tool.select': '✦ Select',
+    'tool.node': '+ Node',
+    'tool.wire': '⌇ Wire',
+    'tool.delete': '✕ Delete',
+    'btn.clear': '⟳ Clear',
+    'btn.load': '📂 Load',
+    'btn.save': '💾 Save',
+    'btn.test': '▶ Test',
+    'btn.fit': '⊡ Fit',
+    'speed.label': '⚡ Vitesse',
+    'validator.title': 'Validation du circuit',
+    'props.hint': 'Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Suppr] supprimer',
+    'props.hint.short': 'Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan',
+    'props.node': 'Nœud #',
+    'props.type': 'Type :',
+    'props.x': 'X :',
+    'props.y': 'Y :',
+    'props.wire': 'Fil #',
+    'props.switch': 'Switch',
+    'props.switch.none': '— Aucun',
+    'props.state': 'État initial',
+    'props.open': '🔓 Ouvert',
+    'props.closed': '🔒 Fermé',
+    'props.resistance': 'Résistance',
+    'props.res.active': '⬛ Active',
+    'props.res.inactive': '◻ Inactive',
+    'props.micro': 'Microprocesseur',
+    'props.micro.active': '█ Actif',
+    'props.micro.inactive': '◻ Inactif',
+    'props.wayY': 'Coude wayY',
+    'props.wayY.placeholder': 'aucun',
+    'flash.wire.start': 'Clique sur un nœud source du fil',
+    'flash.wire.dest': 'Clique sur le nœud de destination',
+    'flash.wire.done': 'Fil créé — continue vers le prochain nœud',
+    'flash.wire.cancel': 'Wire annulé',
+    'flash.node.insert': 'Nœud inséré sur le fil',
+    'flash.node.add': 'Nœud ajouté',
+    'flash.node.del': 'Nœud supprimé',
+    'flash.node.del.key': 'Nœud supprimé [Suppr]',
+    'flash.wire.del': 'Fil supprimé',
+    'flash.wire.del.key': 'Fil supprimé [Suppr]',
+    'flash.undo': 'Annulé (Ctrl+Z)',
+    'flash.undo.none': 'Rien à annuler',
+    'flash.loaded': 'Niveau chargé : ',
+    'confirm.clear': 'Effacer le niveau ?',
+    'default.name': 'Mon niveau',
+    'validate.no_source': 'pas de source',
+    'validate.no_bulb': 'pas d\'ampoule',
+    'validate.unreachable': ' nœud(s) non atteignable(s)',
+    'validate.isolated': ' nœud(s) isolé(s)',
+    'validate.ok': '✓ Circuit valide',
+    'alert.invalid': 'Fichier JSON invalide',
+    'test.back': '✕ Retour à l\'éditeur',
+    'test.note': 'TEST — Les modifications de l\'éditeur ne s\'appliquent pas en direct',
+    'test.reload': '↺ Relancer',
+  },
+  en: {
+    'tool.select': '✦ Select',
+    'tool.node': '+ Node',
+    'tool.wire': '⌇ Wire',
+    'tool.delete': '✕ Delete',
+    'btn.clear': '⟳ Clear',
+    'btn.load': '📂 Load',
+    'btn.save': '💾 Save',
+    'btn.test': '▶ Test',
+    'btn.fit': '⊡ Fit',
+    'speed.label': '⚡ Speed',
+    'validator.title': 'Circuit validation',
+    'props.hint': 'Select a node or wire — Right-click = delete — Dbl-click = node — Scroll = zoom — Space+drag = pan — [F] = fit — [S/N/W/D] tools — [Ctrl+Z] undo — [Del] delete',
+    'props.hint.short': 'Select a node or wire — Right-click = delete — Dbl-click = node — Scroll = zoom — Space+drag = pan',
+    'props.node': 'Node #',
+    'props.type': 'Type:',
+    'props.x': 'X:',
+    'props.y': 'Y:',
+    'props.wire': 'Wire #',
+    'props.switch': 'Switch',
+    'props.switch.none': '— None',
+    'props.state': 'Initial state',
+    'props.open': '🔓 Open',
+    'props.closed': '🔒 Closed',
+    'props.resistance': 'Resistance',
+    'props.res.active': '⬛ Active',
+    'props.res.inactive': '◻ Inactive',
+    'props.micro': 'Microprocessor',
+    'props.micro.active': '█ Active',
+    'props.micro.inactive': '◻ Inactive',
+    'props.wayY': 'Bend wayY',
+    'props.wayY.placeholder': 'none',
+    'flash.wire.start': 'Click on a source node for the wire',
+    'flash.wire.dest': 'Click on the destination node',
+    'flash.wire.done': 'Wire created — continue to next node',
+    'flash.wire.cancel': 'Wire cancelled',
+    'flash.node.insert': 'Node inserted on wire',
+    'flash.node.add': 'Node added',
+    'flash.node.del': 'Node deleted',
+    'flash.node.del.key': 'Node deleted [Del]',
+    'flash.wire.del': 'Wire deleted',
+    'flash.wire.del.key': 'Wire deleted [Del]',
+    'flash.undo': 'Undone (Ctrl+Z)',
+    'flash.undo.none': 'Nothing to undo',
+    'flash.loaded': 'Level loaded: ',
+    'confirm.clear': 'Clear the level?',
+    'default.name': 'My level',
+    'validate.no_source': 'no source',
+    'validate.no_bulb': 'no bulb',
+    'validate.unreachable': ' node(s) unreachable',
+    'validate.isolated': ' node(s) isolated',
+    'validate.ok': '✓ Valid circuit',
+    'alert.invalid': 'Invalid JSON file',
+    'test.back': '✕ Back to editor',
+    'test.note': 'TEST — Editor changes do not apply live',
+    'test.reload': '↺ Reload',
+  }
+};
+
+let currentLang = localStorage.getItem('elecgame_lang') || 'fr';
+
+function tr(key) {
+  return (TRANSLATIONS[currentLang] || TRANSLATIONS.fr)[key] || TRANSLATIONS.fr[key] || key;
+}
+
+function applyLang() {
+  document.documentElement.lang = currentLang;
+  // Toolbar buttons
+  const speedLabel = document.getElementById('speed-label');
+  if (speedLabel) speedLabel.textContent = tr('speed.label');
+  document.getElementById('btn-select').textContent = tr('tool.select');
+  document.getElementById('btn-node').textContent   = tr('tool.node');
+  document.getElementById('btn-wire').textContent   = tr('tool.wire');
+  document.getElementById('btn-delete').textContent = tr('tool.delete');
+  document.getElementById('validator').title         = tr('validator.title');
+  // Test overlay
+  const testBack = document.getElementById('test-back-btn');
+  if (testBack) testBack.textContent = tr('test.back');
+  const testNote = document.getElementById('test-note-span');
+  if (testNote) testNote.textContent = tr('test.note');
+  const testReload = document.getElementById('test-reload-btn');
+  if (testReload) testReload.textContent = tr('test.reload');
+  // Update static props hint if visible
+  const defHint = document.getElementById('props-default-hint');
+  if (defHint) defHint.textContent = tr('props.hint.short');
+  // Re-render properties panel
+  buildProps();
+  // Lang toggle label
+  const langBtn = document.getElementById('lang-toggle');
+  if (langBtn) langBtn.textContent = currentLang === 'fr' ? 'EN' : 'FR';
+}
+
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  currentLang = currentLang === 'fr' ? 'en' : 'fr';
+  localStorage.setItem('elecgame_lang', currentLang);
+  applyLang();
+});
+
 // ── DATA ───────────────────────────────────────────────────
 let nodes = [
   { id: 0, type: 'source', x: 60,  y: 150 },
@@ -296,13 +469,13 @@ function saveUndo() {
   if (undoStack.length > 60) undoStack.shift();
 }
 function undo() {
-  if (!undoStack.length) { flash('Rien à annuler'); return; }
+  if (!undoStack.length) { flash(t('flash.undo.none')); return; }
   const prev = JSON.parse(undoStack.pop());
   nodes = prev.nodes; edges = prev.edges;
   nextNodeId = nodes.reduce((m, n) => Math.max(m, n.id + 1), 0);
   nextEdgeId = edges.reduce((m, e) => Math.max(m, e.id + 1), 0);
   selectedNode = null; selectedEdge = null;
-  buildProps(); flash('Annulé (Ctrl+Z)');
+  buildProps(); flash(t('flash.undo'));
 }
 
 // ── TOOL STATE ─────────────────────────────────────────────
@@ -335,7 +508,7 @@ function setTool(t) {
   document.querySelectorAll('.tool-btn[id^=btn]').forEach(b => b.classList.remove('active'));
   const el = document.getElementById('btn-' + t);
   if (el) el.classList.add('active');
-  if (t === 'wire') flash('Clique sur un nœud source du fil');
+  if (t === 'wire') flash(tr('flash.wire.start'));
 }
 
 function getNodeType() {
@@ -348,8 +521,8 @@ function validate() {
   const sources = nodes.filter(n => n.type === 'source');
   const bulbs   = nodes.filter(n => n.type === 'bulb');
   const issues = [];
-  if (sources.length === 0) issues.push('pas de source');
-  if (bulbs.length === 0)   issues.push('pas d\'ampoule');
+  if (sources.length === 0) issues.push(tr('validate.no_source'));
+  if (bulbs.length === 0)   issues.push(tr('validate.no_bulb'));
   // Check every non-source node is reachable from a source
   const reachable = new Set(sources.map(n => n.id));
   let changed = true;
@@ -360,14 +533,14 @@ function validate() {
     }
   }
   const unreachable = nodes.filter(n => n.type !== 'source' && !reachable.has(n.id));
-  if (unreachable.length) issues.push(unreachable.length + ' nœud(s) non atteignable(s)');
+  if (unreachable.length) issues.push(unreachable.length + tr('validate.unreachable'));
   // Isolated nodes (no edges)
   const connected = new Set(edges.flatMap(e => [e.from, e.to]));
   const isolated = nodes.filter(n => !connected.has(n.id) && nodes.length > 1);
-  if (isolated.length) issues.push(isolated.length + ' nœud(s) isolé(s)');
+  if (isolated.length) issues.push(isolated.length + tr('validate.isolated'));
 
   if (issues.length === 0) {
-    el.textContent = '✓ Circuit valide';
+    el.textContent = tr('validate.ok');
     el.style.color = '#00ffcc'; el.style.borderColor = '#00ffcc44';
   } else {
     el.textContent = '⚠ ' + issues.join(' · ');
@@ -517,7 +690,7 @@ canvas.addEventListener('mousedown', e => {
       edges = edges.filter(ed => ed.id !== hitEdge.id);
       edges.push(e1, e2);
       selectedNode = n; selectedEdge = null;
-      buildProps(); validate(); flash('Nœud inséré sur le fil');
+      buildProps(); validate(); flash(tr('flash.node.insert'));
     } else {
       saveUndo();
       const id = nextNodeId++;
@@ -552,7 +725,7 @@ canvas.addEventListener('mousedown', e => {
 
     if (wireFrom === null) {
       wireFrom = target;
-      flash('Clique sur le nœud de destination');
+      flash(tr('flash.wire.dest'));
     } else if (target.id !== wireFrom.id) {
       const id = nextEdgeId++;
       const ne = { id, from: wireFrom.id, to: target.id, wayY: null, switch: null };
@@ -560,7 +733,7 @@ canvas.addEventListener('mousedown', e => {
       edges.push(ne);
       selectedEdge = ne; selectedNode = null;
       wireFrom = target;
-      flash('Fil créé — continue vers le prochain nœud');
+      flash(tr('flash.wire.done'));
     }
     buildProps(); validate();
 
@@ -575,12 +748,12 @@ function deleteHit(hit, hitEdge) {
     nodes = nodes.filter(n => n.id !== hit.id);
     edges = edges.filter(ed => ed.from !== hit.id && ed.to !== hit.id);
     if (selectedNode?.id === hit.id) selectedNode = null;
-    buildProps(); validate(); flash('Nœud supprimé');
+    buildProps(); validate(); flash(tr('flash.node.del'));
   } else if (hitEdge) {
     saveUndo();
     edges = edges.filter(ed => ed.id !== hitEdge.id);
     if (selectedEdge?.id === hitEdge.id) selectedEdge = null;
-    buildProps(); validate(); flash('Fil supprimé');
+    buildProps(); validate(); flash(tr('flash.wire.del'));
   }
 }
 
@@ -665,9 +838,9 @@ canvas.addEventListener('dblclick', e => {
       wayY: null, switch: null, resistance: false, micro: false };
     edges = edges.filter(ed => ed.id !== hitEdge.id);
     edges.push(e1, e2);
-    flash('Nœud inséré sur le fil');
+    flash(tr('flash.node.insert'));
   } else {
-    flash('Nœud ajouté');
+    flash(tr('flash.node.add'));
   }
   selectedNode = n; selectedEdge = null;
   buildProps(); validate();
@@ -684,16 +857,16 @@ document.addEventListener('keydown', e => {
       saveUndo();
       nodes = nodes.filter(n => n.id !== selectedNode.id);
       edges = edges.filter(ed => ed.from !== selectedNode.id && ed.to !== selectedNode.id);
-      selectedNode = null; buildProps(); validate(); flash('Nœud supprimé [Suppr]');
+      selectedNode = null; buildProps(); validate(); flash(tr('flash.node.del.key'));
     } else if (selectedEdge) {
       saveUndo();
       edges = edges.filter(ed => ed.id !== selectedEdge.id);
-      selectedEdge = null; buildProps(); validate(); flash('Fil supprimé [Suppr]');
+      selectedEdge = null; buildProps(); validate(); flash(tr('flash.wire.del.key'));
     }
     return;
   }
   if (e.key === 'Escape') {
-    if (wireFrom) { wireFrom = null; flash('Wire annulé'); }
+    if (wireFrom) { wireFrom = null; flash(tr('flash.wire.cancel')); }
     else { selectedNode = null; selectedEdge = null; buildProps(); }
     return;
   }
@@ -737,16 +910,16 @@ function buildProps() {
   if (selectedNode) {
     const n = selectedNode;
     panel.innerHTML = `
-      <span id="props-title">Nœud #${n.id}</span>
-      <label>Type:
+      <span id="props-title">${tr('props.node')}${n.id}</span>
+      <label>${tr('props.type')}
         <select id="p-ntype">
           <option value="source" ${n.type==='source'?'selected':''}>⚡ source</option>
           <option value="node"   ${n.type==='node'  ?'selected':''}>● junction</option>
           <option value="bulb"   ${n.type==='bulb'  ?'selected':''}>💡 bulb</option>
         </select>
       </label>
-      <label>X: <input id="p-nx" type="number" value="${n.x}" step="20"></label>
-      <label>Y: <input id="p-ny" type="number" value="${n.y}" step="20"></label>
+      <label>${tr('props.x')} <input id="p-nx" type="number" value="${n.x}" step="20"></label>
+      <label>${tr('props.y')} <input id="p-ny" type="number" value="${n.y}" step="20"></label>
     `;
     document.getElementById('p-ntype').onchange = ev => { n.type = ev.target.value; validate(); };
     document.getElementById('p-nx').oninput = ev => { n.x = snap(+ev.target.value); };
@@ -763,33 +936,33 @@ function buildProps() {
     const wayYVal = ed.wayY != null ? ed.wayY : '';
 
     panel.innerHTML = `
-      <span id="props-title">Fil #${ed.id}</span>
+      <span id="props-title">${tr('props.wire')}${ed.id}</span>
 
       <div class="prop-sep-v"></div>
 
       <div class="prop-group">
-        <div class="prop-group-label">Switch</div>
+        <div class="prop-group-label">${tr('props.switch')}</div>
         <div class="prop-btns">
-          <button class="prop-btn ${swKey==='none'?'active-none':''}" id="psw-none">— Aucun</button>
+          <button class="prop-btn ${swKey==='none'?'active-none':''}" id="psw-none">${tr('props.switch.none')}</button>
           <button class="prop-btn ${swKey==='Q'?'active-q':''}"    id="psw-q">Q</button>
           <button class="prop-btn ${swKey==='P'?'active-p':''}"    id="psw-p">P</button>
         </div>
       </div>
 
       <div class="prop-group" id="p-state-group" style="${swKey==='none'?'display:none':''}">
-        <div class="prop-group-label">État initial</div>
+        <div class="prop-group-label">${tr('props.state')}</div>
         <div class="prop-btns">
-          <button class="prop-btn ${swOpen?'active-open':''}"   id="psw-open">🔓 Ouvert</button>
-          <button class="prop-btn ${!swOpen?'active-closed':''}" id="psw-closed">🔒 Fermé</button>
+          <button class="prop-btn ${swOpen?'active-open':''}"   id="psw-open">${tr('props.open')}</button>
+          <button class="prop-btn ${!swOpen?'active-closed':''}" id="psw-closed">${tr('props.closed')}</button>
         </div>
       </div>
 
       <div class="prop-sep-v"></div>
 
       <div class="prop-group">
-        <div class="prop-group-label">Résistance</div>
+        <div class="prop-group-label">${tr('props.resistance')}</div>
         <div class="prop-btns">
-          <button class="prop-btn ${hasRes?'active-res':''}" id="p-res-btn">${hasRes?'⬛ Active':'◻ Inactive'}</button>
+          <button class="prop-btn ${hasRes?'active-res':''}" id="p-res-btn">${hasRes?tr('props.res.active'):tr('props.res.inactive')}</button>
           <span id="p-res-dur-wrap" style="${hasRes?'':'display:none'};display:${hasRes?'flex':'none'};align-items:center;gap:4px;color:#ff8800;font-size:12px">
             <input id="p-res-dur" type="number" value="${resDur}" min="1" max="30" step="0.5" style="width:48px;background:#2a1400;border:1px solid #ff8800;color:#ff8800;font-family:'Courier New';font-size:12px;padding:4px 6px"> s
           </span>
@@ -799,10 +972,10 @@ function buildProps() {
       <div class="prop-sep-v"></div>
 
       <div class="prop-group">
-        <div class="prop-group-label">Microprocesseur</div>
+        <div class="prop-group-label">${tr('props.micro')}</div>
         <div class="prop-btns">
           <button class="prop-btn ${hasMicro?'active-res':''}" id="p-micro-btn" style="${hasMicro?'border-color:#0077dd;color:#00aaff':''}">
-            ${hasMicro?'█ Actif':'◻ Inactif'}
+            ${hasMicro?tr('props.micro.active'):tr('props.micro.inactive')}
           </button>
           <span id="p-micro-dur-wrap" style="display:${hasMicro?'flex':'none'};align-items:center;gap:4px;color:#0099ff;font-size:12px">
             <input id="p-micro-dur" type="number" value="${microDur}" min="1" max="30" step="0.5"
@@ -814,9 +987,9 @@ function buildProps() {
       <div class="prop-sep-v"></div>
 
       <div class="prop-group">
-        <div class="prop-group-label">Coude wayY</div>
+        <div class="prop-group-label">${tr('props.wayY')}</div>
         <div class="prop-btns">
-          <input id="p-wayY" type="number" value="${wayYVal}" step="20" placeholder="aucun" style="width:68px;background:#0a1a14;border:1px solid #1a5a3a;color:#00ffcc;font-family:'Courier New';font-size:12px;padding:4px 6px">
+          <input id="p-wayY" type="number" value="${wayYVal}" step="20" placeholder="${tr('props.wayY.placeholder')}" style="width:68px;background:#0a1a14;border:1px solid #1a5a3a;color:#00ffcc;font-family:'Courier New';font-size:12px;padding:4px 6px">
         </div>
       </div>
     `;
@@ -872,7 +1045,7 @@ function buildProps() {
     };
 
   } else {
-    panel.innerHTML = '<span style="color:#1a5a3a;font-size:11px">Sélectionne un nœud ou un fil — Clic droit = suppr — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Suppr] supprimer</span>';
+    panel.innerHTML = `<span style="color:#1a5a3a;font-size:11px">${tr('props.hint')}</span>`;
   }
 }
 
@@ -1223,7 +1396,7 @@ document.getElementById('file-input').addEventListener('change', e => {
   const reader = new FileReader();
   reader.onload = ev => {
     try { loadFromJSON(JSON.parse(ev.target.result)); }
-    catch(err) { alert('Fichier JSON invalide'); }
+    catch(err) { alert(tr('alert.invalid')); }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -1242,31 +1415,32 @@ function loadFromJSON(data) {
   }));
   nextNodeId = nodes.reduce((m,n) => Math.max(m,n.id+1), 0);
   nextEdgeId = edges.reduce((m,e) => Math.max(m,e.id+1), 0);
-  document.getElementById('level-name').value = data.name || 'Mon niveau';
+  document.getElementById('level-name').value = data.name || tr('default.name');
   const spd = data.ballSpeedMult ?? 1.0;
   document.getElementById('ball-speed').value = spd;
   document.getElementById('ball-speed-val').textContent = '×' + spd.toFixed(2);
   selectedNode = null; selectedEdge = null; wireFrom = null;
   buildProps(); validate();
   fitView();
-  flash('Niveau chargé : ' + (data.name||''));
+  flash(tr('flash.loaded') + (data.name||''));
 }
 
 function clearLevel() {
-  if (!confirm('Effacer le niveau ?')) return;
+  if (!confirm(tr('confirm.clear'))) return;
   nodes = [
     { id: 0, type: 'source', x: 60,  y: 150 },
     { id: 1, type: 'bulb',   x: 740, y: 150 }
   ];
   edges = []; nextNodeId = 2; nextEdgeId = 0;
   selectedNode = null; selectedEdge = null; wireFrom = null;
-  document.getElementById('level-name').value = 'Mon niveau';
+  document.getElementById('level-name').value = tr('default.name');
   document.getElementById('ball-speed').value = 1.0;
   document.getElementById('ball-speed-val').textContent = '×1.00';
   buildProps(); validate(); fitView();
 }
 
 // Init
+applyLang();
 buildProps();
 validate();
 fitView();
