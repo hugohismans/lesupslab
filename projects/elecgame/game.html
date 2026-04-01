@@ -275,23 +275,36 @@
     z-index: 200;
     text-align: center;
   }
+  #next-level-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
   #next-level-wrap button {
     background: transparent;
-    border: 2px solid #00ffcc;
-    color: #00ffcc;
     font-family: 'Courier New', monospace;
     font-size: 22px;
     font-weight: bold;
     letter-spacing: 3px;
     padding: 14px 36px;
     cursor: pointer;
-    box-shadow: 0 0 24px #00ffcc55, inset 0 0 12px #00ffcc11;
     animation: nxt-pulse 1.2s ease-in-out infinite;
   }
-  #next-level-wrap button:hover {
-    background: #00ffcc18;
-    box-shadow: 0 0 40px #00ffccaa;
+  #next-level-btn {
+    border: 2px solid #00ffcc;
+    color: #00ffcc;
+    box-shadow: 0 0 24px #00ffcc55, inset 0 0 12px #00ffcc11;
   }
+  #next-level-btn:hover { background: #00ffcc18; box-shadow: 0 0 40px #00ffccaa; }
+  #submit-level-btn {
+    border: 2px solid #aa44ff;
+    color: #aa44ff;
+    font-size: 16px;
+    padding: 10px 28px;
+    box-shadow: 0 0 18px #aa44ff44;
+  }
+  #submit-level-btn:hover { background: #aa44ff18; box-shadow: 0 0 32px #aa44ff88; }
   @keyframes nxt-pulse {
     0%, 100% { box-shadow: 0 0 18px #00ffcc55, inset 0 0 8px #00ffcc11; }
     50%       { box-shadow: 0 0 36px #00ffccaa, inset 0 0 16px #00ffcc22; }
@@ -378,7 +391,10 @@
 </div>
 
 <!-- Next level overlay -->
-<div id="next-level-wrap"><button id="next-level-btn"></button></div>
+<div id="next-level-wrap">
+  <button id="next-level-btn"></button>
+  <button id="submit-level-btn" style="display:none">📤 SOUMETTRE À L'ADMIN</button>
+</div>
 
 <!-- Submit overlay -->
 <div id="submit-overlay">
@@ -580,6 +596,7 @@ function selectLevel(idx) {
   document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
+  document.getElementById('submit-level-btn').style.display = 'none';
   startRecording();
   if (AC) startHum();
 }
@@ -713,14 +730,6 @@ function stopRecordingWin() {
   recorder.wonTime = Date.now() - recorder.startTime;
   const wrap = document.getElementById('replay-save-wrap');
   wrap.innerHTML = '';
-
-  if (isTestMode) {
-    const btnSubmit = document.createElement('button');
-    btnSubmit.className = 'replay-btn submit';
-    btnSubmit.textContent = '📤 Soumettre à l\'admin';
-    btnSubmit.onclick = openSubmitOverlay;
-    wrap.appendChild(btnSubmit);
-  }
 
   const btn = document.createElement('button');
   btn.className = 'replay-btn save';
@@ -2207,10 +2216,13 @@ function loop(timestamp) {
   if (!wasDead && state.dead && !replayMode) registerDeath();
   if (!wasWon && state.won && !replayMode) {
     stopRecordingWin();
-    // Bouton campagne — indépendant du recorder
+    const nlWrap    = document.getElementById('next-level-wrap');
+    const nlBtn     = document.getElementById('next-level-btn');
+    const submitBtn = document.getElementById('submit-level-btn');
+
+    // Bouton campagne
     const cp = campaignPos();
-    const nlWrap = document.getElementById('next-level-wrap');
-    const nlBtn  = document.getElementById('next-level-btn');
+    nlBtn.style.display = cp >= 0 ? '' : 'none';
     if (cp >= 0) {
       if (cp + 1 < CAMPAIGN.length) {
         nlBtn.textContent = 'NIVEAU SUIVANT →';
@@ -2219,8 +2231,17 @@ function loop(timestamp) {
         nlBtn.textContent = '🗂 CHOISIR UN NIVEAU';
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
       }
-      nlWrap.style.display = 'block';
     }
+
+    // Bouton submit (mode test uniquement)
+    if (isTestMode) {
+      submitBtn.style.display = '';
+      submitBtn.onclick = openSubmitOverlay;
+    } else {
+      submitBtn.style.display = 'none';
+    }
+
+    if (cp >= 0 || isTestMode) nlWrap.style.display = 'block';
   }
   draw();
   requestAnimationFrame(loop);
