@@ -571,23 +571,6 @@ function stopRecordingWin() {
   const wrap = document.getElementById('replay-save-wrap');
   wrap.innerHTML = '';
 
-  // Campaign progression — gros bouton par-dessus le canvas
-  const cp = campaignPos();
-  const nlWrap = document.getElementById('next-level-wrap');
-  const nlBtn  = document.getElementById('next-level-btn');
-  if (cp >= 0) {
-    if (cp + 1 < CAMPAIGN.length) {
-      nlBtn.textContent = 'NIVEAU SUIVANT →';
-      nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
-    } else {
-      nlBtn.textContent = '🗂 CHOISIR UN NIVEAU';
-      nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
-    }
-    nlWrap.style.display = '';
-  } else {
-    nlWrap.style.display = 'none';
-  }
-
   const btn = document.createElement('button');
   btn.className = 'replay-btn save';
   btn.textContent = '💾 Sauvegarder le replay';
@@ -2009,7 +1992,23 @@ function loop(timestamp) {
   if (replayMode) updateReplay();
   const wasWon = state.won;
   update(dt);
-  if (!wasWon && state.won && !replayMode) stopRecordingWin();
+  if (!wasWon && state.won && !replayMode) {
+    stopRecordingWin();
+    // Bouton campagne — indépendant du recorder
+    const cp = campaignPos();
+    const nlWrap = document.getElementById('next-level-wrap');
+    const nlBtn  = document.getElementById('next-level-btn');
+    if (cp >= 0) {
+      if (cp + 1 < CAMPAIGN.length) {
+        nlBtn.textContent = 'NIVEAU SUIVANT →';
+        nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
+      } else {
+        nlBtn.textContent = '🗂 CHOISIR UN NIVEAU';
+        nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
+      }
+      nlWrap.style.display = '';
+    }
+  }
   draw();
   requestAnimationFrame(loop);
 }
