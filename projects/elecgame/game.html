@@ -756,9 +756,25 @@ function downloadReplay() {
 }
 
 // ── SUBMIT TO ADMIN ────────────────────────────────────────
+const SUBMIT_COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
+
 function openSubmitOverlay() {
+  const lastSubmit = parseInt(loadSave().lastSubmit || 0);
+  const remaining  = SUBMIT_COOLDOWN_MS - (Date.now() - lastSubmit);
+  const status     = document.getElementById('submit-status');
+
+  if (remaining > 0) {
+    const mins = Math.ceil(remaining / 60000);
+    document.getElementById('submit-overlay').classList.add('open');
+    status.style.color = '#ff8800';
+    status.textContent = `⏳ Réessaie dans ${mins} min`;
+    document.getElementById('submit-send').disabled = true;
+    return;
+  }
+
+  status.textContent = '';
+  document.getElementById('submit-send').disabled = false;
   document.getElementById('submit-overlay').classList.add('open');
-  document.getElementById('submit-status').textContent = '';
   document.getElementById('submit-name').focus();
 }
 
@@ -796,6 +812,7 @@ document.getElementById('submit-send').onclick = async () => {
     const res = await fetch(SUBMIT_WEBHOOK, { method: 'POST', body: form });
     if (!res.ok) throw new Error('HTTP ' + res.status);
 
+    writeSave({ lastSubmit: Date.now() });
     status.style.color = '#00ff88';
     status.textContent = '✓ Envoyé !';
     sendBtn.disabled = false;
