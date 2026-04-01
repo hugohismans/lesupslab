@@ -1364,11 +1364,13 @@ async function openFinish(timeMs, deaths) {
   const pseudoIn  = document.getElementById('finish-pseudo');
   const titleEl   = overlay.querySelector('h2');
 
-  // Previous best from localStorage
-  const save       = loadSave();
-  const prevTime   = save.hofBestTime   || null;
-  const prevDeaths = save.hofBestDeaths || null;
-  const prevKey    = save.hofKey        || null;  // Firebase entry key
+  // Previous best from localStorage — only valid if same version
+  const save          = loadSave();
+  const savedVersion  = save.hofVersion || null;
+  const sameVersion   = savedVersion === HOF_VERSION;
+  const prevTime      = sameVersion ? (save.hofBestTime   || null) : null;
+  const prevDeaths    = sameVersion ? (save.hofBestDeaths || null) : null;
+  const prevKey       = sameVersion ? (save.hofKey        || null) : null;  // Firebase entry key
 
   // Is this a new personal best? (lower time = better)
   const isFirstRun = prevTime === null;
@@ -1442,8 +1444,8 @@ async function openFinish(timeMs, deaths) {
         key = data.name; // Firebase returns { "name": "-generatedKey" }
       }
 
-      // Save the best score and Firebase key locally
-      writeSave({ hofBestTime: timeMs, hofBestDeaths: deaths, hofKey: key });
+      // Save the best score, Firebase key and current version locally
+      writeSave({ hofBestTime: timeMs, hofBestDeaths: deaths, hofKey: key, hofVersion: HOF_VERSION });
       statusEl.textContent = '✓ Enregistré !';
       setTimeout(() => { overlay.classList.remove('open'); openHOF(); }, 900);
     } catch(err) {
