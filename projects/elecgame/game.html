@@ -687,6 +687,7 @@ document.addEventListener('keydown', e => {
       if (mc.code[pos] !== digit) {
         state.dead = true; sfxDead();
       } else if (mc.entered.length === 3) {
+        if (mc.ballRef) mc.ballRef.microSolved = true;
         state.microChallenge = null;
         sfxSwitchClose();
       }
@@ -1393,7 +1394,7 @@ function updateCustom(dt) {
     // Microprocesseur : fige la balle au centre et déclenche le défi
     if (microSet && microSet.has(edge.id)) {
       const mc = st.microChallenge;
-      if (!mc && ball.t >= 0.5) {
+      if (!mc && !ball.microSolved && ball.t >= 0.5) {
         ball.t = 0.5;
         const dur = microDurationMap.get(edge.id) ?? 5;
         const code = [Math.floor(Math.random()*10), Math.floor(Math.random()*10), Math.floor(Math.random()*10)];
