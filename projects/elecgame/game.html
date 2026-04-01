@@ -1584,17 +1584,21 @@ document.addEventListener('keydown', e => {
     }
   }
 
+  // Si le niveau est gagné et que le bouton "suivant" est visible → n'importe quelle touche avance
+  if (state && state.won) {
+    const nlWrap = document.getElementById('next-level-wrap');
+    const nlBtn  = document.getElementById('next-level-btn');
+    if (nlWrap && nlWrap.style.display !== 'none' && nlBtn && nlBtn.style.display !== 'none') {
+      e.preventDefault();
+      nlBtn.click();
+      return;
+    }
+  }
+
   keys[k] = true;
   if (e.key === ' ') { spacePressCount++; recordKey('keydown', ' '); }
   else if (k !== 'R') recordKey('keydown', k);
-  if (k === 'R') selectLevel(currentLevel);
-  // Espace pour valider "Niveau suivant" quand le bouton est visible
-  if (e.key === ' ') {
-    const nlWrap = document.getElementById('next-level-wrap');
-    if (nlWrap && nlWrap.style.display !== 'none' && nlWrap.style.display !== '') {
-      document.getElementById('next-level-btn').click();
-    }
-  }
+  if (k === 'R' && !(state && state.won)) selectLevel(currentLevel);
   resumeAudio();
   if (!humOsc) startHum();
   e.preventDefault();
