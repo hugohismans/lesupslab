@@ -339,6 +339,8 @@ const TRANSLATIONS = {
     'flash.redo': 'Rétabli (Ctrl+Shift+Z)',
     'flash.redo.none': 'Rien à rétablir',
     'flash.wire.reversed': 'Fil inversé ⇄',
+    'flash.multi.del': 'nœuds supprimés',
+    'props.multisel': 'nœuds sélectionnés — [Suppr] pour effacer',
     'flash.wire.start': 'Clique sur un nœud source du fil',
     'flash.wire.dest': 'Clique sur le nœud de destination',
     'flash.wire.done': 'Fil créé — continue vers le prochain nœud',
@@ -403,6 +405,8 @@ const TRANSLATIONS = {
     'flash.redo': 'Redone (Ctrl+Shift+Z)',
     'flash.redo.none': 'Nothing to redo',
     'flash.wire.reversed': 'Wire reversed ⇄',
+    'flash.multi.del': 'nodes deleted',
+    'props.multisel': 'nodes selected — [Del] to delete',
     'flash.wire.start': 'Click on a source node for the wire',
     'flash.wire.dest': 'Click on the destination node',
     'flash.wire.done': 'Wire created — continue to next node',
@@ -515,6 +519,8 @@ let tool = 'select';
 let wireFrom = null;
 let selectedNode = null;
 let selectedEdge = null;
+let selectedNodes = [];   // multi-select (array of node objects)
+let selectionRect = null; // { sx, sy, ex, ey } world coords while drag-selecting
 let dragging = null;
 let hoveredNode = null;
 let hoveredEdge = null;
@@ -537,6 +543,8 @@ function flash(msg) {
 function setTool(t) {
   tool = t;
   wireFrom = null;
+  selectedNodes = [];
+  selectionRect = null;
   document.querySelectorAll('.tool-btn[id^=btn]').forEach(b => b.classList.remove('active'));
   const el = document.getElementById('btn-' + t);
   if (el) el.classList.add('active');
@@ -687,18 +695,16 @@ canvas.addEventListener('mousedown', e => {
 
   if (tool === 'select') {
     if (hit) {
-      selectedNode = hit; selectedEdge = null;
+      selectedNode = hit; selectedEdge = null; selectedNodes = [];
       dragging = { node: hit, ox: wx - hit.x, oy: wy - hit.y };
       buildProps();
     } else if (hitEdge) {
-      selectedNode = null; selectedEdge = hitEdge;
+      selectedNode = null; selectedEdge = hitEdge; selectedNodes = [];
       buildProps();
     } else {
-      // Clic dans le vide → pan
-      selectedNode = null; selectedEdge = null;
-      panning = true;
-      panStart = { x: e.clientX - viewX, y: e.clientY - viewY };
-      canvas.style.cursor = 'grabbing';
+      // Clic dans le vide → sélection rect
+      selectedNode = null; selectedEdge = null; selectedNodes = [];
+      selectionRect = { sx: wx, sy: wy, ex: wx, ey: wy };
       buildProps();
     }
 
@@ -805,6 +811,12 @@ canvas.addEventListener('mousemove', e => {
     validate();
     return;
   }
+  if (selectionRect) {
+    const w = screenToWorld(mousePos.x, mousePos.y);
+    selectionRect.ex = w.x;
+    selectionRect.ey = w.y;
+    return;
+  }
   const w = screenToWorld(mousePos.x, mousePos.y);
   hoveredNode = nodeAt(w.x, w.y);
   hoveredEdge = hoveredNode ? null : edgeNear(w.x, w.y);
@@ -818,9 +830,24 @@ canvas.addEventListener('mouseup', e => {
   if (panning) { panning = false; canvas.style.cursor = spaceHeld ? 'grab' : 'crosshair'; }
   dragging = null;
   panStart = null;
+  if (selectionRect) {
+    const r = selectionRect;
+    const minX = Math.min(r.sx, r.ex), maxX = Math.max(r.sx, r.ex);
+    const minY = Math.min(r.sy, r.ey), maxY = Math.max(r.sy, r.ey);
+    const inRect = nodes.filter(n => n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY);
+    selectionRect = null;
+    if (inRect.length === 1) {
+      // single node → sélection normale
+      selectedNode = inRect[0]; selectedEdge = null; selectedNodes = [];
+    } else if (inRect.length > 1) {
+      selectedNodes = inRect; selectedNode = null; selectedEdge = null;
+    }
+    buildProps();
+  }
 });
 canvas.addEventListener('mouseleave', () => {
   panning = false; dragging = null; panStart = null;
+  selectionRect = null;
   hoveredNode = null; hoveredEdge = null;
 });
 
@@ -846,7 +873,7 @@ canvas.addEventListener('contextmenu', e => {
   const hit = nodeAt(w.x, w.y);
   const hitEdge = hit ? null : edgeNear(w.x, w.y);
   if (!hit && !hitEdge) {
-    selectedNode = null; selectedEdge = null; buildProps();
+    selectedNode = null; selectedEdge = null; selectedNodes = []; buildProps();
   } else {
     deleteHit(hit, hitEdge);
   }
@@ -891,7 +918,15 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
-    if (selectedNode) {
+    if (selectedNodes.length > 0) {
+      saveUndo();
+      const ids = new Set(selectedNodes.map(n => n.id));
+      nodes = nodes.filter(n => !ids.has(n.id));
+      edges = edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to));
+      const count = ids.size;
+      selectedNodes = []; buildProps(); validate();
+      flash(count + ' ' + tr('flash.multi.del'));
+    } else if (selectedNode) {
       saveUndo();
       nodes = nodes.filter(n => n.id !== selectedNode.id);
       edges = edges.filter(ed => ed.from !== selectedNode.id && ed.to !== selectedNode.id);
@@ -905,7 +940,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.key === 'Escape') {
     if (wireFrom) { wireFrom = null; flash(tr('flash.wire.cancel')); }
-    else { selectedNode = null; selectedEdge = null; buildProps(); }
+    else { selectedNode = null; selectedEdge = null; selectedNodes = []; selectionRect = null; buildProps(); }
     return;
   }
   if (e.key === 'f' || e.key === 'F') { fitView(); return; }
@@ -944,6 +979,11 @@ function fitView() {
 function buildProps() {
   const panel = document.getElementById('props-panel');
   panel.innerHTML = '';
+
+  if (selectedNodes.length > 0) {
+    panel.innerHTML = `<span style="color:#00ffcc;font-size:12px">${selectedNodes.length} ${tr('props.multisel')}</span>`;
+    return;
+  }
 
   if (selectedNode) {
     const n = selectedNode;
@@ -1436,9 +1476,26 @@ function draw() {
   drawGrid();
   for (const e of edges) drawEdge(e, selectedEdge?.id===e.id, hoveredEdge?.id===e.id);
   drawWirePreview();
-  for (const n of nodes) drawNode(n, selectedNode?.id===n.id, hoveredNode?.id===n.id);
+  const multiIds = new Set(selectedNodes.map(n => n.id));
+  for (const n of nodes) drawNode(n, selectedNode?.id===n.id || multiIds.has(n.id), hoveredNode?.id===n.id);
 
   ctx.restore();
+
+  // Rectangle de sélection (screen space)
+  if (selectionRect) {
+    const a = worldToScreen(selectionRect.sx, selectionRect.sy);
+    const b = worldToScreen(selectionRect.ex, selectionRect.ey);
+    const rx = Math.min(a.x, b.x), ry = Math.min(a.y, b.y);
+    const rw = Math.abs(b.x - a.x), rh = Math.abs(b.y - a.y);
+    ctx.save();
+    ctx.fillStyle = '#00ffcc0d';
+    ctx.fillRect(rx, ry, rw, rh);
+    ctx.strokeStyle = '#00ffcc88';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.restore();
+  }
 
   drawMinimap();
   requestAnimationFrame(draw);
