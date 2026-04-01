@@ -67,6 +67,21 @@
   }
   #death-counter.flash { color: #ff4444; }
 
+  /* ── CAMPAIGN TIMER ──────────────────────────────────────── */
+  #campaign-timer {
+    position: fixed;
+    top: 34px;
+    right: 14px;
+    z-index: 150;
+    color: #2a5a3a;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    pointer-events: none;
+    display: none;
+  }
+  #campaign-timer.active { display: block; }
+
   /* ── LEVEL TITLE ─────────────────────────────────────────── */
   #level-title {
     position: fixed;
@@ -311,6 +326,123 @@
     50%       { box-shadow: 0 0 36px #00ffccaa, inset 0 0 16px #00ffcc22; }
   }
 
+  /* ── HOF OVERLAY ─────────────────────────────────────────── */
+  #hof-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  #hof-overlay.open { display: flex; }
+  #hof-box {
+    background: #05090a;
+    border: 1px solid #00ffcc44;
+    box-shadow: 0 0 40px #00ffcc22;
+    width: min(600px, 96vw);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+  }
+  #hof-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #1a5a3a;
+    flex-shrink: 0;
+  }
+  #hof-header h2 { font-size: 13px; letter-spacing: 4px; color: #00ffcc; margin: 0; }
+  #hof-close {
+    background: none; border: none; color: #446655;
+    font-size: 20px; cursor: pointer; padding: 2px 6px;
+  }
+  #hof-close:hover { color: #00ffcc; }
+  #hof-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #1a5a3a;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .hof-tab {
+    background: none; border: none; border-right: 1px solid #1a5a3a;
+    color: #446655; font-family: 'Courier New', monospace; font-size: 11px;
+    letter-spacing: 2px; padding: 8px 16px; cursor: pointer; white-space: nowrap;
+    transition: all 0.12s;
+  }
+  .hof-tab:hover { color: #00ffcc; background: #0a1a14; }
+  .hof-tab.active { color: #00ffcc; background: #0d2218; border-bottom: 2px solid #00ffcc; }
+  #hof-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+  #hof-body::-webkit-scrollbar { width: 4px; }
+  #hof-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
+  .hof-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .hof-table th {
+    text-align: left; color: #224433; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; padding: 4px 8px; border-bottom: 1px solid #1a5a3a;
+  }
+  .hof-table td { padding: 6px 8px; color: #446655; border-bottom: 1px solid #0d2218; }
+  .hof-table tr:first-child td { color: #ffdd44; }
+  .hof-table tr:nth-child(2) td { color: #aaaaaa; }
+  .hof-table tr:nth-child(3) td { color: #cc8844; }
+  .hof-rank { color: #224433; font-size: 11px; }
+  .hof-pseudo { color: inherit; font-weight: bold; letter-spacing: 1px; }
+  .hof-time { color: #00ffcc; font-variant-numeric: tabular-nums; }
+  .hof-deaths { color: #663333; }
+  .hof-loading { color: #224433; font-size: 12px; letter-spacing: 1px; padding: 20px 0; text-align: center; }
+  #hof-specials { border-top: 1px solid #1a5a3a; padding: 12px 18px; flex-shrink: 0; }
+  #hof-specials h3 { font-size: 10px; letter-spacing: 3px; color: #224433; margin: 0 0 10px; text-transform: uppercase; }
+  .special-entry { display: flex; gap: 12px; align-items: baseline; margin-bottom: 5px; }
+  .special-pseudo { color: #aa44ff; font-size: 12px; letter-spacing: 1px; }
+  .special-level  { color: #446655; font-size: 11px; }
+
+  /* ── FINISH OVERLAY ──────────────────────────────────────── */
+  #finish-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.82);
+    z-index: 490;
+    align-items: center;
+    justify-content: center;
+  }
+  #finish-overlay.open { display: flex; }
+  #finish-box {
+    background: #05090a;
+    border: 1px solid #ffdd4488;
+    box-shadow: 0 0 50px #ffdd4422, 0 0 100px #ffdd4411;
+    padding: 28px 32px;
+    width: min(360px, 92vw);
+    display: flex; flex-direction: column; gap: 14px;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+  }
+  #finish-box h2 { margin: 0; font-size: 20px; letter-spacing: 3px; color: #ffdd44;
+    text-shadow: 0 0 20px #ffdd44; }
+  #finish-score { font-size: 12px; color: #446655; letter-spacing: 1px; line-height: 1.8; }
+  #finish-score span { color: #00ffcc; }
+  #finish-pseudo {
+    background: #0a1a14; border: 1px solid #1a5a3a; color: #00ffcc;
+    font-family: 'Courier New', monospace; font-size: 14px;
+    padding: 10px 12px; outline: none; text-align: center; letter-spacing: 2px;
+  }
+  #finish-pseudo:focus { border-color: #00ffcc; }
+  #finish-btns { display: flex; gap: 10px; justify-content: center; }
+  #finish-btns button {
+    background: transparent; font-family: 'Courier New', monospace;
+    font-size: 12px; letter-spacing: 2px; padding: 9px 20px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #finish-submit { border: 1px solid #00ffcc; color: #00ffcc; }
+  #finish-submit:hover { background: #00ffcc18; box-shadow: 0 0 14px #00ffcc66; }
+  #finish-skip { border: 1px solid #224433; color: #224433; }
+  #finish-skip:hover { color: #446655; border-color: #446655; }
+  #finish-status { font-size: 11px; color: #224433; min-height: 16px; }
+
   /* ── LANG TOGGLE ─────────────────────────────────────────── */
   #lang-toggle {
     position: fixed;
@@ -432,8 +564,41 @@
 <!-- Death counter -->
 <div id="death-counter">💀 0</div>
 
+<!-- Campaign timer -->
+<div id="campaign-timer">⏱ 0:00</div>
+
 <!-- Language toggle -->
 <button id="lang-toggle">EN</button>
+
+<!-- HOF overlay -->
+<div id="hof-overlay">
+  <div id="hof-box">
+    <div id="hof-header">
+      <h2>🏆 HALL OF FAME</h2>
+      <button id="hof-close">✕</button>
+    </div>
+    <div id="hof-tabs"></div>
+    <div id="hof-body"></div>
+    <div id="hof-specials">
+      <h3>✦ Special Thanks &amp; Content Creators</h3>
+      <div id="hof-specials-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Finish (campaign complete) overlay -->
+<div id="finish-overlay">
+  <div id="finish-box">
+    <h2>🏆 CAMPAGNE TERMINÉE !</h2>
+    <div id="finish-score"></div>
+    <input id="finish-pseudo" type="text" maxlength="24" placeholder="Ton pseudo…" autocomplete="off">
+    <div id="finish-status"></div>
+    <div id="finish-btns">
+      <button id="finish-submit">ENTRER AU HOF →</button>
+      <button id="finish-skip">Passer</button>
+    </div>
+  </div>
+</div>
 
 <!-- Sidebar backdrop -->
 <div id="sidebar-overlay"></div>
@@ -448,6 +613,9 @@
     <div id="level-select"></div>
     <div id="hint"></div>
     <div id="replay-save-wrap" style="display:none;"></div>
+    <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a">
+      <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44;margin-bottom:4px">🏆 Hall of Fame</button>
+    </div>
   </div>
 </div>
 
@@ -825,6 +993,9 @@ function selectLevel(idx) {
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
   document.getElementById('submit-level-btn').style.display = 'none';
+  // Campaign timer: start at first level, reset if player goes back to start
+  const cp = CAMPAIGN.findIndex(c => c.idx !== undefined ? c.idx === idx : false);
+  if (cp === 0) campStart_();
   startRecording();
   if (AC) startHum();
 }
@@ -927,6 +1098,7 @@ function registerDeath() {
   deathCount++;
   writeSave({ deaths: deathCount });
   updateDeathDisplay();
+  if (campRunning) campDeaths++;
   const el = document.getElementById('death-counter');
   if (el) {
     el.classList.add('flash');
@@ -1051,6 +1223,169 @@ document.getElementById('submit-send').onclick = async () => {
     sendBtn.disabled = false;
   }
 };
+
+// ── HALL OF FAME ───────────────────────────────────────────
+const HOF_VERSION  = '0.0.1';
+const HOF_VERSIONS = ['0.0.1']; // add new versions here when they come
+const FB_URL = 'https://jardin-feerique-default-rtdb.europe-west1.firebasedatabase.app/elecgame/hof';
+
+// Special thanks / content creators — edit this list manually
+const SPECIAL_THANKS = [
+  // { pseudo: 'Example', level: 'Mon super niveau' },
+];
+
+// ── Campaign timer & run tracking ──────────────────────────
+let campRunning  = false;
+let campStart    = 0;      // Date.now() when first level started
+let campDeaths   = 0;      // deaths this campaign run
+let campPaused   = 0;      // accumulated paused ms (future-proof)
+const campTimerEl = document.getElementById('campaign-timer');
+
+function campElapsed() {
+  if (!campRunning) return 0;
+  return Date.now() - campStart - campPaused;
+}
+
+function campFmtTime(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+function campStart_() {
+  campStart   = Date.now();
+  campDeaths  = 0;
+  campRunning = true;
+  campPaused  = 0;
+  campTimerEl.classList.add('active');
+}
+
+function campStop() {
+  campRunning = false;
+  campTimerEl.classList.remove('active');
+}
+
+function campTickDisplay() {
+  if (!campRunning) return;
+  campTimerEl.textContent = '⏱ ' + campFmtTime(campElapsed());
+}
+
+// ── HOF fetch & display ────────────────────────────────────
+async function hofFetch(version) {
+  try {
+    const res = await fetch(`${FB_URL}/${version}.json`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data) return [];
+    return Object.values(data)
+      .sort((a, b) => a.time - b.time)
+      .slice(0, 50);
+  } catch { return []; }
+}
+
+function hofRenderBody(entries) {
+  const body = document.getElementById('hof-body');
+  if (!entries.length) {
+    body.innerHTML = '<div class="hof-loading">Pas encore d\'entrée — sois le premier !</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  body.innerHTML = `<table class="hof-table">
+    <thead><tr>
+      <th>#</th><th>Pseudo</th><th>Temps</th><th>💀 Morts</th><th>Date</th>
+    </tr></thead>
+    <tbody>${entries.map((e, i) => `<tr>
+      <td class="hof-rank">${medals[i] || (i+1)}</td>
+      <td class="hof-pseudo">${escHtml(e.pseudo)}</td>
+      <td class="hof-time">${campFmtTime(e.time)}</td>
+      <td class="hof-deaths">${e.deaths}</td>
+      <td style="color:#224433;font-size:10px">${new Date(e.ts).toLocaleDateString()}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function hofBuildTabs(activeVersion) {
+  const tabsEl = document.getElementById('hof-tabs');
+  tabsEl.innerHTML = '';
+  HOF_VERSIONS.forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'hof-tab' + (v === activeVersion ? ' active' : '');
+    btn.textContent = 'v' + v;
+    btn.onclick = () => openHOF(v);
+    tabsEl.appendChild(btn);
+  });
+}
+
+function hofBuildSpecials() {
+  const el = document.getElementById('hof-specials-list');
+  const section = document.getElementById('hof-specials');
+  if (!SPECIAL_THANKS.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  el.innerHTML = SPECIAL_THANKS.map(s =>
+    `<div class="special-entry">
+      <span class="special-pseudo">${escHtml(s.pseudo)}</span>
+      <span class="special-level">${escHtml(s.level || '')}</span>
+    </div>`
+  ).join('');
+}
+
+async function openHOF(version = HOF_VERSION) {
+  document.getElementById('hof-overlay').classList.add('open');
+  hofBuildTabs(version);
+  hofBuildSpecials();
+  document.getElementById('hof-body').innerHTML = '<div class="hof-loading">Chargement…</div>';
+  const entries = await hofFetch(version);
+  hofRenderBody(entries);
+}
+
+document.getElementById('hof-close').onclick = () =>
+  document.getElementById('hof-overlay').classList.remove('open');
+document.getElementById('hof-open-btn').onclick = () => { closeMenu(); openHOF(); };
+
+// ── Finish overlay (campaign complete) ─────────────────────
+async function openFinish(timeMs, deaths) {
+  const overlay = document.getElementById('finish-overlay');
+  const scoreEl = document.getElementById('finish-score');
+  scoreEl.innerHTML =
+    `Temps : <span>${campFmtTime(timeMs)}</span><br>` +
+    `Morts : <span>${deaths}</span>`;
+  document.getElementById('finish-pseudo').value = loadSave().hofPseudo || '';
+  document.getElementById('finish-status').textContent = '';
+  document.getElementById('finish-submit').disabled = false;
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('finish-pseudo').focus(), 80);
+
+  document.getElementById('finish-skip').onclick = () => {
+    overlay.classList.remove('open');
+    openHOF();
+  };
+
+  document.getElementById('finish-submit').onclick = async () => {
+    const pseudo = document.getElementById('finish-pseudo').value.trim();
+    if (!pseudo) { document.getElementById('finish-status').textContent = '⚠ Entre un pseudo !'; return; }
+    document.getElementById('finish-submit').disabled = true;
+    document.getElementById('finish-status').textContent = 'Envoi…';
+    writeSave({ hofPseudo: pseudo });
+    const entry = { pseudo, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION };
+    try {
+      const res = await fetch(`${FB_URL}/${HOF_VERSION}.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      document.getElementById('finish-status').textContent = '✓ Enregistré !';
+      setTimeout(() => { overlay.classList.remove('open'); openHOF(); }, 900);
+    } catch(err) {
+      document.getElementById('finish-status').textContent = '✗ Erreur : ' + err.message;
+      document.getElementById('finish-submit').disabled = false;
+    }
+  };
+}
 
 // ── REPLAY PLAYBACK ────────────────────────────────────────
 let replayMode = false;
@@ -2493,8 +2828,14 @@ function loop(timestamp) {
         nlBtn.textContent = t('btn.next_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
       } else {
+        // Last campaign level — campaign complete!
+        const finalTime   = campElapsed();
+        const finalDeaths = campDeaths;
+        campStop();
         nlBtn.textContent = t('btn.choose_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
+        // Show finish popup after a short delay so win animation plays
+        setTimeout(() => openFinish(finalTime, finalDeaths), 1200);
       }
     }
 
@@ -2512,6 +2853,7 @@ function loop(timestamp) {
   const showNumpad = state.type === 'custom' && !!state.microChallenge && !state.dead && !state.won;
   microNumpad.classList.toggle('visible', showNumpad);
 
+  campTickDisplay();
   draw();
   requestAnimationFrame(loop);
 }
