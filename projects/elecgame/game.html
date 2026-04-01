@@ -1072,7 +1072,7 @@ function drawSwitch(sw) {
   ctx.textAlign = 'center';
   ctx.fillStyle = c.main;
   ctx.shadowBlur = open ? 0 : 6; ctx.shadowColor = c.glow;
-  ctx.fillText('[' + sw.key + '] ' + (open ? 'ouvert' : 'fermé'), x, labelY);
+  ctx.fillText('[' + sw.key + ']', x, labelY);
   ctx.restore();
 }
 
@@ -1939,7 +1939,7 @@ function drawCustom() {
       ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
       ctx.fillStyle = c.main;
       ctx.shadowBlur = sw.open ? 0 : 6; ctx.shadowColor = c.glow;
-      ctx.fillText('[' + sw.key + '] ' + (sw.open ? 'ouvert' : 'fermé'), 0, 44);
+      ctx.fillText('[' + sw.key + ']', 0, 44);
       ctx.restore();
 
       ctx.restore(); // undo translate+rotate
