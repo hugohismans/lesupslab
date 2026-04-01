@@ -882,6 +882,7 @@ document.addEventListener('click', e => {
 }, true);
 
 document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   const k = e.key.toUpperCase();
   if (replayMode) {
     if (k === 'R') { replayMode = false; for (const k2 in keys) keys[k2] = false; selectLevel(currentLevel); }
