@@ -11,14 +11,14 @@
     {
       "id": 1,
       "type": "bulb",
-      "x": 740,
+      "x": 1000,
       "y": 160
     },
     {
       "id": 2,
       "type": "node",
-      "x": 220,
-      "y": 60
+      "x": 280,
+      "y": 40
     },
     {
       "id": 3,
@@ -29,86 +29,86 @@
     {
       "id": 4,
       "type": "node",
-      "x": 300,
-      "y": 20
+      "x": 400,
+      "y": 0
     },
     {
       "id": 5,
       "type": "node",
-      "x": 360,
-      "y": 20
+      "x": 500,
+      "y": 0
     },
     {
       "id": 6,
       "type": "node",
-      "x": 440,
+      "x": 600,
       "y": 20
     },
     {
       "id": 7,
       "type": "node",
-      "x": 520,
+      "x": 720,
       "y": 40
     },
     {
       "id": 8,
       "type": "node",
-      "x": 580,
+      "x": 800,
       "y": 80
     },
     {
       "id": 9,
       "type": "node",
-      "x": 640,
-      "y": 120
+      "x": 880,
+      "y": 100
     },
     {
       "id": 10,
       "type": "node",
-      "x": 720,
+      "x": 960,
       "y": 160
     },
     {
       "id": 11,
       "type": "node",
-      "x": 120,
-      "y": 200
+      "x": 240,
+      "y": 320
     },
     {
       "id": 12,
       "type": "node",
-      "x": 180,
-      "y": 240
+      "x": 380,
+      "y": 360
     },
     {
       "id": 13,
       "type": "node",
-      "x": 260,
-      "y": 240
+      "x": 500,
+      "y": 380
     },
     {
       "id": 14,
       "type": "node",
-      "x": 400,
-      "y": 240
+      "x": 600,
+      "y": 400
     },
     {
       "id": 15,
       "type": "node",
-      "x": 520,
-      "y": 240
+      "x": 700,
+      "y": 400
     },
     {
       "id": 16,
       "type": "node",
-      "x": 640,
-      "y": 240
+      "x": 860,
+      "y": 400
     },
     {
       "id": 17,
       "type": "bulb",
-      "x": 720,
-      "y": 240
+      "x": 1040,
+      "y": 380
     }
   ],
   "edges": [
@@ -121,7 +121,8 @@
         "key": "Q",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 2,
@@ -132,7 +133,8 @@
         "key": "Q",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 3,
@@ -143,7 +145,8 @@
         "key": "Q",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 4,
@@ -154,7 +157,8 @@
         "key": "Q",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 5,
@@ -165,7 +169,8 @@
         "key": "Q",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 6,
@@ -176,7 +181,8 @@
         "key": "Q",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 7,
@@ -187,7 +193,8 @@
         "key": "Q",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 8,
@@ -198,7 +205,8 @@
         "key": "Q",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 9,
@@ -206,7 +214,8 @@
       "to": 10,
       "wayY": null,
       "switch": null,
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 10,
@@ -214,7 +223,8 @@
       "to": 1,
       "wayY": null,
       "switch": null,
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 11,
@@ -225,7 +235,8 @@
         "key": "P",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 12,
@@ -236,7 +247,8 @@
         "key": "P",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 13,
@@ -247,7 +259,8 @@
         "key": "P",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 14,
@@ -258,7 +271,8 @@
         "key": "P",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 15,
@@ -269,7 +283,8 @@
         "key": "P",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 16,
@@ -280,7 +295,8 @@
         "key": "P",
         "initOpen": true
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     },
     {
       "id": 17,
@@ -291,7 +307,8 @@
         "key": "P",
         "initOpen": false
       },
-      "resistance": false
+      "resistance": false,
+      "micro": false
     }
   ]
 }
