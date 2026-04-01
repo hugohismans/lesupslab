@@ -183,6 +183,38 @@
   .replay-btn.save { border-color: #ffaa00; color: #ffaa00; }
   .replay-btn.save:hover { border-color: #ffdd44; color: #ffdd44; box-shadow: 0 0 12px #ffaa0044; }
 
+  /* ── NEXT LEVEL OVERLAY ──────────────────────────────────── */
+  #next-level-wrap {
+    display: none;
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    text-align: center;
+  }
+  #next-level-wrap button {
+    background: transparent;
+    border: 2px solid #00ffcc;
+    color: #00ffcc;
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    padding: 14px 36px;
+    cursor: pointer;
+    box-shadow: 0 0 24px #00ffcc55, inset 0 0 12px #00ffcc11;
+    animation: nxt-pulse 1.2s ease-in-out infinite;
+  }
+  #next-level-wrap button:hover {
+    background: #00ffcc18;
+    box-shadow: 0 0 40px #00ffccaa;
+  }
+  @keyframes nxt-pulse {
+    0%, 100% { box-shadow: 0 0 18px #00ffcc55, inset 0 0 8px #00ffcc11; }
+    50%       { box-shadow: 0 0 36px #00ffccaa, inset 0 0 16px #00ffcc22; }
+  }
+
   /* ── TOUCH CONTROLS ──────────────────────────────────────── */
   #touch-controls {
     display: none;
@@ -256,6 +288,9 @@
     <div id="replay-save-wrap" style="display:none;"></div>
   </div>
 </div>
+
+<!-- Next level overlay -->
+<div id="next-level-wrap"><button id="next-level-btn"></button></div>
 
 <!-- Hidden file inputs -->
 <input type="file" id="ext-level-input" accept=".json" style="display:none">
@@ -430,6 +465,7 @@ function selectLevel(idx) {
   if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || 'Niveaux';
   document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
   document.getElementById('replay-save-wrap').style.display = 'none';
+  document.getElementById('next-level-wrap').style.display = 'none';
   startRecording();
   if (AC) startHum();
 }
@@ -535,19 +571,21 @@ function stopRecordingWin() {
   const wrap = document.getElementById('replay-save-wrap');
   wrap.innerHTML = '';
 
-  // Campaign progression button
+  // Campaign progression — gros bouton par-dessus le canvas
   const cp = campaignPos();
+  const nlWrap = document.getElementById('next-level-wrap');
+  const nlBtn  = document.getElementById('next-level-btn');
   if (cp >= 0) {
-    const btnNext = document.createElement('button');
-    btnNext.className = 'replay-btn';
     if (cp + 1 < CAMPAIGN.length) {
-      btnNext.textContent = 'Niveau suivant →';
-      btnNext.onclick = () => goNextCampaign(cp + 1);
+      nlBtn.textContent = 'NIVEAU SUIVANT →';
+      nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
     } else {
-      btnNext.textContent = '🗂 Choisir un niveau';
-      btnNext.onclick = openMenu;
+      nlBtn.textContent = '🗂 CHOISIR UN NIVEAU';
+      nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
     }
-    wrap.appendChild(btnNext);
+    nlWrap.style.display = '';
+  } else {
+    nlWrap.style.display = 'none';
   }
 
   const btn = document.createElement('button');
