@@ -681,7 +681,7 @@ let spacePressCount = 0;
 let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJSON: null, wonTime: 0 };
 
 // ── SUBMIT CONFIG ──────────────────────────────────────────
-const SUBMIT_WEBHOOK = 'https://discord.com/api/webhooks/1488707248552415374/_0b7EP6UKqM3tYxLtUmjksYnDGgvAvmnEN1ODeEjLCLT_73lGfs2HfqTGkso2Ke0FqNJ';
+const SUBMIT_WEBHOOK = 'https://elecgame-submit.hugohismans.workers.dev'; // Cloudflare Worker proxy
 const isTestMode = new URLSearchParams(location.search).has('test');
 
 // ── DEATH COUNTER ──────────────────────────────────────────
