@@ -52,6 +52,21 @@
   }
   #menu-btn:hover { border-color: #00ffcc; box-shadow: 0 0 12px #00ffcc44; }
 
+  /* ── DEATH COUNTER ──────────────────────────────────────── */
+  #death-counter {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 150;
+    color: #663333;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    letter-spacing: 2px;
+    pointer-events: none;
+    transition: color 0.15s;
+  }
+  #death-counter.flash { color: #ff4444; }
+
   /* ── LEVEL TITLE ─────────────────────────────────────────── */
   #level-title {
     position: fixed;
@@ -291,6 +306,9 @@
 
 <!-- Level title -->
 <div id="level-title">Tutoriel 1</div>
+
+<!-- Death counter -->
+<div id="death-counter">💀 0</div>
 
 <!-- Sidebar backdrop -->
 <div id="sidebar-overlay"></div>
@@ -577,6 +595,31 @@ let spacePressCount = 0;
 
 // ── RECORDER ───────────────────────────────────────────────
 let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJSON: null, wonTime: 0 };
+
+// ── DEATH COUNTER ──────────────────────────────────────────
+const SAVE_KEY = 'elecgame_save';
+function loadSave() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch { return {}; }
+}
+function writeSave(data) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ ...loadSave(), ...data }));
+}
+let deathCount = loadSave().deaths || 0;
+function updateDeathDisplay() {
+  const el = document.getElementById('death-counter');
+  if (el) el.textContent = '💀 ' + deathCount;
+}
+function registerDeath() {
+  deathCount++;
+  writeSave({ deaths: deathCount });
+  updateDeathDisplay();
+  const el = document.getElementById('death-counter');
+  if (el) {
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 400);
+  }
+}
+updateDeathDisplay();
 
 function startRecording() {
   const lv = LEVELS[currentLevel];
@@ -2022,8 +2065,10 @@ function loop(timestamp) {
   const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.05) : 1 / 60;
   lastTimestamp = timestamp;
   if (replayMode) updateReplay();
-  const wasWon = state.won;
+  const wasWon  = state.won;
+  const wasDead = state.dead;
   update(dt);
+  if (!wasDead && state.dead && !replayMode) registerDeath();
   if (!wasWon && state.won && !replayMode) {
     stopRecordingWin();
     // Bouton campagne — indépendant du recorder
