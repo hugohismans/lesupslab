@@ -211,8 +211,59 @@
     width: 100%;
   }
   .replay-btn:hover { border-color: #00ffcc; color: #00ffcc; }
-  .replay-btn.save { border-color: #ffaa00; color: #ffaa00; }
+  .replay-btn.save   { border-color: #ffaa00; color: #ffaa00; }
   .replay-btn.save:hover { border-color: #ffdd44; color: #ffdd44; box-shadow: 0 0 12px #ffaa0044; }
+  .replay-btn.submit { border-color: #aa44ff; color: #aa44ff; }
+  .replay-btn.submit:hover { border-color: #cc88ff; color: #cc88ff; box-shadow: 0 0 12px #aa44ff44; }
+
+  /* ── SUBMIT OVERLAY ──────────────────────────────────────── */
+  #submit-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+  }
+  #submit-overlay.open { display: flex; }
+  #submit-box {
+    background: #050e0a;
+    border: 1px solid #6622cc;
+    box-shadow: 0 0 30px #6622cc55;
+    padding: 28px 32px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: 'Courier New', monospace;
+    color: #aa66ff;
+  }
+  #submit-box h3 { margin: 0; font-size: 14px; letter-spacing: 2px; color: #cc88ff; }
+  #submit-box input, #submit-box textarea {
+    background: #0a0418;
+    border: 1px solid #441188;
+    color: #cc88ff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    resize: none;
+  }
+  #submit-box input:focus, #submit-box textarea:focus { border-color: #aa44ff; }
+  #submit-box .submit-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  #submit-box button {
+    background: transparent;
+    border: 1px solid #441188;
+    color: #aa66ff;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 7px 16px;
+    cursor: pointer;
+  }
+  #submit-box button.primary { border-color: #aa44ff; color: #cc88ff; }
+  #submit-box button.primary:hover { background: #aa44ff22; }
+  #submit-box #submit-status { font-size: 11px; min-height: 16px; }
 
   /* ── NEXT LEVEL OVERLAY ──────────────────────────────────── */
   #next-level-wrap {
@@ -328,6 +379,20 @@
 
 <!-- Next level overlay -->
 <div id="next-level-wrap"><button id="next-level-btn"></button></div>
+
+<!-- Submit overlay -->
+<div id="submit-overlay">
+  <div id="submit-box">
+    <h3>📤 SOUMETTRE À L'ADMIN</h3>
+    <input id="submit-name" type="text" placeholder="Ton prénom / pseudo" maxlength="40">
+    <textarea id="submit-msg" rows="3" placeholder="Un message ? (optionnel)"></textarea>
+    <div id="submit-status"></div>
+    <div class="submit-btns">
+      <button id="submit-cancel">Annuler</button>
+      <button id="submit-send" class="primary">Envoyer →</button>
+    </div>
+  </div>
+</div>
 
 <!-- Hidden file inputs -->
 <input type="file" id="ext-level-input" accept=".json" style="display:none">
@@ -596,6 +661,10 @@ let spacePressCount = 0;
 // ── RECORDER ───────────────────────────────────────────────
 let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJSON: null, wonTime: 0 };
 
+// ── SUBMIT CONFIG ──────────────────────────────────────────
+const SUBMIT_WEBHOOK = 'https://discord.com/api/webhooks/1488707248552415374/_0b7EP6UKqM3tYxLtUmjksYnDGgvAvmnEN1ODeEjLCLT_73lGfs2HfqTGkso2Ke0FqNJ';
+const isTestMode = new URLSearchParams(location.search).has('test');
+
 // ── DEATH COUNTER ──────────────────────────────────────────
 const SAVE_KEY = 'elecgame_save';
 function loadSave() {
@@ -645,6 +714,14 @@ function stopRecordingWin() {
   const wrap = document.getElementById('replay-save-wrap');
   wrap.innerHTML = '';
 
+  if (isTestMode) {
+    const btnSubmit = document.createElement('button');
+    btnSubmit.className = 'replay-btn submit';
+    btnSubmit.textContent = '📤 Soumettre à l\'admin';
+    btnSubmit.onclick = openSubmitOverlay;
+    wrap.appendChild(btnSubmit);
+  }
+
   const btn = document.createElement('button');
   btn.className = 'replay-btn save';
   btn.textContent = '💾 Sauvegarder le replay';
@@ -668,6 +745,58 @@ function downloadReplay() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ── SUBMIT TO ADMIN ────────────────────────────────────────
+function openSubmitOverlay() {
+  document.getElementById('submit-overlay').classList.add('open');
+  document.getElementById('submit-status').textContent = '';
+  document.getElementById('submit-name').focus();
+}
+
+document.getElementById('submit-cancel').onclick = () => {
+  document.getElementById('submit-overlay').classList.remove('open');
+};
+
+document.getElementById('submit-send').onclick = async () => {
+  if (!SUBMIT_WEBHOOK) return;
+  const name    = document.getElementById('submit-name').value.trim() || 'Anonyme';
+  const msg     = document.getElementById('submit-msg').value.trim();
+  const status  = document.getElementById('submit-status');
+  const sendBtn = document.getElementById('submit-send');
+
+  const levelJSON  = localStorage.getItem('elecgame_test_level') || '{}';
+  const levelName  = JSON.parse(levelJSON).name || 'level';
+  const replayData = {
+    levelName: recorder.levelName || levelName,
+    levelJSON: JSON.parse(levelJSON),
+    duration:  recorder.wonTime,
+    inputs:    recorder.inputs
+  };
+
+  status.style.color = '#aa66ff';
+  status.textContent = 'Envoi en cours…';
+  sendBtn.disabled = true;
+
+  try {
+    const form = new FormData();
+    const content = `**Nouvelle soumission de niveau**\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s`;
+    form.append('payload_json', JSON.stringify({ content }));
+    form.append('files[0]', new Blob([JSON.stringify(JSON.parse(levelJSON), null, 2)], { type: 'application/json' }), levelName + '.json');
+    form.append('files[1]', new Blob([JSON.stringify(replayData, null, 2)], { type: 'application/json' }), levelName + '_replay.json');
+
+    const res = await fetch(SUBMIT_WEBHOOK, { method: 'POST', body: form });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    status.style.color = '#00ff88';
+    status.textContent = '✓ Envoyé !';
+    sendBtn.disabled = false;
+    setTimeout(() => document.getElementById('submit-overlay').classList.remove('open'), 1500);
+  } catch (err) {
+    status.style.color = '#ff4444';
+    status.textContent = '✗ Erreur : ' + err.message;
+    sendBtn.disabled = false;
+  }
+};
 
 // ── REPLAY PLAYBACK ────────────────────────────────────────
 let replayMode = false;
