@@ -13,10 +13,68 @@ body {
   height: 100vh;
   overflow: hidden;
   display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  user-select: none;
+}
+
+/* ── SIDE PANELS ─────────────────────────────────────────── */
+.side-panel {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  gap: 12px;
+  z-index: 1;
+  overflow: hidden;
+}
+#panel-left  { border-right: 1px solid #0d2218; }
+#panel-right { border-left:  1px solid #0d2218; }
+.side-panel h3 {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #224433;
+  text-transform: uppercase;
+  margin: 0;
+  flex-shrink: 0;
+}
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.panel-body::-webkit-scrollbar { width: 3px; }
+.panel-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
+
+/* Special Thanks */
+.sp-entry { padding: 6px 0; border-bottom: 1px solid #0d2218; }
+.sp-pseudo { color: #aa44ff; font-size: 12px; letter-spacing: 1px; }
+.sp-level  { color: #2a5a3a; font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
+
+/* HOF rows */
+.ihof-row { display: flex; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px solid #0d2218; }
+.ihof-rank   { font-size: 14px; flex-shrink: 0; width: 22px; }
+.ihof-pseudo { color: #00ffcc; font-size: 11px; letter-spacing: 1px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ihof-time   { color: #446655; font-size: 10px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.ihof-deaths { color: #663333; font-size: 10px; flex-shrink: 0; }
+.ihof-1st .ihof-pseudo { color: #ffdd44; }
+.ihof-2nd .ihof-pseudo { color: #aaaaaa; }
+.ihof-3rd .ihof-pseudo { color: #cc8844; }
+.panel-empty { color: #224433; font-size: 10px; letter-spacing: 1px; padding: 8px 0; }
+
+@media (max-width: 780px) { .side-panel { display: none; } }
+
+/* ── CENTER ──────────────────────────────────────────────── */
+#center {
+  flex: 1;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  user-select: none;
+  position: relative;
 }
 
 canvas#bg {
@@ -35,6 +93,8 @@ canvas#bg {
   align-items: center;
   gap: 40px;
 }
+
+#center { z-index: 1; }
 
 #title-wrap {
   display: flex;
@@ -171,31 +231,46 @@ canvas#bg {
 
 <canvas id="bg"></canvas>
 
-<div id="content">
-  <div id="title-wrap">
-    <div id="title">Die and Relight</div>
-    <div id="subtitle">un jeu de circuit électrique</div>
-  </div>
+<!-- Left: Special Thanks -->
+<div class="side-panel" id="panel-left">
+  <h3>✦ Special Thanks</h3>
+  <div class="panel-body" id="sp-list"></div>
+</div>
 
-  <div id="keys">
-    <div class="key-item">
-      <div class="key-box q">Q</div>
-      <div class="key-desc">Interrupteur gauche</div>
+<!-- Center -->
+<div id="center">
+  <div id="content">
+    <div id="title-wrap">
+      <div id="title">Die and Relight</div>
+      <div id="subtitle">un jeu de circuit électrique</div>
     </div>
-    <div class="key-sep">+</div>
-    <div class="key-item">
-      <div class="key-box p">P</div>
-      <div class="key-desc">Interrupteur droit</div>
-    </div>
-    <div class="key-sep">+</div>
-    <div class="key-item">
-      <div class="key-box space">ESPACE</div>
-      <div class="key-desc">Passer les résistances</div>
-    </div>
-  </div>
 
-  <button id="play-btn" onclick="startGame()">Jouer maintenant</button>
-  <a id="editor-link" href="editor.html">éditeur de niveaux →</a>
+    <div id="keys">
+      <div class="key-item">
+        <div class="key-box q">Q</div>
+        <div class="key-desc">Interrupteur gauche</div>
+      </div>
+      <div class="key-sep">+</div>
+      <div class="key-item">
+        <div class="key-box p">P</div>
+        <div class="key-desc">Interrupteur droit</div>
+      </div>
+      <div class="key-sep">+</div>
+      <div class="key-item">
+        <div class="key-box space">ESPACE</div>
+        <div class="key-desc">Passer les résistances</div>
+      </div>
+    </div>
+
+    <button id="play-btn" onclick="startGame()">Jouer maintenant</button>
+    <a id="editor-link" href="editor.html">éditeur de niveaux →</a>
+  </div>
+</div>
+
+<!-- Right: Hall of Fame -->
+<div class="side-panel" id="panel-right">
+  <h3>🏆 Hall of Fame</h3>
+  <div class="panel-body" id="ihof-list"></div>
 </div>
 
 <script>
@@ -344,6 +419,64 @@ function startGame() {
   playButtonSound();
   setTimeout(() => { window.location.href = 'game.html'; }, 320);
 }
+
+// ── SIDE PANELS ────────────────────────────────────────────
+const HOF_VERSION  = 'v0_0_1';
+const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+
+const SPECIAL_THANKS = [
+  { pseudo: 'Lesups', level: 'Créateur du jeu' },
+];
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmtTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function renderSpecials() {
+  const el = document.getElementById('sp-list');
+  if (!SPECIAL_THANKS.length) { el.innerHTML = '<div class="panel-empty">—</div>'; return; }
+  el.innerHTML = SPECIAL_THANKS.map(s =>
+    `<div class="sp-entry">
+      <div class="sp-pseudo">${escHtml(s.pseudo)}</div>
+      <div class="sp-level">${escHtml(s.level || '')}</div>
+    </div>`
+  ).join('');
+}
+
+async function renderHOF() {
+  const el = document.getElementById('ihof-list');
+  el.innerHTML = '<div class="panel-empty">Chargement…</div>';
+  try {
+    const res = await fetch(`${FB_URL}/${HOF_VERSION}.json`);
+    const data = res.ok ? await res.json() : null;
+    const entries = data
+      ? Object.values(data).sort((a, b) => a.time - b.time).slice(0, 20)
+      : [];
+    if (!entries.length) {
+      el.innerHTML = '<div class="panel-empty">Pas encore d\'entrée —<br>sois le premier !</div>';
+      return;
+    }
+    const medals = ['🥇','🥈','🥉'];
+    const cls    = ['ihof-1st','ihof-2nd','ihof-3rd'];
+    el.innerHTML = entries.map((e, i) =>
+      `<div class="ihof-row ${cls[i]||''}">
+        <span class="ihof-rank">${medals[i]||(i+1)}</span>
+        <span class="ihof-pseudo">${escHtml(e.pseudo)}</span>
+        <span class="ihof-time">${fmtTime(e.time)}</span>
+        <span class="ihof-deaths">${e.deaths}💀</span>
+      </div>`
+    ).join('');
+  } catch {
+    el.innerHTML = '<div class="panel-empty">Erreur de chargement</div>';
+  }
+}
+
+renderSpecials();
+renderHOF();
 </script>
 </body>
 </html>
