@@ -329,6 +329,45 @@
   }
   #lang-toggle:hover { border-color: #00ffcc; color: #00ffcc; }
 
+  /* ── MICRO NUMPAD ────────────────────────────────────────── */
+  #micro-numpad {
+    display: none;
+    position: fixed;
+    bottom: 110px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 180;
+    background: rgba(0,10,28,0.95);
+    border: 1px solid #0077dd;
+    box-shadow: 0 0 24px #0055cc88;
+    border-radius: 10px;
+    padding: 10px 12px;
+    gap: 8px;
+    grid-template-columns: repeat(5, 1fr);
+  }
+  #micro-numpad.visible { display: grid; }
+  .micro-digit-btn {
+    width: 52px;
+    height: 52px;
+    background: #001428;
+    border: 1px solid #0055aa;
+    color: #00aaff;
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.08s, box-shadow 0.08s;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .micro-digit-btn:hover  { background: #002244; box-shadow: 0 0 10px #0077dd88; }
+  .micro-digit-btn:active { background: #003366; box-shadow: 0 0 18px #00aaff; }
+
   /* ── TOUCH CONTROLS ──────────────────────────────────────── */
   #touch-controls {
     display: none;
@@ -432,6 +471,9 @@
     </div>
   </div>
 </div>
+
+<!-- Micro numpad -->
+<div id="micro-numpad"></div>
 
 <!-- Hidden file inputs -->
 <input type="file" id="ext-level-input" accept=".json" style="display:none">
@@ -1084,6 +1126,35 @@ document.addEventListener('click', e => {
   // (selectLevel will be called, which also resets replayMode — harmless double-reset)
 }, true);
 
+// ── MICRO NUMPAD ───────────────────────────────────────────
+const microNumpad = document.getElementById('micro-numpad');
+// Build digit buttons 1-5 / 6-0
+[1,2,3,4,5,6,7,8,9,0].forEach(d => {
+  const btn = document.createElement('button');
+  btn.className = 'micro-digit-btn';
+  btn.textContent = d;
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    enterMicroDigit(d);
+  });
+  microNumpad.appendChild(btn);
+});
+
+function enterMicroDigit(digit) {
+  if (!state || !state.microChallenge || state.dead || state.won) return;
+  resumeAudio();
+  const mc = state.microChallenge;
+  mc.entered.push(digit);
+  const pos = mc.entered.length - 1;
+  if (mc.code[pos] !== digit) {
+    state.dead = true; sfxDead();
+  } else if (mc.entered.length === 3) {
+    if (mc.ballRef) mc.ballRef.microSolved = true;
+    state.microChallenge = null;
+    sfxSwitchClose();
+  }
+}
+
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   const k = e.key.toUpperCase();
@@ -1096,17 +1167,7 @@ document.addEventListener('keydown', e => {
   // Capture chiffres pour défi microprocesseur
   if (state.type === 'custom' && state.microChallenge && !state.dead && !state.won) {
     if (e.key >= '0' && e.key <= '9') {
-      const digit = parseInt(e.key);
-      const mc = state.microChallenge;
-      mc.entered.push(digit);
-      const pos = mc.entered.length - 1;
-      if (mc.code[pos] !== digit) {
-        state.dead = true; sfxDead();
-      } else if (mc.entered.length === 3) {
-        if (mc.ballRef) mc.ballRef.microSolved = true;
-        state.microChallenge = null;
-        sfxSwitchClose();
-      }
+      enterMicroDigit(parseInt(e.key));
       e.preventDefault();
       return;
     }
@@ -2447,6 +2508,10 @@ function loop(timestamp) {
 
     if (cp >= 0 || isTestMode) nlWrap.style.display = 'block';
   }
+  // Show/hide micro numpad
+  const showNumpad = state.type === 'custom' && !!state.microChallenge && !state.dead && !state.won;
+  microNumpad.classList.toggle('visible', showNumpad);
+
   draw();
   requestAnimationFrame(loop);
 }
