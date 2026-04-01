@@ -416,7 +416,7 @@
 
 <!-- Main game area -->
 <div id="game-area">
-  <canvas id="c" width="800" height="300"></canvas>
+  <canvas id="c" width="800" height="300" tabindex="0"></canvas>
   <div id="touch-controls">
     <button class="touch-btn q-btn"       id="btn-q">Q</button>
     <button class="touch-btn space-btn"   id="btn-space">ESPACE</button>
@@ -2247,6 +2247,8 @@ function loop(timestamp) {
   draw();
   requestAnimationFrame(loop);
 }
+
+canvas.focus();
 
 // ── LOAD TEST LEVEL FROM localStorage ──────────────────────
 if (new URLSearchParams(location.search).has('test')) {
