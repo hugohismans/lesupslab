@@ -1225,8 +1225,8 @@ document.getElementById('submit-send').onclick = async () => {
 };
 
 // ── HALL OF FAME ───────────────────────────────────────────
-const HOF_VERSION  = '0.0.1';
-const HOF_VERSIONS = ['0.0.1']; // add new versions here when they come
+const HOF_VERSION  = 'v0_0_1';
+const HOF_VERSIONS = ['v0_0_1']; // add new versions here when they come
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
 
 // Special thanks / content creators — edit this list manually
@@ -1314,7 +1314,7 @@ function hofBuildTabs(activeVersion) {
   HOF_VERSIONS.forEach(v => {
     const btn = document.createElement('button');
     btn.className = 'hof-tab' + (v === activeVersion ? ' active' : '');
-    btn.textContent = 'v' + v;
+    btn.textContent = v.replace(/_/g, '.');
     btn.onclick = () => openHOF(v);
     tabsEl.appendChild(btn);
   });
