@@ -19,14 +19,76 @@
     flex-direction: column;
   }
 
+  /* ── MAIN LAYOUT (3 colonnes) ───────────────────────────── */
+  #main-layout {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+  }
+
+  /* ── SIDE PANELS ─────────────────────────────────────────── */
+  .side-panel {
+    width: 210px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-color: #1a5a3a;
+    padding: 14px 12px;
+    gap: 10px;
+  }
+  #panel-left  { border-right: 1px solid #1a5a3a; }
+  #panel-right { border-left:  1px solid #1a5a3a; }
+  .side-panel h3 {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #224433;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  .side-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .side-panel-body::-webkit-scrollbar { width: 3px; }
+  .side-panel-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
+
+  /* Special Thanks entries */
+  .sp-entry { display: flex; flex-direction: column; gap: 1px; padding: 5px 0; border-bottom: 1px solid #0d2218; }
+  .sp-pseudo { color: #aa44ff; font-size: 12px; letter-spacing: 1px; }
+  .sp-level  { color: #2a5a3a; font-size: 10px; letter-spacing: 1px; }
+
+  /* Inline HOF */
+  .ihof-row { display: flex; align-items: baseline; gap: 6px; padding: 5px 0; border-bottom: 1px solid #0d2218; }
+  .ihof-rank   { font-size: 14px; flex-shrink: 0; width: 22px; }
+  .ihof-pseudo { color: #00ffcc; font-size: 11px; letter-spacing: 1px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ihof-time   { color: #446655; font-size: 10px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .ihof-deaths { color: #663333; font-size: 10px; flex-shrink: 0; }
+  .ihof-1st .ihof-pseudo { color: #ffdd44; }
+  .ihof-2nd .ihof-pseudo { color: #aaaaaa; }
+  .ihof-3rd .ihof-pseudo { color: #cc8844; }
+  .side-empty { color: #224433; font-size: 10px; letter-spacing: 1px; padding: 8px 0; }
+
+  /* Hide panels on narrow screens */
+  @media (max-width: 800px) {
+    .side-panel { display: none; }
+  }
+
   /* ── GAME AREA ───────────────────────────────────────────── */
   #game-area {
     flex: 1;
     min-height: 0;
-    width: 100%;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
   }
 
   canvas { display: block; max-width: 100%; height: auto; }
@@ -647,15 +709,32 @@
 <input type="file" id="ext-level-input" accept=".json" style="display:none">
 <input type="file" id="replay-input" accept=".json" style="display:none">
 
-<!-- Main game area -->
-<div id="game-area">
-  <canvas id="c" width="800" height="300" tabindex="0"></canvas>
-  <div id="touch-controls">
-    <button class="touch-btn q-btn"       id="btn-q">Q</button>
-    <button class="touch-btn space-btn"   id="btn-space" data-i18n="touch.space">ESPACE</button>
-    <button class="touch-btn p-btn"       id="btn-p">P</button>
-    <button class="touch-btn restart-btn" id="btn-restart">↺</button>
+<!-- Main layout -->
+<div id="main-layout">
+
+  <!-- Left panel: Special Thanks -->
+  <div class="side-panel" id="panel-left">
+    <h3>✦ Special Thanks</h3>
+    <div class="side-panel-body" id="sp-list"></div>
   </div>
+
+  <!-- Game area -->
+  <div id="game-area">
+    <canvas id="c" width="800" height="300" tabindex="0"></canvas>
+    <div id="touch-controls">
+      <button class="touch-btn q-btn"       id="btn-q">Q</button>
+      <button class="touch-btn space-btn"   id="btn-space" data-i18n="touch.space">ESPACE</button>
+      <button class="touch-btn p-btn"       id="btn-p">P</button>
+      <button class="touch-btn restart-btn" id="btn-restart">↺</button>
+    </div>
+  </div>
+
+  <!-- Right panel: Hall of Fame -->
+  <div class="side-panel" id="panel-right">
+    <h3>🏆 Hall of Fame</h3>
+    <div class="side-panel-body" id="ihof-list"></div>
+  </div>
+
 </div>
 
 <script>
@@ -1346,6 +1425,44 @@ document.getElementById('hof-close').onclick = () =>
   document.getElementById('hof-overlay').classList.remove('open');
 document.getElementById('hof-open-btn').onclick = () => { closeMenu(); openHOF(); };
 
+// ── Inline panels ──────────────────────────────────────────
+function renderInlineSpecials() {
+  const el = document.getElementById('sp-list');
+  if (!el) return;
+  if (!SPECIAL_THANKS.length) {
+    el.innerHTML = '<div class="side-empty">—</div>';
+    return;
+  }
+  el.innerHTML = SPECIAL_THANKS.map(s => `
+    <div class="sp-entry">
+      <span class="sp-pseudo">${escHtml(s.pseudo)}</span>
+      <span class="sp-level">${escHtml(s.level || '')}</span>
+    </div>`).join('');
+}
+
+async function renderInlineHOF() {
+  const el = document.getElementById('ihof-list');
+  if (!el) return;
+  el.innerHTML = '<div class="side-empty">Chargement…</div>';
+  const entries = await hofFetch(HOF_VERSION);
+  if (!entries.length) {
+    el.innerHTML = '<div class="side-empty">Pas encore d\'entrée — sois le premier !</div>';
+    return;
+  }
+  const medals = ['🥇','🥈','🥉'];
+  const cls    = ['ihof-1st','ihof-2nd','ihof-3rd'];
+  el.innerHTML = entries.slice(0, 20).map((e, i) => `
+    <div class="ihof-row ${cls[i] || ''}">
+      <span class="ihof-rank">${medals[i] || (i+1)}</span>
+      <span class="ihof-pseudo">${escHtml(e.pseudo)}</span>
+      <span class="ihof-time">${campFmtTime(e.time)}</span>
+      <span class="ihof-deaths">${e.deaths}💀</span>
+    </div>`).join('');
+}
+
+renderInlineSpecials();
+renderInlineHOF();
+
 // ── Finish overlay (campaign complete) ─────────────────────
 async function openFinish(timeMs, deaths) {
   const overlay   = document.getElementById('finish-overlay');
@@ -1437,6 +1554,7 @@ async function openFinish(timeMs, deaths) {
       // Save the best score and Firebase key locally
       writeSave({ hofBestTime: timeMs, hofBestDeaths: deaths, hofKey: key });
       statusEl.textContent = '✓ Enregistré !';
+      renderInlineHOF();
       setTimeout(() => { overlay.classList.remove('open'); openHOF(); }, 900);
     } catch(err) {
       statusEl.textContent = '✗ Erreur : ' + err.message;
