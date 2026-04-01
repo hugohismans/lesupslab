@@ -774,6 +774,13 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ') { spacePressCount++; recordKey('keydown', ' '); }
   else if (k !== 'R') recordKey('keydown', k);
   if (k === 'R') selectLevel(currentLevel);
+  // Espace pour valider "Niveau suivant" quand le bouton est visible
+  if (e.key === ' ') {
+    const nlWrap = document.getElementById('next-level-wrap');
+    if (nlWrap && nlWrap.style.display !== 'none' && nlWrap.style.display !== '') {
+      document.getElementById('next-level-btn').click();
+    }
+  }
   resumeAudio();
   if (!humOsc) startHum();
   e.preventDefault();
