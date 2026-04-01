@@ -362,6 +362,43 @@ const LEVELS = [
   }
 ];
 
+// ── CAMPAIGN SEQUENCE ──────────────────────────────────────
+const CAMPAIGN = [
+  { idx: 0 },  // Tutoriel 1
+  { idx: 1 },  // Tutoriel 2
+  { idx: 2 },  // Tutoriel 3
+  { file: 'levels/TUTO4_resistance_eclair.json' },
+  { file: 'levels/complex_twoway.json' },
+  { file: 'levels/67.json' },
+  { file: 'levels/levelHard.json' },
+];
+
+function campaignPos() {
+  const lv = LEVELS[currentLevel];
+  return CAMPAIGN.findIndex(c =>
+    c.idx !== undefined ? c.idx === currentLevel : (lv && lv._file === c.file)
+  );
+}
+
+function goNextCampaign(campIdx) {
+  const entry = CAMPAIGN[campIdx];
+  if (entry.idx !== undefined) {
+    selectLevel(entry.idx);
+  } else {
+    const lvIdx = LEVELS.findIndex(lv => lv._file === entry.file);
+    if (lvIdx < 0) { openMenu(); return; }
+    const lv = LEVELS[lvIdx];
+    if (lv._json) {
+      selectLevel(lvIdx);
+    } else {
+      fetch(lv._file)
+        .then(r => r.json())
+        .then(json => { lv._json = json; lv.hint = json.name + ' — [R] pour recommencer'; selectLevel(lvIdx); })
+        .catch(() => openMenu());
+    }
+  }
+}
+
 let currentLevel = 0;
 let state = LEVELS[0].make();
 const keys = {};
@@ -497,6 +534,22 @@ function stopRecordingWin() {
   recorder.wonTime = Date.now() - recorder.startTime;
   const wrap = document.getElementById('replay-save-wrap');
   wrap.innerHTML = '';
+
+  // Campaign progression button
+  const cp = campaignPos();
+  if (cp >= 0) {
+    const btnNext = document.createElement('button');
+    btnNext.className = 'replay-btn';
+    if (cp + 1 < CAMPAIGN.length) {
+      btnNext.textContent = 'Niveau suivant →';
+      btnNext.onclick = () => goNextCampaign(cp + 1);
+    } else {
+      btnNext.textContent = '🗂 Choisir un niveau';
+      btnNext.onclick = openMenu;
+    }
+    wrap.appendChild(btnNext);
+  }
+
   const btn = document.createElement('button');
   btn.className = 'replay-btn save';
   btn.textContent = '💾 Sauvegarder le replay';
@@ -602,6 +655,25 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     return;
   }
+
+  // Capture chiffres pour défi microprocesseur
+  if (state.type === 'custom' && state.microChallenge && !state.dead && !state.won) {
+    if (e.key >= '0' && e.key <= '9') {
+      const digit = parseInt(e.key);
+      const mc = state.microChallenge;
+      mc.entered.push(digit);
+      const pos = mc.entered.length - 1;
+      if (mc.code[pos] !== digit) {
+        state.dead = true; sfxDead();
+      } else if (mc.entered.length === 3) {
+        state.microChallenge = null;
+        sfxSwitchClose();
+      }
+      e.preventDefault();
+      return;
+    }
+  }
+
   keys[k] = true;
   if (e.key === ' ') { spacePressCount++; recordKey('keydown', ' '); }
   else if (k !== 'R') recordKey('keydown', k);
@@ -1170,6 +1242,7 @@ const RES_DRAIN     = 0.025; // speed lost per frame inside resistance
 const RES_BOOST     = 0.35;  // speed gained per spacebar press
 const RES_SPEED_MAX = BALL_SPEED;
 const RES_SPEED_MIN = 0;
+const MICRO_HALF    = 32;   // half-length of the microprocessor zone on the wire
 
 function makeCustomLevel(json) {
   const nodes = json.nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y }));
@@ -1178,7 +1251,9 @@ function makeCustomLevel(json) {
     wayY: e.wayY ?? null,
     switch: e.switch ? { key: e.switch.key, initOpen: e.switch.initOpen } : null,
     resistance: e.resistance === true,
-    resDuration: e.resDuration ?? 3
+    resDuration: e.resDuration ?? 3,
+    micro: e.micro === true,
+    microDuration: e.microDuration ?? 5
   }));
 
   // Build switch map
@@ -1199,6 +1274,11 @@ function makeCustomLevel(json) {
     edges.filter(e => e.resistance).map(e => [e.id, e.resDuration ?? 3])
   );
 
+  const microSet = new Set(edges.filter(e => e.micro).map(e => e.id));
+  const microDurationMap = new Map(
+    edges.filter(e => e.micro).map(e => [e.id, e.microDuration ?? 5])
+  );
+
   // Find source node(s) — start balls from outgoing edges of each source
   const balls = [];
   for (const node of nodes) {
@@ -1216,6 +1296,9 @@ function makeCustomLevel(json) {
     switchMap,
     resistanceSet,
     resistanceDrain,
+    microSet,
+    microDurationMap,
+    microChallenge: null,
     balls,
     edgesLit: new Set(),
     joinWait: new Map(),
@@ -1232,7 +1315,7 @@ function makeCustomLevel(json) {
 function updateCustom(dt) {
   const st = state;
   if (st.won || st.dead) return;
-  const { graph, switchMap, resistanceSet, resistanceDrain, balls, edgesLit, joinWait } = st;
+  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, balls, edgesLit, joinWait } = st;
   const levelSpeed = BALL_SPEED * (st.ballSpeedMult ?? 1.0);
 
   const { nodes, edges } = graph;
@@ -1284,6 +1367,22 @@ function updateCustom(dt) {
       }
     } else {
       ball.speed = levelSpeed;
+    }
+
+    // Microprocesseur : fige la balle au centre et déclenche le défi
+    if (microSet && microSet.has(edge.id)) {
+      const mc = st.microChallenge;
+      if (!mc && ball.t >= 0.5) {
+        ball.t = 0.5;
+        const dur = microDurationMap.get(edge.id) ?? 5;
+        const code = [Math.floor(Math.random()*10), Math.floor(Math.random()*10), Math.floor(Math.random()*10)];
+        st.microChallenge = { edgeId: edge.id, code, entered: [], timeLeft: dur, maxTime: dur, ballRef: ball };
+        sfxSwitchOpen();
+      }
+      if (st.microChallenge && st.microChallenge.edgeId === edge.id) {
+        ball.speed = 0;
+        ball.t = 0.5;
+      }
     }
 
     const step = len > 0 ? ball.speed * dt / len : 0;
@@ -1354,6 +1453,12 @@ function updateCustom(dt) {
       const pos = posOnEdge(ball.t, edge, nodes);
       ball.x = pos.x; ball.y = pos.y;
     }
+  }
+
+  // Décompte du défi microprocesseur
+  if (st.microChallenge) {
+    st.microChallenge.timeLeft -= dt;
+    if (st.microChallenge.timeLeft <= 0) { st.dead = true; sfxDead(); return; }
   }
 
   // Remove finished balls (in reverse order)
@@ -1455,10 +1560,158 @@ function drawResistance(edge, nodes, ballInside, ballSpeed) {
   ctx.restore();
 }
 
+// ── DRAW MICROPROCESSOR SYMBOL ─────────────────────────────
+function drawMicroprocessor(edge, nodes, active) {
+  const sp  = posOnEdge(0.5,  edge, nodes);
+  const sp1 = posOnEdge(0.48, edge, nodes);
+  const sp2 = posOnEdge(0.52, edge, nodes);
+  const angle = Math.atan2(sp2.y - sp1.y, sp2.x - sp1.x);
+
+  const MW = 26, MH = 18;
+  const col   = active ? '#00aaff' : '#2255aa';
+  const colBg = active ? '#001428' : '#00080f';
+  const glow  = active ? '#0088ff' : '#112244';
+
+  ctx.save();
+  ctx.translate(sp.x, sp.y);
+  ctx.rotate(angle);
+
+  // Stubs de connexion
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 3;
+  ctx.shadowBlur = active ? 10 : 4; ctx.shadowColor = glow;
+  ctx.beginPath(); ctx.moveTo(-MICRO_HALF, 0); ctx.lineTo(-MW, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(MW, 0);           ctx.lineTo(MICRO_HALF, 0); ctx.stroke();
+  ctx.restore();
+
+  // Corps du chip
+  ctx.save();
+  ctx.shadowBlur = active ? 22 : 6; ctx.shadowColor = glow;
+  ctx.fillStyle = colBg;
+  ctx.fillRect(-MW, -MH, MW*2, MH*2);
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.strokeRect(-MW, -MH, MW*2, MH*2);
+  ctx.restore();
+
+  // Picots (3 par côté)
+  ctx.save();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 0;
+  for (let i = 0; i < 3; i++) {
+    const py = -MH + MH * (2*(i+1)/4);
+    ctx.beginPath(); ctx.moveTo(-MW, py); ctx.lineTo(-MW-7, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo( MW, py); ctx.lineTo( MW+7, py); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Label μP
+  ctx.save();
+  if (angle > Math.PI/2 || angle < -Math.PI/2) ctx.rotate(Math.PI);
+  ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = col;
+  ctx.shadowBlur = active ? 8 : 0; ctx.shadowColor = col;
+  ctx.fillText('μP', 0, 0);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+// ── DRAW MICRO CHALLENGE OVERLAY ───────────────────────────
+function drawMicroOverlay(mc) {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const dW = 52, dGap = 10;
+  const totalCodeW = 3 * dW + 2 * dGap;
+  const boxW = Math.max(totalCodeW + 40, 240);
+  const boxH = 130;
+  const bx = cx - boxW/2, by = cy - boxH/2;
+
+  // Fond
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,10,28,0.93)';
+  ctx.fillRect(bx - 8, by - 8, boxW + 16, boxH + 16);
+  ctx.strokeStyle = '#0077dd';
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 18; ctx.shadowColor = '#0055cc';
+  ctx.strokeRect(bx - 8, by - 8, boxW + 16, boxH + 16);
+  ctx.restore();
+
+  // Titre
+  ctx.save();
+  ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#3399ff'; ctx.shadowBlur = 6; ctx.shadowColor = '#0055cc';
+  ctx.fillText('— MICROPROCESSEUR —', cx, by + 6);
+  ctx.restore();
+
+  // Code à taper (chiffres en boîtes)
+  const startX = cx - totalCodeW/2;
+  const codeY  = by + 22;
+  for (let i = 0; i < 3; i++) {
+    const dx = startX + i * (dW + dGap);
+    ctx.save();
+    ctx.fillStyle = '#001830'; ctx.strokeStyle = '#0077dd'; ctx.lineWidth = 1.5;
+    ctx.fillRect(dx, codeY, dW, 34);
+    ctx.strokeRect(dx, codeY, dW, 34);
+    ctx.font = 'bold 22px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#00ccff'; ctx.shadowBlur = 8; ctx.shadowColor = '#00aaff';
+    ctx.fillText(mc.code[i], dx + dW/2, codeY + 17);
+    ctx.restore();
+  }
+
+  // Ligne "tape ↓"
+  ctx.save();
+  ctx.font = '11px Courier New'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#224466';
+  ctx.fillText('▼  tape le code  ▼', cx, codeY + 44);
+  ctx.restore();
+
+  // Cases de saisie
+  const entY = codeY + 54;
+  for (let i = 0; i < 3; i++) {
+    const dx = startX + i * (dW + dGap);
+    const d = mc.entered[i];
+    const filled = d !== undefined;
+    ctx.save();
+    ctx.fillStyle = filled ? '#002a00' : '#001010';
+    ctx.strokeStyle = filled ? '#00ff88' : '#113322';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(dx, entY, dW, 34);
+    ctx.strokeRect(dx, entY, dW, 34);
+    if (filled) {
+      ctx.font = 'bold 22px Courier New'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#00ff88'; ctx.shadowBlur = 8; ctx.shadowColor = '#00ff88';
+      ctx.fillText(d, dx + dW/2, entY + 17);
+    }
+    ctx.restore();
+  }
+
+  // Barre de timer
+  const ratio = Math.max(0, mc.timeLeft / mc.maxTime);
+  const hue   = Math.round(ratio * 110);
+  const barY  = by + boxH - 2;
+  const barW  = boxW;
+  ctx.save();
+  ctx.fillStyle = '#0a1020';
+  ctx.fillRect(bx, barY, barW, 8);
+  ctx.fillStyle = `hsl(${hue},100%,50%)`;
+  ctx.shadowBlur = 8; ctx.shadowColor = `hsl(${hue},100%,50%)`;
+  ctx.fillRect(bx, barY, barW * ratio, 8);
+  ctx.strokeStyle = '#1a2030'; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+  ctx.strokeRect(bx, barY, barW, 8);
+  ctx.restore();
+
+  // Texte timer
+  ctx.save();
+  ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'right';
+  ctx.fillStyle = `hsl(${hue},100%,65%)`;
+  ctx.fillText(mc.timeLeft.toFixed(1) + 's', bx + barW, barY - 3);
+  ctx.restore();
+}
+
 // ── CUSTOM DRAW ────────────────────────────────────────────
 function drawCustom() {
   const st = state;
-  const { graph, switchMap, resistanceSet, balls, edgesLit } = st;
+  const { graph, switchMap, resistanceSet, microSet, microChallenge, balls, edgesLit } = st;
   const { nodes, edges } = graph;
 
   // Apply fit transform so entire level is visible
@@ -1483,9 +1736,10 @@ function drawCustom() {
     const fullyLit = edgesLit.has(edge.id);
     const dimColor = '#1a4035';
     const litColor = '#00ffcc';
-    const sw    = switchMap.get(edge.id);
-    const hasRes = resistanceSet && resistanceSet.has(edge.id);
-    const gapHalf = sw ? SW_GAP : (hasRes ? RES_HALF : 0);
+    const sw      = switchMap.get(edge.id);
+    const hasRes  = resistanceSet && resistanceSet.has(edge.id);
+    const hasMicro = microSet && microSet.has(edge.id);
+    const gapHalf = sw ? SW_GAP : (hasRes ? RES_HALF : (hasMicro ? MICRO_HALF : 0));
 
     // Helper: draw one segment, split around obstacle gap if needed
     const drawSegment = (tFrom, tTo, col, w, gl) => {
@@ -1529,6 +1783,12 @@ function drawCustom() {
       const tExit  = len2 > 0 ? Math.min(1, (len2 / 2 + RES_HALF) / len2) : 0.5;
       const inside = ball && ball.t >= tEntry && ball.t <= tExit;
       drawResistance(edge, nodes, inside, inside ? ball.gauge : 1.0);
+    }
+
+    // Draw microprocessor
+    if (hasMicro) {
+      const active = microChallenge && microChallenge.edgeId === edge.id;
+      drawMicroprocessor(edge, nodes, active);
     }
 
     // Draw switch — aligned to wire direction
@@ -1626,6 +1886,9 @@ function drawCustom() {
     ctx.fillText('ESPACE  ' + (hasRes ? '█ SPAM !' : '░'), 20, py);
     ctx.restore();
   }
+
+  // Micro challenge overlay (espace écran, hors transform caméra)
+  if (microChallenge && !st.dead && !st.won) drawMicroOverlay(microChallenge);
 
   // Overlays
   if (st.won)  drawOverlay('CIRCUIT COMPLET !', '#ffff44', '#ffff00');

@@ -509,10 +509,11 @@ canvas.addEventListener('mousedown', e => {
       // First segment inherits all properties of the original edge
       const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
         wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
-        resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration };
+        resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration,
+        micro: !!hitEdge.micro, microDuration: hitEdge.microDuration };
       // Second segment: plain wire
       const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
-        wayY: null, switch: null, resistance: false };
+        wayY: null, switch: null, resistance: false, micro: false };
       edges = edges.filter(ed => ed.id !== hitEdge.id);
       edges.push(e1, e2);
       selectedNode = n; selectedEdge = null;
@@ -537,9 +538,10 @@ canvas.addEventListener('mousedown', e => {
       nodes.push(target);
       const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
         wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
-        resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration };
+        resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration,
+        micro: !!hitEdge.micro, microDuration: hitEdge.microDuration };
       const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
-        wayY: null, switch: null, resistance: false };
+        wayY: null, switch: null, resistance: false, micro: false };
       edges = edges.filter(ed => ed.id !== hitEdge.id);
       edges.push(e1, e2);
     } else if (!target) {
@@ -657,9 +659,10 @@ canvas.addEventListener('dblclick', e => {
   if (hitEdge) {
     const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
       wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
-      resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration };
+      resistance: !!hitEdge.resistance, resDuration: hitEdge.resDuration,
+      micro: !!hitEdge.micro, microDuration: hitEdge.microDuration };
     const e2 = { id: nextEdgeId++, from: id, to: hitEdge.to,
-      wayY: null, switch: null, resistance: false };
+      wayY: null, switch: null, resistance: false, micro: false };
     edges = edges.filter(ed => ed.id !== hitEdge.id);
     edges.push(e1, e2);
     flash('Nœud inséré sur le fil');
@@ -753,8 +756,10 @@ function buildProps() {
     const ed = selectedEdge;
     const swKey  = ed.switch?.key      ?? 'none';
     const swOpen = ed.switch?.initOpen ?? true;
-    const hasRes = !!ed.resistance;
-    const resDur = ed.resDuration ?? 3;
+    const hasRes  = !!ed.resistance;
+    const resDur  = ed.resDuration ?? 3;
+    const hasMicro = !!ed.micro;
+    const microDur = ed.microDuration ?? 5;
     const wayYVal = ed.wayY != null ? ed.wayY : '';
 
     panel.innerHTML = `
@@ -787,6 +792,21 @@ function buildProps() {
           <button class="prop-btn ${hasRes?'active-res':''}" id="p-res-btn">${hasRes?'⬛ Active':'◻ Inactive'}</button>
           <span id="p-res-dur-wrap" style="${hasRes?'':'display:none'};display:${hasRes?'flex':'none'};align-items:center;gap:4px;color:#ff8800;font-size:12px">
             <input id="p-res-dur" type="number" value="${resDur}" min="1" max="30" step="0.5" style="width:48px;background:#2a1400;border:1px solid #ff8800;color:#ff8800;font-family:'Courier New';font-size:12px;padding:4px 6px"> s
+          </span>
+        </div>
+      </div>
+
+      <div class="prop-sep-v"></div>
+
+      <div class="prop-group">
+        <div class="prop-group-label">Microprocesseur</div>
+        <div class="prop-btns">
+          <button class="prop-btn ${hasMicro?'active-res':''}" id="p-micro-btn" style="${hasMicro?'border-color:#0077dd;color:#00aaff':''}">
+            ${hasMicro?'█ Actif':'◻ Inactif'}
+          </button>
+          <span id="p-micro-dur-wrap" style="display:${hasMicro?'flex':'none'};align-items:center;gap:4px;color:#0099ff;font-size:12px">
+            <input id="p-micro-dur" type="number" value="${microDur}" min="1" max="30" step="0.5"
+              style="width:48px;background:#000c1c;border:1px solid #0077dd;color:#00aaff;font-family:'Courier New';font-size:12px;padding:4px 6px"> s
           </span>
         </div>
       </div>
@@ -833,6 +853,17 @@ function buildProps() {
     const resDurInput = document.getElementById('p-res-dur');
     if (resDurInput) resDurInput.oninput = ev => {
       ed.resDuration = Math.max(1, +ev.target.value);
+    };
+
+    // Micro toggle
+    document.getElementById('p-micro-btn').onclick = () => {
+      saveUndo();
+      ed.micro = !ed.micro;
+      buildProps(); validate();
+    };
+    const microDurInput = document.getElementById('p-micro-dur');
+    if (microDurInput) microDurInput.oninput = ev => {
+      ed.microDuration = Math.max(1, +ev.target.value);
     };
 
     // wayY
@@ -963,6 +994,42 @@ function drawEdge(e, selected, hovered) {
     ctx.shadowBlur=0; ctx.font=`bold ${10/viewScale}px Courier New`; ctx.textAlign='center';
     ctx.fillStyle='#cc8800';
     ctx.fillText('R '+dur+'s', 0, RH+14/viewScale);
+    ctx.restore();
+  }
+
+  // Microprocesseur
+  if (e.micro) {
+    const sp  = posOnEdge(0.5, e);
+    const sp1 = posOnEdge(0.48, e), sp2 = posOnEdge(0.52, e);
+    const angle2 = Math.atan2(sp2.y-sp1.y, sp2.x-sp1.x);
+    const MW = 26/viewScale, MH = 18/viewScale;
+    const dur = e.microDuration ?? 5;
+    ctx.save();
+    ctx.translate(sp.x, sp.y); ctx.rotate(angle2);
+    // Stubs
+    ctx.strokeStyle = '#0077dd'; ctx.lineWidth = 2/viewScale;
+    ctx.shadowBlur = 6; ctx.shadowColor = '#0055aa';
+    ctx.beginPath(); ctx.moveTo(-32/viewScale, 0); ctx.lineTo(-MW, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(MW, 0); ctx.lineTo(32/viewScale, 0); ctx.stroke();
+    // Corps
+    ctx.fillStyle = '#000c1a'; ctx.strokeStyle = '#0077dd'; ctx.lineWidth = 2/viewScale;
+    ctx.shadowBlur = 10; ctx.shadowColor = '#0055aa';
+    ctx.fillRect(-MW, -MH, MW*2, MH*2);
+    ctx.strokeRect(-MW, -MH, MW*2, MH*2);
+    // Picots
+    ctx.shadowBlur = 0; ctx.lineWidth = 1.5/viewScale;
+    for (let i = 0; i < 3; i++) {
+      const py = -MH + MH * (2*(i+1)/4);
+      ctx.beginPath(); ctx.moveTo(-MW, py); ctx.lineTo(-MW-6/viewScale, py); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo( MW, py); ctx.lineTo( MW+6/viewScale, py); ctx.stroke();
+    }
+    // Label
+    ctx.rotate(-angle2);
+    ctx.shadowBlur = 0; ctx.font = `bold ${10/viewScale}px Courier New`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#00aaff';
+    ctx.fillText('μP', 0, 0);
+    ctx.fillStyle = '#0077dd'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('⏱' + dur + 's', 0, MH + 14/viewScale);
     ctx.restore();
   }
 
@@ -1132,7 +1199,9 @@ function toJSON() {
       wayY: e.wayY ?? null,
       switch: e.switch ?? null,
       resistance: !!e.resistance,
-      resDuration: e.resistance ? (e.resDuration ?? 3) : undefined
+      resDuration: e.resistance ? (e.resDuration ?? 3) : undefined,
+      micro: !!e.micro,
+      microDuration: e.micro ? (e.microDuration ?? 5) : undefined
     }))
   };
 }
@@ -1167,7 +1236,9 @@ function loadFromJSON(data) {
     wayY: e.wayY ?? null,
     switch: e.switch ?? null,
     resistance: !!e.resistance,
-    resDuration: e.resDuration ?? 3
+    resDuration: e.resDuration ?? 3,
+    micro: !!e.micro,
+    microDuration: e.microDuration ?? 5
   }));
   nextNodeId = nodes.reduce((m,n) => Math.max(m,n.id+1), 0);
   nextEdgeId = edges.reduce((m,e) => Math.max(m,e.id+1), 0);
