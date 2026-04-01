@@ -1,0 +1,493 @@
+{
+  "name": "Snaked",
+  "ballSpeedMult": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "type": "source",
+      "x": 800,
+      "y": 100
+    },
+    {
+      "id": 1,
+      "type": "bulb",
+      "x": 400,
+      "y": 140
+    },
+    {
+      "id": 9,
+      "type": "node",
+      "x": 480,
+      "y": 240
+    },
+    {
+      "id": 10,
+      "type": "source",
+      "x": 740,
+      "y": 100
+    },
+    {
+      "id": 11,
+      "type": "node",
+      "x": 740,
+      "y": 160
+    },
+    {
+      "id": 12,
+      "type": "node",
+      "x": 720,
+      "y": 200
+    },
+    {
+      "id": 13,
+      "type": "node",
+      "x": 520,
+      "y": 200
+    },
+    {
+      "id": 15,
+      "type": "node",
+      "x": 480,
+      "y": 80
+    },
+    {
+      "id": 16,
+      "type": "node",
+      "x": 340,
+      "y": 80
+    },
+    {
+      "id": 18,
+      "type": "node",
+      "x": 440,
+      "y": 200
+    },
+    {
+      "id": 19,
+      "type": "node",
+      "x": 440,
+      "y": 120
+    },
+    {
+      "id": 20,
+      "type": "node",
+      "x": 360,
+      "y": 120
+    },
+    {
+      "id": 21,
+      "type": "node",
+      "x": 360,
+      "y": 180
+    },
+    {
+      "id": 22,
+      "type": "node",
+      "x": 400,
+      "y": 180
+    },
+    {
+      "id": 23,
+      "type": "node",
+      "x": 800,
+      "y": 160
+    },
+    {
+      "id": 24,
+      "type": "node",
+      "x": 780,
+      "y": 160
+    },
+    {
+      "id": 25,
+      "type": "node",
+      "x": 780,
+      "y": 260
+    },
+    {
+      "id": 26,
+      "type": "node",
+      "x": 440,
+      "y": 260
+    },
+    {
+      "id": 27,
+      "type": "node",
+      "x": 340,
+      "y": 200
+    },
+    {
+      "id": 28,
+      "type": "node",
+      "x": 360,
+      "y": 200
+    },
+    {
+      "id": 29,
+      "type": "node",
+      "x": 340,
+      "y": 140
+    },
+    {
+      "id": 30,
+      "type": "node",
+      "x": 360,
+      "y": 160
+    },
+    {
+      "id": 31,
+      "type": "node",
+      "x": 400,
+      "y": 200
+    },
+    {
+      "id": 32,
+      "type": "node",
+      "x": 440,
+      "y": 180
+    },
+    {
+      "id": 33,
+      "type": "node",
+      "x": 420,
+      "y": 80
+    },
+    {
+      "id": 34,
+      "type": "node",
+      "x": 380,
+      "y": 120
+    },
+    {
+      "id": 37,
+      "type": "node",
+      "x": 420,
+      "y": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": 8,
+      "from": 10,
+      "to": 11,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 9,
+      "from": 11,
+      "to": 12,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 10,
+      "from": 12,
+      "to": 13,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 11,
+      "from": 13,
+      "to": 9,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 14,
+      "from": 9,
+      "to": 15,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 21,
+      "from": 21,
+      "to": 22,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 22,
+      "from": 22,
+      "to": 1,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 23,
+      "from": 0,
+      "to": 23,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 24,
+      "from": 23,
+      "to": 24,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 25,
+      "from": 24,
+      "to": 25,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 26,
+      "from": 25,
+      "to": 26,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": false
+      },
+      "resistance": true,
+      "resDuration": 2.5,
+      "micro": false
+    },
+    {
+      "id": 30,
+      "from": 27,
+      "to": 28,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 32,
+      "from": 26,
+      "to": 28,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": true,
+      "microDuration": 3.5
+    },
+    {
+      "id": 33,
+      "from": 16,
+      "to": 29,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 34,
+      "from": 29,
+      "to": 27,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 35,
+      "from": 20,
+      "to": 30,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 36,
+      "from": 30,
+      "to": 21,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 37,
+      "from": 29,
+      "to": 30,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 38,
+      "from": 28,
+      "to": 31,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 39,
+      "from": 31,
+      "to": 18,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 40,
+      "from": 18,
+      "to": 32,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 41,
+      "from": 32,
+      "to": 19,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 42,
+      "from": 31,
+      "to": 32,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 43,
+      "from": 15,
+      "to": 33,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 44,
+      "from": 33,
+      "to": 16,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 45,
+      "from": 19,
+      "to": 34,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 46,
+      "from": 34,
+      "to": 20,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 47,
+      "from": 33,
+      "to": 34,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 48,
+      "from": 34,
+      "to": 30,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 49,
+      "from": 30,
+      "to": 22,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 50,
+      "from": 32,
+      "to": 22,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 52,
+      "from": 22,
+      "to": 37,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 53,
+      "from": 37,
+      "to": 1,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    },
+    {
+      "id": 54,
+      "from": 28,
+      "to": 22,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "micro": false
+    }
+  ]
+}
