@@ -662,9 +662,61 @@
     }
     .outil-card p { font-size: 0.95rem; color: var(--text-light); line-height: 1.7; }
 
+    /* ── Témoignages ── */
+    #temoignages { background: #fff; }
+    .temoignages-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 2.5rem;
+    }
+    .temoignage-card {
+      background: var(--cream);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      border-left: 4px solid var(--purple-light);
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+    .temoignage-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 35px var(--shadow);
+    }
+    .temoignage-stars { color: var(--gold); font-size: 1rem; margin-bottom: 1rem; letter-spacing: 2px; }
+    .temoignage-card blockquote {
+      font-size: 0.97rem;
+      color: var(--text);
+      line-height: 1.8;
+      font-style: italic;
+      margin-bottom: 1.5rem;
+    }
+    .temoignage-card blockquote::before { content: '\201C'; font-size: 2rem; color: var(--purple-light); line-height: 0; vertical-align: -0.5rem; margin-right: 4px; }
+    .temoignage-card blockquote::after  { content: '\201D'; font-size: 2rem; color: var(--purple-light); line-height: 0; vertical-align: -0.5rem; margin-left: 4px; }
+    .temoignage-author { display: flex; align-items: center; gap: 0.8rem; }
+    .author-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple-light), var(--purple));
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .author-name { font-weight: 700; font-size: 0.95rem; color: var(--purple-dark); }
+    .author-service { font-size: 0.82rem; color: var(--text-light); }
+    .temoignages-note {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.82rem;
+      color: var(--text-light);
+      font-style: italic;
+    }
+
     @media (max-width: 900px) {
       .parcours-grid { grid-template-columns: repeat(2, 1fr); }
       .cheminement-inner { grid-template-columns: 1fr; gap: 2rem; }
+      .temoignages-grid { grid-template-columns: 1fr; max-width: 480px; margin-left: auto; margin-right: auto; }
       .outils-grid { grid-template-columns: 1fr; max-width: 430px; margin-left: auto; margin-right: auto; }
     }
     @media (max-width: 580px) {
@@ -935,6 +987,104 @@
       </div>
 
     </div>
+  </div>
+</section>
+
+<!-- ══ Témoignages ══ -->
+<section id="temoignages">
+  <div class="inner">
+    <div style="text-align:center; margin-bottom:0.5rem;">
+      <span class="tag">Témoignages</span>
+    </div>
+    <h2 class="section-title" style="text-align:center;">Ils ont franchi le pas</h2>
+    <div class="temoignages-grid">
+
+      <div class="temoignage-card">
+        <div class="temoignage-stars">★★★★★</div>
+        <blockquote>
+          J'avais essayé d'arrêter de fumer plusieurs fois, sans succès. Après deux séances d'hypnose avec Véronique, je n'ai plus jamais ressenti l'envie. C'est comme si ce besoin avait tout simplement disparu. Je recommande les yeux fermés.
+        </blockquote>
+        <div class="temoignage-author">
+          <div class="author-avatar">ML</div>
+          <div>
+            <div class="author-name">Marie-Laure D.</div>
+            <div class="author-service">Hypnose — arrêt du tabac</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="temoignage-card">
+        <div class="temoignage-stars">★★★★★</div>
+        <blockquote>
+          J'étais dans une période de doute professionnel, je ne savais plus où j'allais. Le coaching avec Véronique m'a aidé à y voir clair, à retrouver confiance en moi et à oser prendre des décisions que j'avais peur d'assumer. Un accompagnement bienveillant et vraiment efficace.
+        </blockquote>
+        <div class="temoignage-author">
+          <div class="author-avatar">TF</div>
+          <div>
+            <div class="author-name">Thomas F.</div>
+            <div class="author-service">Coaching en développement personnel</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="temoignage-card">
+        <div class="temoignage-stars">★★★★★</div>
+        <blockquote>
+          Je souffrais d'une peur panique des transports en commun depuis des années. Grâce à la PNL et à l'hypnose, j'ai pu reprendre le train sereinement en quelques séances. Véronique est à l'écoute, douce, et très professionnelle. Merci du fond du cœur.
+        </blockquote>
+        <div class="temoignage-author">
+          <div class="author-avatar">SC</div>
+          <div>
+            <div class="author-name">Sophie C.</div>
+            <div class="author-service">Hypnose &amp; PNL — phobie</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="temoignage-card">
+        <div class="temoignage-stars">★★★★★</div>
+        <blockquote>
+          Les séances de massage sont un vrai moment hors du temps. Véronique prend le soin de comprendre ce dont on a besoin avant de commencer. Je repars à chaque fois complètement détendue, légère. C'est devenu un rendez-vous indispensable pour moi.
+        </blockquote>
+        <div class="temoignage-author">
+          <div class="author-avatar">NB</div>
+          <div>
+            <div class="author-name">Nathalie B.</div>
+            <div class="author-service">Massage &amp; Bien-être</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="temoignage-card">
+        <div class="temoignage-stars">★★★★★</div>
+        <blockquote>
+          Je suis venu pour gérer mon stress au travail. Ce que j'ai vécu avec Véronique est allé bien plus loin — j'ai compris des schémas que je répétais depuis l'enfance. Un travail en profondeur, fait avec une grande douceur et un vrai respect de mon rythme.
+        </blockquote>
+        <div class="temoignage-author">
+          <div class="author-avatar">PA</div>
+          <div>
+            <div class="author-name">Pierre A.</div>
+            <div class="author-service">Coaching &amp; PNL</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="temoignage-card">
+        <div class="temoignage-stars">★★★★★</div>
+        <blockquote>
+          Véronique a ce don de mettre immédiatement à l'aise. J'avais des a priori sur l'hypnose, j'avais peur de "perdre le contrôle". Elle a pris le temps d'expliquer, de rassurer. La séance s'est passée naturellement et j'ai vraiment ressenti un changement dès le lendemain.
+        </blockquote>
+        <div class="temoignage-author">
+          <div class="author-avatar">EL</div>
+          <div>
+            <div class="author-name">Élise L.</div>
+            <div class="author-service">Hypnose — gestion du stress</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <p class="temoignages-note">✦ Ces témoignages sont des exemples — à remplacer par de vrais retours de clients.</p>
   </div>
 </section>
 
