@@ -2233,7 +2233,6 @@ function makeCustomLevel(json) {
     inductanceDurationMap,
     balls,
     edgesLit: new Set(),
-    joinWait: new Map(),
     arrived: 0,
     won: false,
     dead: false,
@@ -2247,7 +2246,7 @@ function makeCustomLevel(json) {
 function updateCustom(dt) {
   const st = state;
   if (st.won || st.dead) return;
-  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, inductanceSet, inductanceDurationMap, balls, edgesLit, joinWait } = st;
+  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, inductanceSet, inductanceDurationMap, balls, edgesLit } = st;
   const levelSpeed = BALL_SPEED * (st.ballSpeedMult ?? 1.0);
 
   const { nodes, edges } = graph;
@@ -2377,27 +2376,12 @@ function updateCustom(dt) {
 
       } else {
         const outEdges = edges.filter(e => e.from === toNode.id);
-        const inEdges  = edges.filter(e => e.to   === toNode.id);
-
         if (outEdges.length === 0) {
           // dead end — nothing
         } else if (outEdges.length === 1) {
-          const outE = outEdges[0];
-          // Check if this is a join node (2+ incoming edges)
-          if (inEdges.length >= 2) {
-            // join logic: wait for all incoming to arrive
-            const waited = (joinWait.get(toNode.id) || 0) + 1;
-            joinWait.set(toNode.id, waited);
-            if (waited >= inEdges.length) {
-              joinWait.delete(toNode.id);
-              sfxJoin();
-              toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: levelSpeed, gauge: 1.0 });
-            }
-          } else {
-            toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: levelSpeed, gauge: 1.0 });
-          }
+          toAdd.push({ edgeId: outEdges[0].id, t: 0, x: toNode.x, y: toNode.y, speed: levelSpeed, gauge: 1.0 });
         } else {
-          // Split: spawn a ball on each outgoing edge
+          // Split : une balle sur chaque sortie
           sfxSplit();
           for (const outE of outEdges) {
             toAdd.push({ edgeId: outE.id, t: 0, x: toNode.x, y: toNode.y, speed: levelSpeed, gauge: 1.0 });
