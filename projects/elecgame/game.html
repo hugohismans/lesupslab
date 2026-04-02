@@ -935,6 +935,7 @@ function campaignPos() {
 }
 
 function goNextCampaign(campIdx) {
+  selectLevel._advancing = true;
   const entry = CAMPAIGN[campIdx];
   if (entry.idx !== undefined) {
     selectLevel(entry.idx);
@@ -1001,7 +1002,8 @@ function selectLevel(idx) {
   // Campaign timer: start only from first level; jumping mid-campaign breaks the run
   const cp = CAMPAIGN.findIndex(c => c.idx !== undefined ? c.idx === idx : false);
   if (cp === 0) campStart_();
-  else if (cp > 0) campStop(); // selected a campaign level but not from the start → no HOF
+  else if (cp > 0 && !selectLevel._advancing) campStop(); // direct jump → no HOF
+  selectLevel._advancing = false;
   startRecording();
   if (AC) startHum();
 }
