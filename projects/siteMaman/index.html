@@ -612,6 +612,51 @@
       .form-row { grid-template-columns: 1fr; }
       .form-card { padding: 1.8rem; }
     }
+    /* ── Animations ── */
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                  transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Hero entrance — séquentiel au chargement */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeScaleIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .photo-wrap        { animation: fadeScaleIn  0.9s 0.1s cubic-bezier(0.22,1,0.36,1) both; }
+    .hero-text h1      { animation: fadeSlideUp  0.7s 0.35s cubic-bezier(0.22,1,0.36,1) both; }
+    .hero-subtitle     { animation: fadeSlideUp  0.7s 0.52s cubic-bezier(0.22,1,0.36,1) both; }
+    .hero-text > p     { animation: fadeSlideUp  0.7s 0.65s cubic-bezier(0.22,1,0.36,1) both; }
+    .hero-btns         { animation: fadeSlideUp  0.7s 0.80s cubic-bezier(0.22,1,0.36,1) both; }
+
+    /* Photo flottante */
+    @keyframes floatPhoto {
+      0%, 100% { transform: scale(1) translateY(0px); }
+      50%       { transform: scale(1) translateY(-10px); }
+    }
+    .photo-circle {
+      animation: fadeScaleIn 0.9s 0.1s cubic-bezier(0.22,1,0.36,1) both,
+                 floatPhoto  7s   2s   ease-in-out infinite;
+    }
+
+    /* Nav au scroll */
+    nav { transition: box-shadow 0.3s ease, background 0.3s ease; }
+    nav.scrolled {
+      box-shadow: 0 4px 28px rgba(123,94,167,0.18);
+    }
+
     /* ── Parcours & Formations ── */
     #parcours { background: #fff; }
     .parcours-grid {
@@ -1429,6 +1474,42 @@
       alert('Une erreur est survenue. Merci de réessayer ou de me contacter directement par email.');
     }
   });
+
+  /* ── Scroll Reveal ── */
+  const revealObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  // Grilles : apparition en cascade
+  document.querySelectorAll('.values, .services-grid, .parcours-grid, .outils-grid, .temoignages-grid').forEach(grid => {
+    Array.from(grid.children).forEach((child, i) => {
+      child.classList.add('reveal');
+      child.style.transitionDelay = `${i * 0.13}s`;
+      revealObs.observe(child);
+    });
+  });
+
+  // Éléments uniques
+  ['.section-title', '.tag', '.about-text', '.cheminement-quote',
+   '.cheminement-text', '.contact-info', '.form-card', '.services-intro'].forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => {
+      if (!el.classList.contains('reveal')) {
+        el.classList.add('reveal');
+        revealObs.observe(el);
+      }
+    });
+  });
+
+  /* ── Nav au scroll ── */
+  const navEl = document.querySelector('nav');
+  window.addEventListener('scroll', () => {
+    navEl.classList.toggle('scrolled', window.scrollY > 60);
+  }, { passive: true });
 </script>
 </body>
 </html>
