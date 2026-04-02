@@ -701,10 +701,17 @@ canvas.addEventListener('mousedown', e => {
     } else if (hitEdge) {
       selectedNode = null; selectedEdge = hitEdge; selectedNodes = [];
       buildProps();
-    } else {
-      // Clic dans le vide → sélection rect
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl + drag sur espace vide → rectangle de sélection
       selectedNode = null; selectedEdge = null; selectedNodes = [];
       selectionRect = { sx: wx, sy: wy, ex: wx, ey: wy };
+      buildProps();
+    } else {
+      // Drag sur espace vide → pan
+      selectedNode = null; selectedEdge = null; selectedNodes = [];
+      panning = true;
+      panStart = { x: e.clientX - viewX, y: e.clientY - viewY };
+      canvas.style.cursor = 'grabbing';
       buildProps();
     }
 
