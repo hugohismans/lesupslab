@@ -908,7 +908,7 @@ canvas.addEventListener('contextmenu', e => {
   const hit = nodeAt(w.x, w.y);
   const hitEdge = hit ? null : edgeNear(w.x, w.y);
   if (!hit && !hitEdge) {
-    selectedNode = null; selectedEdge = null; selectedNodes = []; buildProps();
+    wireFrom = null; selectedNode = null; selectedEdge = null; selectedNodes = []; buildProps();
   } else {
     deleteHit(hit, hitEdge);
   }
@@ -977,8 +977,8 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key === 'Escape') {
-    if (wireFrom) { wireFrom = null; flash(tr('flash.wire.cancel')); }
-    else { selectedNode = null; selectedEdge = null; selectedNodes = []; selectionRect = null; buildProps(); }
+    wireFrom = null; selectedNode = null; selectedEdge = null; selectedNodes = []; selectionRect = null;
+    buildProps();
     return;
   }
   if (e.key === 'f' || e.key === 'F') { fitView(); return; }
