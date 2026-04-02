@@ -1481,7 +1481,8 @@ function loadReplayFile(json) {
   }
 
   // Override to replay mode AFTER selectLevel
-  state.waiting = false; // replay starts immediately
+  // Do NOT clear state.waiting here — balls must stay frozen until the first
+  // recorded input fires, exactly mirroring what happened during recording.
   replayMode = true;
   replayData = json;
   replayInputIdx = 0;
