@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Véronique Roland — Hypnose, Coaching &amp; PNL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --purple:       #7B5EA7;
+      --purple-light: #A88BC8;
+      --purple-dark:  #4A3570;
+      --gold:         #C9A96E;
+      --cream:        #FAF7F2;
+      --shadow:       rgba(123, 94, 167, 0.15);
+      --text:         #2C2C3E;
+      --text-light:   #6B6B8A;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Lato', sans-serif;
+      color: var(--text);
+      background: #fff;
+      line-height: 1.7;
+    }
+
+    /* ── Navigation ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(123,94,167,0.1);
+      padding: 0 2rem;
+    }
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 70px;
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      color: var(--purple-dark);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .nav-links {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-light);
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--purple); }
+    .nav-links .btn-nav {
+      background: var(--purple);
+      color: #fff !important;
+      padding: 0.5rem 1.3rem;
+      border-radius: 25px;
+      transition: background 0.2s;
+    }
+    .nav-links .btn-nav:hover { background: var(--purple-dark); }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 5px;
+      background: none;
+      border: none;
+    }
+    .hamburger span {
+      display: block;
+      width: 25px;
+      height: 2px;
+      background: var(--purple);
+      transition: all 0.3s;
+    }
+
+    /* ── Hero ── */
+    #hero {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #F0EBF8 0%, #FAF7F2 55%, #EBF4F0 100%);
+      display: flex;
+      align-items: center;
+      padding: 110px 2rem 5rem;
+    }
+    .hero-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 4rem;
+    }
+    .photo-wrap { flex-shrink: 0; }
+    .photo-circle {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 6px solid #fff;
+      box-shadow: 0 20px 60px var(--shadow);
+      background: linear-gradient(135deg, var(--purple-light), var(--purple));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 4.5rem;
+      color: #fff;
+      position: relative;
+    }
+    .photo-circle img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .photo-hint {
+      font-size: 0.7rem;
+      color: rgba(255,255,255,0.75);
+      text-align: center;
+      position: absolute;
+      bottom: 18px;
+      padding: 0 10px;
+    }
+    .hero-text h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.2rem;
+      color: var(--purple-dark);
+      line-height: 1.15;
+      margin-bottom: 0.6rem;
+    }
+    .hero-subtitle {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      font-size: 1rem;
+      color: var(--text-light);
+      font-weight: 300;
+      letter-spacing: 0.8px;
+      margin-bottom: 1.5rem;
+    }
+    .dot { color: var(--gold); font-size: 1.1rem; }
+    .hero-text p {
+      font-size: 1.05rem;
+      color: var(--text-light);
+      max-width: 490px;
+      line-height: 1.85;
+      margin-bottom: 2rem;
+    }
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .btn-primary {
+      display: inline-block;
+      background: var(--purple);
+      color: #fff;
+      padding: 0.85rem 2rem;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1rem;
+      box-shadow: 0 6px 20px rgba(123,94,167,0.3);
+      transition: all 0.3s;
+    }
+    .btn-primary:hover {
+      background: var(--purple-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(123,94,167,0.4);
+    }
+    .btn-outline {
+      display: inline-block;
+      background: transparent;
+      color: var(--purple);
+      padding: 0.85rem 2rem;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 1rem;
+      border: 2px solid var(--purple);
+      transition: all 0.3s;
+    }
+    .btn-outline:hover {
+      background: var(--purple);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    /* ── Sections communes ── */
+    section { padding: 6rem 2rem; }
+    .inner { max-width: 1100px; margin: 0 auto; }
+    .tag {
+      display: inline-block;
+      background: rgba(123,94,167,0.1);
+      color: var(--purple);
+      padding: 0.3rem 1rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    h2.section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      color: var(--purple-dark);
+      margin-bottom: 1.2rem;
+      line-height: 1.2;
+    }
+
+    /* ── À propos ── */
+    #about { background: var(--cream); }
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: start;
+    }
+    .about-text p {
+      color: var(--text-light);
+      font-size: 1.05rem;
+      margin-bottom: 1.2rem;
+      line-height: 1.85;
+    }
+    .values { display: flex; flex-direction: column; gap: 1.1rem; }
+    .value-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 1.4rem 1.6rem;
+      box-shadow: 0 5px 20px var(--shadow);
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    .value-icon { font-size: 1.8rem; flex-shrink: 0; margin-top: 2px; }
+    .value-card h4 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      color: var(--purple-dark);
+      margin-bottom: 0.2rem;
+    }
+    .value-card p { font-size: 0.9rem; color: var(--text-light); margin: 0; }
+
+    /* ── Services ── */
+    #services { background: #fff; }
+    .services-intro {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 3rem;
+    }
+    .services-intro p {
+      color: var(--text-light);
+      font-size: 1.05rem;
+    }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+    .service-card {
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 35px var(--shadow);
+      cursor: pointer;
+      transition: transform 0.3s, box-shadow 0.3s;
+      background: #fff;
+    }
+    .service-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 55px rgba(123,94,167,0.25);
+    }
+    .card-img {
+      height: 190px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5rem;
+    }
+    .card-img.coaching { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .card-img.massage  { background: linear-gradient(135deg, #84fab0, #4cb8c4); }
+    .card-img.hypnose  { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+    .card-body { padding: 1.8rem; }
+    .card-body h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: var(--purple-dark);
+      margin-bottom: 0.7rem;
+    }
+    .card-body p {
+      color: var(--text-light);
+      font-size: 0.95rem;
+      line-height: 1.7;
+      margin-bottom: 1.2rem;
+    }
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--purple);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .card-link::after { content: ' →'; transition: margin-left 0.2s; }
+    .service-card:hover .card-link::after { margin-left: 4px; }
+
+    /* ── Modal ── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20,10,40,0.72);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      backdrop-filter: blur(5px);
+    }
+    .overlay.active { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 24px;
+      max-width: 660px;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      animation: popIn 0.28s ease;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(28px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0)   scale(1); }
+    }
+    .modal-head {
+      height: 175px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 5rem;
+      border-radius: 24px 24px 0 0;
+      position: relative;
+    }
+    .modal-head.coaching { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .modal-head.massage  { background: linear-gradient(135deg, #84fab0, #4cb8c4); }
+    .modal-head.hypnose  { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+    .modal-close-btn {
+      position: absolute;
+      top: 1rem; right: 1rem;
+      background: rgba(255,255,255,0.3);
+      border: none;
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      font-size: 1.3rem;
+      cursor: pointer;
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close-btn:hover { background: rgba(255,255,255,0.5); }
+    .modal-body { padding: 2.5rem; }
+    .modal-body h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      color: var(--purple-dark);
+      margin-bottom: 1rem;
+    }
+    .modal-body p {
+      color: var(--text-light);
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 1rem;
+    }
+    .modal-body strong { color: var(--purple-dark); }
+    .modal-body ul { list-style: none; margin: 0.5rem 0 1.2rem; }
+    .modal-body ul li {
+      display: flex;
+      gap: 0.7rem;
+      padding: 0.35rem 0;
+      color: var(--text-light);
+      font-size: 0.95rem;
+      align-items: flex-start;
+    }
+    .modal-body ul li::before {
+      content: '✦';
+      color: var(--purple);
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+    .modal-footer { padding: 0 2.5rem 2.5rem; }
+
+    /* ── Contact ── */
+    #contact { background: linear-gradient(135deg, #F0EBF8 0%, #FAF7F2 100%); }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 4rem;
+      align-items: start;
+    }
+    .contact-info h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      color: var(--purple-dark);
+      margin-bottom: 0.8rem;
+    }
+    .contact-info > p {
+      color: var(--text-light);
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 2rem;
+    }
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      color: var(--text-light);
+      font-size: 0.95rem;
+    }
+    .contact-icon {
+      width: 40px; height: 40px;
+      background: var(--purple);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .form-card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 2.5rem;
+      box-shadow: 0 10px 40px var(--shadow);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.2px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border: 2px solid #E8E4F0;
+      border-radius: 12px;
+      font-family: 'Lato', sans-serif;
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--cream);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 4px rgba(123,94,167,0.1);
+      background: #fff;
+    }
+    .form-group textarea { resize: vertical; min-height: 130px; }
+    .btn-submit {
+      width: 100%;
+      padding: 1rem;
+      background: var(--purple);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Lato', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 5px 20px rgba(123,94,167,0.3);
+      transition: all 0.3s;
+    }
+    .btn-submit:hover { background: var(--purple-dark); transform: translateY(-2px); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+    .form-success {
+      display: none;
+      text-align: center;
+      padding: 2rem 1rem;
+    }
+    .form-success .success-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .form-success h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--purple-dark);
+      margin-bottom: 0.5rem;
+    }
+    .form-success p { color: var(--text-light); }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--purple-dark);
+      color: rgba(255,255,255,0.65);
+      text-align: center;
+      padding: 2.5rem 2rem;
+    }
+    footer .f-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+    footer p { font-size: 0.9rem; margin-bottom: 0.25rem; }
+    footer .f-copy { font-size: 0.8rem; margin-top: 1.5rem; opacity: 0.6; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+
+      /* Mobile menu panel */
+      .nav-links.open {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 70px; left: 0; right: 0;
+        background: #fff;
+        padding: 1.2rem 2rem 2rem;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+        gap: 0.6rem;
+        z-index: 99;
+      }
+      .nav-links.open .btn-nav {
+        display: inline-block;
+        align-self: flex-start;
+      }
+
+      .hero-inner { flex-direction: column; text-align: center; gap: 2.5rem; }
+      .hero-text h1 { font-size: 2.5rem; }
+      .hero-subtitle { justify-content: center; }
+      .hero-btns { justify-content: center; }
+      .hero-text p { margin-left: auto; margin-right: auto; }
+
+      .about-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+
+      .services-grid { grid-template-columns: 1fr; max-width: 430px; margin: 0 auto; }
+
+      .contact-grid { grid-template-columns: 1fr; gap: 2rem; }
+    }
+
+    @media (max-width: 580px) {
+      section { padding: 4rem 1.5rem; }
+      .hero-text h1 { font-size: 2rem; }
+      h2.section-title { font-size: 2rem; }
+      .photo-circle { width: 210px; height: 210px; font-size: 3.5rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-card { padding: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ Navigation ══ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#hero" class="nav-logo">Véronique Roland</a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#about">À propos</a></li>
+      <li><a href="#services">Mes services</a></li>
+      <li><a href="#contact" class="btn-nav">Me contacter</a></li>
+    </ul>
+    <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleNav()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ══ Hero ══ -->
+<section id="hero">
+  <div class="hero-inner inner">
+    <div class="photo-wrap">
+      <div class="photo-circle">
+        <img src="photo.jpg" alt="Véronique Roland">
+      </div>
+    </div>
+    <div class="hero-text">
+      <h1>Véronique<br>Roland</h1>
+      <div class="hero-subtitle">
+        <span>Hypnose</span>
+        <span class="dot">✦</span>
+        <span>Coaching</span>
+        <span class="dot">✦</span>
+        <span>PNL</span>
+      </div>
+      <p>
+        Accompagner chaque personne sur le chemin de son épanouissement,
+        avec bienveillance, écoute et des outils puissants et éprouvés.
+      </p>
+      <div class="hero-btns">
+        <a href="#services" class="btn-primary">Découvrir mes services</a>
+        <a href="#contact" class="btn-outline">Me contacter</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ À propos ══ -->
+<section id="about">
+  <div class="inner">
+    <div class="about-grid">
+      <div class="about-text">
+        <span class="tag">À propos</span>
+        <h2 class="section-title">Une approche humaine et bienveillante</h2>
+        <p>
+          Bienvenue ! Je suis Véronique Roland, maitre praticienne en hypnose,
+          coach certifiée en développement personnel et praticienne en PNL
+          (Programmation Neuro-Linguistique).
+        </p>
+        <p>
+          Mon parcours m'a conduite à me spécialiser dans l'accompagnement
+          des personnes qui souhaitent avancer, dépasser leurs blocages et
+          vivre une vie plus épanouie, alignée avec leurs véritables valeurs.
+        </p>
+        <p>
+          Chaque individu est unique. C'est pourquoi je propose une approche
+          entièrement sur mesure, combinant plusieurs outils complémentaires
+          pour répondre au mieux à vos besoins et vous aider à révéler tout
+          votre potentiel.
+        </p>
+        <a href="#contact" class="btn-primary" style="margin-top:1rem;">Prendre rendez-vous</a>
+      </div>
+      <div class="values">
+        <div class="value-card">
+          <div class="value-icon">🤝</div>
+          <div>
+            <h4>Écoute &amp; Bienveillance</h4>
+            <p>Un espace de confiance où vous pouvez vous exprimer librement, sans jugement.</p>
+          </div>
+        </div>
+        <div class="value-card">
+          <div class="value-icon">✨</div>
+          <div>
+            <h4>Accompagnement Personnalisé</h4>
+            <p>Des séances adaptées à votre rythme et à vos besoins, pour des résultats durables.</p>
+          </div>
+        </div>
+        <div class="value-card">
+          <div class="value-icon">🎯</div>
+          <div>
+            <h4>Outils Éprouvés</h4>
+            <p>Hypnose, PNL, coaching — des méthodes reconnues au service de votre transformation.</p>
+          </div>
+        </div>
+        <div class="value-card">
+          <div class="value-icon">🌱</div>
+          <div>
+            <h4>Évolution Durable</h4>
+            <p>Non pas une solution rapide, mais un vrai changement en profondeur, qui dure.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Services ══ -->
+<section id="services">
+  <div class="inner">
+    <div class="services-intro">
+      <span class="tag">Mes services</span>
+      <h2 class="section-title">Comment puis-je vous accompagner ?</h2>
+      <p>Cliquez sur un thème pour en apprendre davantage sur mon approche et ce que nous pouvons travailler ensemble.</p>
+    </div>
+    <div class="services-grid">
+
+      <div class="service-card" onclick="openModal('coaching')" role="button" tabindex="0" aria-label="En savoir plus sur le coaching">
+        <div class="card-img coaching">🚀</div>
+        <div class="card-body">
+          <h3>Coaching en Développement Personnel</h3>
+          <p>Définissez vos objectifs, dépassez vos limites et construisez la vie que vous désirez vraiment.</p>
+          <span class="card-link">En savoir plus</span>
+        </div>
+      </div>
+
+      <div class="service-card" onclick="openModal('massage')" role="button" tabindex="0" aria-label="En savoir plus sur le massage">
+        <div class="card-img massage">💆</div>
+        <div class="card-body">
+          <h3>Massage &amp; Bien-être</h3>
+          <p>Relâchez les tensions, retrouvez la sérénité et prenez soin de votre corps et de votre esprit.</p>
+          <span class="card-link">En savoir plus</span>
+        </div>
+      </div>
+
+      <div class="service-card" onclick="openModal('hypnose')" role="button" tabindex="0" aria-label="En savoir plus sur l'hypnose et la PNL">
+        <div class="card-img hypnose">🌀</div>
+        <div class="card-body">
+          <h3>Hypnose &amp; PNL</h3>
+          <p>Accédez aux ressources profondes de votre inconscient pour transformer durablement vos comportements.</p>
+          <span class="card-link">En savoir plus</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ Contact ══ -->
+<section id="contact">
+  <div class="inner">
+    <div class="contact-grid">
+      <div class="contact-info">
+        <span class="tag">Contact</span>
+        <h2 class="section-title">Parlons de vous</h2>
+        <p>
+          Vous avez une question, vous souhaitez en savoir plus sur mes services,
+          ou vous êtes prêt(e) à franchir le premier pas ?
+          Je serai ravie de vous répondre.
+        </p>
+        <div class="contact-item">
+          <div class="contact-icon">📧</div>
+          <span>Réponse sous 24 à 48 heures</span>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">🔒</div>
+          <span>Vos informations restent strictement confidentielles</span>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon">☕</div>
+          <span>Premier échange offert — sans engagement</span>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <!--
+          POUR ACTIVER L'ENVOI PAR MAIL :
+          1. Créez un compte gratuit sur https://formspree.io
+          2. Créez un nouveau formulaire (email : hugo.hismans@gmail.com)
+          3. Copiez votre Form ID et remplacez "VOTRE_ID" ci-dessous
+          4. Exemple : action="https://formspree.io/f/xabc1234"
+        -->
+        <form id="contactForm" action="https://formspree.io/f/mreoarkp" method="POST">
+          <input type="hidden" name="_replyto" value="hugo.hismans@gmail.com">
+          <input type="hidden" name="_subject" value="Nouveau message — Site Véronique Roland">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="prenom">Prénom *</label>
+              <input type="text" id="prenom" name="prenom" required placeholder="Marie">
+            </div>
+            <div class="form-group">
+              <label for="nom">Nom *</label>
+              <input type="text" id="nom" name="nom" required placeholder="Dupont">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required placeholder="marie.dupont@exemple.fr">
+          </div>
+
+          <div class="form-group">
+            <label for="telephone">Téléphone</label>
+            <input type="tel" id="telephone" name="telephone" placeholder="06 00 00 00 00">
+          </div>
+
+          <div class="form-group">
+            <label for="sujet">Je m'intéresse à…</label>
+            <select id="sujet" name="sujet">
+              <option value="">-- Choisissez un thème --</option>
+              <option value="Coaching en développement personnel">Coaching en développement personnel</option>
+              <option value="Massage & Bien-être">Massage &amp; Bien-être</option>
+              <option value="Hypnose & PNL">Hypnose &amp; PNL</option>
+              <option value="Autre">Autre / Je ne sais pas encore</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Votre message *</label>
+            <textarea id="message" name="message" required placeholder="Bonjour, je souhaite…"></textarea>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submitBtn">Envoyer mon message ✉️</button>
+        </form>
+
+        <div class="form-success" id="formSuccess">
+          <div class="success-icon">🌸</div>
+          <h3>Message envoyé !</h3>
+          <p>Merci pour votre message. Véronique vous répondra dans les plus brefs délais.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Footer ══ -->
+<footer>
+  <p class="f-name">Véronique Roland</p>
+  <p>Maitre Praticienne en Hypnose · Coach en Développement Personnel · PNL</p>
+  <p class="f-copy">© 2025 Véronique Roland — Tous droits réservés</p>
+</footer>
+
+<!-- ══ Modal ══ -->
+<div class="overlay" id="overlay" onclick="closeOnOverlay(event)">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head" id="modalHead">
+      <button class="modal-close-btn" onclick="closeModal()" aria-label="Fermer">✕</button>
+      <span id="modalEmoji"></span>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <a href="#contact" class="btn-primary" onclick="closeModal()" style="display:inline-block;">
+        Prendre rendez-vous
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Modal data ── */
+  const modals = {
+    coaching: {
+      emoji: '🚀', cls: 'coaching',
+      title: 'Coaching en Développement Personnel',
+      body: `
+        <p>Le coaching en développement personnel est un accompagnement structuré et bienveillant qui vous aide à clarifier vos objectifs, à identifier vos ressources internes et à mettre en place des actions concrètes pour avancer.</p>
+        <p>Ensemble, nous travaillons sur :</p>
+        <ul>
+          <li>La définition de vos objectifs personnels et professionnels</li>
+          <li>Le renforcement de la confiance et de l'estime de soi</li>
+          <li>La gestion du stress et des émotions</li>
+          <li>Le dépassement des croyances limitantes</li>
+          <li>L'amélioration de vos relations et de votre communication</li>
+          <li>La prise de décision et la gestion des transitions de vie</li>
+        </ul>
+        <p>Les séances se déroulent en face-à-face ou à distance. Un programme est élaboré sur mesure lors de notre premier entretien.</p>
+      `
+    },
+    massage: {
+      emoji: '💆', cls: 'massage',
+      title: 'Massage & Bien-être',
+      body: `
+        <p>Le massage est une pratique ancestrale qui agit à la fois sur le corps et sur l'esprit. Bien plus qu'un simple moment de détente, c'est un véritable soin qui vous reconnecte à vous-même.</p>
+        <p>Les bienfaits :</p>
+        <ul>
+          <li>Relâchement des tensions musculaires et articulaires</li>
+          <li>Réduction du stress et de l'anxiété</li>
+          <li>Amélioration de la circulation sanguine et lymphatique</li>
+          <li>Stimulation du système immunitaire</li>
+          <li>Amélioration de la qualité du sommeil</li>
+          <li>Reconnexion au corps et sensation de bien-être durable</li>
+        </ul>
+        <p>Les séances sont entièrement personnalisées selon vos besoins et les zones à travailler en priorité. Un moment de parenthèse bienveillante pour votre corps et votre esprit.</p>
+      `
+    },
+    hypnose: {
+      emoji: '🌀', cls: 'hypnose',
+      title: 'Hypnose & PNL',
+      body: `
+        <p><strong>L'hypnose thérapeutique</strong> est un état naturel de conscience modifiée — similaire à la rêverie — qui permet d'accéder aux ressources de l'inconscient pour créer des changements profonds et durables.</p>
+        <p><strong>La PNL</strong> (Programmation Neuro-Linguistique) est un ensemble de techniques puissantes qui permettent de comprendre et de modifier nos schémas de pensée, d'émotion et de comportement.</p>
+        <p>Ces approches peuvent vous aider pour :</p>
+        <ul>
+          <li>Arrêter de fumer, gérer son poids</li>
+          <li>Surmonter les phobies et les peurs</li>
+          <li>Traverser un deuil ou un traumatisme</li>
+          <li>Améliorer les performances (sport, examens, prise de parole)</li>
+          <li>Soulager les douleurs chroniques</li>
+          <li>Renforcer la confiance en soi</li>
+          <li>Retrouver un sommeil de qualité</li>
+        </ul>
+        <p>Contrairement aux idées reçues, vous restez pleinement conscient(e) et en contrôle pendant toute la séance. L'hypnose est une collaboration bienveillante, pas de la magie — c'est vous qui faites le travail.</p>
+      `
+    }
+  };
+
+  function openModal(type) {
+    const m = modals[type];
+    document.getElementById('modalEmoji').textContent = m.emoji;
+    document.getElementById('modalHead').className = 'modal-head ' + m.cls;
+    document.getElementById('modalBody').innerHTML =
+      `<h2>${m.title}</h2>${m.body}`;
+    document.getElementById('overlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function closeOnOverlay(e) {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  // Keyboard accessibility for service cards
+  document.querySelectorAll('.service-card').forEach(card => {
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') card.click();
+    });
+  });
+
+  /* ── Mobile nav ── */
+  function toggleNav() {
+    document.getElementById('navLinks').classList.toggle('open');
+  }
+  document.querySelectorAll('#navLinks a').forEach(a => {
+    a.addEventListener('click', () =>
+      document.getElementById('navLinks').classList.remove('open'));
+  });
+
+  /* ── Contact form (Formspree) ── */
+  const form      = document.getElementById('contactForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const success   = document.getElementById('formSuccess');
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Envoi en cours…';
+
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { Accept: 'application/json' }
+      });
+      if (res.ok) {
+        form.style.display = 'none';
+        success.style.display = 'block';
+      } else {
+        throw new Error();
+      }
+    } catch {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Envoyer mon message ✉️';
+      alert('Une erreur est survenue. Merci de réessayer ou de me contacter directement par email.');
+    }
+  });
+</script>
+</body>
+</html>
