@@ -968,6 +968,7 @@ const keys = {};
 
 function selectLevel(idx) {
   replayMode = false;
+  particles = []; shakeTimer = 0; bulbFlash = 0;
   for (const k in keys) keys[k] = false;
   stopHum(true);
   currentLevel = idx;
@@ -997,9 +998,10 @@ function selectLevel(idx) {
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
   document.getElementById('submit-level-btn').style.display = 'none';
-  // Campaign timer: start at first level, reset if player goes back to start
+  // Campaign timer: start only from first level; jumping mid-campaign breaks the run
   const cp = CAMPAIGN.findIndex(c => c.idx !== undefined ? c.idx === idx : false);
   if (cp === 0) campStart_();
+  else if (cp > 0) campStop(); // selected a campaign level but not from the start → no HOF
   startRecording();
   if (AC) startHum();
 }
@@ -2070,10 +2072,88 @@ function drawLevel2() {
   drawKeyIndicator('P', 20, 50);
 }
 
+// ── PARTICLES ──────────────────────────────────────────────
+let particles = [];
+let shakeTimer = 0;
+let bulbFlash  = 0; // 0..1, decays over time
+
+function spawnDeathSparks(x, y) {
+  shakeTimer = 0.22;
+  for (let i = 0; i < 18; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 60 + Math.random() * 220;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 60,
+      life: 0.4 + Math.random() * 0.4,
+      maxLife: 0,
+      r: 2 + Math.random() * 3,
+      type: 'spark',
+    });
+    particles[particles.length - 1].maxLife = particles[particles.length - 1].life;
+  }
+}
+
+function spawnWinBurst(x, y) {
+  bulbFlash = 1.0;
+  for (let i = 0; i < 24; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 40 + Math.random() * 160;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 40,
+      life: 0.6 + Math.random() * 0.6,
+      maxLife: 0,
+      r: 2 + Math.random() * 4,
+      type: 'win',
+    });
+    particles[particles.length - 1].maxLife = particles[particles.length - 1].life;
+  }
+}
+
+function updateParticles(dt) {
+  if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
+  if (bulbFlash  > 0) bulbFlash  = Math.max(0, bulbFlash  - dt * 2.5);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 300 * dt; // gravity
+    p.vx *= (1 - 4 * dt);
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (p.type === 'spark') {
+      ctx.shadowBlur = 8; ctx.shadowColor = '#ff4400';
+      ctx.fillStyle = alpha > 0.5 ? '#ffffff' : '#ff6600';
+    } else {
+      ctx.shadowBlur = 12; ctx.shadowColor = '#ffff00';
+      ctx.fillStyle = alpha > 0.5 ? '#ffffff' : '#ffdd00';
+    }
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * alpha, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
 // ── MAIN DRAW ──────────────────────────────────────────────
 function draw() {
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#08080f'; ctx.fillRect(0, 0, W, H);
+
+  // Screen shake on death
+  const shakeAmt = shakeTimer > 0 ? (Math.random() - 0.5) * 10 * (shakeTimer / 0.22) : 0;
+  ctx.save();
+  if (shakeAmt) ctx.translate(shakeAmt, (Math.random() - 0.5) * 10 * (shakeTimer / 0.22));
+
+  ctx.fillStyle = '#08080f'; ctx.fillRect(-20, -20, W + 40, H + 40);
 
   if (state.type === 'custom') drawCustom();
   else if (state.type === 'single') drawLevel1();
@@ -2095,6 +2175,19 @@ function draw() {
     ctx.fillText(t('replay'), W - 16, 24);
     ctx.restore();
   }
+
+  ctx.restore(); // end shake transform
+
+  // Bulb flash overlay on win
+  if (bulbFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = bulbFlash * 0.35;
+    ctx.fillStyle = '#ffff88';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  drawParticles();
 }
 
 // ── CUSTOM LEVEL HELPERS ───────────────────────────────────
@@ -2958,9 +3051,28 @@ function loop(timestamp) {
   const wasWon  = state.won;
   const wasDead = state.dead;
   update(dt);
-  if (!wasDead && state.dead && !replayMode) registerDeath();
+  updateParticles(dt);
+  if (!wasDead && state.dead && !replayMode) {
+    registerDeath();
+    // Spawn death sparks at last known ball position
+    if (state.type === 'custom' && state.balls && state.balls.length > 0) {
+      const b = state.balls[0];
+      spawnDeathSparks((b.x ?? W/2) * camScale + camTX, (b.y ?? H/2) * camScale + camTY);
+    } else if (state.type === 'single') {
+      spawnDeathSparks(state.ball ?? W/2, H/2);
+    } else {
+      spawnDeathSparks(state.ballX ?? W/2, H/2);
+    }
+  }
   if (!wasWon && state.won && !replayMode) {
     stopRecordingWin();
+    // Win burst particles at bulb position
+    if (state.type === 'custom' && state.graph) {
+      const bulbNode = state.graph.nodes.find(n => n.type === 'bulb');
+      if (bulbNode) spawnWinBurst(bulbNode.x * camScale + camTX, bulbNode.y * camScale + camTY);
+    } else {
+      spawnWinBurst(WIRE_END, H / 2);
+    }
     const nlWrap    = document.getElementById('next-level-wrap');
     const nlBtn     = document.getElementById('next-level-btn');
     const submitBtn = document.getElementById('submit-level-btn');
@@ -2973,14 +3085,15 @@ function loop(timestamp) {
         nlBtn.textContent = t('btn.next_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
       } else {
-        // Last campaign level — campaign complete!
+        // Last campaign level — campaign complete only if run started from TUTO1
+        const wasFullRun  = campRunning;
         const finalTime   = campElapsed();
         const finalDeaths = campDeaths;
         campStop();
         nlBtn.textContent = t('btn.choose_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
-        // Show finish popup after a short delay so win animation plays
-        setTimeout(() => openFinish(finalTime, finalDeaths), 1200);
+        // Show finish popup only for a full run (started from level 0)
+        if (wasFullRun) setTimeout(() => openFinish(finalTime, finalDeaths), 1200);
       }
     }
 
