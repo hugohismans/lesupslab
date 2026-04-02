@@ -519,8 +519,9 @@ let tool = 'select';
 let wireFrom = null;
 let selectedNode = null;
 let selectedEdge = null;
-let selectedNodes = [];   // multi-select (array of node objects)
-let selectionRect = null; // { sx, sy, ex, ey } world coords while drag-selecting
+let selectedNodes = [];     // multi-select (array of node objects)
+let selectionRect = null;   // { sx, sy, ex, ey } world coords while drag-selecting
+let multiDragging = null;   // { startX, startY, origNodes, origEdgeWayY }
 let dragging = null;
 let hoveredNode = null;
 let hoveredEdge = null;
@@ -545,6 +546,7 @@ function setTool(t) {
   wireFrom = null;
   selectedNodes = [];
   selectionRect = null;
+  multiDragging = null;
   document.querySelectorAll('.tool-btn[id^=btn]').forEach(b => b.classList.remove('active'));
   const el = document.getElementById('btn-' + t);
   if (el) el.classList.add('active');
@@ -694,7 +696,18 @@ canvas.addEventListener('mousedown', e => {
   const hitEdge = hit ? null : edgeNear(wx, wy);
 
   if (tool === 'select') {
-    if (hit) {
+    if (hit && selectedNodes.length > 0 && selectedNodes.some(n => n.id === hit.id)) {
+      // Clic sur un nœud de la multi-sélection → déplacer tout le groupe
+      saveUndo();
+      const selIds = new Set(selectedNodes.map(n => n.id));
+      multiDragging = {
+        startX: wx, startY: wy,
+        origNodes: selectedNodes.map(n => ({ node: n, x: n.x, y: n.y })),
+        origEdgeWayY: edges
+          .filter(e => selIds.has(e.from) && selIds.has(e.to) && e.wayY != null)
+          .map(e => ({ edge: e, wayY: e.wayY }))
+      };
+    } else if (hit) {
       selectedNode = hit; selectedEdge = null; selectedNodes = [];
       dragging = { node: hit, ox: wx - hit.x, oy: wy - hit.y };
       buildProps();
@@ -811,6 +824,20 @@ canvas.addEventListener('mousemove', e => {
     viewY = e.clientY - panStart.y;
     return;
   }
+  if (multiDragging) {
+    const w = screenToWorld(mousePos.x, mousePos.y);
+    const dx = w.x - multiDragging.startX;
+    const dy = w.y - multiDragging.startY;
+    for (const { node, x, y } of multiDragging.origNodes) {
+      node.x = snap(x + dx);
+      node.y = snap(y + dy);
+    }
+    for (const { edge, wayY } of multiDragging.origEdgeWayY) {
+      edge.wayY = snap(wayY + dy);
+    }
+    validate();
+    return;
+  }
   if (dragging) {
     const w = screenToWorld(mousePos.x, mousePos.y);
     dragging.node.x = snap(w.x - dragging.ox + GRID/2);
@@ -836,6 +863,7 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('mouseup', e => {
   if (panning) { panning = false; canvas.style.cursor = spaceHeld ? 'grab' : 'crosshair'; }
   dragging = null;
+  multiDragging = null;
   panStart = null;
   if (selectionRect) {
     const r = selectionRect;
@@ -853,7 +881,7 @@ canvas.addEventListener('mouseup', e => {
   }
 });
 canvas.addEventListener('mouseleave', () => {
-  panning = false; dragging = null; panStart = null;
+  panning = false; dragging = null; multiDragging = null; panStart = null;
   selectionRect = null;
   hoveredNode = null; hoveredEdge = null;
 });
