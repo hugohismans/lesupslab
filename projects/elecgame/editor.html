@@ -914,8 +914,11 @@ canvas.addEventListener('dblclick', e => {
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.key === ' ') { e.preventDefault(); spaceHeld = true; canvas.style.cursor = 'grab'; return; }
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Z') { e.preventDefault(); redo(); return; }
-  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+    return;
+  }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
     if (selectedNodes.length > 0) {
