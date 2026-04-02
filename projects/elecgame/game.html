@@ -1596,7 +1596,7 @@ document.addEventListener('keydown', e => {
   }
 
   keys[k] = true;
-  if (e.key === ' ') { spacePressCount++; recordKey('keydown', ' '); }
+  if (e.key === ' ' && !e.repeat) { spacePressCount++; recordKey('keydown', ' '); }
   else if (k !== 'R') recordKey('keydown', k);
   if (k === 'R' && !(state && state.won)) selectLevel(currentLevel);
   resumeAudio();
