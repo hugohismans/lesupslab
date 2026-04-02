@@ -340,7 +340,9 @@ const TRANSLATIONS = {
     'flash.redo.none': 'Rien à rétablir',
     'flash.wire.reversed': 'Fil inversé ⇄',
     'flash.multi.del': 'nœuds supprimés',
-    'props.multisel': 'nœuds sélectionnés — [Suppr] pour effacer',
+    'flash.copy': 'nœud(s) copié(s)',
+    'flash.paste': 'nœud(s) collé(s)',
+    'props.multisel': 'nœuds sélectionnés — [Suppr] effacer — [Ctrl+C] copier',
     'flash.wire.start': 'Clique sur un nœud source du fil',
     'flash.wire.dest': 'Clique sur le nœud de destination',
     'flash.wire.done': 'Fil créé — continue vers le prochain nœud',
@@ -405,8 +407,10 @@ const TRANSLATIONS = {
     'flash.redo': 'Redone (Ctrl+Shift+Z)',
     'flash.redo.none': 'Nothing to redo',
     'flash.wire.reversed': 'Wire reversed ⇄',
-    'flash.multi.del': 'nodes deleted',
-    'props.multisel': 'nodes selected — [Del] to delete',
+    'flash.multi.del': 'node(s) deleted',
+    'flash.copy': 'node(s) copied',
+    'flash.paste': 'node(s) pasted',
+    'props.multisel': 'nodes selected — [Del] delete — [Ctrl+C] copy',
     'flash.wire.start': 'Click on a source node for the wire',
     'flash.wire.dest': 'Click on the destination node',
     'flash.wire.done': 'Wire created — continue to next node',
@@ -512,6 +516,40 @@ function redo() {
   undoStack.push(saveState_());
   applyState_(redoStack.pop());
   flash(tr('flash.redo'));
+}
+
+// ── COPY / PASTE ───────────────────────────────────────────
+let clipboard = null; // { nodes: [...], edges: [...] }
+
+function copySelection() {
+  const src = selectedNodes.length > 0 ? selectedNodes : (selectedNode ? [selectedNode] : []);
+  if (!src.length) return;
+  const ids = new Set(src.map(n => n.id));
+  clipboard = {
+    nodes: src.map(n => ({ ...n })),
+    edges: edges.filter(e => ids.has(e.from) && ids.has(e.to)).map(e => ({ ...e }))
+  };
+  flash(src.length + ' ' + tr('flash.copy'));
+}
+
+function pasteSelection() {
+  if (!clipboard || !clipboard.nodes.length) return;
+  saveUndo();
+  const OFF = 40;
+  const idMap = {};
+  const newNodes = clipboard.nodes.map(n => {
+    const newId = nextNodeId++;
+    idMap[n.id] = newId;
+    return { ...n, id: newId, x: n.x + OFF, y: n.y + OFF };
+  });
+  const newEdges = clipboard.edges.map(e => ({
+    ...e, id: nextEdgeId++, from: idMap[e.from], to: idMap[e.to]
+  }));
+  nodes.push(...newNodes);
+  edges.push(...newEdges);
+  selectedNodes = newNodes; selectedNode = null; selectedEdge = null;
+  buildProps(); validate();
+  flash(newNodes.length + ' ' + tr('flash.paste'));
 }
 
 // ── TOOL STATE ─────────────────────────────────────────────
@@ -954,6 +992,8 @@ document.addEventListener('keydown', e => {
     if (e.shiftKey) redo(); else undo();
     return;
   }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { e.preventDefault(); copySelection(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteSelection(); return; }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
     if (selectedNodes.length > 0) {
