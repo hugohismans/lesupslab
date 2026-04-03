@@ -1255,7 +1255,7 @@ function openSubmitOverlay() {
     document.getElementById('submit-overlay').classList.add('open');
     status.style.color = '#ff8800';
     status.textContent = t('submit.cooldown').replace('{mins}', mins);
-    document.getElementById('submit-send').disabled = true;
+    document.getElementById('submit-name').focus();
     return;
   }
 
