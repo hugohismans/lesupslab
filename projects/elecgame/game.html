@@ -2062,13 +2062,14 @@ function drawKeyIndicator(key, px, py) {
 }
 
 function drawOverlay(text, color, glow) {
+  const cy = H / 2;
   ctx.save();
   ctx.font = 'bold 30px Courier New'; ctx.textAlign = 'center';
   ctx.shadowBlur = 20; ctx.shadowColor = glow;
   ctx.fillStyle = color;
-  ctx.fillText(text, W / 2, 40);
+  ctx.fillText(text, W / 2, cy - 10);
   ctx.font = '15px Courier New'; ctx.fillStyle = '#aaaaaa'; ctx.shadowBlur = 0;
-  ctx.fillText(t('overlay.restart'), W / 2, 66);
+  ctx.fillText(t('overlay.restart'), W / 2, cy + 20);
   ctx.restore();
 }
 
