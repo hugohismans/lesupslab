@@ -573,7 +573,7 @@ const TRANSLATIONS = {
     'btn.fit': '⊡ Fit',
     'speed.label': '⚡ Vitesse',
     'validator.title': 'Validation du circuit',
-    'props.hint': 'Sélectionne un nœud ou un fil — Clic droit = suppr/désélect — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Ctrl+Shift+Z] redo — [Suppr] supprimer',
+    'props.hint': 'Sélectionne un nœud ou un fil — Clic droit = suppr/désélect — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan — [F] = fit — [S/N/W/D] outils — [Ctrl+Z] undo — [Ctrl+Shift+Z] redo — [Suppr] supprimer — [X] symétrie ↔ — [Y] symétrie ↕ (multi-sélection)',
     'props.hint.short': 'Sélectionne un nœud ou un fil — Clic droit = suppr/désélect — Dbl-clic = nœud — Molette = zoom — Espace+drag = pan',
     'props.node': 'Nœud #',
     'props.type': 'Type :',
@@ -641,7 +641,7 @@ const TRANSLATIONS = {
     'btn.fit': '⊡ Fit',
     'speed.label': '⚡ Speed',
     'validator.title': 'Circuit validation',
-    'props.hint': 'Select a node or wire — Right-click = delete/deselect — Dbl-click = node — Scroll = zoom — Space+drag = pan — [F] = fit — [S/N/W/D] tools — [Ctrl+Z] undo — [Ctrl+Shift+Z] redo — [Del] delete',
+    'props.hint': 'Select a node or wire — Right-click = delete/deselect — Dbl-click = node — Scroll = zoom — Space+drag = pan — [F] = fit — [S/N/W/D] tools — [Ctrl+Z] undo — [Ctrl+Shift+Z] redo — [Del] delete — [X] flip ↔ — [Y] flip ↕ (multi-select)',
     'props.hint.short': 'Select a node or wire — Right-click = delete/deselect — Dbl-click = node — Scroll = zoom — Space+drag = pan',
     'props.node': 'Node #',
     'props.type': 'Type:',
@@ -1303,6 +1303,35 @@ document.addEventListener('keydown', e => {
       case 'N': setTool('node');   break;
       case 'W': setTool('wire');   break;
       case 'D': setTool('delete'); break;
+      case 'X':
+      case 'Y': {
+        const sel = selectedNodes.length > 1 ? selectedNodes : null;
+        if (!sel) break;
+        saveUndo();
+        const xs = sel.map(n => n.x), ys = sel.map(n => n.y);
+        const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+        const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+        const selIds = new Set(sel.map(n => n.id));
+        if (e.key.toUpperCase() === 'X') {
+          // Symétrie axe vertical — flip gauche/droite
+          sel.forEach(n => { n.x = 2 * cx - n.x; });
+          edges.forEach(ed => {
+            if (selIds.has(ed.from) && selIds.has(ed.to) && ed.wayY != null)
+              ed.wayY = 2 * cy - ed.wayY;
+          });
+          flash('↔ Symétrie verticale');
+        } else {
+          // Symétrie axe horizontal — flip haut/bas
+          sel.forEach(n => { n.y = 2 * cy - n.y; });
+          edges.forEach(ed => {
+            if (selIds.has(ed.from) && selIds.has(ed.to) && ed.wayY != null)
+              ed.wayY = 2 * cy - ed.wayY;
+          });
+          flash('↕ Symétrie horizontale');
+        }
+        validate();
+        break;
+      }
     }
   }
 });
