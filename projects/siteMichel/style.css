@@ -435,6 +435,21 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
 }
 
+.service-vignette {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+
+.aquarelle-vignette {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+
 .service-more {
   display: inline-block;
   margin-top: auto;
