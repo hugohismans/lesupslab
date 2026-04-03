@@ -122,6 +122,44 @@ body {
 
 @media (max-width: 820px) { .side-panel { display: none; } }
 
+/* ── POWER-ON FLASH ──────────────────────────────────────── */
+#power-on {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  pointer-events: none;
+  background: #00ffcc;
+  animation: power-on-anim 1.4s ease-out forwards;
+}
+@keyframes power-on-anim {
+  0%   { opacity: 0; }
+  4%   { opacity: 0.7; }
+  14%  { opacity: 0.03; }
+  22%  { opacity: 0.35; }
+  38%  { opacity: 0; }
+  68%  { opacity: 0.10; }
+  82%  { opacity: 0.02; }
+  100% { opacity: 0; }
+}
+
+/* ── CENTER GLOW ─────────────────────────────────────────── */
+#center-glow {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 700px;
+  height: 320px;
+  background: radial-gradient(ellipse, rgba(0,255,204,0.07) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
+  animation: glow-pulse 3.5s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; transform: translate(-50%,-50%) scale(1); }
+  50%       { opacity: 1;   transform: translate(-50%,-50%) scale(1.2); }
+}
+
 /* ── CENTER ──────────────────────────────────────────────── */
 #center {
   flex: 1;
@@ -156,6 +194,30 @@ canvas#bg {
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  position: relative;
+  overflow: hidden;
+  padding: 12px 30px;
+}
+/* Scan shimmer across the title area */
+#title-wrap::after {
+  content: '';
+  position: absolute;
+  top: -10%; left: -70%;
+  width: 45%; height: 120%;
+  background: linear-gradient(108deg,
+    transparent 20%,
+    rgba(0,255,204,0.08) 45%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(0,255,204,0.08) 55%,
+    transparent 80%
+  );
+  animation: scan-sweep 5s ease-in-out infinite 1.5s;
+  pointer-events: none;
+  z-index: 2;
+}
+@keyframes scan-sweep {
+  0%   { left: -70%; }
+  100% { left: 130%; }
 }
 
 #title-icon {
@@ -180,26 +242,32 @@ canvas#bg {
   animation: neon-flicker 6s ease-in-out infinite;
 }
 @keyframes neon-flicker {
-  0%,  18%, 20%, 50%, 52%, 64%, 66%, 80%, 90%, 100% {
+  0%, 18%, 20%, 50%, 52%, 64%, 66%, 80%, 90%, 100% {
     text-shadow:
-      0 0 4px  #fff,
-      0 0 12px #00ffcc,
+      0 0 2px  #fff,
+      0 0 6px  #fff,
+      0 0 14px #00ffcc,
       0 0 30px #00ffcc,
-      0 0 70px #00ffcc88,
-      0 0 140px #00ffcc33;
+      0 0 60px #00ffcc,
+      0 0 110px #00ffccbb,
+      0 0 180px #00ffcc77,
+      0 0 280px #00ffcc33;
     opacity: 1;
+    filter: brightness(1.1);
   }
   19%, 51%, 65% {
     text-shadow: none;
-    opacity: 0.6;
+    opacity: 0.25;
+    filter: brightness(0.4);
   }
   81% {
     text-shadow:
-      0 0 4px  #fff,
-      0 0 12px #00ffcc,
+      0 0 3px  #fff,
+      0 0 10px #00ffcc,
       0 0 30px #00ffcc,
-      0 0 70px #00ffcc88;
-    opacity: 0.85;
+      0 0 70px #00ffcc99;
+    opacity: 0.75;
+    filter: brightness(0.9);
   }
 }
 
@@ -411,7 +479,9 @@ canvas#bg {
 </head>
 <body>
 
+<div id="power-on"></div>
 <canvas id="bg"></canvas>
+<div id="center-glow"></div>
 <div id="scanlines"></div>
 <div id="vignette"></div>
 
@@ -525,7 +595,8 @@ function buildGrid() {
 
   // Spawn electrons
   const allSegs = [...hSegs, ...vSegs];
-  for (let i = 0; i < 10; i++) spawnElectron(allSegs);
+  for (let i = 0; i < 18; i++) spawnElectron(allSegs);
+  initAmbient();
 }
 
 function spawnElectron(allSegs) {
@@ -537,10 +608,55 @@ function spawnElectron(allSegs) {
     seg,
     t: dir > 0 ? 0 : 1,
     dir,
-    speed: 0.0025 + Math.random() * 0.004,
-    alpha: 0.7 + Math.random() * 0.3,
+    speed: 0.003 + Math.random() * 0.005,
+    alpha: 0.8 + Math.random() * 0.2,
   });
 }
+
+// ── SPARK PARTICLES ────────────────────────────────────────
+let sparks = [];
+function spawnSparks(x, y, count) {
+  for (let i = 0; i < (count || 5); i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.6 + Math.random() * 2.5;
+    sparks.push({ x, y, vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+      life: 0.6 + Math.random() * 0.6, maxLife: 1.2 });
+  }
+}
+
+// ── AMBIENT FLOATING PARTICLES ─────────────────────────────
+let ambientParts = [];
+function initAmbient() {
+  ambientParts = Array.from({length: 30}, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vy: -(0.12 + Math.random() * 0.30),
+    alpha: Math.random() * 0.25,
+    size: 0.5 + Math.random() * 1.2,
+    decay: 0.0015 + Math.random() * 0.003
+  }));
+}
+
+// ── POWER SURGE WAVE ───────────────────────────────────────
+let surgeX = -999, surgeActive = false;
+function triggerSurge() { surgeX = -150; surgeActive = true; }
+function scheduleSurge() { setTimeout(() => { triggerSurge(); scheduleSurge(); }, 5000 + Math.random() * 6000); }
+scheduleSurge();
+
+// ── LIGHTNING ARCS ─────────────────────────────────────────
+let lightning = null;
+function trySpawnLightning() {
+  if (lightning || nodes.length < 2) return;
+  const n1 = nodes[Math.floor(Math.random() * nodes.length)];
+  const near = nodes.filter(n => {
+    const d = Math.hypot(n.x - n1.x, n.y - n1.y);
+    return d > 20 && d < CELL_W * 2.5;
+  });
+  if (!near.length) return;
+  const n2 = near[Math.floor(Math.random() * near.length)];
+  lightning = { x1: n1.x, y1: n1.y, x2: n2.x, y2: n2.y, life: 0.5 };
+  if (n1.x >= -CELL_W && n1.x <= W + CELL_W) spawnSparks(n1.x, n1.y, 6);
+}
+setInterval(() => { if (Math.random() < 0.4) trySpawnLightning(); }, 1800);
 
 let lastTime = 0;
 function drawBg(ts) {
@@ -604,13 +720,17 @@ function drawBg(ts) {
     el.t += el.dir * el.speed;
 
     if (el.t < 0 || el.t > 1) {
+      // Spark at endpoint
+      const ex = el.t > 1 ? el.seg.b.x : el.seg.a.x;
+      const ey = el.t > 1 ? el.seg.b.y : el.seg.a.y;
+      if (Math.random() < 0.4) spawnSparks(ex, ey, 3 + Math.floor(Math.random() * 4));
       // Respawn
       const pool = allSegs;
       if (pool.length) {
         const seg = pool[Math.floor(Math.random() * pool.length)];
         el.seg = seg;
         el.t = el.dir > 0 ? 0 : 1;
-        el.speed = 0.0025 + Math.random() * 0.004;
+        el.speed = 0.003 + Math.random() * 0.005;
       }
       continue;
     }
@@ -622,25 +742,103 @@ function drawBg(ts) {
     const x = el.seg.a.x + (el.seg.b.x - el.seg.a.x) * el.t;
     const y = el.seg.a.y + (el.seg.b.y - el.seg.a.y) * el.t;
 
-    // Glow
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, 8);
-    grad.addColorStop(0, `rgba(0,255,204,${el.alpha * 0.9})`);
-    grad.addColorStop(1, 'rgba(0,255,204,0)');
+    // Outer glow (large)
+    const grad2 = ctx.createRadialGradient(x, y, 0, x, y, 18);
+    grad2.addColorStop(0, `rgba(0,255,204,${el.alpha * 0.5})`);
+    grad2.addColorStop(1, 'rgba(0,255,204,0)');
     ctx.globalAlpha = 1;
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, 8, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = grad2;
+    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
 
-    // Core dot
+    // Inner glow
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, 6);
+    grad.addColorStop(0, `rgba(0,255,204,${el.alpha})`);
+    grad.addColorStop(1, 'rgba(0,255,204,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+
+    // Core white dot
     ctx.fillStyle = '#ffffff';
     ctx.globalAlpha = el.alpha;
-    ctx.beginPath();
-    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 
+  // ── POWER SURGE ────────────────────────────────────────────
+  if (surgeActive) {
+    surgeX += 7;
+    if (surgeX > W + 150) { surgeActive = false; }
+    else {
+      const sg = ctx.createLinearGradient(surgeX - 100, 0, surgeX + 100, 0);
+      sg.addColorStop(0,    'rgba(0,255,204,0)');
+      sg.addColorStop(0.35, 'rgba(0,255,204,0.05)');
+      sg.addColorStop(0.5,  'rgba(200,255,240,0.18)');
+      sg.addColorStop(0.65, 'rgba(0,255,204,0.05)');
+      sg.addColorStop(1,    'rgba(0,255,204,0)');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = sg;
+      ctx.fillRect(surgeX - 100, 0, 200, H);
+    }
+  }
+
+  // ── LIGHTNING ARC ───────────────────────────────────────────
+  if (lightning) {
+    const segs = 10;
+    const pts = [{x: lightning.x1, y: lightning.y1}];
+    for (let i = 1; i < segs; i++) {
+      const t = i / segs;
+      pts.push({
+        x: lightning.x1 + (lightning.x2 - lightning.x1) * t + (Math.random()-0.5) * 28,
+        y: lightning.y1 + (lightning.y2 - lightning.y1) * t + (Math.random()-0.5) * 28
+      });
+    }
+    pts.push({x: lightning.x2, y: lightning.y2});
+    ctx.globalAlpha = lightning.life;
+    ctx.strokeStyle = '#00ffcc';
+    ctx.lineWidth = 0.8;
+    ctx.shadowBlur = 14; ctx.shadowColor = '#00ffcc';
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    // Branch
+    if (pts.length > 4) {
+      const bi = 3 + Math.floor(Math.random() * (pts.length - 4));
+      ctx.globalAlpha = lightning.life * 0.5;
+      ctx.beginPath(); ctx.moveTo(pts[bi].x, pts[bi].y);
+      ctx.lineTo(pts[bi].x + (Math.random()-0.5)*40, pts[bi].y + (Math.random()-0.5)*40);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    lightning.life -= 0.06;
+    if (lightning.life <= 0) lightning = null;
+  }
+
+  // ── SPARKS ─────────────────────────────────────────────────
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const sp = sparks[i];
+    sp.x += sp.vx; sp.y += sp.vy; sp.vy += 0.06; sp.life -= 0.04;
+    if (sp.life <= 0) { sparks.splice(i, 1); continue; }
+    const a = sp.life / sp.maxLife;
+    ctx.globalAlpha = a * 0.9;
+    ctx.fillStyle = a > 0.6 ? '#ffffff' : '#00ffcc';
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, 1, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // ── AMBIENT PARTICLES ──────────────────────────────────────
+  for (const p of ambientParts) {
+    p.y += p.vy; p.alpha -= p.decay;
+    if (p.alpha <= 0 || p.y < -10) {
+      p.x = Math.random() * W; p.y = H + 5;
+      p.alpha = 0.04 + Math.random() * 0.20;
+      p.vy = -(0.12 + Math.random() * 0.30);
+      p.decay = 0.0015 + Math.random() * 0.003;
+    }
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = '#00ffcc';
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
   requestAnimationFrame(drawBg);
 }
 
