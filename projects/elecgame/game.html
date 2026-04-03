@@ -964,6 +964,11 @@ const CAMPAIGN = [
   { file: 'levels/67.json' },
   { file: 'levels/levelHard.json' },
   { file: 'levels/snail.json' },            // Snaked — résistance + micro, niveau final
+  { file: 'levels/nvidia.json' },
+  { file: 'levels/loic.json' },
+  { file: 'levels/keta.json' },
+
+
 ];
 
 function campaignPos() {
@@ -1326,8 +1331,8 @@ document.getElementById('submit-send').onclick = async () => {
 };
 
 // ── HALL OF FAME ───────────────────────────────────────────
-const HOF_VERSION  = 'v0_0_2';
-const HOF_VERSIONS = ['v0_0_2', 'v0_0_1']; // add new versions here when they come
+const HOF_VERSION  = 'v0_0_3';
+const HOF_VERSIONS = ['v0_0_3','v0_0_2', 'v0_0_1']; // add new versions here when they come
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
 
 
@@ -1368,6 +1373,16 @@ function campTickDisplay() {
   if (!campRunning) return;
   campTimerEl.textContent = '⏱ ' + campFmtTime(campElapsed());
 }
+
+// ── DEVICE DETECTION ───────────────────────────────────────
+function detectDevice() {
+  const ua = navigator.userAgent;
+  const touch = navigator.maxTouchPoints > 1;
+  if (/tablet|ipad/i.test(ua) || (touch && !/mobile/i.test(ua) && window.innerWidth >= 768)) return 'tablet';
+  if (/mobile|android|iphone|ipod|blackberry|windows phone/i.test(ua) || (touch && window.innerWidth < 768)) return 'mobile';
+  return 'pc';
+}
+const DEVICE_ICON = { pc: '🖥️', mobile: '📱', tablet: '📟' };
 
 // ── HOF fetch & display ────────────────────────────────────
 async function hofFetch(version) {
