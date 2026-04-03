@@ -1130,16 +1130,16 @@ let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJS
 const SUBMIT_WEBHOOK = 'https://elecgame-submit.hugo-hismans.workers.dev';
 let isTestMode = new URLSearchParams(location.search).has('test');
 
-// Load level from ?lvl=BASE64 (Discord test links)
+// Load level from ?lvl=BASE64 (Discord test links) — store then redirect to ?test
 (function() {
   const lvlParam = new URLSearchParams(location.search).get('lvl');
   if (!lvlParam) return;
   try {
     const b64  = lvlParam.replace(/-/g,'+').replace(/_/g,'/');
     const json = decodeURIComponent(escape(atob(b64)));
-    JSON.parse(json); // validate
+    JSON.parse(json); // validate — throws if malformed
     localStorage.setItem('elecgame_test_level', json);
-    isTestMode = true;
+    window.location.replace(location.pathname + '?test');
   } catch(e) { console.warn('?lvl param invalid', e); }
 })();
 
