@@ -1481,7 +1481,7 @@ function hofBuildSpecials() {
   el.innerHTML = SPECIAL_THANKS.map(s =>
     `<div class="special-entry">
       <span class="special-pseudo">${escHtml(s.pseudo)}</span>
-      <span class="special-level">${escHtml(s.level || '')}</span>
+      <span class="special-level" style="color:${specialThanksColor(s.level)}">${escHtml(s.level || '')}</span>
     </div>`
   ).join('');
 }

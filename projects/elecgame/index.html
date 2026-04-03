@@ -491,7 +491,7 @@ function renderSpecials() {
   el.innerHTML = SPECIAL_THANKS.map(s =>
     `<div class="sp-entry">
       <div class="sp-pseudo">${escHtml(s.pseudo)}</div>
-      <div class="sp-level">${escHtml(s.level || '')}</div>
+      <div class="sp-level" style="color:${specialThanksColor(s.level)}">${escHtml(s.level || '')}</div>
     </div>`
   ).join('');
 }
