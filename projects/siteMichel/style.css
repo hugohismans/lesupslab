@@ -227,7 +227,7 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   background:
     linear-gradient(160deg, rgba(61,53,48,0.72) 0%, rgba(61,53,48,0.55) 60%, rgba(122,158,126,0.4) 100%),
-    url('hero-bg.jpg') center/cover no-repeat;
+    url('bg.png') center/cover no-repeat;
   background-color: #5a4e44; /* fallback if no image */
   text-align: center;
   padding: calc(var(--nav-h) + 4rem) 2rem 6rem;
