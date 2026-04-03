@@ -1128,7 +1128,19 @@ let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJS
 
 // ── SUBMIT CONFIG ──────────────────────────────────────────
 const SUBMIT_WEBHOOK = 'https://elecgame-submit.hugo-hismans.workers.dev';
-const isTestMode = new URLSearchParams(location.search).has('test');
+let isTestMode = new URLSearchParams(location.search).has('test');
+
+// Load level from ?lvl=BASE64 (Discord test links)
+(function() {
+  const lvlParam = new URLSearchParams(location.search).get('lvl');
+  if (!lvlParam) return;
+  try {
+    const json = decodeURIComponent(escape(atob(lvlParam)));
+    JSON.parse(json); // validate
+    localStorage.setItem('elecgame_test_level', json);
+    isTestMode = true;
+  } catch(e) { console.warn('?lvl param invalid', e); }
+})();
 
 // ── DEATH COUNTER ──────────────────────────────────────────
 const SAVE_KEY = 'elecgame_save';
@@ -1279,7 +1291,9 @@ document.getElementById('submit-send').onclick = async () => {
 
   try {
     const form = new FormData();
-    const content = `${t('submit.discord_content')}\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s`;
+    const encoded  = btoa(unescape(encodeURIComponent(JSON.parse(levelJSON) ? levelJSON : '{}')));
+    const testUrl  = `https://hugohismans.github.io/lesupslab/projects/elecgame/game.html?lvl=${encoded}`;
+    const content = `${t('submit.discord_content')}\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s\n▶ Tester : ${testUrl}`;
     form.append('payload_json', JSON.stringify({ content }));
     form.append('files[0]', new Blob([JSON.stringify(JSON.parse(levelJSON), null, 2)], { type: 'application/json' }), levelName + '.json');
     form.append('files[1]', new Blob([JSON.stringify(replayData, null, 2)], { type: 'application/json' }), levelName + '_replay.json');
