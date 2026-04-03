@@ -3210,7 +3210,7 @@ function loop(timestamp) {
 canvas.focus();
 
 // ── LOAD TEST LEVEL FROM localStorage ──────────────────────
-if (new URLSearchParams(location.search).has('test')) {
+if (isTestMode) {
   const saved = localStorage.getItem('elecgame_test_level');
   if (saved) {
     try {
