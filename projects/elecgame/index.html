@@ -571,7 +571,7 @@ function buildGrid() {
 
   // Spawn electrons
   const allSegs = [...hSegs, ...vSegs];
-  for (let i = 0; i < 18; i++) spawnElectron(allSegs);
+  for (let i = 0; i < 10; i++) spawnElectron(allSegs);
   initAmbient();
 }
 
@@ -603,12 +603,12 @@ function spawnSparks(x, y, count) {
 // ── AMBIENT FLOATING PARTICLES ─────────────────────────────
 let ambientParts = [];
 function initAmbient() {
-  ambientParts = Array.from({length: 30}, () => ({
+  ambientParts = Array.from({length: 14}, () => ({
     x: Math.random() * W, y: Math.random() * H,
     vy: -(0.12 + Math.random() * 0.30),
-    alpha: Math.random() * 0.25,
-    size: 0.5 + Math.random() * 1.2,
-    decay: 0.0015 + Math.random() * 0.003
+    alpha: Math.random() * 0.20,
+    size: 0.5 + Math.random() * 1.0,
+    decay: 0.002 + Math.random() * 0.003
   }));
 }
 
@@ -666,16 +666,13 @@ function drawBg(ts) {
   for (const seg of allSegs) {
     if (!seg.lit) continue;
     const fade = Math.sin(seg.litT * Math.PI / 1.5);
-    ctx.globalAlpha = fade * 0.5;
+    ctx.globalAlpha = fade * 0.55;
     ctx.strokeStyle = '#00ffcc';
     ctx.lineWidth = 1.5;
-    ctx.shadowBlur = 6;
-    ctx.shadowColor = '#00ffcc';
     ctx.beginPath();
     ctx.moveTo(seg.a.x, seg.a.y);
     ctx.lineTo(seg.b.x, seg.b.y);
     ctx.stroke();
-    ctx.shadowBlur = 0;
   }
   ctx.globalAlpha = 1;
 
@@ -699,7 +696,7 @@ function drawBg(ts) {
       // Spark at endpoint
       const ex = el.t > 1 ? el.seg.b.x : el.seg.a.x;
       const ey = el.t > 1 ? el.seg.b.y : el.seg.a.y;
-      if (Math.random() < 0.4) spawnSparks(ex, ey, 3 + Math.floor(Math.random() * 4));
+      if (Math.random() < 0.2) spawnSparks(ex, ey, 2 + Math.floor(Math.random() * 3));
       // Respawn
       const pool = allSegs;
       if (pool.length) {
@@ -718,25 +715,18 @@ function drawBg(ts) {
     const x = el.seg.a.x + (el.seg.b.x - el.seg.a.x) * el.t;
     const y = el.seg.a.y + (el.seg.b.y - el.seg.a.y) * el.t;
 
-    // Outer glow (large)
-    const grad2 = ctx.createRadialGradient(x, y, 0, x, y, 18);
-    grad2.addColorStop(0, `rgba(0,255,204,${el.alpha * 0.5})`);
-    grad2.addColorStop(1, 'rgba(0,255,204,0)');
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = grad2;
-    ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2); ctx.fill();
-
-    // Inner glow
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, 6);
-    grad.addColorStop(0, `rgba(0,255,204,${el.alpha})`);
+    // Glow halo
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, 10);
+    grad.addColorStop(0, `rgba(0,255,204,${el.alpha * 0.9})`);
     grad.addColorStop(1, 'rgba(0,255,204,0)');
+    ctx.globalAlpha = 1;
     ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
 
     // Core white dot
     ctx.fillStyle = '#ffffff';
     ctx.globalAlpha = el.alpha;
-    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 
@@ -772,19 +762,10 @@ function drawBg(ts) {
     ctx.globalAlpha = lightning.life;
     ctx.strokeStyle = '#00ffcc';
     ctx.lineWidth = 0.8;
-    ctx.shadowBlur = 14; ctx.shadowColor = '#00ffcc';
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
     ctx.stroke();
-    // Branch
-    if (pts.length > 4) {
-      const bi = 3 + Math.floor(Math.random() * (pts.length - 4));
-      ctx.globalAlpha = lightning.life * 0.5;
-      ctx.beginPath(); ctx.moveTo(pts[bi].x, pts[bi].y);
-      ctx.lineTo(pts[bi].x + (Math.random()-0.5)*40, pts[bi].y + (Math.random()-0.5)*40);
-      ctx.stroke();
-    }
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1;
     lightning.life -= 0.06;
     if (lightning.life <= 0) lightning = null;
   }
