@@ -1,0 +1,254 @@
+{
+  "name": "Nvidia",
+  "ballSpeedMult": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "type": "source",
+      "x": 60,
+      "y": 150
+    },
+    {
+      "id": 1,
+      "type": "bulb",
+      "x": 740,
+      "y": 140
+    },
+    {
+      "id": 2,
+      "type": "node",
+      "x": 200,
+      "y": 0
+    },
+    {
+      "id": 3,
+      "type": "node",
+      "x": 200,
+      "y": 300
+    },
+    {
+      "id": 4,
+      "type": "node",
+      "x": 300,
+      "y": 100
+    },
+    {
+      "id": 5,
+      "type": "node",
+      "x": 300,
+      "y": -100
+    },
+    {
+      "id": 6,
+      "type": "node",
+      "x": 300,
+      "y": 200
+    },
+    {
+      "id": 7,
+      "type": "node",
+      "x": 300,
+      "y": 400
+    },
+    {
+      "id": 8,
+      "type": "node",
+      "x": 400,
+      "y": 0
+    },
+    {
+      "id": 9,
+      "type": "node",
+      "x": 500,
+      "y": 100
+    },
+    {
+      "id": 10,
+      "type": "node",
+      "x": 400,
+      "y": 300
+    },
+    {
+      "id": 11,
+      "type": "node",
+      "x": 500,
+      "y": 200
+    },
+    {
+      "id": 12,
+      "type": "node",
+      "x": 600,
+      "y": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": 0,
+      "from": 0,
+      "to": 2,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": true,
+      "microDuration": 5
+    },
+    {
+      "id": 1,
+      "from": 0,
+      "to": 3,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": true,
+      "microDuration": 5
+    },
+    {
+      "id": 2,
+      "from": 2,
+      "to": 4,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": true,
+      "microDuration": 8
+    },
+    {
+      "id": 3,
+      "from": 2,
+      "to": 5,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": true,
+      "microDuration": 8
+    },
+    {
+      "id": 4,
+      "from": 3,
+      "to": 6,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": true,
+      "microDuration": 8
+    },
+    {
+      "id": 5,
+      "from": 3,
+      "to": 7,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": true,
+      "microDuration": 8
+    },
+    {
+      "id": 6,
+      "from": 5,
+      "to": 8,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 7,
+      "from": 4,
+      "to": 8,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 8,
+      "from": 8,
+      "to": 9,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 9,
+      "from": 6,
+      "to": 10,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 10,
+      "from": 7,
+      "to": 10,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 11,
+      "from": 10,
+      "to": 11,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 12,
+      "from": 11,
+      "to": 12,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 13,
+      "from": 9,
+      "to": 12,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 14,
+      "from": 12,
+      "to": 1,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    }
+  ]
+}
