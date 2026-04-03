@@ -180,6 +180,123 @@ body {
 }
 #lang-toggle:hover { border-color: #00ffcc; color: #00ffcc; }
 
+/* ── DOC MODAL ──────────────────────────────────────────── */
+#doc-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+#doc-overlay.visible { display: flex; }
+#doc-box {
+  background: #060c0a;
+  border: 1px solid #1a5a3a;
+  width: min(820px, 95vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 40px #00ffcc18;
+}
+#doc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid #1a5a3a;
+  flex-shrink: 0;
+}
+#doc-header h2 {
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: #00ffcc;
+  text-transform: uppercase;
+  font-weight: normal;
+}
+#doc-close {
+  background: none;
+  border: none;
+  color: #446655;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+  font-family: 'Courier New', monospace;
+}
+#doc-close:hover { color: #ff4444; }
+#doc-body {
+  overflow-y: auto;
+  padding: 18px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+#doc-body::-webkit-scrollbar { width: 4px; }
+#doc-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
+.doc-section h3 {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #00cc99;
+  text-transform: uppercase;
+  border-bottom: 1px solid #0d2a1a;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  font-weight: normal;
+}
+.doc-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 18px;
+  align-items: start;
+}
+.doc-key {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+  align-items: center;
+  white-space: nowrap;
+}
+.kbd {
+  background: #0a1a14;
+  border: 1px solid #2a6a4a;
+  border-bottom: 2px solid #1a4a2a;
+  color: #00ffcc;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.doc-desc {
+  color: #557766;
+  font-size: 12px;
+  line-height: 1.5;
+  padding-top: 1px;
+}
+.doc-desc strong { color: #00cc99; font-weight: normal; }
+.doc-note {
+  font-size: 11px;
+  color: #2a5a3a;
+  border-left: 2px solid #1a4a2a;
+  padding-left: 10px;
+  line-height: 1.6;
+}
+.doc-elem-grid {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px 14px;
+  align-items: start;
+}
+.doc-icon {
+  font-size: 16px;
+  text-align: center;
+  padding-top: 2px;
+}
+.doc-elem-desc { color: #557766; font-size: 12px; line-height: 1.5; }
+.doc-elem-desc strong { color: #00cc99; font-weight: normal; }
+
 /* Test overlay */
 #test-overlay {
   display: none;
@@ -238,6 +355,7 @@ body {
   <div class="sep"></div>
   <div id="validator">…</div>
   <button id="lang-toggle">EN</button>
+  <button class="tool-btn" id="doc-btn" onclick="openDoc()" title="Aide / Documentation" style="border-color:#00ffcc55;color:#00cc99">? Aide</button>
   <a href="index.html" class="tool-btn" style="text-decoration:none;padding:4px 11px" title="Retour à l'accueil">⌂</a>
 </div>
 
@@ -262,6 +380,149 @@ body {
 </div>
 
 <input type="file" id="file-input" accept=".json" style="display:none">
+
+<!-- Documentation modal -->
+<div id="doc-overlay">
+  <div id="doc-box">
+    <div id="doc-header">
+      <h2>📖 Aide — Éditeur de niveaux</h2>
+      <button id="doc-close" onclick="closeDoc()">✕</button>
+    </div>
+    <div id="doc-body">
+
+      <!-- OUTILS -->
+      <div class="doc-section">
+        <h3>Outils de la barre</h3>
+        <div class="doc-grid">
+          <div class="doc-key"><span class="kbd">S</span></div>
+          <div class="doc-desc"><strong>Select</strong> — sélectionner, déplacer un nœud ou un fil</div>
+
+          <div class="doc-key"><span class="kbd">N</span></div>
+          <div class="doc-desc"><strong>Node</strong> — double-clic sur le canvas pour ajouter un nœud (choisir le type : ⚡ source, ● nœud, 💡 ampoule)</div>
+
+          <div class="doc-key"><span class="kbd">W</span></div>
+          <div class="doc-desc"><strong>Wire</strong> — cliquer sur un nœud source puis un nœud destination pour créer un fil. Clic sur un fil existant = insérer un nœud intermédiaire</div>
+
+          <div class="doc-key"><span class="kbd">D</span></div>
+          <div class="doc-desc"><strong>Delete</strong> — clic sur un nœud ou fil pour le supprimer</div>
+
+          <div class="doc-key"><span class="kbd">F</span></div>
+          <div class="doc-desc"><strong>Fit</strong> — recentrer la vue sur tous les éléments</div>
+        </div>
+      </div>
+
+      <!-- NAVIGATION -->
+      <div class="doc-section">
+        <h3>Navigation dans la vue</h3>
+        <div class="doc-grid">
+          <div class="doc-key"><span class="kbd">Molette</span></div>
+          <div class="doc-desc">Zoom avant/arrière</div>
+
+          <div class="doc-key"><span class="kbd">Espace</span> <span style="color:#446655">+</span> <span class="kbd">Drag</span></div>
+          <div class="doc-desc">Déplacer la vue (pan)</div>
+
+          <div class="doc-key"><span class="kbd">Drag</span> <span style="color:#446655">sur vide</span></div>
+          <div class="doc-desc">Pan rapide (en mode Select, sur zone vide)</div>
+
+          <div class="doc-key"><span class="kbd">F</span></div>
+          <div class="doc-desc">Recadrer automatiquement tous les éléments</div>
+        </div>
+      </div>
+
+      <!-- SÉLECTION MULTIPLE -->
+      <div class="doc-section">
+        <h3>Sélection multiple</h3>
+        <div class="doc-grid">
+          <div class="doc-key"><span class="kbd">Ctrl</span> <span style="color:#446655">+</span> <span class="kbd">Drag</span></div>
+          <div class="doc-desc">Dessiner un rectangle de sélection — tous les nœuds à l'intérieur sont sélectionnés</div>
+
+          <div class="doc-key"><span class="kbd">Drag</span> <span style="color:#446655">sur sélection</span></div>
+          <div class="doc-desc">Déplacer le groupe sélectionné (les fils internes suivent)</div>
+
+          <div class="doc-key"><span class="kbd">Ctrl+C</span></div>
+          <div class="doc-desc">Copier la sélection (nœuds + fils internes)</div>
+
+          <div class="doc-key"><span class="kbd">Ctrl+V</span></div>
+          <div class="doc-desc">Coller avec décalage de +40px</div>
+
+          <div class="doc-key"><span class="kbd">Suppr</span></div>
+          <div class="doc-desc">Supprimer tous les nœuds sélectionnés (et leurs fils)</div>
+
+          <div class="doc-key"><span class="kbd">Échap</span> <span style="color:#446655">/ clic droit</span></div>
+          <div class="doc-desc">Désélectionner tout / annuler le fil en cours</div>
+        </div>
+      </div>
+
+      <!-- HISTORIQUE -->
+      <div class="doc-section">
+        <h3>Historique</h3>
+        <div class="doc-grid">
+          <div class="doc-key"><span class="kbd">Ctrl+Z</span></div>
+          <div class="doc-desc">Annuler la dernière action (60 niveaux d'historique)</div>
+
+          <div class="doc-key"><span class="kbd">Ctrl+Shift+Z</span></div>
+          <div class="doc-desc">Rétablir</div>
+        </div>
+      </div>
+
+      <!-- PROPRIÉTÉS D'UN FIL -->
+      <div class="doc-section">
+        <h3>Propriétés d'un fil (panneau en bas après sélection)</h3>
+        <div class="doc-grid">
+          <div class="doc-key"><span class="kbd">Switch</span></div>
+          <div class="doc-desc">Assigner la touche <strong>Q</strong> ou <strong>P</strong> au fil — le joueur appuiera dessus pour ouvrir/fermer</div>
+
+          <div class="doc-key"><span class="kbd">État initial</span></div>
+          <div class="doc-desc"><strong>Ouvert 🔓</strong> = interrupteur ouvert au départ (balle meurt si elle entre) / <strong>Fermé 🔒</strong> = passant par défaut</div>
+
+          <div class="doc-key"><span class="kbd">Résistance</span></div>
+          <div class="doc-desc">La balle ralentit — le joueur doit spammer Espace pour maintenir la jauge et passer. Configurer la durée en secondes</div>
+
+          <div class="doc-key"><span class="kbd">Microprocesseur</span></div>
+          <div class="doc-desc">La balle se bloque — le joueur doit saisir un code à 3 chiffres en temps limité. Configurer le délai en secondes</div>
+
+          <div class="doc-key"><span class="kbd">Inductance</span></div>
+          <div class="doc-desc">Pause chronométrée automatique — la balle attend un certain temps sans interaction. Configurer la durée</div>
+
+          <div class="doc-key"><span class="kbd">Inverser ⇄</span></div>
+          <div class="doc-desc">Inverse le sens du fil (échange source et destination)</div>
+
+          <div class="doc-key"><span class="kbd">Coude wayY</span></div>
+          <div class="doc-desc">Ajouter un coude au fil en spécifiant une coordonnée Y intermédiaire (laisser vide = fil direct)</div>
+        </div>
+      </div>
+
+      <!-- ÉLÉMENTS -->
+      <div class="doc-section">
+        <h3>Types de nœuds</h3>
+        <div class="doc-elem-grid">
+          <div class="doc-icon">⚡</div>
+          <div class="doc-elem-desc"><strong>Source</strong> — point de départ d'une balle. Un niveau peut avoir plusieurs sources (plusieurs balles partent en même temps)</div>
+
+          <div class="doc-icon">●</div>
+          <div class="doc-elem-desc"><strong>Nœud</strong> — jonction. Si plusieurs fils en sortent, la balle se divise en autant de copies</div>
+
+          <div class="doc-icon">💡</div>
+          <div class="doc-elem-desc"><strong>Ampoule</strong> — objectif. Toutes les balles doivent arriver ici pour gagner. Un niveau ne peut avoir qu'une seule ampoule</div>
+        </div>
+      </div>
+
+      <!-- WORKFLOW -->
+      <div class="doc-section">
+        <h3>Workflow — créer et soumettre un niveau</h3>
+        <div class="doc-note">
+          1. Construis ton circuit avec les outils Node + Wire<br>
+          2. Configure les fils (switches, résistances, etc.) via le panneau bas<br>
+          3. Vérifie que le validateur affiche <span style="color:#00cc99">✓ Circuit valide</span><br>
+          4. Clique sur <strong>▶ Test</strong> pour jouer ton niveau dans le jeu<br>
+          5. Si la solution est bonne, télécharge le replay depuis le jeu (bouton Save Replay)<br>
+          6. Envoie le fichier <code style="color:#00cc99">.json</code> du niveau + le replay à l'admin pour qu'il soit intégré à la campagne
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <script>
 const canvas = document.getElementById('c');
@@ -983,8 +1244,22 @@ canvas.addEventListener('dblclick', e => {
   buildProps(); validate();
 });
 
+// ── DOC MODAL ──────────────────────────────────────────────
+function openDoc() {
+  document.getElementById('doc-overlay').classList.add('visible');
+}
+function closeDoc() {
+  document.getElementById('doc-overlay').classList.remove('visible');
+}
+document.getElementById('doc-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('doc-overlay')) closeDoc();
+});
+
 // Keyboard
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('doc-overlay').classList.contains('visible')) {
+    closeDoc(); return;
+  }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.key === ' ') { e.preventDefault(); spaceHeld = true; canvas.style.cursor = 'grab'; return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
