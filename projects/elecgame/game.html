@@ -2522,7 +2522,8 @@ function updateCustom(dt) {
         ball.t = 0.5;
         ball.speed = 0;
         if (!st.microQueue.some(q => q.ball === ball)) {
-          st.microQueue.push({ edgeId: edge.id, ball });
+          const qDur = microDurationMap.get(edge.id) ?? 5;
+          st.microQueue.push({ edgeId: edge.id, ball, timeLeft: qDur, maxTime: qDur });
         }
       }
       if (st.microChallenge && st.microChallenge.edgeId === edge.id) {
@@ -2586,10 +2587,14 @@ function updateCustom(dt) {
     }
   }
 
-  // Décompte du défi microprocesseur
+  // Décompte du défi microprocesseur actif + ceux en attente
   if (st.microChallenge) {
     st.microChallenge.timeLeft -= dt;
     if (st.microChallenge.timeLeft <= 0) { st.dead = true; sfxDead(); return; }
+  }
+  for (const q of st.microQueue) {
+    q.timeLeft -= dt;
+    if (q.timeLeft <= 0) { st.dead = true; sfxDead(); return; }
   }
 
   // Remove finished balls (in reverse order)
@@ -2828,14 +2833,20 @@ function drawMicroOverlay(mc) {
       const qSp = posOnEdge(0.5, qEdge, st.graph.nodes);
       const qx = qSp.x * camScale + camTX;
       const qy = qSp.y * camScale + camTY - 28;
+      const qRatio = Math.max(0, q.timeLeft / q.maxTime);
+      const qHue   = Math.round(qRatio * 110);
+      const badgeW = 72, badgeH = 28;
       ctx.save();
+      ctx.fillStyle = 'rgba(0,10,28,0.9)';
+      ctx.fillRect(qx - badgeW/2, qy - badgeH/2, badgeW, badgeH);
+      ctx.strokeStyle = `hsl(${qHue},80%,40%)`; ctx.lineWidth = 1.5;
+      ctx.strokeRect(qx - badgeW/2, qy - badgeH/2, badgeW, badgeH);
+      // Timer bar inside badge
+      ctx.fillStyle = `hsl(${qHue},100%,40%)`;
+      ctx.fillRect(qx - badgeW/2 + 2, qy + badgeH/2 - 5, (badgeW - 4) * qRatio, 3);
       ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(0,10,28,0.85)';
-      ctx.fillRect(qx - 32, qy - 12, 64, 18);
-      ctx.strokeStyle = '#0044aa'; ctx.lineWidth = 1;
-      ctx.strokeRect(qx - 32, qy - 12, 64, 18);
-      ctx.fillStyle = '#3366aa';
-      ctx.fillText('⏳ EN ATTENTE', qx, qy + 2);
+      ctx.fillStyle = `hsl(${qHue},100%,65%)`;
+      ctx.fillText('⏳ ' + q.timeLeft.toFixed(1) + 's', qx, qy + 4);
       ctx.restore();
     }
   }
