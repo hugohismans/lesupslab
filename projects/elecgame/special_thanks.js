@@ -7,4 +7,5 @@ const SPECIAL_THANKS = [
   { pseudo: 'AccurateCatFish', level: 'Testeur' },
   { pseudo: 'KetaKoala', level: 'Createur de niveau' },
   { pseudo: 'Frigolite', level: 'Createur de niveau' },
+  { pseudo: 'Phillipe', level: 'Roi des Belges' },
 ];
