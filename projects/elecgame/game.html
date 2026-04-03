@@ -885,10 +885,8 @@ function applyLang() {
     if (titleEl && lv) titleEl.textContent = lv.name || '';
     const sidebarTitleEl = document.getElementById('sidebar-title');
     if (sidebarTitleEl) sidebarTitleEl.textContent = lv ? (lv.name || t('levels')) : t('levels');
-    // Update tutorial buttons text in sidebar (first 3 buttons = built-in levels)
-    document.querySelectorAll('.lvl-btn').forEach((btn, i) => {
-      if (LEVELS[i]) btn.textContent = LEVELS[i].name;
-    });
+    // Update level button labels after lang change
+    LEVELS.forEach(lv => { if (lv._btn) lv._btn.textContent = lv.name; });
   }
   // Update group labels
   if (typeof groupTutorialsEl !== 'undefined') groupTutorialsEl.textContent = t('group.tutorials');
@@ -1036,7 +1034,7 @@ function selectLevel(idx) {
   if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || t('levels');
   const levelTitleEl = document.getElementById('level-title');
   if (levelTitleEl) levelTitleEl.textContent = LEVELS[idx].name || '';
-  document.querySelectorAll('.lvl-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  LEVELS.forEach((lv, i) => { if (lv._btn) lv._btn.classList.toggle('active', i === idx); });
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
   document.getElementById('submit-level-btn').style.display = 'none';
@@ -1064,6 +1062,7 @@ function addLevelBtn(lv, idx) {
   btn.textContent = lv.name;
   btn.onclick = () => selectLevel(idx);
   lsDiv.appendChild(btn);
+  lv._btn = btn; // store reference for precise highlight
   return btn;
 }
 
