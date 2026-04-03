@@ -755,6 +755,31 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: 0;
 }
 
+.aquarelle-oeuvre {
+  margin-top: 3.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.oeuvre-figure {
+  text-align: center;
+}
+
+.oeuvre-figure img {
+  max-height: 480px;
+  width: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.oeuvre-figure figcaption {
+  margin-top: 0.75rem;
+  font-family: var(--ff-serif);
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--clr-text-lt);
+}
+
 .aquarelle-peniche-btn {
   display: inline-block;
   margin-top: 0.75rem;
