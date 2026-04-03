@@ -26,6 +26,31 @@ body {
   user-select: none;
 }
 
+/* ── OVERLAYS ─────────────────────────────────────────────── */
+#scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,0.07) 3px,
+    rgba(0,0,0,0.07) 4px
+  );
+}
+#vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99;
+  background: radial-gradient(ellipse at center,
+    transparent 40%,
+    rgba(0,0,0,0.55) 100%
+  );
+}
+
 /* ── SIDE PANELS ─────────────────────────────────────────── */
 .side-panel {
   width: 250px;
@@ -54,12 +79,7 @@ body {
   text-transform: uppercase;
   text-shadow: 0 0 8px #00ffcc55;
 }
-/* Version tabs */
-.hof-tabs {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
+.hof-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .hof-tab {
   font-size: 10px;
   letter-spacing: 1px;
@@ -71,12 +91,7 @@ body {
   cursor: pointer;
   transition: all 0.15s;
 }
-.hof-tab.active {
-  border-color: #00cc99;
-  color: #00ffcc;
-  background: #00ffcc11;
-  text-shadow: 0 0 6px #00ffcc88;
-}
+.hof-tab.active { border-color: #00cc99; color: #00ffcc; background: #00ffcc11; text-shadow: 0 0 6px #00ffcc88; }
 .hof-tab:hover:not(.active) { border-color: #2a6655; color: #669977; }
 
 .panel-body {
@@ -91,9 +106,8 @@ body {
 
 /* Special Thanks */
 .sp-entry { padding: 7px 4px; border-bottom: 1px solid #0d2a1a; }
-.sp-entry:first-child { border-top: none; }
 .sp-pseudo { color: #cc66ff; font-size: 13px; letter-spacing: 1px; text-shadow: 0 0 8px #cc44ff44; }
-.sp-level  { color: #448855; font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
+.sp-level  { font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
 
 /* HOF rows */
 .ihof-row { display: flex; align-items: baseline; gap: 6px; padding: 6px 4px; border-bottom: 1px solid #0d2a1a; }
@@ -116,6 +130,7 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  z-index: 1;
 }
 
 canvas#bg {
@@ -132,16 +147,27 @@ canvas#bg {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 36px;
 }
 
-#center { z-index: 1; }
-
+/* ── TITLE ───────────────────────────────────────────────── */
 #title-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
+}
+
+#title-icon {
+  font-size: 28px;
+  opacity: 0.7;
+  letter-spacing: 0;
+  animation: icon-pulse 4s ease-in-out infinite;
+  margin-bottom: 2px;
+}
+@keyframes icon-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px #00ffcc88); opacity: 0.6; }
+  50%       { filter: drop-shadow(0 0 14px #00ffcccc); opacity: 1; }
 }
 
 #title {
@@ -150,25 +176,67 @@ canvas#bg {
   letter-spacing: 8px;
   text-transform: uppercase;
   color: #00ffcc;
-  text-shadow:
-    0 0 20px #00ffcc,
-    0 0 60px #00ffcc66,
-    0 0 120px #00ffcc22;
+  text-shadow: 0 0 20px #00ffcc, 0 0 60px #00ffcc66, 0 0 120px #00ffcc22;
   animation: pulse 3s ease-in-out infinite;
+  position: relative;
 }
-
-#subtitle {
-  font-size: 13px;
-  letter-spacing: 5px;
-  color: #224433;
-  text-transform: uppercase;
-}
-
 @keyframes pulse {
   0%, 100% { text-shadow: 0 0 20px #00ffcc, 0 0 60px #00ffcc44; }
   50%       { text-shadow: 0 0 30px #00ffcc, 0 0 80px #00ffcc88, 0 0 140px #00ffcc33; }
 }
 
+/* Glitch layers */
+#title::before,
+#title::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  overflow: hidden;
+  opacity: 0;
+}
+#title::before {
+  color: #ff0044;
+  animation: glitch-top 7s infinite;
+  clip-path: polygon(0 0, 100% 0, 100% 40%, 0 40%);
+}
+#title::after {
+  color: #00ffcc;
+  animation: glitch-bot 7s infinite;
+  clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+}
+@keyframes glitch-top {
+  0%, 90%, 100% { opacity: 0; transform: none; }
+  91%           { opacity: 0.7; transform: translateX(-4px); }
+  92%           { opacity: 0.7; transform: translateX(4px); }
+  93%           { opacity: 0; }
+  95%           { opacity: 0.5; transform: translateX(-2px); }
+  96%           { opacity: 0; }
+}
+@keyframes glitch-bot {
+  0%, 90%, 100% { opacity: 0; transform: none; }
+  91%           { opacity: 0.5; transform: translateX(4px); }
+  92%           { opacity: 0.5; transform: translateX(-4px); }
+  93%           { opacity: 0; }
+  95%           { opacity: 0.3; transform: translateX(2px); }
+  96%           { opacity: 0; }
+}
+
+#subtitle {
+  font-size: 12px;
+  letter-spacing: 6px;
+  color: #1a5a3a;
+  text-transform: uppercase;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid #1a5a3a;
+  width: 0;
+  animation: typewriter 1.4s steps(30) 0.5s forwards, cursor-blink 0.7s step-end 1.9s 4;
+}
+@keyframes typewriter    { to { width: 26ch; } }
+@keyframes cursor-blink  { 50% { border-color: transparent; } }
+
+/* ── KEYS ────────────────────────────────────────────────── */
 #keys {
   display: flex;
   gap: 24px;
@@ -191,52 +259,63 @@ canvas#bg {
   justify-content: center;
   font-size: 18px;
   font-weight: bold;
-  letter-spacing: 0;
   position: relative;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  cursor: default;
 }
+.key-box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.key-box.pressed::after { opacity: 0.15; }
+.key-box.pressed { transform: translateY(2px); box-shadow: 0 0 24px currentColor !important; }
 
-.key-box.q { color: #ffaa00; box-shadow: 0 0 12px #ffaa0055; }
-.key-box.p { color: #cc44ff; box-shadow: 0 0 12px #cc44ff55; }
+.key-box.q { color: #ffaa00; box-shadow: 0 0 12px #ffaa0033; }
+.key-box.p { color: #cc44ff; box-shadow: 0 0 12px #cc44ff33; }
 .key-box.space {
   width: 120px;
   height: 52px;
   color: #aaaaaa;
   border-color: #aaaaaa;
-  box-shadow: 0 0 8px #aaaaaa33;
+  box-shadow: 0 0 8px #aaaaaa22;
 }
 
 .key-desc {
   font-size: 10px;
   letter-spacing: 2px;
-  color: #224433;
+  color: #1a5a3a;
   text-align: center;
   text-transform: uppercase;
-  max-width: 100px;
+  max-width: 110px;
+  line-height: 1.4;
 }
 
-.key-sep {
-  color: #1a4035;
-  font-size: 20px;
-  padding-bottom: 20px;
-}
+.key-sep { color: #1a4035; font-size: 20px; padding-bottom: 20px; }
 
+/* ── PLAY BUTTON ─────────────────────────────────────────── */
 #play-btn {
   background: transparent;
   border: 2px solid #00ffcc;
   color: #00ffcc;
   font-family: 'Courier New', monospace;
   font-size: 18px;
-  letter-spacing: 5px;
+  letter-spacing: 6px;
   text-transform: uppercase;
-  padding: 16px 60px;
+  padding: 18px 70px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: all 0.2s;
-  box-shadow: 0 0 20px #00ffcc33;
+  transition: color 0.2s, box-shadow 0.2s;
+  animation: btn-breathe 2.8s ease-in-out infinite;
 }
-
+@keyframes btn-breathe {
+  0%, 100% { box-shadow: 0 0 16px #00ffcc33, inset 0 0 0px #00ffcc00; }
+  50%       { box-shadow: 0 0 40px #00ffcc66, inset 0 0 12px #00ffcc11; }
+}
 #play-btn::before {
   content: '';
   position: absolute;
@@ -247,34 +326,45 @@ canvas#bg {
   transition: transform 0.25s ease;
   z-index: -1;
 }
-
-#play-btn:hover {
-  color: #06060e;
-  box-shadow: 0 0 40px #00ffcc88;
-}
+#play-btn:hover { color: #06060e; animation: none; box-shadow: 0 0 50px #00ffccaa; }
 #play-btn:hover::before { transform: scaleX(1); }
-
 #play-btn:active { transform: scale(0.97); }
 
+/* ── EDITOR LINK ─────────────────────────────────────────── */
 #editor-link {
-  font-size: 13px;
+  font-size: 12px;
   color: #00cc99;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
   text-decoration: none;
   text-transform: uppercase;
-  transition: color 0.2s, text-shadow 0.2s;
-  margin-top: -16px;
-  text-shadow: 0 0 8px #00cc9944;
+  transition: color 0.2s, text-shadow 0.2s, border-color 0.2s;
+  margin-top: -10px;
+  text-shadow: 0 0 8px #00cc9933;
   border: 1px solid #1a5a3a;
-  padding: 6px 16px;
-  border-radius: 4px;
+  padding: 7px 20px;
 }
 #editor-link:hover { color: #00ffcc; text-shadow: 0 0 14px #00ffcc88; border-color: #00cc99; }
+
+/* ── VERSION BADGE ───────────────────────────────────────── */
+#version-badge {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 101;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: #1a3a2a;
+  text-transform: uppercase;
+  pointer-events: none;
+}
 </style>
 </head>
 <body>
 
 <canvas id="bg"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
 
 <!-- Left: Special Thanks -->
 <div class="side-panel" id="panel-left">
@@ -288,28 +378,29 @@ canvas#bg {
 <div id="center">
   <div id="content">
     <div id="title-wrap">
-      <div id="title">Die and Relight</div>
+      <div id="title-icon">⚡</div>
+      <div id="title" data-text="Die and Relight">Die and Relight</div>
       <div id="subtitle">un jeu de circuit électrique</div>
     </div>
 
     <div id="keys">
       <div class="key-item">
-        <div class="key-box q">Q</div>
+        <div class="key-box q" id="key-q">Q</div>
         <div class="key-desc">Interrupteur gauche</div>
       </div>
       <div class="key-sep">+</div>
       <div class="key-item">
-        <div class="key-box p">P</div>
+        <div class="key-box p" id="key-p">P</div>
         <div class="key-desc">Interrupteur droit</div>
       </div>
       <div class="key-sep">+</div>
       <div class="key-item">
-        <div class="key-box space">ESPACE</div>
+        <div class="key-box space" id="key-space">ESPACE</div>
         <div class="key-desc">Passer les résistances</div>
       </div>
     </div>
 
-    <button id="play-btn" onclick="startGame()">Jouer maintenant</button>
+    <button id="play-btn" onclick="startGame()">▶ &nbsp;Jouer</button>
     <a id="editor-link" href="editor.html">éditeur de niveaux →</a>
   </div>
 </div>
@@ -323,9 +414,11 @@ canvas#bg {
   <div class="panel-body" id="ihof-list"></div>
 </div>
 
+<div id="version-badge">v0.0.3</div>
+
 <script src="special_thanks.js"></script>
 <script>
-// ── BACKGROUND ANIMATION ───────────────────────────────────
+// ── BACKGROUND : CIRCUIT BOARD ─────────────────────────────
 const canvas = document.getElementById('bg');
 const ctx = canvas.getContext('2d');
 let W, H;
@@ -333,63 +426,185 @@ let W, H;
 function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
-}
-resize();
-window.addEventListener('resize', resize);
-
-// Floating wire segments
-const wires = Array.from({ length: 14 }, () => makeWire());
-
-function makeWire() {
-  const y = Math.random() * H;
-  return {
-    x: Math.random() * W,
-    y,
-    len: 80 + Math.random() * 200,
-    speed: 0.3 + Math.random() * 0.5,
-    alpha: 0.04 + Math.random() * 0.1,
-    lit: Math.random() < 0.3,
-    litProgress: Math.random(),
-    litSpeed: 0.003 + Math.random() * 0.006,
-    sparkT: -1,
-  };
+  buildGrid();
 }
 
-function drawBg() {
+// Grid
+let nodes = [], hSegs = [], vSegs = [], electrons = [];
+const CELL_W = 130, CELL_H = 100;
+
+function buildGrid() {
+  nodes = []; hSegs = []; vSegs = []; electrons = [];
+  const cols = Math.ceil(W / CELL_W) + 2;
+  const rows = Math.ceil(H / CELL_H) + 2;
+  const ox = -CELL_W;
+  const oy = -CELL_H;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      nodes.push({ x: ox + c * CELL_W, y: oy + r * CELL_H, r, c });
+    }
+  }
+
+  const cols_ = cols;
+  // Horizontal segments (~55% of possible)
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols - 1; c++) {
+      if (Math.random() < 0.55) {
+        const a = nodes[r * cols_ + c];
+        const b = nodes[r * cols_ + c + 1];
+        hSegs.push({ a, b, lit: false, litT: 0 });
+      }
+    }
+  }
+  // Vertical segments (~40%)
+  for (let r = 0; r < rows - 1; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (Math.random() < 0.40) {
+        const a = nodes[r * cols_ + c];
+        const b = nodes[(r + 1) * cols_ + c];
+        vSegs.push({ a, b, lit: false, litT: 0 });
+      }
+    }
+  }
+
+  // Spawn electrons
+  const allSegs = [...hSegs, ...vSegs];
+  for (let i = 0; i < 10; i++) spawnElectron(allSegs);
+}
+
+function spawnElectron(allSegs) {
+  const pool = allSegs || [...hSegs, ...vSegs];
+  if (!pool.length) return;
+  const seg = pool[Math.floor(Math.random() * pool.length)];
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  electrons.push({
+    seg,
+    t: dir > 0 ? 0 : 1,
+    dir,
+    speed: 0.0025 + Math.random() * 0.004,
+    alpha: 0.7 + Math.random() * 0.3,
+  });
+}
+
+let lastTime = 0;
+function drawBg(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
   ctx.clearRect(0, 0, W, H);
 
-  for (const w of wires) {
-    w.x += w.speed;
-    if (w.x > W + w.len) { Object.assign(w, makeWire()); w.x = -w.len; }
+  const allSegs = [...hSegs, ...vSegs];
 
-    if (w.lit) {
-      w.litProgress += w.litSpeed;
-      if (w.litProgress > 1.2) { w.lit = false; w.litProgress = 0; }
-    } else if (Math.random() < 0.002) {
-      w.lit = true; w.litProgress = 0;
+  // Randomly light up segments
+  for (const seg of allSegs) {
+    if (!seg.lit && Math.random() < 0.0008) { seg.lit = true; seg.litT = 0; }
+    if (seg.lit) {
+      seg.litT += dt;
+      if (seg.litT > 1.5) { seg.lit = false; seg.litT = 0; }
+    }
+  }
+
+  // Draw dim segments
+  ctx.strokeStyle = '#0d2a1e';
+  ctx.lineWidth = 1;
+  for (const seg of allSegs) {
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(seg.a.x, seg.a.y);
+    ctx.lineTo(seg.b.x, seg.b.y);
+    ctx.stroke();
+  }
+
+  // Draw lit segments
+  for (const seg of allSegs) {
+    if (!seg.lit) continue;
+    const fade = Math.sin(seg.litT * Math.PI / 1.5);
+    ctx.globalAlpha = fade * 0.5;
+    ctx.strokeStyle = '#00ffcc';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#00ffcc';
+    ctx.beginPath();
+    ctx.moveTo(seg.a.x, seg.a.y);
+    ctx.lineTo(seg.b.x, seg.b.y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+
+  // Draw nodes
+  for (const nd of nodes) {
+    // only draw nodes that have at least one adjacent lit segment (perf)
+    ctx.fillStyle = '#0d2a1e';
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(nd.x, nd.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Update & draw electrons
+  for (let i = electrons.length - 1; i >= 0; i--) {
+    const el = electrons[i];
+    el.t += el.dir * el.speed;
+
+    if (el.t < 0 || el.t > 1) {
+      // Respawn
+      const pool = allSegs;
+      if (pool.length) {
+        const seg = pool[Math.floor(Math.random() * pool.length)];
+        el.seg = seg;
+        el.t = el.dir > 0 ? 0 : 1;
+        el.speed = 0.0025 + Math.random() * 0.004;
+      }
+      continue;
     }
 
-    const p = Math.min(w.litProgress, 1);
-    const litLen = w.len * p;
+    // Mark segment as lit when electron passes
+    el.seg.lit = true;
+    el.seg.litT = 0;
 
-    ctx.save();
-    ctx.globalAlpha = w.alpha;
-    // Dim wire
-    ctx.strokeStyle = '#1a4035'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + w.len, w.y); ctx.stroke();
-    // Lit portion
-    if (w.lit && litLen > 0) {
-      ctx.globalAlpha = w.alpha * 4;
-      ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 1.5;
-      ctx.shadowBlur = 8; ctx.shadowColor = '#00ffcc';
-      ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + litLen, w.y); ctx.stroke();
-    }
-    ctx.restore();
+    const x = el.seg.a.x + (el.seg.b.x - el.seg.a.x) * el.t;
+    const y = el.seg.a.y + (el.seg.b.y - el.seg.a.y) * el.t;
+
+    // Glow
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, 8);
+    grad.addColorStop(0, `rgba(0,255,204,${el.alpha * 0.9})`);
+    grad.addColorStop(1, 'rgba(0,255,204,0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Core dot
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = el.alpha;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   requestAnimationFrame(drawBg);
 }
-drawBg();
+
+window.addEventListener('resize', resize);
+resize();
+requestAnimationFrame(drawBg);
+
+// ── KEY DEMO ANIMATION ─────────────────────────────────────
+function pressKey(el, delay) {
+  setTimeout(() => {
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 200);
+  }, delay);
+}
+setTimeout(() => {
+  pressKey(document.getElementById('key-q'),     100);
+  pressKey(document.getElementById('key-p'),     500);
+  pressKey(document.getElementById('key-space'), 900);
+}, 1800);
 
 // ── AUDIO ──────────────────────────────────────────────────
 let AC = null;
@@ -401,7 +616,6 @@ function initAudio() {
 }
 
 function startAmbient() {
-  // Low hum
   const osc = AC.createOscillator();
   const g   = AC.createGain();
   osc.type = 'sawtooth'; osc.frequency.value = 60;
@@ -409,8 +623,6 @@ function startAmbient() {
   g.gain.linearRampToValueAtTime(0.008, AC.currentTime + 2);
   osc.connect(g); g.connect(AC.destination);
   osc.start();
-
-  // Occasional soft crackles
   scheduleRandomCrackle();
 }
 
@@ -439,7 +651,6 @@ function playCrackle(vol) {
 
 function playButtonSound() {
   if (!AC) return;
-  // Rising tone
   const osc = AC.createOscillator();
   const g   = AC.createGain();
   osc.type = 'sine';
@@ -449,19 +660,14 @@ function playButtonSound() {
   g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.3);
   osc.connect(g); g.connect(AC.destination);
   osc.start(); osc.stop(AC.currentTime + 0.31);
-  // Spark burst
   setTimeout(() => playCrackle(0.12), 80);
 }
 
 document.addEventListener('mousemove', initAudio, { once: true });
 document.addEventListener('keydown',   initAudio, { once: true });
 
-// ── KEY GLOW ON HOVER ──────────────────────────────────────
 document.querySelectorAll('.key-box').forEach(box => {
-  box.addEventListener('mouseenter', () => {
-    initAudio();
-    if (AC) playCrackle(0.06);
-  });
+  box.addEventListener('mouseenter', () => { initAudio(); if (AC) playCrackle(0.06); });
 });
 
 // ── START GAME ─────────────────────────────────────────────
@@ -474,8 +680,7 @@ function startGame() {
 // ── SIDE PANELS ────────────────────────────────────────────
 const HOF_VERSIONS = ['v0_0_3', 'v0_0_2', 'v0_0_1'];
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
-let hofCurrentVersion = HOF_VERSIONS[0]; // v0.0.2 par défaut
-
+let hofCurrentVersion = HOF_VERSIONS[0];
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -499,7 +704,6 @@ function renderSpecials() {
 function buildHofTabs() {
   const tabs = document.getElementById('hof-tabs');
   if (HOF_VERSIONS.length <= 1) {
-    // Show the single version as a non-clickable badge
     tabs.innerHTML = `<span class="hof-tab active">${HOF_VERSIONS[0].replace(/_/g,'.')}</span>`;
     return;
   }
