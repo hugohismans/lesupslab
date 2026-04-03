@@ -1157,6 +1157,7 @@ function writeSave(data) {
   localStorage.setItem(SAVE_KEY, JSON.stringify({ ...loadSave(), ...data }));
 }
 let deathCount = loadSave().deaths || 0;
+let campDeaths = 0;
 function updateDeathDisplay() {
   const txt = document.getElementById('death-count-text');
   if (txt) txt.textContent = '💀 ' + deathCount;
@@ -1325,7 +1326,7 @@ const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedata
 // ── Campaign timer & run tracking ──────────────────────────
 let campRunning  = false;
 let campStart    = 0;      // Date.now() when first level started
-let campDeaths   = 0;      // deaths this campaign run
+// campDeaths declared earlier (forward-init needed by updateDeathDisplay)
 let campPaused   = 0;      // accumulated paused ms (future-proof)
 const campTimerEl = document.getElementById('campaign-timer');
 
