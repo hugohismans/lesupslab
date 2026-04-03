@@ -371,6 +371,29 @@ canvas#bg {
 }
 #editor-link:hover { color: #00ffcc; text-shadow: 0 0 14px #00ffcc88; border-color: #00cc99; }
 
+/* ── AUDIO CONTROLS ──────────────────────────────────────── */
+#audio-controls {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 150;
+  display: flex;
+  gap: 4px;
+}
+.audio-btn {
+  background: #0a1a14;
+  border: 1px solid #1a5a3a;
+  color: #336655;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.audio-btn:hover { border-color: #00ffcc; color: #00ffcc; }
+.audio-btn.muted { border-color: #442222; color: #663333; }
+
 /* ── VERSION BADGE ───────────────────────────────────────── */
 #version-badge {
   position: fixed;
@@ -438,6 +461,12 @@ canvas#bg {
     <div class="hof-tabs" id="hof-tabs"></div>
   </div>
   <div class="panel-body" id="ihof-list"></div>
+</div>
+
+<!-- Audio controls -->
+<div id="audio-controls">
+  <button class="audio-btn" id="btn-mute-all" title="Couper tout le son">🔊</button>
+  <button class="audio-btn" id="btn-mute-hum" title="Couper le bruit électrique">⚡</button>
 </div>
 
 <div id="version-badge">v0.0.3</div>
@@ -633,21 +662,26 @@ setTimeout(() => {
 }, 1800);
 
 // ── AUDIO ──────────────────────────────────────────────────
-let AC = null;
+let AC = null, masterGain = null, humGain = null;
+let allMuted = localStorage.getItem('elecgame_mute_all') === '1';
+let humMuted  = localStorage.getItem('elecgame_mute_hum') === '1';
 
 function initAudio() {
   if (AC) return;
   AC = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = AC.createGain();
+  masterGain.gain.value = allMuted ? 0 : 1;
+  masterGain.connect(AC.destination);
   startAmbient();
 }
 
 function startAmbient() {
   const osc = AC.createOscillator();
-  const g   = AC.createGain();
+  humGain = AC.createGain();
   osc.type = 'sawtooth'; osc.frequency.value = 60;
-  g.gain.setValueAtTime(0.001, AC.currentTime);
-  g.gain.linearRampToValueAtTime(0.008, AC.currentTime + 2);
-  osc.connect(g); g.connect(AC.destination);
+  humGain.gain.setValueAtTime(0.001, AC.currentTime);
+  if (!humMuted) humGain.gain.linearRampToValueAtTime(0.008, AC.currentTime + 2);
+  osc.connect(humGain); humGain.connect(masterGain);
   osc.start();
   scheduleRandomCrackle();
 }
@@ -662,6 +696,7 @@ function scheduleRandomCrackle() {
 }
 
 function playCrackle(vol) {
+  if (!AC) return;
   const buf = AC.createBuffer(1, AC.sampleRate * 0.06, AC.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
@@ -671,7 +706,7 @@ function playCrackle(vol) {
   filt.type = 'bandpass'; filt.frequency.value = 2000 + Math.random() * 3000; filt.Q.value = 2;
   const g = AC.createGain();
   g.gain.value = vol;
-  src.connect(filt); filt.connect(g); g.connect(AC.destination);
+  src.connect(filt); filt.connect(g); g.connect(masterGain);
   src.start();
 }
 
@@ -684,10 +719,35 @@ function playButtonSound() {
   osc.frequency.exponentialRampToValueAtTime(880, AC.currentTime + 0.18);
   g.gain.setValueAtTime(0.15, AC.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.3);
-  osc.connect(g); g.connect(AC.destination);
+  osc.connect(g); g.connect(masterGain);
   osc.start(); osc.stop(AC.currentTime + 0.31);
   setTimeout(() => playCrackle(0.12), 80);
 }
+
+function applyAudioMuteUI() {
+  const btnAll = document.getElementById('btn-mute-all');
+  const btnHum = document.getElementById('btn-mute-hum');
+  if (btnAll) { btnAll.textContent = allMuted ? '🔇' : '🔊'; btnAll.classList.toggle('muted', allMuted); }
+  if (btnHum) { btnHum.textContent = humMuted ? '⚡̶' : '⚡'; btnHum.classList.toggle('muted', humMuted); }
+}
+
+function toggleMuteAll() {
+  allMuted = !allMuted;
+  localStorage.setItem('elecgame_mute_all', allMuted ? '1' : '0');
+  if (masterGain) masterGain.gain.setValueAtTime(allMuted ? 0 : 1, AC.currentTime);
+  applyAudioMuteUI();
+}
+
+function toggleMuteHum() {
+  humMuted = !humMuted;
+  localStorage.setItem('elecgame_mute_hum', humMuted ? '1' : '0');
+  if (humGain) humGain.gain.setValueAtTime(humMuted ? 0.001 : 0.008, AC.currentTime);
+  applyAudioMuteUI();
+}
+
+document.getElementById('btn-mute-all').addEventListener('click', toggleMuteAll);
+document.getElementById('btn-mute-hum').addEventListener('click', toggleMuteHum);
+applyAudioMuteUI();
 
 document.addEventListener('mousemove', initAudio, { once: true });
 document.addEventListener('keydown',   initAudio, { once: true });
