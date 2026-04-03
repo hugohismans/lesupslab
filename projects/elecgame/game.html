@@ -52,6 +52,45 @@
   }
   #menu-btn:hover { border-color: #00ffcc; box-shadow: 0 0 12px #00ffcc44; }
 
+  /* ── ADMIN MODE ─────────────────────────────────────────── */
+  #admin-badge {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 160;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: #ffaa00;
+    text-transform: uppercase;
+    border: 1px solid #ffaa0055;
+    padding: 2px 8px;
+    background: #0a0600;
+    pointer-events: none;
+    display: none;
+  }
+  #admin-badge.active { display: block; }
+  #skip-btn {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 160;
+    background: #0a0600;
+    border: 1px solid #ffaa0088;
+    color: #ffaa00;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 5px 18px;
+    cursor: pointer;
+    display: none;
+    transition: all 0.15s;
+  }
+  #skip-btn:hover { border-color: #ffcc44; color: #ffcc44; box-shadow: 0 0 12px #ffaa0055; }
+  #skip-btn.active { display: block; }
+
   /* ── DEATH COUNTER ──────────────────────────────────────── */
   #death-counter {
     position: fixed;
@@ -630,6 +669,10 @@
 <!-- Campaign deaths -->
 <div id="camp-death-counter">💀 camp: 0</div>
 
+<!-- Admin mode -->
+<div id="admin-badge">🔑 admin</div>
+<button id="skip-btn">⏭ SKIP</button>
+
 <!-- Audio controls -->
 <div id="audio-controls">
   <button class="audio-btn" id="btn-mute-all" title="Couper tout le son">🔊</button>
@@ -931,6 +974,64 @@ function applyLang() {
   const langBtn = document.getElementById('lang-toggle');
   if (langBtn) langBtn.textContent = currentLang === 'fr' ? 'EN' : 'FR';
 }
+
+// ── ADMIN MODE ─────────────────────────────────────────────
+let adminMode = localStorage.getItem('elecgame_admin') === '1';
+let adminSeq = '', adminSeqTimer = null;
+const ADMIN_CODE = 'LESUPS';
+
+function updateAdminUI() {
+  document.getElementById('admin-badge').classList.toggle('active', adminMode);
+  document.getElementById('skip-btn').classList.toggle('active', adminMode);
+}
+
+function toggleAdmin() {
+  adminMode = !adminMode;
+  localStorage.setItem('elecgame_admin', adminMode ? '1' : '0');
+  updateAdminUI();
+  // Brief flash on canvas
+  const msg = adminMode ? '🔑 MODE ADMIN' : '🔒 Admin désactivé';
+  drawOverlay && (bulbFlash = 0.3);
+  const el = document.getElementById('admin-badge');
+  el.style.color = adminMode ? '#ffcc44' : '#666';
+  setTimeout(() => { if (el) el.style.color = ''; }, 800);
+}
+
+let adminSkipped = false; // true si skip utilisé pendant un run campagne
+
+function skipLevel() {
+  if (campRunning) adminSkipped = true;
+  const cp = campaignPos();
+  if (cp >= 0 && cp + 1 < CAMPAIGN.length) {
+    goNextCampaign(cp + 1);
+  } else {
+    const next = (currentLevel + 1) % LEVELS.length;
+    selectLevel(next);
+  }
+}
+
+document.getElementById('skip-btn').addEventListener('click', skipLevel);
+
+// Cheat code detector — type LESUPS anywhere (not in inputs)
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const ch = e.key.toUpperCase();
+  if (ADMIN_CODE[adminSeq.length] === ch) {
+    adminSeq += ch;
+    clearTimeout(adminSeqTimer);
+    if (adminSeq === ADMIN_CODE) {
+      adminSeq = '';
+      toggleAdmin();
+    } else {
+      adminSeqTimer = setTimeout(() => { adminSeq = ''; }, 2000);
+    }
+  } else {
+    adminSeq = ch === ADMIN_CODE[0] ? ch : '';
+  }
+}, true); // capture phase so it runs before other keydown handlers
+
+updateAdminUI();
 
 // Init lang toggle
 document.getElementById('lang-toggle').addEventListener('click', () => {
@@ -1393,10 +1494,11 @@ function campFmtTime(ms) {
 }
 
 function campStart_() {
-  campStart   = Date.now();
-  campDeaths  = 0;
-  campRunning = true;
-  campPaused  = 0;
+  campStart    = Date.now();
+  campDeaths   = 0;
+  campRunning  = true;
+  campPaused   = 0;
+  adminSkipped = false;
   campTimerEl.classList.add('active');
   updateCampaignHUD();
 }
@@ -1541,6 +1643,16 @@ async function openFinish(timeMs, deaths) {
   pseudoIn.value   = save.hofPseudo || '';
   statusEl.textContent = '';
   submitBtn.disabled   = false;
+
+  // Admin skip invalidates HOF submission
+  if (adminSkipped) {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.3';
+    statusEl.style.color = '#ffaa00';
+    statusEl.textContent = '🔑 Run admin — score non soumis au HOF';
+  } else {
+    submitBtn.style.opacity = '';
+  }
 
   // If not a new record, hide the submit form and just show HOF
   if (!isBetter) {
