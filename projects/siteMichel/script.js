@@ -24,10 +24,11 @@ const modalBody = document.getElementById('modal-body');
 const modalClose = document.querySelector('.modal-close');
 
 const tplMap = {
-  massage: 'tpl-massage',
-  jeunes:  'tpl-jeunes',
-  at:      'tpl-at',
-  gestalt: 'tpl-gestalt',
+  massage:   'tpl-massage',
+  jeunes:    'tpl-jeunes',
+  at:        'tpl-at',
+  gestalt:   'tpl-gestalt',
+  aquarelle: 'tpl-aquarelle',
 };
 
 document.querySelectorAll('.service-card[data-modal]').forEach(card => {

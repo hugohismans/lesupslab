@@ -91,7 +91,7 @@
         </div>
 
         <div class="service-card" data-modal="at">
-          <img src="AT-Vignette.png" alt="Analyse Transactionnelle" class="service-vignette" />
+          <div class="service-icon">&#10022;</div>
           <h3>Analyse Transactionnelle</h3>
           <p>
             Une approche thérapeutique qui permet de mieux comprendre ses schémas relationnels et émotionnels. L'AT offre des outils concrets pour évoluer dans ses relations et dans sa vie intérieure.
@@ -109,11 +109,21 @@
         </div>
 
         <div class="service-card" data-modal="gestalt">
-          <img src="Gestalt Logo.png" alt="Gestalt" class="service-vignette" />
+          <div class="service-icon">&#10022;</div>
           <h3>Gestalt</h3>
           <p>
             Une thérapie centrée sur l'expérience du moment présent. La Gestalt favorise la prise de conscience de soi, de ses besoins et de ses blocages, pour mieux habiter sa vie.
           </p>
+          <span class="service-more">En savoir plus &rarr;</span>
+        </div>
+
+        <div class="service-card" data-modal="aquarelle">
+          <img src="AT-Multi Vignette.png" alt="Ateliers d'Aquarelle" class="service-vignette" />
+          <h3>Ateliers d'Aquarelle</h3>
+          <p>
+            Chaque mardi matin sur La Valse Lente, une péniche sur les quais de Namur. Ouvert à tous, aucun prérequis si ce n'est l'envie de créer.
+          </p>
+          <p class="service-tarif">22 € / atelier</p>
           <span class="service-more">En savoir plus &rarr;</span>
         </div>
 
@@ -147,7 +157,6 @@
         <a href="#contact" class="btn btn-primary" style="margin-top:1.25rem; display:inline-block;">S'inscrire à un atelier</a>
       </div>
       <div class="aquarelle-image-wrap">
-        <img src="AT-Multi Vignette.png" alt="Atelier d'aquarelle" class="aquarelle-vignette" />
         <img src="aquarelle.jpg" alt="Michel Vrins, aquareliste" />
       </div>
     </div>
@@ -390,6 +399,7 @@
 
   <template id="tpl-at">
     <div class="modal-content">
+      <img src="AT-Vignette.png" alt="Analyse Transactionnelle" class="modal-vignette" />
       <h2>Analyse Transactionnelle</h2>
       <p>Dans nos relations, à l'autre comme à soi, la communication se fait souvent chaotique — d'impressions inconfortables, d'images mal perçues, de perte de sens… Cela semble se produire sans prise réelle à ce qui se passe sur l'instant. Un sentiment d'impuissance s'installe, qui sème le doute.</p>
       <p>Les ateliers proposent de délier ces nœuds, à travers des mises en situation que les participants peuvent évoquer, avec la volonté de se comprendre en bienveillance.</p>
@@ -403,6 +413,7 @@
 
   <template id="tpl-gestalt">
     <div class="modal-content">
+      <img src="Gestalt Logo.png" alt="Gestalt" class="modal-vignette" style="max-width:160px;" />
       <h2>Gestalt</h2>
       <p>Inventée par Fritz Perls dans le courant de pensée humaniste, la Gestalt consiste à reconstruire la vision globale pour interagir en équilibre de soi. Pas d'obligation — pas de « il faut, je dois… » — mais l'incitation : <em>si je veux goûter au plaisir, je peux décider.</em></p>
       <p>Son principe : le mieux-être passe par l'attention aux éléments de notre vie, de notre comportement, de notre passé, de notre psychisme ou de notre corps. Le Massage Californien s'inscrit dans cette même ligne du mieux-être holistique.</p>
@@ -411,6 +422,25 @@
       <p><strong>Ateliers en préparation.</strong></p>
       <p><strong>Séances individuelles — Écoute Active : 50 €</strong></p>
       <a href="#contact" class="modal-link">Prendre contact &rarr;</a>
+    </div>
+  </template>
+
+  <template id="tpl-aquarelle">
+    <div class="modal-content">
+      <img src="AT-Multi Vignette.png" alt="Ateliers d'Aquarelle" class="modal-vignette" />
+      <h2>Ateliers d'Aquarelle</h2>
+      <h3>Sur La Valse Lente, Namur</h3>
+      <p>Autodidacte, Michel a fréquenté l'Académie de Namur et assuré des cours à l'<strong>École d'Aquarelle Namuroise</strong> durant une vingtaine d'années. Il a participé à plusieurs expositions, dont le prestigieux <strong>Salon de l'Aquarelle de Belgique</strong>.</p>
+      <p>Depuis 2015, il anime les ateliers sur <strong>La Valse Lente</strong>, une péniche sur les quais de Namur (Confluent), les <strong>mardis matins</strong>. Le calendrier est fixé en accord avec les participants.</p>
+      <ul class="modal-list">
+        <li>Chaque personne vient avec son propre sujet</li>
+        <li>Aucun prérequis, si ce n'est l'envie de créer</li>
+        <li>Places limitées à 8 personnes</li>
+        <li>6 à 8 ateliers par trimestre</li>
+      </ul>
+      <div class="modal-divider"></div>
+      <p><strong>Tarif : 22 € / atelier</strong></p>
+      <a href="https://lavalselente.com/" target="_blank" rel="noopener noreferrer" class="modal-link">Visiter le site de La Valse Lente &#8599;</a>
     </div>
   </template>
 
