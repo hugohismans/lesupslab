@@ -62,18 +62,54 @@
     font-family: 'Courier New', monospace;
     font-size: 13px;
     letter-spacing: 2px;
-    pointer-events: none;
+    pointer-events: auto;
     transition: color 0.15s;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
+  #death-counter:hover #death-reset-btn { opacity: 1; }
+  #death-reset-btn {
+    font-size: 9px;
+    color: #442222;
+    border: 1px solid #331111;
+    border-radius: 3px;
+    padding: 1px 4px;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  #death-reset-btn:hover { color: #ff4444; border-color: #882222; }
   #death-counter.flash { color: #ff4444; }
 
-  /* ── CAMPAIGN TIMER ──────────────────────────────────────── */
+  /* ── CAMPAIGN HUD ────────────────────────────────────────── */
+  #campaign-badge {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #00cc99;
+    text-transform: uppercase;
+    border: 1px solid #1a5a3a;
+    padding: 3px 10px;
+    pointer-events: none;
+    display: none;
+    background: #00110a88;
+  }
+  #campaign-badge.active { display: block; }
   #campaign-timer {
     position: fixed;
-    top: 34px;
+    top: 38px;
     right: 14px;
     z-index: 150;
-    color: #2a5a3a;
+    color: #2a6a4a;
     font-family: 'Courier New', monospace;
     font-size: 11px;
     letter-spacing: 1px;
@@ -81,6 +117,19 @@
     display: none;
   }
   #campaign-timer.active { display: block; }
+  #camp-death-counter {
+    position: fixed;
+    top: 55px;
+    right: 14px;
+    z-index: 150;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #885533;
+    pointer-events: none;
+    display: none;
+  }
+  #camp-death-counter.active { display: block; }
 
   /* ── LEVEL TITLE ─────────────────────────────────────────── */
   #level-title {
@@ -561,11 +610,20 @@
 <!-- Level title -->
 <div id="level-title">Tutoriel 1</div>
 
-<!-- Death counter -->
-<div id="death-counter">💀 0</div>
+<!-- Campaign badge -->
+<div id="campaign-badge">⚡ CAMPAGNE</div>
+
+<!-- Death counter (total, clickable for reset) -->
+<div id="death-counter" title="Cliquer pour réinitialiser">
+  <span id="death-count-text">💀 0</span>
+  <span id="death-reset-btn">RESET</span>
+</div>
 
 <!-- Campaign timer -->
 <div id="campaign-timer">⏱ 0:00</div>
+
+<!-- Campaign deaths -->
+<div id="camp-death-counter">💀 camp: 0</div>
 
 <!-- Language toggle -->
 <button id="lang-toggle">EN</button>
@@ -615,6 +673,7 @@
     <div id="replay-save-wrap" style="display:none;"></div>
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
+      <button class="replay-btn" id="restart-camp-btn" style="border-color:#00cc99;color:#00cc99;display:none">↩ Recommencer campagne</button>
       <a href="index.html" style="display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;color:#224433;text-decoration:none;padding:8px 14px;border:1px solid #1a4535;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='#00ffcc';this.style.borderColor='#336655'" onmouseout="this.style.color='#224433';this.style.borderColor='#1a4535'">⌂ Accueil</a>
     </div>
   </div>
@@ -1099,14 +1158,39 @@ function writeSave(data) {
 }
 let deathCount = loadSave().deaths || 0;
 function updateDeathDisplay() {
-  const el = document.getElementById('death-counter');
-  if (el) el.textContent = '💀 ' + deathCount;
+  const txt = document.getElementById('death-count-text');
+  if (txt) txt.textContent = '💀 ' + deathCount;
+  const cd = document.getElementById('camp-death-counter');
+  if (cd) cd.textContent = '💀 camp: ' + campDeaths;
 }
+function resetDeaths() {
+  if (!confirm('Réinitialiser le compteur de morts total ?')) return;
+  deathCount = 0;
+  writeSave({ deaths: 0 });
+  updateDeathDisplay();
+}
+document.getElementById('death-reset-btn').addEventListener('click', resetDeaths);
+
+function updateCampaignHUD() {
+  const badge = document.getElementById('campaign-badge');
+  const cd    = document.getElementById('camp-death-counter');
+  const restartBtn = document.getElementById('restart-camp-btn');
+  if (badge)      badge.classList.toggle('active', campRunning);
+  if (cd)         cd.classList.toggle('active', campRunning);
+  if (restartBtn) restartBtn.style.display = campRunning ? '' : 'none';
+}
+
+document.getElementById('restart-camp-btn').addEventListener('click', () => {
+  closeMenu();
+  selectLevel._advancing = false;
+  selectLevel(CAMPAIGN[0].idx);
+});
+
 function registerDeath() {
   deathCount++;
   writeSave({ deaths: deathCount });
-  updateDeathDisplay();
   if (campRunning) campDeaths++;
+  updateDeathDisplay();
   const el = document.getElementById('death-counter');
   if (el) {
     el.classList.add('flash');
@@ -1262,11 +1346,13 @@ function campStart_() {
   campRunning = true;
   campPaused  = 0;
   campTimerEl.classList.add('active');
+  updateCampaignHUD();
 }
 
 function campStop() {
   campRunning = false;
   campTimerEl.classList.remove('active');
+  updateCampaignHUD();
 }
 
 function campTickDisplay() {
@@ -1501,7 +1587,11 @@ function updateReplay() {
     const inp = replayData.inputs[replayInputIdx];
     if (inp.t > elapsed) break;
     const k = inp.key === ' ' ? ' ' : inp.key.toUpperCase();
-    if (inp.type === 'keydown') {
+    if (inp.type === 'micro_solve') {
+      // Auto-solve the active micro challenge by feeding the correct digits
+      const mc = state && state.microChallenge;
+      if (mc) mc.code.forEach(d => enterMicroDigit(d));
+    } else if (inp.type === 'keydown') {
       keys[k] = true;
       if (inp.key === ' ') spacePressCount++;
     } else {
@@ -1552,6 +1642,7 @@ function enterMicroDigit(digit) {
   } else if (mc.entered.length === 3) {
     if (mc.ballRef) mc.ballRef.microSolved = true;
     sfxSwitchClose();
+    recordKey('micro_solve', 'MICRO'); // recorded for replay auto-solve
     const queue = state.microQueue;
     if (queue && queue.length > 0) {
       const next = queue.shift();
@@ -3085,7 +3176,7 @@ function loop(timestamp) {
     nlBtn.style.display = cp >= 0 ? '' : 'none';
     if (cp >= 0) {
       if (cp + 1 < CAMPAIGN.length) {
-        nlBtn.textContent = t('btn.next_level');
+        nlBtn.innerHTML = t('btn.next_level') + '<br><span style="font-size:11px;letter-spacing:2px;opacity:0.5">' + (lang === 'fr' ? '[ ESPACE ]' : '[ SPACE ]') + '</span>';
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
       } else {
         // Last campaign level — campaign complete only if run started from TUTO1
