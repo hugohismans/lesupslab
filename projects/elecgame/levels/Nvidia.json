@@ -168,7 +168,7 @@
       "wayY": null,
       "switch": {
         "key": "Q",
-        "initOpen": true
+        "initOpen": false
       },
       "resistance": false,
       "inductance": false,
@@ -204,7 +204,7 @@
       "wayY": null,
       "switch": {
         "key": "P",
-        "initOpen": true
+        "initOpen": false
       },
       "resistance": false,
       "inductance": false,
