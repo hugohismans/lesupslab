@@ -881,6 +881,8 @@ const TRANSLATIONS = {
 };
 
 let currentLang = localStorage.getItem('elecgame_lang') || 'fr';
+let allMuted = localStorage.getItem('elecgame_mute_all') === '1';
+let humMuted  = localStorage.getItem('elecgame_mute_hum') === '1';
 
 function t(key) {
   return (TRANSLATIONS[currentLang] || TRANSLATIONS.fr)[key] || TRANSLATIONS.fr[key] || key;
@@ -1762,8 +1764,6 @@ document.addEventListener('keyup', e => {
 let AC = null, masterGain = null;
 let humOsc = null, humGain = null;
 let noiseBuffer = null;
-let allMuted = localStorage.getItem('elecgame_mute_all') === '1';
-let humMuted  = localStorage.getItem('elecgame_mute_hum') === '1';
 
 function resumeAudio() {
   if (!AC) {
