@@ -2797,12 +2797,62 @@ function drawMicroprocessor(edge, nodes, active) {
 // ── DRAW MICRO CHALLENGE OVERLAY ───────────────────────────
 function drawMicroOverlay(mc) {
   const W = canvas.width, H = canvas.height;
-  const cx = W / 2, cy = H / 2;
+
+  // --- Position the panel near the active microprocessor ---
+  const st = state;
+  const activeEdge = st.graph && st.graph.edges.find(e => e.id === mc.edgeId);
+  let cx = W / 2, cy = H / 2; // fallback: center
+  if (activeEdge) {
+    const sp = posOnEdge(0.5, activeEdge, st.graph.nodes);
+    cx = sp.x * camScale + camTX;
+    cy = sp.y * camScale + camTY;
+  }
+
   const dW = 52, dGap = 10;
   const totalCodeW = 3 * dW + 2 * dGap;
   const boxW = Math.max(totalCodeW + 40, 240);
   const boxH = 130;
-  const bx = cx - boxW/2, by = cy - boxH/2;
+  // Place panel above the component, clamped to canvas bounds
+  let bx = cx - boxW/2;
+  let by = cy - boxH - 40;
+  bx = Math.max(8, Math.min(W - boxW - 8, bx));
+  by = Math.max(8, Math.min(H - boxH - 8, by));
+  // Recompute cx to center content inside the (possibly clamped) box
+  cx = bx + boxW/2;
+
+  // --- Draw waiting badge on queued micros ---
+  if (st.microQueue && st.microQueue.length > 0) {
+    for (const q of st.microQueue) {
+      const qEdge = st.graph && st.graph.edges.find(e => e.id === q.edgeId);
+      if (!qEdge) continue;
+      const qSp = posOnEdge(0.5, qEdge, st.graph.nodes);
+      const qx = qSp.x * camScale + camTX;
+      const qy = qSp.y * camScale + camTY - 28;
+      ctx.save();
+      ctx.font = 'bold 10px Courier New'; ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,10,28,0.85)';
+      ctx.fillRect(qx - 32, qy - 12, 64, 18);
+      ctx.strokeStyle = '#0044aa'; ctx.lineWidth = 1;
+      ctx.strokeRect(qx - 32, qy - 12, 64, 18);
+      ctx.fillStyle = '#3366aa';
+      ctx.fillText('⏳ EN ATTENTE', qx, qy + 2);
+      ctx.restore();
+    }
+  }
+
+  // --- Arrow pointing to the active component ---
+  const arrowTipY = cy - 32;
+  if (by + boxH < arrowTipY) { // panel is above component
+    ctx.save();
+    ctx.fillStyle = '#0055cc';
+    ctx.shadowBlur = 6; ctx.shadowColor = '#0055cc';
+    ctx.beginPath();
+    ctx.moveTo(cx, arrowTipY);
+    ctx.lineTo(cx - 8, arrowTipY - 10);
+    ctx.lineTo(cx + 8, arrowTipY - 10);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
 
   // Fond
   ctx.save();
