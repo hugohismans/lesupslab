@@ -66,29 +66,14 @@
     transition: color 0.15s;
     cursor: pointer;
     user-select: none;
-    display: flex;
-    align-items: center;
-    gap: 6px;
   }
-  #death-counter:hover #death-reset-btn { opacity: 1; }
-  #death-reset-btn {
-    font-size: 9px;
-    color: #442222;
-    border: 1px solid #331111;
-    border-radius: 3px;
-    padding: 1px 4px;
-    opacity: 0;
-    transition: opacity 0.2s, color 0.2s;
-    cursor: pointer;
-    letter-spacing: 1px;
-  }
-  #death-reset-btn:hover { color: #ff4444; border-color: #882222; }
+  #death-counter:hover { color: #994444; }
   #death-counter.flash { color: #ff4444; }
 
   /* ── CAMPAIGN HUD ────────────────────────────────────────── */
   #campaign-badge {
     position: fixed;
-    top: 14px;
+    top: 34px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 150;
@@ -613,11 +598,8 @@
 <!-- Campaign badge -->
 <div id="campaign-badge">⚡ CAMPAGNE</div>
 
-<!-- Death counter (total, clickable for reset) -->
-<div id="death-counter" title="Cliquer pour réinitialiser">
-  <span id="death-count-text">💀 0</span>
-  <span id="death-reset-btn">RESET</span>
-</div>
+<!-- Death counter (total, click to reset) -->
+<div id="death-counter" title="Cliquer pour réinitialiser">💀 0</div>
 
 <!-- Campaign timer -->
 <div id="campaign-timer">⏱ 0:00</div>
@@ -1159,8 +1141,8 @@ function writeSave(data) {
 let deathCount = loadSave().deaths || 0;
 let campDeaths = 0;
 function updateDeathDisplay() {
-  const txt = document.getElementById('death-count-text');
-  if (txt) txt.textContent = '💀 ' + deathCount;
+  const el = document.getElementById('death-counter');
+  if (el) el.textContent = '💀 ' + deathCount;
   const cd = document.getElementById('camp-death-counter');
   if (cd) cd.textContent = '💀 camp: ' + campDeaths;
 }
@@ -1170,7 +1152,7 @@ function resetDeaths() {
   writeSave({ deaths: 0 });
   updateDeathDisplay();
 }
-document.getElementById('death-reset-btn').addEventListener('click', resetDeaths);
+document.getElementById('death-counter').addEventListener('click', resetDeaths);
 
 function updateCampaignHUD() {
   const badge = document.getElementById('campaign-badge');
@@ -3177,7 +3159,7 @@ function loop(timestamp) {
     nlBtn.style.display = cp >= 0 ? '' : 'none';
     if (cp >= 0) {
       if (cp + 1 < CAMPAIGN.length) {
-        nlBtn.innerHTML = t('btn.next_level') + '<br><span style="font-size:11px;letter-spacing:2px;opacity:0.5">' + (lang === 'fr' ? '[ ESPACE ]' : '[ SPACE ]') + '</span>';
+        nlBtn.innerHTML = t('btn.next_level') + '<br><span style="font-size:11px;letter-spacing:2px;opacity:0.5">' + (currentLang === 'fr' ? '[ ESPACE ]' : '[ SPACE ]') + '</span>';
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
       } else {
         // Last campaign level — campaign complete only if run started from TUTO1
