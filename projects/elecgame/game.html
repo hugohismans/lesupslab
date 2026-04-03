@@ -1272,9 +1272,20 @@ document.getElementById('submit-cancel').onclick = () => {
 document.getElementById('submit-send').onclick = async () => {
   if (!SUBMIT_WEBHOOK) return;
   const name    = document.getElementById('submit-name').value.trim() || (currentLang === 'fr' ? 'Anonyme' : 'Anonymous');
+  const isAdmin = name.toLowerCase() === 'lesups';
   const msg     = document.getElementById('submit-msg').value.trim();
   const status  = document.getElementById('submit-status');
   const sendBtn = document.getElementById('submit-send');
+
+  if (!isAdmin) {
+    const lastSubmit = parseInt(loadSave().lastSubmit || 0);
+    const remaining  = SUBMIT_COOLDOWN_MS - (Date.now() - lastSubmit);
+    if (remaining > 0) {
+      status.style.color = '#ff8800';
+      status.textContent = t('submit.cooldown').replace('{mins}', Math.ceil(remaining / 60000));
+      return;
+    }
+  }
 
   const levelJSON  = localStorage.getItem('elecgame_test_level') || '{}';
   const levelName  = JSON.parse(levelJSON).name || 'level';
