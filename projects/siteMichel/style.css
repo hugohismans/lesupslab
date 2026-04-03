@@ -628,6 +628,31 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.95rem;
   color: var(--clr-text-lt);
   line-height: 1.75;
+  margin-bottom: 0.75rem;
+}
+
+.sejour-list {
+  list-style: none;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sejour-list li {
+  font-size: 0.92rem;
+  color: var(--clr-text-lt);
+  padding-left: 1.25rem;
+  position: relative;
+}
+
+.sejour-list li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  color: var(--clr-sage);
+  font-size: 0.6rem;
+  top: 0.35em;
 }
 
 .modal-pdf-btn {
