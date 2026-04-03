@@ -1346,7 +1346,9 @@ document.getElementById('submit-send').onclick = async () => {
     const form = new FormData();
     const encoded  = btoa(unescape(encodeURIComponent(levelJSON))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
     const testUrl  = `https://hugohismans.github.io/lesupslab/projects/elecgame/game.html?lvl=${encoded}`;
-    const content = `${t('submit.discord_content')}\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s\n▶ Tester : ${testUrl}`;
+    const baseContent = `${t('submit.discord_content')}\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s`;
+    const withLink = baseContent + `\n▶ Tester : ${testUrl}`;
+    const content = withLink.length <= 2000 ? withLink : baseContent + '\n📎 Niveau trop grand pour lien direct — charge le fichier joint.';
     form.append('payload_json', JSON.stringify({ content }));
     form.append('files[0]', new Blob([JSON.stringify(JSON.parse(levelJSON), null, 2)], { type: 'application/json' }), levelName + '.json');
     form.append('files[1]', new Blob([JSON.stringify(replayData, null, 2)], { type: 'application/json' }), levelName + '_replay.json');
