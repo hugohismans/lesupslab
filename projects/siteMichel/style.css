@@ -161,11 +161,22 @@ a { color: inherit; text-decoration: none; }
 }
 
 .nav-logo {
-  font-family: var(--ff-serif);
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--clr-text);
-  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.nav-logo-icon {
+  height: 46px;
+  width: auto;
+  mix-blend-mode: multiply;
+}
+
+.nav-logo-txt {
+  height: 28px;
+  width: auto;
+  mix-blend-mode: multiply;
 }
 
 .nav-links {
@@ -575,11 +586,18 @@ a { color: inherit; text-decoration: none; }
   gap: 0.75rem;
 }
 
+.footer-logo-txt {
+  height: 40px;
+  width: auto;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
 .footer-name {
   font-family: var(--ff-serif);
-  font-size: 1.2rem;
-  color: var(--clr-white);
-  font-weight: 600;
+  font-size: 1rem;
+  color: rgba(255,255,255,0.7);
+  font-weight: 400;
 }
 
 .footer-tagline {
