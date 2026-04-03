@@ -477,11 +477,34 @@
   #finish-skip:hover { color: #446655; border-color: #446655; }
   #finish-status { font-size: 11px; color: #224433; min-height: 16px; }
 
+  /* ── AUDIO TOGGLES ───────────────────────────────────────── */
+  #audio-controls {
+    position: fixed;
+    top: 14px;
+    right: 54px;
+    z-index: 150;
+    display: flex;
+    gap: 4px;
+  }
+  .audio-btn {
+    background: #0a1a14;
+    border: 1px solid #1a5a3a;
+    color: #336655;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 3px 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .audio-btn:hover { border-color: #00ffcc; color: #00ffcc; }
+  .audio-btn.muted { border-color: #442222; color: #663333; }
+
   /* ── LANG TOGGLE ─────────────────────────────────────────── */
   #lang-toggle {
     position: fixed;
     top: 14px;
-    right: 76px;
+    right: 14px;
     z-index: 150;
     background: #0a1a14;
     border: 1px solid #1a5a3a;
@@ -606,6 +629,12 @@
 
 <!-- Campaign deaths -->
 <div id="camp-death-counter">💀 camp: 0</div>
+
+<!-- Audio controls -->
+<div id="audio-controls">
+  <button class="audio-btn" id="btn-mute-all" title="Couper tout le son">🔊</button>
+  <button class="audio-btn" id="btn-mute-hum" title="Couper le bruit électrique">⚡</button>
+</div>
 
 <!-- Language toggle -->
 <button id="lang-toggle">EN</button>
@@ -907,6 +936,11 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
   localStorage.setItem('elecgame_lang', currentLang);
   applyLang();
 });
+
+// Init audio control buttons
+document.getElementById('btn-mute-all').addEventListener('click', toggleMuteAll);
+document.getElementById('btn-mute-hum').addEventListener('click', toggleMuteHum);
+applyAudioMuteUI();
 
 // ── LEVELS ─────────────────────────────────────────────────
 const LEVELS = [
@@ -1725,13 +1759,41 @@ document.addEventListener('keyup', e => {
 });
 
 // ── AUDIO ──────────────────────────────────────────────────
-let AC = null;
+let AC = null, masterGain = null;
 let humOsc = null, humGain = null;
 let noiseBuffer = null;
+let allMuted = localStorage.getItem('elecgame_mute_all') === '1';
+let humMuted  = localStorage.getItem('elecgame_mute_hum') === '1';
 
 function resumeAudio() {
-  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (!AC) {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = AC.createGain();
+    masterGain.gain.value = allMuted ? 0 : 1;
+    masterGain.connect(AC.destination);
+  }
   if (AC.state === 'suspended') AC.resume();
+}
+
+function applyAudioMuteUI() {
+  const btnAll = document.getElementById('btn-mute-all');
+  const btnHum = document.getElementById('btn-mute-hum');
+  if (btnAll) { btnAll.textContent = allMuted ? '🔇' : '🔊'; btnAll.classList.toggle('muted', allMuted); }
+  if (btnHum) { btnHum.textContent = humMuted ? '⚡̶' : '⚡'; btnHum.classList.toggle('muted', humMuted); }
+}
+
+function toggleMuteAll() {
+  allMuted = !allMuted;
+  localStorage.setItem('elecgame_mute_all', allMuted ? '1' : '0');
+  if (masterGain) masterGain.gain.setValueAtTime(allMuted ? 0 : 1, AC.currentTime);
+  applyAudioMuteUI();
+}
+
+function toggleMuteHum() {
+  humMuted = !humMuted;
+  localStorage.setItem('elecgame_mute_hum', humMuted ? '1' : '0');
+  if (humGain) humGain.gain.setValueAtTime(humMuted ? 0.001 : 0.010, AC.currentTime);
+  applyAudioMuteUI();
 }
 
 function getNoise() {
@@ -1756,10 +1818,10 @@ function startHum() {
   g2.gain.value = 0.004;
   humGain = AC.createGain();
   humGain.gain.setValueAtTime(0.001, AC.currentTime);
-  humGain.gain.linearRampToValueAtTime(0.010, AC.currentTime + 0.6);
+  if (!humMuted) humGain.gain.linearRampToValueAtTime(0.010, AC.currentTime + 0.6);
   humOsc.connect(humGain);
   h2.connect(g2); g2.connect(humGain);
-  humGain.connect(AC.destination);
+  humGain.connect(masterGain || AC.destination);
   humOsc.start(); h2.start();
   humOsc._h2 = h2; // keep ref for cleanup
 }
@@ -1784,7 +1846,7 @@ function noiseBurst(freq, q, vol, dur) {
   const g = AC.createGain();
   g.gain.setValueAtTime(vol, AC.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
-  src.connect(f); f.connect(g); g.connect(AC.destination);
+  src.connect(f); f.connect(g); g.connect(masterGain || AC.destination);
   src.start(); src.stop(AC.currentTime + dur);
 }
 
@@ -1797,7 +1859,7 @@ function toneBlip(freq, endFreq, type, vol, dur) {
   if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, AC.currentTime + dur);
   g.gain.setValueAtTime(vol, AC.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
-  osc.connect(g); g.connect(AC.destination);
+  osc.connect(g); g.connect(masterGain || AC.destination);
   osc.start(); osc.stop(AC.currentTime + dur + 0.01);
 }
 
