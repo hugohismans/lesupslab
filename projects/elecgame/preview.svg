@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <!-- Background gradient -->
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0d1a12"/>
+      <stop offset="100%" stop-color="#04080a"/>
+    </radialGradient>
+
+    <!-- Ball glow -->
+    <radialGradient id="ballGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#88ccff" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#0044ff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ballCore" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="50%" stop-color="#88ccff"/>
+      <stop offset="100%" stop-color="#0055ff"/>
+    </radialGradient>
+
+    <!-- Bulb glow -->
+    <radialGradient id="bulbGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffff88" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#ffaa00" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bulbCore" cx="40%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="60%" stop-color="#ffff88"/>
+      <stop offset="100%" stop-color="#ffdd00"/>
+    </radialGradient>
+
+    <!-- Wire lit gradient -->
+    <linearGradient id="wireLit" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00ffcc" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00ffcc" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="wireDim" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1a4035"/>
+      <stop offset="100%" stop-color="#0d2a20"/>
+    </linearGradient>
+
+    <!-- Title glow filter -->
+    <filter id="glowText">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowWire">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowBall">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowBulb">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle grid lines -->
+  <g opacity="0.04" stroke="#00ffcc" stroke-width="1">
+    <line x1="0" y1="105" x2="1200" y2="105"/>
+    <line x1="0" y1="210" x2="1200" y2="210"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="420" x2="1200" y2="420"/>
+    <line x1="0" y1="525" x2="1200" y2="525"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+  </g>
+
+  <!-- ── CIRCUIT ── -->
+
+  <!-- Source node (left) -->
+  <g filter="url(#glowWire)">
+    <rect x="106" y="282" width="28" height="56" fill="none" stroke="#00ffcc" stroke-width="2" rx="2"/>
+    <line x1="120" y1="300" x2="120" y2="320" stroke="#00ffcc" stroke-width="2"/>
+    <line x1="113" y1="310" x2="127" y2="310" stroke="#00ffcc" stroke-width="3"/>
+    <line x1="113" y1="315" x2="127" y2="315" stroke="#00ffcc" stroke-width="1.5"/>
+  </g>
+
+  <!-- Wire: source → split node -->
+  <line x1="134" y1="310" x2="330" y2="310" stroke="url(#wireLit)" stroke-width="3" filter="url(#glowWire)"/>
+
+  <!-- Split node -->
+  <circle cx="340" cy="310" r="5" fill="#00ffcc" filter="url(#glowWire)"/>
+
+  <!-- Upper wire branch: split → switch → ball zone -->
+  <line x1="340" y1="310" x2="340" y2="220" stroke="#1a4035" stroke-width="3"/>
+  <line x1="340" y1="220" x2="650" y2="220" stroke="#1a4035" stroke-width="3"/>
+
+  <!-- Lower wire branch lit: split → down → right -->
+  <line x1="340" y1="310" x2="340" y2="400" stroke="url(#wireLit)" stroke-width="3" filter="url(#glowWire)"/>
+  <line x1="340" y1="400" x2="900" y2="400" stroke="url(#wireLit)" stroke-width="3" filter="url(#glowWire)"/>
+  <line x1="900" y1="400" x2="900" y2="310" stroke="url(#wireLit)" stroke-width="3" filter="url(#glowWire)"/>
+
+  <!-- ── SWITCH (upper branch, open = red) ── -->
+  <!-- Switch body -->
+  <g opacity="0.9">
+    <rect x="460" y="207" width="60" height="26" rx="4" fill="#1a0a0a" stroke="#cc2200" stroke-width="1.5"/>
+    <!-- Gap symbol -->
+    <line x1="470" y1="220" x2="488" y2="220" stroke="#993300" stroke-width="2"/>
+    <line x1="512" y1="220" x2="509" y2="211" stroke="#993300" stroke-width="2"/>
+    <line x1="509" y1="211" x2="480" y2="211" stroke="#993300" stroke-width="1" stroke-dasharray="3,3"/>
+    <!-- Key label -->
+    <rect x="472" y="237" width="22" height="16" rx="3" fill="#1a0a0a" stroke="#cc2200" stroke-width="1"/>
+    <text x="483" y="249" font-family="Courier New, monospace" font-size="10" fill="#cc4400" text-anchor="middle">Q</text>
+  </g>
+
+  <!-- ── SWITCH (lower branch, closed = green) ── -->
+  <g filter="url(#glowWire)" opacity="0.9">
+    <rect x="580" y="387" width="60" height="26" rx="4" fill="#0a1a0d" stroke="#00cc99" stroke-width="1.5"/>
+    <line x1="590" y1="400" x2="630" y2="400" stroke="#00ffcc" stroke-width="2"/>
+    <rect x="582" y="417" width="22" height="16" rx="3" fill="#0a1a0d" stroke="#00cc99" stroke-width="1"/>
+    <text x="593" y="429" font-family="Courier New, monospace" font-size="10" fill="#00ffcc" text-anchor="middle">P</text>
+  </g>
+
+  <!-- Wire continuing to bulb -->
+  <line x1="900" y1="310" x2="1010" y2="310" stroke="url(#wireLit)" stroke-width="3" filter="url(#glowWire)"/>
+
+  <!-- ── BALL ── -->
+  <circle cx="700" cy="400" r="34" fill="url(#ballGlow)"/>
+  <circle cx="700" cy="400" r="11" fill="url(#ballCore)" filter="url(#glowBall)"/>
+
+  <!-- ── BULB ── -->
+  <!-- Outer glow -->
+  <circle cx="1060" cy="294" r="60" fill="url(#bulbGlow)"/>
+  <!-- Bulb globe -->
+  <circle cx="1060" cy="294" r="18" fill="url(#bulbCore)" stroke="#ffdd00" stroke-width="2" filter="url(#glowBulb)"/>
+  <!-- Filament -->
+  <g stroke="#ff8800" stroke-width="1.5" fill="none" filter="url(#glowBulb)">
+    <polyline points="1054,302 1057,292 1060,298 1063,288 1066,294"/>
+  </g>
+  <!-- Base -->
+  <rect x="1051" y="312" width="18" height="10" rx="1" fill="#cccccc"/>
+  <rect x="1054" y="322" width="12" height="5" rx="1" fill="#aaaaaa"/>
+
+  <!-- ── RESISTANCE symbol on bottom wire ── -->
+  <g opacity="0.85">
+    <rect x="730" y="389" width="60" height="22" rx="3" fill="#1a1a0a" stroke="#aaaa00" stroke-width="1.5"/>
+    <!-- zigzag -->
+    <polyline points="740,400 746,393 752,407 758,393 764,407 770,393 776,400 780,400"
+              stroke="#dddd00" stroke-width="1.5" fill="none"/>
+    <text x="760" y="424" font-family="Courier New, monospace" font-size="9" fill="#888800" text-anchor="middle">RÉSISTANCE</text>
+  </g>
+
+  <!-- ── TITLE ── -->
+  <text x="600" y="108"
+        font-family="Courier New, monospace"
+        font-size="72"
+        font-weight="bold"
+        fill="#00ffcc"
+        text-anchor="middle"
+        filter="url(#glowText)"
+        letter-spacing="4">DIE &amp; RELIGHT</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="148"
+        font-family="Courier New, monospace"
+        font-size="18"
+        fill="#446655"
+        text-anchor="middle"
+        letter-spacing="6">CIRCUIT PUZZLE GAME</text>
+
+  <!-- ── BOTTOM BAR ── -->
+  <rect x="0" y="565" width="1200" height="65" fill="#000000" opacity="0.5"/>
+  <line x1="0" y1="565" x2="1200" y2="565" stroke="#00ffcc" stroke-width="1" opacity="0.3"/>
+
+  <!-- Tags -->
+  <text x="60" y="604" font-family="Courier New, monospace" font-size="14" fill="#00cc99" letter-spacing="2">⚡ FREE</text>
+  <text x="180" y="604" font-family="Courier New, monospace" font-size="14" fill="#446655" letter-spacing="1">|</text>
+  <text x="200" y="604" font-family="Courier New, monospace" font-size="14" fill="#00cc99" letter-spacing="2">🌐 BROWSER</text>
+  <text x="380" y="604" font-family="Courier New, monospace" font-size="14" fill="#446655" letter-spacing="1">|</text>
+  <text x="400" y="604" font-family="Courier New, monospace" font-size="14" fill="#00cc99" letter-spacing="2">🏆 HALL OF FAME</text>
+  <text x="640" y="604" font-family="Courier New, monospace" font-size="14" fill="#446655" letter-spacing="1">|</text>
+  <text x="660" y="604" font-family="Courier New, monospace" font-size="14" fill="#00cc99" letter-spacing="2">🛠️ LEVEL EDITOR</text>
+
+  <!-- Sparks decoration -->
+  <g fill="#ffcc00" opacity="0.6" font-size="18">
+    <text x="76" y="410">✦</text>
+    <text x="1100" y="250">✦</text>
+    <text x="200" y="170">✦</text>
+    <text x="1050" y="500">✦</text>
+  </g>
+</svg>
