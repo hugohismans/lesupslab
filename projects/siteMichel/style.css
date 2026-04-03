@@ -351,6 +351,13 @@ a { color: inherit; text-decoration: none; }
   margin-bottom: 1rem;
 }
 
+.about-merci {
+  font-style: italic;
+  font-size: 0.92rem;
+  color: var(--clr-accent) !important;
+  margin-top: 0.5rem;
+}
+
 /* =============================================
    SERVICES
    ============================================= */
