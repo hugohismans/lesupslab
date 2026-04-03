@@ -739,6 +739,24 @@ a { color: inherit; text-decoration: none; }
   top: 0.35em;
 }
 
+.service-tarif {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--clr-accent);
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
+.aquarelle-peniche-link {
+  color: var(--clr-accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.aquarelle-peniche-link:hover {
+  color: var(--clr-bg-dark);
+}
+
 /* =============================================
    RDV
    ============================================= */
