@@ -1406,7 +1406,7 @@ function hofRenderBody(entries) {
   const medals = ['🥇','🥈','🥉'];
   body.innerHTML = `<table class="hof-table">
     <thead><tr>
-      <th>#</th><th>Pseudo</th><th>Temps</th><th>💀 Morts</th><th>Date</th>
+      <th>#</th><th>Pseudo</th><th>Temps</th><th>💀 Morts</th><th>Date</th><th></th>
     </tr></thead>
     <tbody>${entries.map((e, i) => `<tr>
       <td class="hof-rank">${medals[i] || (i+1)}</td>
@@ -1414,6 +1414,7 @@ function hofRenderBody(entries) {
       <td class="hof-time">${campFmtTime(e.time)}</td>
       <td class="hof-deaths">${e.deaths}</td>
       <td style="color:#224433;font-size:10px">${new Date(e.ts).toLocaleDateString()}</td>
+      <td title="${e.device || 'pc'}" style="font-size:14px">${DEVICE_ICON[e.device] || DEVICE_ICON.pc}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1526,7 +1527,7 @@ async function openFinish(timeMs, deaths) {
     submitBtn.disabled = true;
     statusEl.textContent = 'Envoi…';
     writeSave({ hofPseudo: pseudo });
-    const entry = { pseudo, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION };
+    const entry = { pseudo, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION, device: detectDevice() };
 
     try {
       let key = prevKey;
