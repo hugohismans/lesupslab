@@ -51,6 +51,11 @@ modalClose?.addEventListener('click', closeModal);
 overlay?.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+// Ferme le modal si on clique sur un lien interne (ex: #rdv)
+modalBody?.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-link')) closeModal();
+});
+
 // Fade-in on scroll — CSS handles the initial state
 document.querySelectorAll('.fade-in').forEach(el => {
   new IntersectionObserver(([entry], obs) => {
