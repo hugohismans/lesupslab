@@ -83,36 +83,40 @@
 
       <div class="services-grid">
 
-        <div class="service-card">
+        <div class="service-card" data-modal="massage">
           <div class="service-icon">&#10022;</div>
           <h3>Massage Californien</h3>
           <p>
             Un massage enveloppant et profondément relaxant, aux longs mouvements fluides, qui invite le corps et l'esprit à lâcher prise. Idéal pour libérer les tensions et retrouver une sérénité durable.
           </p>
+          <span class="service-more">En savoir plus &rarr;</span>
         </div>
 
-        <div class="service-card">
+        <div class="service-card" data-modal="jeunes">
           <div class="service-icon">&#10022;</div>
-          <h3>Écoute & Assistance aux jeunes</h3>
+          <h3>Écoute &amp; Assistance aux jeunes</h3>
           <p>
             Un accompagnement dédié aux adolescents et jeunes adultes en situation de fragilité. Dans un cadre bienveillant et confidentiel, je les aide à traverser les moments difficiles et à retrouver confiance.
           </p>
+          <span class="service-more">En savoir plus &rarr;</span>
         </div>
 
-        <div class="service-card">
+        <div class="service-card" data-modal="at">
           <div class="service-icon">&#10022;</div>
           <h3>Analyse Transactionnelle</h3>
           <p>
             Une approche thérapeutique qui permet de mieux comprendre ses schémas relationnels et émotionnels. L'AT offre des outils concrets pour évoluer dans ses relations et dans sa vie intérieure.
           </p>
+          <span class="service-more">En savoir plus &rarr;</span>
         </div>
 
-        <div class="service-card">
+        <div class="service-card" data-modal="gestalt">
           <div class="service-icon">&#10022;</div>
           <h3>Gestalt</h3>
           <p>
             Une thérapie centrée sur l'expérience du moment présent. La Gestalt favorise la prise de conscience de soi, de ses besoins et de ses blocages, pour mieux habiter sa vie.
           </p>
+          <span class="service-more">En savoir plus &rarr;</span>
         </div>
 
       </div>
@@ -248,6 +252,62 @@
       </div>
     </div>
   </section>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <button class="modal-close" aria-label="Fermer">&times;</button>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- MODAL CONTENT (hidden) -->
+  <template id="tpl-massage">
+    <div class="modal-content">
+      <img src="vignetteMassage.png" alt="Le Massage Californien" class="modal-vignette" />
+      <h2>Massage Californien</h2>
+      <h3>Toucher du cœur</h3>
+      <p>Le Massage Californien est apparu au début des années 1970, à l'époque de l'émergence des groupes de thérapie où primaient le développement du potentiel humain, l'expression des sentiments et les liens corps-esprit, les travaux de W. Reich sur la circulation d'énergie.</p>
+      <p>Le centre de croissance Esalen (San Francisco) rassemblait alors de nombreux chercheurs qui contribuèrent à ce <strong>courant de pensée</strong>. Diverses formes de thérapies et plusieurs techniques corporelles y sont nées.</p>
+      <p>Dans ce contexte <em>New Age</em>, le Massage Californien a été initié par Margaret Elke. Elle s'est inspirée de la douceur du massage Esalen qu'elle a combiné avec une démarche plus intérieure et émotive. Elle a codifié, structuré et enseigné la technique aux États-Unis ; la pratique s'est peu à peu développée et professionnalisée, avant de s'étendre au monde entier dans les années 1980.</p>
+      <p>Au départ du massage suédois, le Massage Californien est une <strong>approche globale</strong> qui vise autant la <strong>détente</strong> que l'éveil et la stimulation de la <strong>conscience psychocorporelle</strong>. Il permet un rééquilibrage énergétique du corps, une profonde relaxation physique et psychique par la pratique de longs mouvements lents et fluides qui valorisent l'enveloppe corporelle et l'identité personnelle dans le relâchement profond du corps et de l'esprit.</p>
+      <p>Ce massage aide à libérer des émotions enfouies dans la mémoire corporelle : plus le massé parvient au lâcher prise et à profiter des bienfaits du contact, plus il s'ouvre au « toucher du cœur », terme utilisé dans le cadre de cette pratique.</p>
+      <p>Véritable voyage intérieur, le massage invite le patient à découvrir son corps, à l'aimer et à l'unifier. Il permet de retrouver la richesse sensorielle inscrite dans le corps et de renouer avec les signaux que celui-ci envoie. L'effet est donc physique et psychologique puisqu'il améliore la perception du schéma corporel, l'écoute et l'estime de soi, et favorise l'épanouissement, une meilleure structuration de la personnalité.</p>
+      <p>Il régénère la mémoire corporelle et aide les personnes ayant vécu un traumatisme et/ou qui suivent une démarche psychothérapeutique. À l'issue de la séance, le patient se sent potentiellement régénéré.</p>
+      <p><strong>Ce massage est basé sur une réception inconditionnelle où tout se joue dans le moment présent.</strong></p>
+    </div>
+  </template>
+
+  <template id="tpl-jeunes">
+    <div class="modal-content">
+      <h2>Écoute &amp; Assistance aux jeunes</h2>
+      <p>L'adolescence et le début de l'âge adulte sont des périodes de transformation intense, parfois déstabilisantes. Incompréhension, isolement, perte de sens, difficultés scolaires ou familiales… ces épreuves méritent une attention bienveillante et sans jugement.</p>
+      <p>Dans un espace confidentiel et sécurisant, j'accompagne les jeunes en difficulté à mettre des mots sur ce qu'ils vivent, à identifier leurs ressources intérieures et à retrouver confiance en eux et en l'avenir.</p>
+      <p>Mon approche s'appuie sur l'écoute active, les outils de l'Analyse Transactionnelle et de la Gestalt, adaptés au rythme et à la réalité de chaque jeune. Il ne s'agit pas de donner des réponses toutes faites, mais d'accompagner chacun à trouver les siennes.</p>
+      <p>Cet accompagnement peut se faire en lien avec les parents ou les équipes éducatives, selon les besoins et avec l'accord du jeune.</p>
+    </div>
+  </template>
+
+  <template id="tpl-at">
+    <div class="modal-content">
+      <h2>Analyse Transactionnelle</h2>
+      <p>Fondée par Eric Berne dans les années 1950, l'Analyse Transactionnelle (AT) est une théorie de la personnalité et une méthode de psychothérapie qui permet de mieux comprendre comment nous fonctionnons, comment nous entrons en relation avec les autres, et comment nos expériences passées influencent notre présent.</p>
+      <p>L'AT s'appuie sur des concepts accessibles — les états du moi (Parent, Adulte, Enfant), les transactions, les jeux psychologiques, le scénario de vie — pour identifier les schémas répétitifs qui nous limitent et ouvrir de nouveaux choix.</p>
+      <p>C'est une approche à la fois intellectuelle et émotionnelle, qui favorise la prise de conscience, l'autonomie et la responsabilité. Elle convient aussi bien aux personnes en souffrance qu'à celles qui souhaitent simplement mieux se comprendre et évoluer dans leurs relations.</p>
+      <p>Les séances peuvent être individuelles ou en groupe, dans un cadre thérapeutique ou de développement personnel.</p>
+    </div>
+  </template>
+
+  <template id="tpl-gestalt">
+    <div class="modal-content">
+      <h2>Gestalt</h2>
+      <p>La Gestalt-thérapie est une approche humaniste et existentielle qui place l'expérience du <strong>moment présent</strong> au cœur du travail thérapeutique. Elle s'intéresse à ce qui se passe ici et maintenant — dans le corps, les émotions, les pensées — plutôt qu'à la seule analyse du passé.</p>
+      <p>En Gestalt, la relation entre le thérapeute et le client est elle-même un outil de transformation. C'est dans le contact authentique, dans la rencontre réelle, que naît la possibilité de changer.</p>
+      <p>Cette approche aide à prendre conscience de ses besoins, de ses blocages, de ses façons d'être en relation. Elle permet de retrouver une plus grande fluidité dans la vie émotionnelle, de réconcilier les parties de soi en conflit, et de retrouver un sentiment d'unité et de présence.</p>
+      <p>La Gestalt s'adresse à toute personne désireuse de mieux se comprendre, de sortir de patterns répétitifs ou simplement de vivre plus pleinement.</p>
+      <p><em>Le terme allemand « Gestalt » se traduit par « forme » au sens de « prendre forme », « s'organiser », « se construire ».</em></p>
+    </div>
+  </template>
 
   <!-- FOOTER -->
   <footer class="footer">
