@@ -1129,6 +1129,7 @@ let recorder = { active: false, startTime: 0, inputs: [], levelName: '', levelJS
 // ── SUBMIT CONFIG ──────────────────────────────────────────
 const SUBMIT_WEBHOOK = 'https://elecgame-submit.hugo-hismans.workers.dev';
 let isTestMode = new URLSearchParams(location.search).has('test');
+let testLevelIdx = -1;
 
 // Load level from ?lvl=BASE64 (Discord test links) — store then redirect to ?test
 (function() {
@@ -3201,14 +3202,14 @@ function loop(timestamp) {
     }
 
     // Bouton submit (mode test uniquement)
-    if (isTestMode) {
+    if (isTestMode && currentLevel === testLevelIdx) {
       submitBtn.style.display = '';
       submitBtn.onclick = openSubmitOverlay;
     } else {
       submitBtn.style.display = 'none';
     }
 
-    if (cp >= 0 || isTestMode) nlWrap.style.display = 'block';
+    if (cp >= 0 || (isTestMode && currentLevel === testLevelIdx)) nlWrap.style.display = 'block';
   }
   // Show/hide micro numpad
   const showNumpad = state.type === 'custom' && !!state.microChallenge && !state.dead && !state.won;
@@ -3238,6 +3239,7 @@ if (isTestMode) {
       btn.className = 'lvl-btn';
       btn.textContent = customLv.name;
       const idx = LEVELS.length - 1;
+      testLevelIdx = idx;
       btn.onclick = () => selectLevel(idx);
       // Insert before the load button
       lsDiv.insertBefore(btn, btnLoadExt);
