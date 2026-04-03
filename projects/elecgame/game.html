@@ -1656,9 +1656,8 @@ function enterMicroDigit(digit) {
     const queue = state.microQueue;
     if (queue && queue.length > 0) {
       const next = queue.shift();
-      const dur = (state.microDurationMap && state.microDurationMap.get(next.edgeId)) ?? 5;
       const code = [Math.floor(Math.random()*10), Math.floor(Math.random()*10), Math.floor(Math.random()*10)];
-      state.microChallenge = { edgeId: next.edgeId, code, entered: [], timeLeft: dur, maxTime: dur, ballRef: next.ball };
+      state.microChallenge = { edgeId: next.edgeId, code, entered: [], timeLeft: next.timeLeft, maxTime: next.timeLeft, ballRef: next.ball };
     } else {
       state.microChallenge = null;
     }
