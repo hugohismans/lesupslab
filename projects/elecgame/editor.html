@@ -439,6 +439,12 @@ body {
           <div class="doc-key"><span class="kbd">Drag</span> <span style="color:#446655">sur sélection</span></div>
           <div class="doc-desc">Déplacer le groupe sélectionné (les fils internes suivent)</div>
 
+          <div class="doc-key"><span class="kbd">X</span></div>
+          <div class="doc-desc">Symétrie ↔ — miroir gauche/droite autour du centre de la sélection</div>
+
+          <div class="doc-key"><span class="kbd">Y</span></div>
+          <div class="doc-desc">Symétrie ↕ — miroir haut/bas autour du centre de la sélection</div>
+
           <div class="doc-key"><span class="kbd">Ctrl+C</span></div>
           <div class="doc-desc">Copier la sélection (nœuds + fils internes)</div>
 
@@ -511,12 +517,13 @@ body {
       <div class="doc-section">
         <h3>Workflow — créer et soumettre un niveau</h3>
         <div class="doc-note">
-          1. Construis ton circuit avec les outils Node + Wire<br>
-          2. Configure les fils (switches, résistances, etc.) via le panneau bas<br>
+          1. Construis ton circuit avec les outils <strong>Node + Wire</strong><br>
+          2. Configure les fils (switches, résistances, microprocesseurs…) via le <strong>panneau bas</strong><br>
           3. Vérifie que le validateur affiche <span style="color:#00cc99">✓ Circuit valide</span><br>
-          4. Clique sur <strong>▶ Test</strong> pour jouer ton niveau dans le jeu<br>
-          5. Si la solution est bonne, télécharge le replay depuis le jeu (bouton Save Replay)<br>
-          6. Envoie le fichier <code style="color:#00cc99">.json</code> du niveau + le replay à l'admin pour qu'il soit intégré à la campagne
+          4. Clique sur <strong>▶ Test</strong> — le niveau s'ouvre dans le jeu en mode test<br>
+          5. Joue et trouve la solution. Une fois gagné, le bouton <strong>📤 Soumettre à l'admin</strong> apparaît<br>
+          6. Saisis ton pseudo, un message optionnel, et envoie — le JSON + replay partent automatiquement sur Discord avec un lien de test cliquable<br>
+          7. L'admin peut tester le niveau en un clic depuis Discord avant de l'intégrer à la campagne
         </div>
       </div>
 
