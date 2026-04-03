@@ -1,8 +1,14 @@
 [
-  { "file": "sequenceur.json",      "name": "Séquenceur" },
-  { "file": "resistance_test.json", "name": "Résistance" },
-  { "file": "detente.json",         "name": "★ Détente" },
-  { "file": "noeud.json",           "name": "★★ Le Nœud" },
-  { "file": "minuterie.json",       "name": "★★★ La Minuterie" },
-  { "file": "levelHard.json",       "name": "★★★ Level Hard" }
+  { "file": "gun.json",                     "name": "Le Pistolet" },
+  { "file": "TUTO4_resistance_eclair.json", "name": "Résistance Éclair" },
+  { "file": "tuto5_microprocesseur.json",   "name": "Microprocesseur" },
+  { "file": "complex_twoway.json",          "name": "Double Sens" },
+  { "file": "67.json",                      "name": "67" },
+  { "file": "levelHard.json",               "name": "★★★ Level Hard" },
+  { "file": "snail.json",                   "name": "Snaked" },
+  { "file": "sequenceur.json",              "name": "Séquenceur" },
+  { "file": "resistance_test.json",         "name": "Résistance" },
+  { "file": "detente.json",                 "name": "★ Détente" },
+  { "file": "noeud.json",                   "name": "★★ Le Nœud" },
+  { "file": "minuterie.json",               "name": "★★★ La Minuterie" }
 ]
