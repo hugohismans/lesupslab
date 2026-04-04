@@ -444,37 +444,52 @@ canvas#bg {
 }
 .auth-google-btn:hover { opacity: 0.88; }
 #auth-logged-in {
-  display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 280px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: 100%; max-width: 280px;
+  border: 1px solid #00ffcc22;
+  background: #030d09;
+  padding: 14px 16px;
+  box-shadow: 0 0 18px #00ffcc0a;
 }
 #auth-pseudo-display {
-  font-family: 'Courier New', monospace; font-size: 13px;
-  color: #00ffcc; letter-spacing: 2px;
+  font-family: 'Courier New', monospace; font-size: 14px;
+  color: #00ffcc; letter-spacing: 3px;
+  text-shadow: 0 0 10px #00ffcc66;
 }
+#idx-pseudo-edit-btn {
+  background: none; border: 1px solid #1a5a3a; color: #336655;
+  font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 2px;
+  padding: 5px 14px; cursor: pointer; transition: all 0.15s; width: 100%;
+}
+#idx-pseudo-edit-btn:hover { border-color: #00ffcc; color: #00ffcc; }
 #pseudo-edit-row {
-  display: flex; gap: 6px; width: 100%;
+  display: flex; gap: 0; width: 100%;
+  border: 1px solid #1a5a3a;
 }
 #idx-pseudo-input {
-  flex: 1; background: #0a1a14; border: 1px solid #1a5a3a; color: #00ffcc;
+  flex: 1; background: #060e0a; border: none; outline: none; color: #00ffcc;
   font-family: 'Courier New', monospace; font-size: 12px;
-  padding: 7px 10px; letter-spacing: 2px;
+  padding: 8px 10px; letter-spacing: 2px;
 }
-#idx-pseudo-input::placeholder { color: #224433; }
+#idx-pseudo-input::placeholder { color: #1a4a30; }
+#idx-pseudo-input:focus { background: #0a1a12; }
 #idx-pseudo-save {
-  background: #0d2a1e; border: 1px solid #00ffcc; color: #00ffcc;
-  font-family: 'Courier New', monospace; font-size: 14px;
+  background: #0d2a1e; border: none; border-left: 1px solid #1a5a3a; color: #00ffcc;
+  font-family: 'Courier New', monospace; font-size: 15px;
   padding: 0 14px; cursor: pointer; transition: all 0.15s;
 }
-#idx-pseudo-save:hover { background: #1a4a2e; box-shadow: 0 0 10px #00ffcc44; }
+#idx-pseudo-save:hover { background: #1a4a2e; color: #44ffcc; }
 #idx-pseudo-status {
   font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px;
-  min-height: 14px; color: #00ffcc;
+  min-height: 12px; text-align: center;
 }
 #auth-logout-btn {
-  background: none; border: 1px solid #1a4535; color: #224433;
+  background: none; border: none; color: #1a4535;
   font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
-  padding: 4px 10px; cursor: pointer; transition: all 0.15s;
+  padding: 2px; cursor: pointer; transition: color 0.15s;
+  text-decoration: underline; text-underline-offset: 3px;
 }
-#auth-logout-btn:hover { color: #ff4444; border-color: #ff444433; }
+#auth-logout-btn:hover { color: #ff4444; }
 
 /* ── AUDIO CONTROLS ──────────────────────────────────────── */
 #audio-controls {
@@ -570,8 +585,9 @@ canvas#bg {
       </button>
       <div id="auth-logged-in" style="display:none">
         <span id="auth-pseudo-display"></span>
-        <div id="pseudo-edit-row">
-          <input id="idx-pseudo-input" type="text" maxlength="20" autocomplete="off" placeholder="Ton pseudo…">
+        <button id="idx-pseudo-edit-btn">✎ Modifier le pseudo</button>
+        <div id="pseudo-edit-row" style="display:none">
+          <input id="idx-pseudo-input" type="text" maxlength="20" autocomplete="off" placeholder="Nouveau pseudo…">
           <button id="idx-pseudo-save">✓</button>
         </div>
         <div id="idx-pseudo-status"></div>
@@ -644,8 +660,8 @@ function updateIdxAuthUI() {
     googleBtn.style.display = 'none';
     loggedIn.style.display  = 'flex';
     pseudoEl.textContent    = _idxPseudo ? ('👤 ' + _idxPseudo) : '👤 Pas encore de pseudo';
-    pseudoIn.value          = _idxPseudo || '';
-    pseudoIn.placeholder    = _idxPseudo ? 'Modifier le pseudo…' : 'Choisis ton pseudo…';
+    pseudoIn.value          = '';
+    document.getElementById('pseudo-edit-row').style.display = 'none';
     statusEl.textContent    = '';
   } else {
     warning.style.display   = '';
@@ -653,6 +669,13 @@ function updateIdxAuthUI() {
     loggedIn.style.display  = 'none';
   }
 }
+
+document.getElementById('idx-pseudo-edit-btn').onclick = () => {
+  const row = document.getElementById('pseudo-edit-row');
+  const isOpen = row.style.display !== 'none';
+  row.style.display = isOpen ? 'none' : 'flex';
+  if (!isOpen) document.getElementById('idx-pseudo-input').focus();
+};
 
 document.getElementById('idx-pseudo-save').onclick = async () => {
   const val = document.getElementById('idx-pseudo-input').value.trim();
@@ -669,6 +692,8 @@ document.getElementById('idx-pseudo-save').onclick = async () => {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     _idxPseudo = val;
     pseudoEl.textContent = '👤 ' + val;
+    document.getElementById('pseudo-edit-row').style.display = 'none';
+    document.getElementById('idx-pseudo-input').value = '';
     statusEl.style.color = '#00ffcc'; statusEl.textContent = '✓ Pseudo enregistré !';
     setTimeout(() => { statusEl.textContent = ''; }, 2500);
   } catch(e) { statusEl.style.color = '#ff4444'; statusEl.textContent = '✗ Erreur : ' + e.message; }
