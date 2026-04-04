@@ -1889,11 +1889,21 @@ const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedata
 // Per-campaign score helpers
 function getCampScore(campId) {
   const save = loadSave();
-  return save['hof_score_' + campId] || null; // { time, deaths, key, version }
+  const score = save['hof_score_' + campId] || null;
+  if (!score) return null;
+  // Invalide si version différente ou nombre de niveaux différent
+  const currentLevelCount = CAMPAIGNS[campId]?.levels.length ?? 0;
+  if (score.version !== HOF_VERSION) return null;
+  if (score.levelCount !== currentLevelCount) return null;
+  return score;
 }
 function setCampScore(campId, time, deaths, key) {
   const obj = {};
-  obj['hof_score_' + campId] = { time, deaths, key, version: HOF_VERSION };
+  obj['hof_score_' + campId] = {
+    time, deaths, key,
+    version: HOF_VERSION,
+    levelCount: CAMPAIGNS[campId]?.levels.length ?? 0
+  };
   writeSave(obj);
 }
 
