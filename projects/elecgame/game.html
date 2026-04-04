@@ -323,8 +323,20 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     letter-spacing: 1px;
     transition: all 0.15s;
     border-radius: 4px;
+    position: relative;
   }
   .lvl-btn:hover { border-color: #336655; color: #00bb99; }
+  .lvl-btn.done { border-color: #2a5540; }
+  .lvl-btn.done::after {
+    content: '★';
+    position: absolute;
+    top: 3px; right: 5px;
+    font-size: 9px;
+    color: #ffcc44;
+    opacity: 0.75;
+    line-height: 1;
+    pointer-events: none;
+  }
   .lvl-btn.active {
     border-color: #00ffcc;
     color: #00ffcc;
@@ -1904,6 +1916,7 @@ _fbAuth.onAuthStateChanged(async user => {
   currentUser = user;
   if (user) {
     await loadPseudo(user.uid);
+    loadDoneFromFirebase(); // sync completion stars (no await — non-blocking)
   } else {
     currentPseudo = null;
   }
@@ -2051,7 +2064,8 @@ const HOF_DIFF_META = {
   piquer:   { label: '⚡ Piquer', color: '#ffaa00' },
   cauchemar:{ label: '💀 Cauchemar', color: '#ff4466' },
 };
-const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+const FB_URL   = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+const FB_USERS = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
 
 // Per-campaign score helpers
 function getCampScore(campId) {
@@ -2253,6 +2267,53 @@ async function _getAccountBestScore(diffId) {
   } catch(e) {}
   return local;
 }
+
+// ── LEVEL COMPLETION STARS ─────────────────────────────────
+// Encode/decode level IDs as base64url (Firebase-safe, reversible)
+function _b64(s)  { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+function _d64(s)  { const p=(4-s.length%4)%4; return decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(s.length+p,'=')))); }
+function _lvId(i) { const lv=LEVELS[i]; return lv&&lv._file ? lv._file : 'tuto_'+i; }
+
+const _DONE_LS = 'elecgame_done';
+let _doneLevels = new Set(JSON.parse(localStorage.getItem(_DONE_LS) || '[]'));
+
+function _applyDoneUI() {
+  LEVELS.forEach((lv, i) => {
+    if (_doneLevels.has(_lvId(i))) (lv._btns || []).forEach(b => b.classList.add('done'));
+  });
+}
+
+function markLevelDone(lvIdx) {
+  const id = _lvId(lvIdx);
+  if (_doneLevels.has(id)) return;
+  _doneLevels.add(id);
+  localStorage.setItem(_DONE_LS, JSON.stringify([..._doneLevels]));
+  (LEVELS[lvIdx]?._btns || []).forEach(b => b.classList.add('done'));
+  // Sync to Firebase (fire-and-forget — no await, non-blocking)
+  if (currentUser) currentUser.getIdToken().then(token =>
+    fetch(`${FB_USERS}/${currentUser.uid}/done/${_b64(id)}.json?auth=${token}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'true'
+    })
+  ).catch(() => {});
+}
+
+async function loadDoneFromFirebase() {
+  if (!currentUser) return;
+  try {
+    const token = await currentUser.getIdToken();
+    const res   = await fetch(`${FB_USERS}/${currentUser.uid}/done.json?auth=${token}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data) return;
+    // Keys are base64url-encoded level IDs, values are true
+    Object.keys(data).forEach(k => _doneLevels.add(_d64(k)));
+    localStorage.setItem(_DONE_LS, JSON.stringify([..._doneLevels]));
+    _applyDoneUI();
+  } catch(e) {}
+}
+
+// Apply localStorage stars immediately at startup
+_applyDoneUI();
 
 // ── Finish overlay (campaign complete) ─────────────────────
 async function openFinish(timeMs, deaths) {
@@ -4245,6 +4306,7 @@ function loop(timestamp) {
     }
   }
   if (!wasWon && state.won && !replayMode) {
+    markLevelDone(currentLevel);
     stopRecordingWin();
     // Win burst particles at bulb position
     if (state.type === 'custom' && state.graph) {
