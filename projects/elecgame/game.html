@@ -1188,6 +1188,7 @@ function selectLevel(idx) {
   particles = []; shakeTimer = 0; bulbFlash = 0;
   for (const k in keys) keys[k] = false;
   stopHum(true);
+  const prevLevel_ = currentLevel;
   currentLevel = idx;
   try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
   // Resize canvas and compute fit transform for custom levels
@@ -1217,7 +1218,7 @@ function selectLevel(idx) {
   document.getElementById('submit-level-btn').style.display = 'none';
   // Campaign timer: start only from first level; jumping mid-campaign breaks the run
   const cp = campaignPos();
-  const isRestart = idx === currentLevel; // R key — stay on same level
+  const isRestart = idx === prevLevel_; // R key — stay on same level
   if (cp === 0 && !campRunning) campStart_();
   else if (!isRestart && !selectLevel._advancing && campRunning) campStop(); // direct jump → no HOF
   selectLevel._advancing = false;
