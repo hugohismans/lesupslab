@@ -619,6 +619,8 @@
     #touch-controls { display: flex; }
     body { padding-bottom: 100px; }
   }
+  body.touch-device #touch-controls { display: flex; }
+  body.touch-device { padding-bottom: 100px; }
   .touch-btn {
     height: 72px;
     width: 84px;
@@ -781,6 +783,18 @@
 
 <script src="special_thanks.js"></script>
 <script>
+// ── TOUCH DEVICE DETECTION ─────────────────────────────────
+// La media query (hover:none) and (pointer:coarse) est unreliable
+// sur Samsung Browser et certains Android. On double avec du JS.
+(function() {
+  const ua = navigator.userAgent;
+  const isTouchUA = /android|iphone|ipad|ipod|mobile|samsung|samsungbrowser/i.test(ua);
+  const hasTouchEvents = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  if (isTouchUA || hasTouchEvents) {
+    document.body.classList.add('touch-device');
+  }
+})();
+
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 let W = canvas.width, H = canvas.height;
