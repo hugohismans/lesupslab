@@ -1315,11 +1315,11 @@ const CAMPAIGNS = {
     color: '#44ff88', desc: '',
     levels: [
       { idx: 0 }, { idx: 1 }, { idx: 2 },
-      { file: 'levels/TUTO4_resistance_eclair.json' },
-      { file: 'levels/tuto5_microprocesseur.json' },
-      { file: 'levels/67.json' },
-      { file: "levels/Le Pistolet.json" },
-      { file: 'levels/Merry Christmas.json' },
+      { file: 'levels/TUTO4_resistance_eclair.json', name: 'Résistance Éclair' },
+      { file: 'levels/tuto5_microprocesseur.json',   name: 'Microprocesseur' },
+      { file: 'levels/67.json',                      name: '67' },
+      { file: "levels/Le Pistolet.json",             name: 'Le Pistolet' },
+      { file: 'levels/Merry Christmas.json',         name: 'Merry Christmas' },
     ]
   },
   piquer: {
@@ -1327,28 +1327,28 @@ const CAMPAIGNS = {
     color: '#ffaa00', desc: '',
     levels: [
       { idx: 0 }, { idx: 1 }, { idx: 2 },
-      { file: "levels/Le Pistolet.json" },
-      { file: 'levels/complex_twoway.json' },
-      { file: 'levels/Teleportation Quantique.json' },
-      { file: 'levels/levelHard.json' },
-      { file: "levels/Snaked.json" },
-      { file: 'levels/Merry Christmas.json' },
+      { file: "levels/Le Pistolet.json",             name: 'Le Pistolet' },
+      { file: 'levels/complex_twoway.json',          name: 'Double Sens' },
+      { file: 'levels/Teleportation Quantique.json', name: 'Téléportation Quantique' },
+      { file: 'levels/levelHard.json',               name: 'Level Hard' },
+      { file: "levels/Snaked.json",                  name: 'Snaked' },
+      { file: 'levels/Merry Christmas.json',         name: 'Merry Christmas' },
     ]
   },
   cauchemar: {
     id: 'cauchemar', name: 'Cauchemar', emoji: '💀',
     color: '#ff4466', desc: '',
     levels: [
-      { file: "levels/Le Pistolet.json" },
-      { file: 'levels/complex_twoway.json' },
-      { file: 'levels/levelHard.json' },
-      { file: "levels/Snaked.json" },
-      { file: 'levels/Teleportation Quantique.json' },
-      { file: 'levels/Nvidia.json' },
-      { file: "levels/Ampoule centrale.json" },
-      { file: "levels/L'ascenseur.json" },
-      { file: 'levels/Just In (Bieber).json' },
-      { file: 'levels/Slug.json' },
+      { file: "levels/Le Pistolet.json",             name: 'Le Pistolet' },
+      { file: 'levels/complex_twoway.json',          name: 'Double Sens' },
+      { file: 'levels/levelHard.json',               name: 'Level Hard' },
+      { file: "levels/Snaked.json",                  name: 'Snaked' },
+      { file: 'levels/Teleportation Quantique.json', name: 'Téléportation Quantique' },
+      { file: 'levels/Nvidia.json',                  name: 'Nvidia' },
+      { file: "levels/Ampoule centrale.json",        name: 'Ampoule centrale' },
+      { file: "levels/L'ascenseur.json",             name: "L'ascenseur" },
+      { file: 'levels/Just In (Bieber).json',        name: 'Just In (Bieber)' },
+      { file: 'levels/Slug.json',                    name: 'Slug' },
     ]
   }
 };
@@ -1483,11 +1483,13 @@ for (const [campId, camp] of Object.entries(CAMPAIGNS)) {
       if (lvIdx < 0) {
         lvIdx = LEVELS.length;
         LEVELS.push({
-          name: entry.file.split('/').pop().replace('.json', ''),
+          name: entry.name || entry.file.split('/').pop().replace('.json', ''),
           get hint() { return t('hint.restart'); },
           _file: entry.file, _json: null,
           make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
         });
+      } else if (entry.name && !LEVELS[lvIdx]._json) {
+        LEVELS[lvIdx].name = entry.name; // update with known name if not yet loaded
       }
       _addCampBtn(LEVELS[lvIdx], lvIdx);
     }
