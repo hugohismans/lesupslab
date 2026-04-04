@@ -1288,29 +1288,32 @@ const LEVELS = [
 const CAMPAIGNS = {
   bebe: {
     id: 'bebe', name: 'Pour les Bébés', emoji: '🍼',
-    color: '#44ff88', desc: '4 niveaux — parfait pour débuter',
+    color: '#44ff88', desc: '5 niveaux — parfait pour débuter',
     levels: [
       { idx: 0 }, { idx: 1 }, { idx: 2 },
       { file: 'levels/gun.json' },
+      { file: 'levels/Merry Christmas.json' },
     ]
   },
   piquer: {
     id: 'piquer', name: 'Ça commence à piquer', emoji: '⚡',
-    color: '#ffaa00', desc: '10 niveaux — pour les initiés',
+    color: '#ffaa00', desc: '13 niveaux — pour les initiés',
     levels: [
       { idx: 0 }, { idx: 1 }, { idx: 2 },
       { file: 'levels/gun.json' },
       { file: 'levels/TUTO4_resistance_eclair.json' },
       { file: 'levels/tuto5_microprocesseur.json' },
       { file: 'levels/complex_twoway.json' },
+      { file: 'levels/Teleportation Quantique.json' },
       { file: 'levels/67.json' },
       { file: 'levels/levelHard.json' },
       { file: 'levels/snail.json' },
+      { file: 'levels/Merry Christmas.json' },
     ]
   },
   cauchemar: {
     id: 'cauchemar', name: 'Cauchemar', emoji: '💀',
-    color: '#ff4466', desc: '10 niveaux — pour les masochistes',
+    color: '#ff4466', desc: '14 niveaux — pour les masochistes',
     levels: [
       { file: 'levels/gun.json' },
       { file: 'levels/TUTO4_resistance_eclair.json' },
@@ -1319,9 +1322,12 @@ const CAMPAIGNS = {
       { file: 'levels/67.json' },
       { file: 'levels/levelHard.json' },
       { file: 'levels/snail.json' },
+      { file: 'levels/Teleportation Quantique.json' },
       { file: 'levels/Nvidia.json' },
       { file: 'levels/loic.json' },
       { file: 'levels/keta.json' },
+      { file: 'levels/Just In (Bieber).json' },
+      { file: 'levels/Slug.json' },
     ]
   }
 };
@@ -1872,8 +1878,8 @@ document.getElementById('auth-sidebar-btn').onclick = () => {
 };
 
 // ── HALL OF FAME ───────────────────────────────────────────
-const HOF_VERSION  = 'v0_0_4';
-const HOF_VERSIONS = ['v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1']; // add new versions here
+const HOF_VERSION  = 'v0_0_5';
+const HOF_VERSIONS = ['v0_0_5', 'v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1']; // add new versions here
 const HOF_DIFFS    = ['bebe', 'piquer', 'cauchemar']; // difficulties (v0_0_4+)
 const HOF_DIFF_META = {
   bebe:     { label: '🍼 Bébés',  color: '#44ff88' },
@@ -1947,7 +1953,7 @@ const DEVICE_ICON = { pc: '🖥️', mobile: '📱', tablet: '📟' };
 async function hofFetch(version, diff) {
   try {
     // v0_0_4+ uses per-difficulty sub-paths; older versions are flat
-    const path = (version === 'v0_0_4' && diff)
+    const path = ((version === 'v0_0_5' || version === 'v0_0_4') && diff)
       ? `${FB_URL}/${version}/${diff}.json`
       : `${FB_URL}/${version}.json`;
     const res = await fetch(path);
@@ -1994,12 +2000,12 @@ function hofBuildTabs(activeVersion, activeDiff) {
     const btn = document.createElement('button');
     btn.className = 'hof-tab' + (v === activeVersion ? ' active' : '');
     btn.textContent = v.replace(/_/g, '.');
-    btn.onclick = () => openHOF(v, v === 'v0_0_4' ? (activeDiff || currentCampaignId) : null);
+    btn.onclick = () => openHOF(v, v === 'v0_0_5' ? (activeDiff || currentCampaignId) : null);
     tabsEl.appendChild(btn);
   });
-  // Difficulty row (v0_0_4 only)
+  // Difficulty row (v0_0_4+)
   const diffRow = document.getElementById('hof-diff-row');
-  if (activeVersion === 'v0_0_4') {
+  if (activeVersion === 'v0_0_5' || activeVersion === 'v0_0_4') {
     diffRow.classList.remove('hidden');
     diffRow.innerHTML = '';
     HOF_DIFFS.forEach(d => {
@@ -2031,7 +2037,7 @@ function hofBuildSpecials() {
 }
 
 async function openHOF(version = HOF_VERSION, diff = null) {
-  if (version === 'v0_0_4' && !diff) diff = currentCampaignId;
+  if ((version === 'v0_0_5' || version === 'v0_0_4') && !diff) diff = currentCampaignId;
   document.getElementById('hof-overlay').classList.add('open');
   hofBuildTabs(version, diff);
   hofBuildSpecials();
