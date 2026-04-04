@@ -1,0 +1,136 @@
+{
+  "name": "Teleportation Quantique",
+  "ballSpeedMult": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "type": "source",
+      "x": 60,
+      "y": 140
+    },
+    {
+      "id": 1,
+      "type": "bulb",
+      "x": 740,
+      "y": 150
+    },
+    {
+      "id": 2,
+      "type": "teleporter",
+      "x": -200,
+      "y": 0,
+      "group": "C"
+    },
+    {
+      "id": 3,
+      "type": "teleporter",
+      "x": -200,
+      "y": 140,
+      "group": "A"
+    },
+    {
+      "id": 4,
+      "type": "teleporter",
+      "x": -200,
+      "y": 300,
+      "group": "B"
+    },
+    {
+      "id": 5,
+      "type": "teleporter",
+      "x": 500,
+      "y": 0,
+      "group": "A"
+    },
+    {
+      "id": 6,
+      "type": "teleporter",
+      "x": 500,
+      "y": 140,
+      "group": "B"
+    },
+    {
+      "id": 7,
+      "type": "teleporter",
+      "x": 500,
+      "y": 300,
+      "group": "C"
+    }
+  ],
+  "edges": [
+    {
+      "id": 0,
+      "from": 0,
+      "to": 2,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": true,
+      "indDuration": 2,
+      "micro": false
+    },
+    {
+      "id": 1,
+      "from": 0,
+      "to": 3,
+      "wayY": null,
+      "switch": null,
+      "resistance": true,
+      "resDuration": 3,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 2,
+      "from": 0,
+      "to": 4,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 3,
+      "from": 5,
+      "to": 1,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": false
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 4,
+      "from": 6,
+      "to": 1,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 5,
+      "from": 7,
+      "to": 1,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    }
+  ]
+}
