@@ -273,11 +273,32 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   }
   .lvl-group-label {
     font-size: 10px;
-    color: #224433;
     letter-spacing: 2px;
     text-transform: uppercase;
     width: 100%;
+    padding: 2px 0;
   }
+  .lvl-group-label.camp-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; letter-spacing: 2px;
+  }
+  /* Tools section at bottom of sidebar */
+  #sidebar-tools {
+    border-top: 1px solid #1a5a3a;
+    padding-top: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .tools-label {
+    font-size: 10px; color: #1a4535; letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 2px;
+  }
+  .tool-row { display: flex; gap: 6px; }
+  .tool-btn-sm {
+    flex: 1; background: #060e0a; border: 1px solid #1a4535; color: #224433;
+    font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 1px;
+    padding: 7px 6px; cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .tool-btn-sm:hover { border-color: #336655; color: #00bb99; }
   .lvl-btn {
     background: #0a1a14;
     border: 1px solid #1a5a3a;
@@ -879,6 +900,14 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     <div id="level-select"></div>
     <div id="hint"></div>
     <div id="replay-save-wrap" style="display:none;"></div>
+    <div id="sidebar-tools">
+      <span class="tools-label">Outils</span>
+      <div id="tools-loaded" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <div class="tool-row">
+        <button class="tool-btn-sm" id="btn-load-ext">📂 Fichier</button>
+        <button class="tool-btn-sm" id="btn-load-replay">🎬 Replay</button>
+      </div>
+    </div>
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
       <button class="replay-btn" id="auth-sidebar-btn" style="border-color:#4488ff;color:#4488ff">👤 Connexion</button>
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
@@ -1127,16 +1156,11 @@ function applyLang() {
     const sidebarTitleEl = document.getElementById('sidebar-title');
     if (sidebarTitleEl) sidebarTitleEl.textContent = lv ? (lv.name || t('levels')) : t('levels');
     // Update level button labels after lang change
-    LEVELS.forEach(lv => { if (lv._btn) lv._btn.textContent = lv.name; });
+    LEVELS.forEach(lv => { (lv._btns || []).forEach(b => { b.textContent = lv.name; }); });
   }
-  // Update group labels
-  if (typeof groupTutorialsEl !== 'undefined') groupTutorialsEl.textContent = t('group.tutorials');
-  if (typeof groupLevelsEl !== 'undefined') groupLevelsEl.textContent = t('group.levels');
   // Update replay load button
-  if (typeof btnLoadReplay !== 'undefined') {
-    btnLoadReplay.textContent = t('btn.load_replay');
-    btnLoadReplay.title = t('replay.title');
-  }
+  const _blr = document.getElementById('btn-load-replay');
+  if (_blr) { _blr.textContent = t('btn.load_replay'); _blr.title = t('replay.title'); }
   // Lang toggle label: show the language you'll switch TO
   const langBtn = document.getElementById('lang-toggle');
   if (langBtn) langBtn.textContent = currentLang === 'fr' ? 'EN' : 'FR';
@@ -1400,7 +1424,7 @@ function selectLevel(idx) {
   if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || t('levels');
   const levelTitleEl = document.getElementById('level-title');
   if (levelTitleEl) levelTitleEl.textContent = LEVELS[idx].name || '';
-  LEVELS.forEach((lv, i) => { if (lv._btn) lv._btn.classList.toggle('active', i === idx); });
+  LEVELS.forEach((lv, i) => { (lv._btns || []).forEach(b => b.classList.toggle('active', i === idx)); });
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
   document.getElementById('submit-level-btn').style.display = 'none';
@@ -1414,77 +1438,61 @@ function selectLevel(idx) {
   if (AC) startHum();
 }
 
-// Build level buttons
+// Build level buttons — grouped by campaign
 const lsDiv = document.getElementById('level-select');
+const toolsLoadedDiv = document.getElementById('tools-loaded');
 
 function addSep() {
   const s = document.createElement('div'); s.className = 'lvl-sep'; lsDiv.appendChild(s);
 }
-function addGroupLabel(txt) {
-  const s = document.createElement('span'); s.className = 'lvl-group-label'; s.textContent = txt; lsDiv.appendChild(s); return s;
-}
-function addLevelBtn(lv, idx) {
+
+function _addCampBtn(lv, lvIdx) {
   const btn = document.createElement('button');
   btn.className = 'lvl-btn';
   btn.textContent = lv.name;
-  btn.onclick = () => selectLevel(idx);
+  btn.onclick = () => {
+    if (lv._json === null) {
+      fetch(lv._file).then(r => r.json())
+        .then(json => { lv._json = json; if (json.name) { lv.name = json.name; btn.textContent = lv.name; } selectLevel(lvIdx); })
+        .catch(() => alert(t('alert.load_failed') + lv._file));
+    } else {
+      selectLevel(lvIdx);
+    }
+  };
   lsDiv.appendChild(btn);
-  lv._btn = btn; // store reference for precise highlight
+  if (!lv._btns) lv._btns = [];
+  lv._btns.push(btn);
   return btn;
 }
 
-const groupTutorialsEl = addGroupLabel(t('group.tutorials'));
-LEVELS.forEach((lv, i) => addLevelBtn(lv, i));
-
-// Separator + levels folder group (populated after fetch)
-addSep();
-const groupLevelsEl = addGroupLabel(t('group.levels'));
-
-// Load-external button
-const btnLoadExt = document.createElement('button');
-btnLoadExt.className = 'lvl-btn';
-btnLoadExt.id = 'btn-load-ext';
-btnLoadExt.textContent = '📂';
-lsDiv.appendChild(btnLoadExt);
-
-// Replay load button
-const btnLoadReplay = document.createElement('button');
-btnLoadReplay.className = 'lvl-btn';
-btnLoadReplay.title = t('replay.title');
-btnLoadReplay.textContent = t('btn.load_replay');
-lsDiv.appendChild(btnLoadReplay);
-btnLoadReplay.onclick = () => document.getElementById('replay-input').click();
-
-// Load levels from levels/index.json
-fetch('levels/index.json')
-  .then(r => r.json())
-  .then(list => {
-    list.forEach(entry => {
-      const idx = LEVELS.length;
-      // Placeholder until JSON loaded; make() fetches on demand
-      const lv = {
-        name: entry.name,
-        get hint() { return this.name + ' ' + t('hint.restart'); },
-        _file: 'levels/' + entry.file,
-        _json: null,
-        make() {
-          if (!this._json) throw new Error('not loaded');
-          return makeCustomLevel(this._json);
-        }
-      };
-      LEVELS.push(lv);
-      const btn = addLevelBtn(lv, idx);
-      // Fetch JSON when clicked (lazy load)
-      btn.onclick = () => {
-        if (lv._json) { selectLevel(idx); return; }
-        fetch(lv._file)
-          .then(r => r.json())
-          .then(json => { lv._json = json; if (json.name) lv.name = json.name; selectLevel(idx); })
-          .catch(() => alert(t('alert.load_failed') + entry.file));
-      };
-    });
-  })
-  .catch(() => {}); // silently ignore if no levels/index.json
+// One section per campaign
+let _firstCamp = true;
+for (const [campId, camp] of Object.entries(CAMPAIGNS)) {
+  if (!_firstCamp) addSep();
+  _firstCamp = false;
+  const label = document.createElement('span');
+  label.className = 'lvl-group-label camp-label';
+  label.style.color = camp.color;
+  label.innerHTML = '<span>' + camp.emoji + '</span><span>' + camp.name.toUpperCase() + '</span>';
+  lsDiv.appendChild(label);
+  for (const entry of camp.levels) {
+    if (entry.idx !== undefined) {
+      _addCampBtn(LEVELS[entry.idx], entry.idx);
+    } else {
+      let lvIdx = LEVELS.findIndex(lv => lv._file === entry.file);
+      if (lvIdx < 0) {
+        lvIdx = LEVELS.length;
+        LEVELS.push({
+          name: entry.file.split('/').pop().replace('.json', ''),
+          get hint() { return t('hint.restart'); },
+          _file: entry.file, _json: null,
+          make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
+        });
+      }
+      _addCampBtn(LEVELS[lvIdx], lvIdx);
+    }
+  }
+}
 
 // Space spam counter — consumed each frame by resistance logic
 let spacePressCount = 0;
@@ -1571,6 +1579,23 @@ function openCampSelect() {
     };
     btnsEl.appendChild(btn);
   }
+  // Mode libre
+  const libreSep = document.createElement('div');
+  libreSep.style.cssText = 'width:100%;height:1px;background:#1a3a2a;margin:4px 0;opacity:0.5';
+  btnsEl.appendChild(libreSep);
+  const libreBtn = document.createElement('button');
+  libreBtn.className = 'camp-select-btn';
+  libreBtn.style.border = '1px solid #2a4a3a';
+  libreBtn.style.color = '#446655';
+  libreBtn.innerHTML = '<span class="camp-emoji">🎮</span><span class="camp-name">MODE LIBRE</span><span class="camp-desc">Choisir ses niveaux dans la liste</span>';
+  libreBtn.onclick = () => {
+    currentCampaignId = 'libre';
+    CAMPAIGN = [];
+    campRunning = false;
+    overlay.classList.remove('open');
+    openMenu();
+  };
+  btnsEl.appendChild(libreBtn);
   overlay.classList.add('open');
 }
 
@@ -2228,7 +2253,7 @@ function loadReplayFile(json) {
       btn.className = 'lvl-btn';
       btn.textContent = lv.name;
       btn.onclick = () => selectLevel(idx);
-      lsDiv.insertBefore(btn, btnLoadExt);
+      document.getElementById('tools-loaded').appendChild(btn);
       selectLevel(idx);
     }
   }
@@ -4127,7 +4152,7 @@ if (isTestMode) {
       testLevelIdx = idx;
       btn.onclick = () => selectLevel(idx);
       // Insert before the load button
-      lsDiv.insertBefore(btn, btnLoadExt);
+      document.getElementById('tools-loaded').appendChild(btn);
       selectLevel(idx);
     } catch(e) {
       console.error('Could not load test level', e);
@@ -4135,9 +4160,12 @@ if (isTestMode) {
   }
 }
 
-// ── FILE LOAD BUTTON ────────────────────────────────────────
+// ── FILE / REPLAY LOAD BUTTONS ──────────────────────────────
 document.getElementById('btn-load-ext').addEventListener('click', () => {
   document.getElementById('ext-level-input').click();
+});
+document.getElementById('btn-load-replay').addEventListener('click', () => {
+  document.getElementById('replay-input').click();
 });
 
 document.getElementById('ext-level-input').addEventListener('change', e => {
@@ -4159,7 +4187,7 @@ document.getElementById('ext-level-input').addEventListener('change', e => {
       btn.textContent = customLv.name;
       const idx = LEVELS.length - 1;
       btn.onclick = () => selectLevel(idx);
-      lsDiv.insertBefore(btn, btnLoadExt);
+      document.getElementById('tools-loaded').appendChild(btn);
       selectLevel(idx);
     } catch(err) {
       alert(t('alert.invalid_json'));
