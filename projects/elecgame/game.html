@@ -789,7 +789,7 @@
 (function() {
   const ua = navigator.userAgent;
   const isTouchUA = /android|iphone|ipad|ipod|mobile|samsung|samsungbrowser/i.test(ua);
-  const hasTouchEvents = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  const hasTouchEvents = ('ontouchstart' in window) && navigator.maxTouchPoints > 1;
   if (isTouchUA || hasTouchEvents) {
     document.body.classList.add('touch-device');
   }
@@ -2064,6 +2064,16 @@ function sfxJoin() {
   toneBlip(660, 330, 'sine', 0.09, 0.10);
 }
 
+// Téléportation quantique
+function sfxTeleport() {
+  if (!AC) return;
+  // Montée rapide + bruit + écho
+  toneBlip(180, 1400, 'sawtooth', 0.12, 0.18);
+  setTimeout(() => noiseBurst(3500, 5, 0.10, 0.12), 60);
+  setTimeout(() => toneBlip(1400, 400, 'sine', 0.09, 0.15), 130);
+  setTimeout(() => noiseBurst(2000, 3, 0.06, 0.10), 200);
+}
+
 // Court-circuit
 function sfxDead() {
   stopHum(true);
@@ -2593,6 +2603,8 @@ function posOnEdge(t, edge, nodes) {
 
 // Build game state from JSON level descriptor
 // Resistance constants
+const TELEPORTER_COLORS = { A:'#00ffcc', B:'#ff7700', C:'#cc44ff', D:'#44ff88', E:'#ff4466', F:'#ffcc00' };
+
 const RES_HALF      = 50;   // half-length of the resistance zone on the wire
 const RES_DRAIN     = 0.025; // speed lost per frame inside resistance
 const RES_BOOST     = 0.35;  // speed gained per spacebar press
@@ -2602,7 +2614,7 @@ const MICRO_HALF    = 32;   // half-length of the microprocessor zone on the wir
 const IND_HALF      = 40;   // half-length of the inductance zone on the wire
 
 function makeCustomLevel(json) {
-  const nodes = json.nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y }));
+  const nodes = json.nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y, group: n.group || null }));
   const edges = json.edges.map(e => ({
     id: e.id, from: e.from, to: e.to,
     wayY: e.wayY ?? null,
@@ -2643,6 +2655,22 @@ function makeCustomLevel(json) {
     edges.filter(e => e.inductance).map(e => [e.id, e.indDuration ?? 2])
   );
 
+  // Build teleporter pair map: nodeId → paired nodeId (same group)
+  const teleporterPairMap = new Map();
+  const tpGroups = {};
+  for (const n of nodes) {
+    if (n.type === 'teleporter' && n.group) {
+      if (!tpGroups[n.group]) tpGroups[n.group] = [];
+      tpGroups[n.group].push(n);
+    }
+  }
+  for (const group of Object.values(tpGroups)) {
+    if (group.length >= 2) {
+      teleporterPairMap.set(group[0].id, group[1].id);
+      teleporterPairMap.set(group[1].id, group[0].id);
+    }
+  }
+
   // Find source node(s) — start balls from outgoing edges of each source
   const balls = [];
   for (const node of nodes) {
@@ -2666,6 +2694,8 @@ function makeCustomLevel(json) {
     microQueue: [],
     inductanceSet,
     inductanceDurationMap,
+    teleporterPairMap,
+    teleportArcs: [],
     balls,
     edgesLit: new Set(),
     arrived: 0,
@@ -2681,7 +2711,7 @@ function makeCustomLevel(json) {
 function updateCustom(dt) {
   const st = state;
   if (st.won || st.dead) return;
-  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, inductanceSet, inductanceDurationMap, balls, edgesLit } = st;
+  const { graph, switchMap, resistanceSet, resistanceDrain, microSet, microDurationMap, inductanceSet, inductanceDurationMap, teleporterPairMap, balls, edgesLit } = st;
   const levelSpeed = BALL_SPEED * (st.ballSpeedMult ?? 1.0);
 
   const { nodes, edges } = graph;
@@ -2810,6 +2840,22 @@ function updateCustom(dt) {
         st.arrived++;
         // don't spawn more balls
 
+      } else if (toNode.type === 'teleporter') {
+        const pairedId = teleporterPairMap && teleporterPairMap.get(toNode.id);
+        const pairedNode = pairedId !== undefined ? nodes.find(n => n.id === pairedId) : null;
+        if (pairedNode) {
+          sfxTeleport();
+          st.teleportArcs.push({ x1: toNode.x, y1: toNode.y, x2: pairedNode.x, y2: pairedNode.y, life: 0.6, group: toNode.group });
+          const outEdges = edges.filter(e => e.from === pairedNode.id);
+          if (outEdges.length === 1) {
+            toAdd.push({ edgeId: outEdges[0].id, t: 0, x: pairedNode.x, y: pairedNode.y, speed: levelSpeed, gauge: 1.0 });
+          } else if (outEdges.length > 1) {
+            sfxSplit();
+            for (const outE of outEdges) {
+              toAdd.push({ edgeId: outE.id, t: 0, x: pairedNode.x, y: pairedNode.y, speed: levelSpeed, gauge: 1.0 });
+            }
+          }
+        }
       } else {
         const outEdges = edges.filter(e => e.from === toNode.id);
         if (outEdges.length === 0) {
@@ -2839,6 +2885,14 @@ function updateCustom(dt) {
   for (const q of st.microQueue) {
     q.timeLeft -= dt;
     if (q.timeLeft <= 0) { st.dead = true; sfxDead(); return; }
+  }
+
+  // Decay teleport arcs
+  if (st.teleportArcs) {
+    for (let i = st.teleportArcs.length - 1; i >= 0; i--) {
+      st.teleportArcs[i].life -= dt * 2;
+      if (st.teleportArcs[i].life <= 0) st.teleportArcs.splice(i, 1);
+    }
   }
 
   // Remove finished balls (in reverse order)
@@ -3191,6 +3245,83 @@ function drawMicroOverlay(mc) {
   ctx.restore();
 }
 
+// ── DRAW TELEPORTER NODE ───────────────────────────────────
+let tpAnimT = 0; // incremented each frame for rotation
+
+function drawTeleporter(node) {
+  const col = TELEPORTER_COLORS[node.group] || '#00ffcc';
+  const { x, y } = node;
+  const r = 18;
+  ctx.save();
+
+  // Outer ring
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.shadowBlur = 14; ctx.shadowColor = col;
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+
+  // Inner ring
+  ctx.globalAlpha = 0.35;
+  ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, Math.PI * 2); ctx.stroke();
+
+  // 3 rotating arcs
+  ctx.lineWidth = 2.5; ctx.globalAlpha = 0.9;
+  for (let i = 0; i < 3; i++) {
+    const a0 = tpAnimT + (i * Math.PI * 2 / 3);
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.78, a0, a0 + Math.PI * 0.45);
+    ctx.stroke();
+  }
+
+  // Pulsing center dot
+  const pulse = 0.7 + 0.3 * Math.sin(tpAnimT * 3.5);
+  ctx.globalAlpha = pulse;
+  ctx.fillStyle = col;
+  ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+
+  // Group letter above
+  ctx.shadowBlur = 6; ctx.globalAlpha = 0.8;
+  ctx.font = `bold ${11}px Courier New`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = col;
+  ctx.fillText(node.group || '?', x, y - r - 9);
+
+  ctx.restore();
+}
+
+// ── DRAW TELEPORT ARC ──────────────────────────────────────
+function drawTeleportArc(arc) {
+  const col = TELEPORTER_COLORS[arc.group] || '#00ffcc';
+  const segs = 10;
+  ctx.save();
+  ctx.globalAlpha = arc.life;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.shadowBlur = 10; ctx.shadowColor = col;
+  ctx.beginPath();
+  ctx.moveTo(arc.x1, arc.y1);
+  for (let i = 1; i < segs; i++) {
+    const t = i / segs;
+    const jitter = (Math.random() - 0.5) * 24 * arc.life;
+    ctx.lineTo(
+      arc.x1 + (arc.x2 - arc.x1) * t + jitter,
+      arc.y1 + (arc.y2 - arc.y1) * t + jitter
+    );
+  }
+  ctx.lineTo(arc.x2, arc.y2);
+  ctx.stroke();
+  // Branch
+  const bi = 3 + Math.floor(Math.random() * 4);
+  const bt = bi / segs;
+  const bjx = arc.x1 + (arc.x2 - arc.x1) * bt + (Math.random() - 0.5) * 16;
+  const bjy = arc.y1 + (arc.y2 - arc.y1) * bt + (Math.random() - 0.5) * 16;
+  ctx.globalAlpha = arc.life * 0.5; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(bjx, bjy);
+  ctx.lineTo(bjx + (Math.random() - 0.5) * 28, bjy + (Math.random() - 0.5) * 28);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ── CUSTOM DRAW ────────────────────────────────────────────
 function drawCustom() {
   const st = state;
@@ -3337,14 +3468,23 @@ function drawCustom() {
     if (node.type === 'source') {
       drawSource(node.x, node.y);
     } else if (node.type === 'bulb') {
-      // Check if this bulb has been arrived at
       const inEdges = edges.filter(e => e.to === node.id);
       const bulbLit = st.won || inEdges.some(e => edgesLit.has(e.id));
       drawBulb(bulbLit, node.x, node.y);
+    } else if (node.type === 'teleporter') {
+      drawTeleporter(node);
     } else {
       // junction nodes are invisible in play mode
     }
   }
+
+  // Draw teleport arcs
+  if (st.teleportArcs) {
+    for (const arc of st.teleportArcs) drawTeleportArc(arc);
+  }
+
+  // Increment teleporter animation
+  tpAnimT += 0.04;
 
   // Draw balls
   for (const ball of balls) {

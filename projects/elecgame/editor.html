@@ -46,10 +46,23 @@ body {
 }
 .sep { width: 1px; height: 26px; background: #1a5a3a; flex-shrink: 0; }
 #node-type-row {
-  display: flex; gap: 6px; align-items: center; font-size: 12px; color: #446655;
+  display: flex; gap: 4px; align-items: center;
 }
-#node-type-row label { cursor: pointer; white-space: nowrap; }
-#node-type-row input[type=radio] { accent-color: #00ffcc; cursor: pointer; }
+.ntype-btn {
+  background: #0a1a14;
+  border: 1px solid #1a5a3a;
+  color: #446655;
+  font-family: 'Courier New', monospace;
+  font-size: 15px;
+  width: 34px; height: 28px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.ntype-btn:hover { border-color: #336655; color: #00bb99; background: #0d2218; }
+.ntype-btn.active { border-color: #00ffcc; background: #0d2a1e; box-shadow: 0 0 8px #00ffcc44; color: #00ffcc; }
 #level-name {
   background: #0a1a14;
   border: 1px solid #1a5a3a;
@@ -129,6 +142,9 @@ body {
 .prop-btn.active-res   { border-color: #ff8800; color: #ff8800; background: #2a1400; box-shadow: 0 0 8px #ff880044; }
 .prop-btn.active-ind   { border-color: #aa44ff; color: #cc66ff; background: #1a0a2a; box-shadow: 0 0 8px #aa44ff44; }
 .prop-sep-v { width: 1px; background: #1a5a3a; align-self: stretch; margin: 0 6px; }
+/* Node type + teleporter group buttons in props panel */
+.pnt-btn { font-size: 15px; padding: 4px 10px; min-width: 38px; }
+.ptg-btn { min-width: 32px; font-weight: bold; }
 #status-bar {
   position: absolute;
   top: 8px; left: 50%;
@@ -334,9 +350,10 @@ body {
   <button class="tool-btn" id="btn-delete" onclick="setTool('delete')" title="[D]">✕ Delete</button>
   <div class="sep"></div>
   <div id="node-type-row">
-    <label><input type="radio" name="ntype" value="source" id="nt-source"> ⚡</label>
-    <label><input type="radio" name="ntype" value="node"   id="nt-node" checked> ●</label>
-    <label><input type="radio" name="ntype" value="bulb"   id="nt-bulb"> 💡</label>
+    <button class="ntype-btn" id="nt-source"     onclick="setNType('source')"     title="Source — point de départ [⚡]">⚡</button>
+    <button class="ntype-btn active" id="nt-node" onclick="setNType('node')"      title="Junction — nœud de connexion [●]">●</button>
+    <button class="ntype-btn" id="nt-bulb"       onclick="setNType('bulb')"       title="Ampoule — objectif [💡]">💡</button>
+    <button class="ntype-btn" id="nt-teleporter" onclick="setNType('teleporter')" title="Téléporteur quantique [🌀]">🌀</button>
   </div>
   <div class="sep"></div>
   <button class="tool-btn" onclick="clearLevel()" title="Effacer">⟳ Clear</button>
@@ -398,7 +415,7 @@ body {
           <div class="doc-desc"><strong>Select</strong> — sélectionner, déplacer un nœud ou un fil</div>
 
           <div class="doc-key"><span class="kbd">N</span></div>
-          <div class="doc-desc"><strong>Node</strong> — double-clic sur le canvas pour ajouter un nœud (choisir le type : ⚡ source, ● nœud, 💡 ampoule)</div>
+          <div class="doc-desc"><strong>Node</strong> — double-clic sur le canvas pour ajouter un nœud (choisir le type : ⚡ source, ● nœud, 💡 ampoule, 🌀 téléporteur)</div>
 
           <div class="doc-key"><span class="kbd">W</span></div>
           <div class="doc-desc"><strong>Wire</strong> — cliquer sur un nœud source puis un nœud destination pour créer un fil. Clic sur un fil existant = insérer un nœud intermédiaire</div>
@@ -510,6 +527,9 @@ body {
 
           <div class="doc-icon">💡</div>
           <div class="doc-elem-desc"><strong>Ampoule</strong> — objectif. Toutes les balles doivent arriver ici pour gagner. Un niveau peut avoir plusieurs ampoules</div>
+
+          <div class="doc-icon">🌀</div>
+          <div class="doc-elem-desc"><strong>Téléporteur quantique</strong> — la balle qui entre ressort instantanément à l'autre téléporteur du même groupe (A/B/C…). Deux téléporteurs du même groupe forment une paire. Utilisable dans les deux sens. Un arc électrique animate la téléportation.</div>
         </div>
       </div>
 
@@ -859,8 +879,17 @@ function setTool(t) {
   if (t === 'wire') flash(tr('flash.wire.start'));
 }
 
-function getNodeType() {
-  return document.querySelector('input[name=ntype]:checked')?.value || 'node';
+let _nodeType = 'node';
+function getNodeType() { return _nodeType; }
+function setNType(type) {
+  _nodeType = type;
+  document.querySelectorAll('.ntype-btn').forEach(b => b.classList.toggle('active', b.id === 'nt-' + type));
+}
+function getNodeMeta() {
+  const type = getNodeType();
+  const meta = { type };
+  if (type === 'teleporter') meta.group = 'A'; // default group, user can change in props
+  return meta;
 }
 
 // ── VALIDATION ─────────────────────────────────────────────
@@ -879,6 +908,20 @@ function validate() {
     for (const e of edges) {
       if (reachable.has(e.from) && !reachable.has(e.to)) { reachable.add(e.to); changed = true; }
     }
+    // Teleporter pairs: if one portal is reachable, the other becomes reachable too
+    const tpByGroup = {};
+    for (const n of nodes.filter(n => n.type === 'teleporter')) {
+      const g = n.group || '?';
+      (tpByGroup[g] = tpByGroup[g] || []).push(n.id);
+    }
+    for (const ids of Object.values(tpByGroup)) {
+      const anyReachable = ids.some(id => reachable.has(id));
+      if (anyReachable) {
+        for (const id of ids) {
+          if (!reachable.has(id)) { reachable.add(id); changed = true; }
+        }
+      }
+    }
   }
   const unreachable = nodes.filter(n => n.type !== 'source' && !reachable.has(n.id));
   if (unreachable.length) issues.push(unreachable.length + tr('validate.unreachable'));
@@ -886,6 +929,15 @@ function validate() {
   const connected = new Set(edges.flatMap(e => [e.from, e.to]));
   const isolated = nodes.filter(n => !connected.has(n.id) && nodes.length > 1);
   if (isolated.length) issues.push(isolated.length + tr('validate.isolated'));
+  // Check teleporter pairs
+  const tpGroups = {};
+  for (const n of nodes.filter(n => n.type === 'teleporter')) {
+    const g = n.group || '?';
+    tpGroups[g] = (tpGroups[g] || 0) + 1;
+  }
+  for (const [g, count] of Object.entries(tpGroups)) {
+    if (count !== 2) issues.push(`Téléporteur groupe ${g} : ${count} nœud(s) (doit être exactement 2)`);
+  }
 
   if (issues.length === 0) {
     el.textContent = tr('validate.ok');
@@ -1041,7 +1093,7 @@ canvas.addEventListener('mousedown', e => {
       // Split edge: insert node at click position
       saveUndo();
       const id = nextNodeId++;
-      const n = { id, type: getNodeType(), x: sx2, y: sy2 };
+      const n = { id, ...getNodeMeta(), x: sx2, y: sy2 };
       nodes.push(n);
       // First segment inherits all properties of the original edge
       const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
@@ -1058,7 +1110,7 @@ canvas.addEventListener('mousedown', e => {
     } else {
       saveUndo();
       const id = nextNodeId++;
-      const n = { id, type: getNodeType(), x: sx2, y: sy2 };
+      const n = { id, ...getNodeMeta(), x: sx2, y: sy2 };
       nodes.push(n);
       selectedNode = n; selectedEdge = null;
       buildProps(); validate();
@@ -1071,7 +1123,7 @@ canvas.addEventListener('mousedown', e => {
     if (!target && hitEdge) {
       // Même comportement qu'en mode node : séparer le fil en deux
       const id = nextNodeId++;
-      target = { id, type: getNodeType(), x: sx2, y: sy2 };
+      target = { id, ...getNodeMeta(), x: sx2, y: sy2 };
       nodes.push(target);
       const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
         wayY: hitEdge.wayY ?? null, switch: hitEdge.switch ?? null,
@@ -1083,7 +1135,7 @@ canvas.addEventListener('mousedown', e => {
       edges.push(e1, e2);
     } else if (!target) {
       const id = nextNodeId++;
-      target = { id, type: getNodeType(), x: sx2, y: sy2 };
+      target = { id, ...getNodeMeta(), x: sx2, y: sy2 };
       nodes.push(target);
     }
 
@@ -1231,7 +1283,7 @@ canvas.addEventListener('dblclick', e => {
   const sx2 = snap(w.x), sy2 = snap(w.y);
   saveUndo();
   const id = nextNodeId++;
-  const n = { id, type: getNodeType(), x: sx2, y: sy2 };
+  const n = { id, ...getNodeMeta(), x: sx2, y: sy2 };
   nodes.push(n);
   if (hitEdge) {
     const e1 = { id: nextEdgeId++, from: hitEdge.from, to: id,
@@ -1376,19 +1428,45 @@ function buildProps() {
 
   if (selectedNode) {
     const n = selectedNode;
+    const TP_COLORS = { A:'#00ffcc', B:'#ff7700', C:'#cc44ff', D:'#44ff88', E:'#ff4466', F:'#ffcc00' };
+    function ntypeStyle(t) {
+      if (n.type !== t) return '';
+      return { source:'border-color:#ffaa00;color:#ffaa00;background:#2a1a00;box-shadow:0 0 8px #ffaa0044',
+               node:'border-color:#00cc88;color:#00cc88;background:#001a12',
+               bulb:'border-color:#cc44ff;color:#cc44ff;background:#1a0030;box-shadow:0 0 8px #cc44ff44',
+               teleporter:'border-color:#00ffcc;color:#00ffcc;background:#0d2a1e;box-shadow:0 0 8px #00ffcc44' }[t] || '';
+    }
     panel.innerHTML = `
       <span id="props-title">${tr('props.node')}${n.id}</span>
-      <label>${tr('props.type')}
-        <select id="p-ntype">
-          <option value="source" ${n.type==='source'?'selected':''}>⚡ source</option>
-          <option value="node"   ${n.type==='node'  ?'selected':''}>● junction</option>
-          <option value="bulb"   ${n.type==='bulb'  ?'selected':''}>💡 bulb</option>
-        </select>
-      </label>
+      <div class="prop-group">
+        <div class="prop-group-label">${tr('props.type')}</div>
+        <div class="prop-btns">
+          <button class="prop-btn pnt-btn" id="pnt-source"     style="${ntypeStyle('source')}"     title="Source">⚡</button>
+          <button class="prop-btn pnt-btn" id="pnt-node"       style="${ntypeStyle('node')}"       title="Junction">●</button>
+          <button class="prop-btn pnt-btn" id="pnt-bulb"       style="${ntypeStyle('bulb')}"       title="Ampoule">💡</button>
+          <button class="prop-btn pnt-btn" id="pnt-teleporter" style="${ntypeStyle('teleporter')}" title="Téléporteur">🌀</button>
+        </div>
+      </div>
+      ${n.type==='teleporter' ? `
+      <div class="prop-sep-v"></div>
+      <div class="prop-group">
+        <div class="prop-group-label">Groupe</div>
+        <div class="prop-btns">
+          ${Object.entries(TP_COLORS).map(([g,c]) => {
+            const act = n.group===g ? `border-color:${c};color:${c};background:#0a1a14;box-shadow:0 0 10px ${c}66` : '';
+            return `<button class="prop-btn ptg-btn" id="ptg-${g}" data-grp="${g}" data-color="${c}" style="${act}">${g}</button>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
       <label>${tr('props.x')} <input id="p-nx" type="number" value="${n.x}" step="20"></label>
       <label>${tr('props.y')} <input id="p-ny" type="number" value="${n.y}" step="20"></label>
     `;
-    document.getElementById('p-ntype').onchange = ev => { n.type = ev.target.value; validate(); };
+    ['source','node','bulb','teleporter'].forEach(t => {
+      document.getElementById('pnt-'+t).onclick = () => { saveUndo(); n.type = t; if (t==='teleporter' && !n.group) n.group='A'; validate(); buildProps(); };
+    });
+    document.querySelectorAll('.ptg-btn').forEach(btn => {
+      btn.onclick = () => { saveUndo(); n.group = btn.dataset.grp; validate(); buildProps(); };
+    });
     document.getElementById('p-nx').oninput = ev => { n.x = snap(+ev.target.value); };
     document.getElementById('p-ny').oninput = ev => { n.y = snap(+ev.target.value); };
 
@@ -1783,6 +1861,28 @@ function drawNode(n, selected, hovered) {
     ctx.font = `${10/viewScale}px Courier New`; ctx.textAlign='center'; ctx.fillStyle='#ffdd00';
     ctx.fillText('💡', x, y);
 
+  } else if (type === 'teleporter') {
+    const TP_COLORS = { A:'#00ffcc', B:'#ff7700', C:'#cc44ff', D:'#44ff88', E:'#ff4466', F:'#ffcc00' };
+    const col = TP_COLORS[n.group] || '#aaaaaa';
+    const r = 16/viewScale;
+    ctx.shadowBlur = selected ? 22 : hovered ? 16 : 10;
+    ctx.shadowColor = col;
+    ctx.strokeStyle = selected ? '#ffffff' : col;
+    ctx.lineWidth = (selected ? 2.5 : 2) / viewScale;
+    // Outer ring
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.stroke();
+    // Inner ring
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath(); ctx.arc(x, y, r*0.55, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    // Center dot
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x, y, 3.5/viewScale, 0, Math.PI*2); ctx.fill();
+    // Group letter
+    ctx.font = `bold ${11/viewScale}px Courier New`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = col; ctx.shadowBlur = 4;
+    ctx.fillText(n.group || '?', x, y - r - 8/viewScale);
   } else {
     const r = selected ? 8/viewScale : hovered ? 7/viewScale : 6/viewScale;
     ctx.shadowBlur = selected ? 14 : hovered ? 10 : 6;
@@ -1914,7 +2014,7 @@ function toJSON() {
   return {
     name: document.getElementById('level-name').value || 'Mon niveau',
     ballSpeedMult: parseFloat(document.getElementById('ball-speed').value) || 1.0,
-    nodes: nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y })),
+    nodes: nodes.map(n => ({ id: n.id, type: n.type, x: n.x, y: n.y, ...(n.group ? { group: n.group } : {}) })),
     edges: edges.map(e => ({
       id: e.id, from: e.from, to: e.to,
       wayY: e.wayY ?? null,
