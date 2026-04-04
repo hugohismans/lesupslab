@@ -1477,7 +1477,7 @@ function _addCampBtn(lv, lvIdx) {
     }
   };
   btn.addEventListener('mouseenter', () => _previewShow(btn, lvIdx));
-  btn.addEventListener('mouseleave', _previewHide);
+  btn.addEventListener('mouseleave', () => _previewHide());
   lsDiv.appendChild(btn);
   if (!lv._btns) lv._btns = [];
   lv._btns.push(btn);
@@ -2229,6 +2229,31 @@ document.getElementById('hof-open-btn').onclick = () => {
 };
 
 
+// Returns the best known score for the logged-in user:
+// checks both localStorage AND Firebase (by uid), keeps the best.
+async function _getAccountBestScore(diffId) {
+  const local = getCampScore(diffId);
+  if (!currentUser) return local;
+  try {
+    const res  = await fetch(`${FB_URL}/${HOF_VERSION}/${diffId}.json`);
+    if (!res.ok) return local;
+    const data = await res.json();
+    if (!data) return local;
+    for (const [key, v] of Object.entries(data)) {
+      if (v.uid !== currentUser.uid) continue;
+      // Found user's Firebase entry — keep whichever is better
+      if (!local || v.time < local.time) {
+        setCampScore(diffId, v.time, v.deaths, key); // sync Firebase → local
+        return { time: v.time, deaths: v.deaths, key, version: HOF_VERSION, levelCount: CAMPAIGNS[diffId]?.levels.length ?? 0 };
+      }
+      // Local is better, but attach Firebase key for future PUT
+      if (!local.key) setCampScore(diffId, local.time, local.deaths, key);
+      return { ...local, key };
+    }
+  } catch(e) {}
+  return local;
+}
+
 // ── Finish overlay (campaign complete) ─────────────────────
 async function openFinish(timeMs, deaths) {
   const overlay   = document.getElementById('finish-overlay');
@@ -2238,39 +2263,16 @@ async function openFinish(timeMs, deaths) {
   const skipBtn   = document.getElementById('finish-skip');
   const pseudoIn  = document.getElementById('finish-pseudo');
   const titleEl   = overlay.querySelector('h2');
+  const diffId    = currentCampaignId;
+  const camp      = CAMPAIGNS[diffId];
 
-  // Previous best from localStorage — per-campaign, per-version
-  const diffId        = currentCampaignId;
-  const prevScore     = getCampScore(diffId);
-  const sameVersion   = prevScore?.version === HOF_VERSION;
-  const prevTime      = sameVersion ? (prevScore.time   || null) : null;
-  const prevDeaths    = sameVersion ? (prevScore.deaths || null) : null;
-  const prevKey       = sameVersion ? (prevScore.key    || null) : null;
-
-  // Is this a new personal best? (lower time = better)
-  const isFirstRun = prevTime === null;
-  const isBetter   = isFirstRun || timeMs < prevTime;
-
-  // Build score display with comparison
-  let comparison = '';
-  if (!isFirstRun) {
-    if (isBetter) {
-      comparison = `<br><span style="color:#00ffcc">▲ Record battu ! (ancien : ${campFmtTime(prevTime)}, ${prevDeaths} 💀)</span>`;
-    } else {
-      const diff = timeMs - prevTime;
-      comparison = `<br><span style="color:#663333">Ton record reste ${campFmtTime(prevTime)} — ${prevDeaths} 💀 (${diff > 0 ? '+' + campFmtTime(diff) : ''})</span>`;
-    }
-  }
-
-  scoreEl.innerHTML =
-    `Temps : <span>${campFmtTime(timeMs)}</span>   Morts : <span>${deaths}</span>${comparison}`;
-
-  const camp = CAMPAIGNS[diffId];
-  titleEl.textContent = (isFirstRun ? '🏆 CAMPAGNE TERMINÉE !' : isBetter ? '🏆 NOUVEAU RECORD !' : '💪 CAMPAGNE TERMINÉE !') +
-    ' ' + camp.emoji;
-  statusEl.textContent = '';
-  submitBtn.disabled   = false;
-  pseudoIn.style.display = 'none'; // pseudo now comes from account
+  // Reset overlay state
+  pseudoIn.style.display = 'none';
+  submitBtn.disabled = false;
+  submitBtn.style.opacity = '';
+  submitBtn.style.display = 'none';
+  scoreEl.innerHTML = `Temps : <span>${campFmtTime(timeMs)}</span>   Morts : <span>${deaths}</span>`;
+  titleEl.textContent = '🏆 CAMPAGNE TERMINÉE ! ' + camp.emoji;
 
   // Mode invité — propose de se connecter pour ne pas perdre le score
   if (!currentUser || !currentPseudo) {
@@ -2307,29 +2309,51 @@ async function openFinish(timeMs, deaths) {
     return;
   }
 
+  // Open overlay now while Firebase check runs
+  statusEl.style.color = '#446655';
+  statusEl.textContent = 'Vérification du HOF…';
+  skipBtn.textContent  = 'Passer';
+  overlay.classList.add('open');
+
+  // Fetch best score cross-device (localStorage + Firebase by uid)
+  const prevScore  = await _getAccountBestScore(diffId);
+  const prevTime   = prevScore?.time   ?? null;
+  const prevDeaths = prevScore?.deaths ?? null;
+  const prevKey    = prevScore?.key    ?? null;
+  const isFirstRun = prevTime === null;
+  const isBetter   = isFirstRun || timeMs < prevTime;
+
+  // Update comparison display with real data
+  let comparison = '';
+  if (!isFirstRun) {
+    if (isBetter) {
+      comparison = `<br><span style="color:#00ffcc">▲ Record battu ! (ancien : ${campFmtTime(prevTime)}, ${prevDeaths} 💀)</span>`;
+    } else {
+      const diff = timeMs - prevTime;
+      comparison = `<br><span style="color:#663333">Ton record reste ${campFmtTime(prevTime)} — ${prevDeaths} 💀 (${diff > 0 ? '+' + campFmtTime(diff) : ''})</span>`;
+    }
+  }
+  scoreEl.innerHTML = `Temps : <span>${campFmtTime(timeMs)}</span>   Morts : <span>${deaths}</span>${comparison}`;
+  titleEl.textContent = (isFirstRun ? '🏆 CAMPAGNE TERMINÉE !' : isBetter ? '🏆 NOUVEAU RECORD !' : '💪 CAMPAGNE TERMINÉE !') + ' ' + camp.emoji;
+  statusEl.textContent = '';
+
   // Admin skip invalidates HOF submission
   if (adminSkipped) {
     submitBtn.disabled = true;
     submitBtn.style.opacity = '0.3';
     statusEl.style.color = '#ffaa00';
     statusEl.textContent = '🔑 Run admin — score non soumis au HOF';
-  } else {
-    submitBtn.style.opacity = '';
-  }
-
-  // If not a new record, hide the submit form and just show HOF
-  if (!isBetter) {
+  } else if (!isBetter) {
     submitBtn.style.display = 'none';
     skipBtn.textContent = 'Voir le Hall of Fame';
   } else {
     submitBtn.style.display = '';
+    submitBtn.style.opacity = '';
     submitBtn.textContent = prevKey ? 'METTRE À JOUR LE HOF →' : 'ENTRER AU HOF →';
     skipBtn.textContent = 'Passer';
     statusEl.style.color = '#446655';
     statusEl.textContent = '👤 ' + currentPseudo;
   }
-
-  overlay.classList.add('open');
 
   skipBtn.onclick = () => {
     overlay.classList.remove('open');
