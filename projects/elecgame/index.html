@@ -444,11 +444,30 @@ canvas#bg {
 }
 .auth-google-btn:hover { opacity: 0.88; }
 #auth-logged-in {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 280px;
 }
 #auth-pseudo-display {
-  font-family: 'Courier New', monospace; font-size: 12px;
+  font-family: 'Courier New', monospace; font-size: 13px;
   color: #00ffcc; letter-spacing: 2px;
+}
+#pseudo-edit-row {
+  display: flex; gap: 6px; width: 100%;
+}
+#idx-pseudo-input {
+  flex: 1; background: #0a1a14; border: 1px solid #1a5a3a; color: #00ffcc;
+  font-family: 'Courier New', monospace; font-size: 12px;
+  padding: 7px 10px; letter-spacing: 2px;
+}
+#idx-pseudo-input::placeholder { color: #224433; }
+#idx-pseudo-save {
+  background: #0d2a1e; border: 1px solid #00ffcc; color: #00ffcc;
+  font-family: 'Courier New', monospace; font-size: 14px;
+  padding: 0 14px; cursor: pointer; transition: all 0.15s;
+}
+#idx-pseudo-save:hover { background: #1a4a2e; box-shadow: 0 0 10px #00ffcc44; }
+#idx-pseudo-status {
+  font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px;
+  min-height: 14px; color: #00ffcc;
 }
 #auth-logout-btn {
   background: none; border: 1px solid #1a4535; color: #224433;
@@ -551,6 +570,11 @@ canvas#bg {
       </button>
       <div id="auth-logged-in" style="display:none">
         <span id="auth-pseudo-display"></span>
+        <div id="pseudo-edit-row">
+          <input id="idx-pseudo-input" type="text" maxlength="20" autocomplete="off" placeholder="Ton pseudo…">
+          <button id="idx-pseudo-save">✓</button>
+        </div>
+        <div id="idx-pseudo-status"></div>
         <button id="auth-logout-btn">Se déconnecter</button>
       </div>
     </div>
@@ -613,18 +637,42 @@ function updateIdxAuthUI() {
   const googleBtn = document.getElementById('idx-google-btn');
   const loggedIn  = document.getElementById('auth-logged-in');
   const pseudoEl  = document.getElementById('auth-pseudo-display');
+  const pseudoIn  = document.getElementById('idx-pseudo-input');
+  const statusEl  = document.getElementById('idx-pseudo-status');
   if (_idxUser) {
     warning.style.display   = 'none';
     googleBtn.style.display = 'none';
     loggedIn.style.display  = 'flex';
-    // Pseudo pas encore défini — sera choisi dans le jeu au premier submit HOF
-    pseudoEl.textContent = _idxPseudo ? ('👤 ' + _idxPseudo) : '✓ Connecté — pseudo à définir en jeu';
+    pseudoEl.textContent    = _idxPseudo ? ('👤 ' + _idxPseudo) : '👤 Pas encore de pseudo';
+    pseudoIn.value          = _idxPseudo || '';
+    pseudoIn.placeholder    = _idxPseudo ? 'Modifier le pseudo…' : 'Choisis ton pseudo…';
+    statusEl.textContent    = '';
   } else {
     warning.style.display   = '';
     googleBtn.style.display = '';
     loggedIn.style.display  = 'none';
   }
 }
+
+document.getElementById('idx-pseudo-save').onclick = async () => {
+  const val = document.getElementById('idx-pseudo-input').value.trim();
+  const statusEl = document.getElementById('idx-pseudo-status');
+  const pseudoEl = document.getElementById('auth-pseudo-display');
+  if (val.length < 2) { statusEl.style.color = '#ff4444'; statusEl.textContent = '⚠ Minimum 2 caractères'; return; }
+  statusEl.style.color = '#446655'; statusEl.textContent = 'Enregistrement…';
+  try {
+    const token = await _idxUser.getIdToken();
+    const res = await fetch(`${FB_USERS_URL}/${_idxUser.uid}.json?auth=${token}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pseudo: val })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    _idxPseudo = val;
+    pseudoEl.textContent = '👤 ' + val;
+    statusEl.style.color = '#00ffcc'; statusEl.textContent = '✓ Pseudo enregistré !';
+    setTimeout(() => { statusEl.textContent = ''; }, 2500);
+  } catch(e) { statusEl.style.color = '#ff4444'; statusEl.textContent = '✗ Erreur : ' + e.message; }
+};
 
 document.getElementById('idx-google-btn').onclick = async () => {
   try { await _fbAuth.signInWithPopup(_googleProvider); }
