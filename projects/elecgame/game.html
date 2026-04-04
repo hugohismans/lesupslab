@@ -282,6 +282,19 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     display: flex; align-items: center; gap: 6px;
     font-size: 10px; letter-spacing: 2px;
   }
+  /* ── LEVEL PREVIEW TOOLTIP ──────────────────────────────── */
+  #level-preview {
+    position: fixed;
+    display: none;
+    pointer-events: none;
+    z-index: 450;
+    background: #030a07;
+    border: 1px solid #1a5a3a;
+    box-shadow: 0 0 28px #00ffcc14, inset 0 0 16px #00ffcc06;
+    padding: 7px;
+  }
+  #level-preview canvas { display: block; }
+
   /* Tools section at bottom of sidebar */
   #sidebar-tools {
     border-top: 1px solid #1a5a3a;
@@ -887,6 +900,9 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   </div>
 </div>
 
+<!-- Level preview tooltip -->
+<div id="level-preview"><canvas id="preview-canvas" width="210" height="130"></canvas></div>
+
 <!-- Sidebar backdrop -->
 <div id="sidebar-overlay"></div>
 
@@ -1450,6 +1466,7 @@ function _addCampBtn(lv, lvIdx) {
   const btn = document.createElement('button');
   btn.className = 'lvl-btn';
   btn.textContent = lv.name;
+  btn.dataset.lv = lvIdx;
   btn.onclick = () => {
     if (lv._json === null) {
       fetch(lv._file).then(r => r.json())
@@ -1459,6 +1476,8 @@ function _addCampBtn(lv, lvIdx) {
       selectLevel(lvIdx);
     }
   };
+  btn.addEventListener('mouseenter', () => _previewShow(btn, lvIdx));
+  btn.addEventListener('mouseleave', _previewHide);
   lsDiv.appendChild(btn);
   if (!lv._btns) lv._btns = [];
   lv._btns.push(btn);
@@ -1495,6 +1514,127 @@ for (const [campId, camp] of Object.entries(CAMPAIGNS)) {
     }
   }
 }
+
+// ── LEVEL PREVIEW TOOLTIP ──────────────────────────────────
+(function() {
+  const el  = document.getElementById('level-preview');
+  const cvs = document.getElementById('preview-canvas');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  let _target = -1;
+
+  window._previewHide = function() {
+    _target = -1;
+    el.style.display = 'none';
+  };
+
+  window._previewShow = function(btn, lvIdx) {
+    _target = lvIdx;
+    const lv = LEVELS[lvIdx];
+    if (!lv) return;
+
+    // Position: right of sidebar, vertically centered on button
+    const sRect = document.getElementById('sidebar').getBoundingClientRect();
+    const bRect = btn.getBoundingClientRect();
+    const PH = H + 14;
+    let top = bRect.top + bRect.height / 2 - PH / 2;
+    top = Math.max(8, Math.min(window.innerHeight - PH - 8, top));
+    el.style.left = (sRect.right + 8) + 'px';
+    el.style.top  = top + 'px';
+    el.style.display = 'block';
+
+    if (lv._json) {
+      _render(lv._json);
+    } else if (lv._json === null) {
+      // File-based, not yet fetched — show placeholder and fetch
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#1a4535';
+      ctx.font = '10px Courier New';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('...', W / 2, H / 2);
+      fetch(lv._file).then(r => r.json()).then(json => {
+        lv._json = json;
+        if (json.name) lv.name = json.name;
+        if (_target === lvIdx) _render(json);
+      }).catch(() => {});
+    }
+    // inline levels (no _json prop): no tooltip content — keep hidden
+    else { el.style.display = 'none'; }
+  };
+
+  function _render(json) {
+    ctx.clearRect(0, 0, W, H);
+    if (!json || !json.nodes || !json.edges || !json.nodes.length) return;
+
+    const nodes = json.nodes;
+    const edges = json.edges;
+
+    // Bounding box
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const n of nodes) {
+      if (n.x < x0) x0 = n.x; if (n.x > x1) x1 = n.x;
+      if (n.y < y0) y0 = n.y; if (n.y > y1) y1 = n.y;
+    }
+    const pad = 18;
+    const sc  = Math.min((W - pad * 2) / (x1 - x0 || 1), (H - pad * 2) / (y1 - y0 || 1));
+    const ox  = pad + (W - pad * 2 - (x1 - x0) * sc) / 2;
+    const oy  = pad + (H - pad * 2 - (y1 - y0) * sc) / 2;
+    const px  = x => ox + (x - x0) * sc;
+    const py  = y => oy + (y - y0) * sc;
+
+    // Edges
+    for (const e of edges) {
+      const a = nodes.find(n => n.id === e.from);
+      const b = nodes.find(n => n.id === e.to);
+      if (!a || !b) continue;
+      ctx.beginPath();
+      if (e.wayY != null) {
+        ctx.moveTo(px(a.x), py(a.y));
+        ctx.lineTo(px(a.x), py(e.wayY));
+        ctx.lineTo(px(b.x), py(e.wayY));
+        ctx.lineTo(px(b.x), py(b.y));
+      } else {
+        ctx.moveTo(px(a.x), py(a.y));
+        ctx.lineTo(px(b.x), py(b.y));
+      }
+      ctx.strokeStyle = e.resistance ? '#ff6633' : (e.switch ? '#1a4a3a' : '#00aa66');
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Switch dot on edge midpoint
+      if (e.switch) {
+        const mx = (px(a.x) + px(b.x)) / 2;
+        const my = (py(a.y) + py(b.y)) / 2;
+        ctx.fillStyle = e.switch.initOpen ? '#334433' : '#00cc88';
+        ctx.fillRect(mx - 3, my - 3, 6, 6);
+      }
+    }
+
+    // Nodes
+    for (const n of nodes) {
+      const x = px(n.x), y = py(n.y);
+      ctx.shadowBlur = 0;
+      if (n.type === 'source') {
+        ctx.shadowColor = '#ffcc44'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffcc44'; ctx.fill();
+      } else if (n.type === 'bulb') {
+        ctx.shadowColor = '#00ffcc'; ctx.shadowBlur = 10;
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#00ffcc'; ctx.fill();
+      } else if (n.type === 'teleporter') {
+        ctx.shadowColor = '#4488ff'; ctx.shadowBlur = 6;
+        ctx.fillStyle = '#4488ff';
+        ctx.fillRect(x - 4, y - 4, 8, 8);
+      } else {
+        ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#2a6655'; ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+  }
+})();
 
 // Space spam counter — consumed each frame by resistance logic
 let spacePressCount = 0;
