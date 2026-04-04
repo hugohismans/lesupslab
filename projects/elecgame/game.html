@@ -71,12 +71,18 @@
     display: none;
   }
   #admin-badge.active { display: block; }
-  #skip-btn {
+  #admin-nav {
     position: fixed;
     bottom: 18px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 160;
+    display: none;
+    gap: 6px;
+    align-items: center;
+  }
+  #admin-nav.active { display: flex; }
+  #skip-btn, #prev-btn {
     background: #0a0600;
     border: 1px solid #ffaa0088;
     color: #ffaa00;
@@ -85,11 +91,9 @@
     letter-spacing: 2px;
     padding: 5px 18px;
     cursor: pointer;
-    display: none;
     transition: all 0.15s;
   }
-  #skip-btn:hover { border-color: #ffcc44; color: #ffcc44; box-shadow: 0 0 12px #ffaa0055; }
-  #skip-btn.active { display: block; }
+  #skip-btn:hover, #prev-btn:hover { border-color: #ffcc44; color: #ffcc44; box-shadow: 0 0 12px #ffaa0055; }
 
   /* ── DEATH COUNTER ──────────────────────────────────────── */
   #death-counter {
@@ -671,7 +675,10 @@
 
 <!-- Admin mode -->
 <div id="admin-badge">🔑 admin</div>
-<button id="skip-btn">⏭ SKIP</button>
+<div id="admin-nav">
+  <button id="prev-btn">⏮ PREV</button>
+  <button id="skip-btn">⏭ SKIP</button>
+</div>
 
 <!-- Audio controls -->
 <div id="audio-controls">
@@ -982,7 +989,7 @@ const ADMIN_CODE = 'LESUPS';
 
 function updateAdminUI() {
   document.getElementById('admin-badge').classList.toggle('active', adminMode);
-  document.getElementById('skip-btn').classList.toggle('active', adminMode);
+  document.getElementById('admin-nav').classList.toggle('active', adminMode);
 }
 
 function toggleAdmin() {
@@ -1010,7 +1017,35 @@ function skipLevel() {
   }
 }
 
+function prevLevel() {
+  if (campRunning) adminSkipped = true;
+  const cp = campaignPos();
+  if (cp > 0) {
+    selectLevel._advancing = true;
+    const entry = CAMPAIGN[cp - 1];
+    if (entry.idx !== undefined) {
+      selectLevel(entry.idx);
+    } else {
+      let lvIdx = LEVELS.findIndex(lv => lv._file === entry.file);
+      if (lvIdx < 0) {
+        lvIdx = LEVELS.length;
+        LEVELS.push({ name: entry.file.split('/').pop().replace('.json',''),
+          get hint() { return t('hint.restart'); }, _file: entry.file, _json: null,
+          make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
+        });
+      }
+      const lv = LEVELS[lvIdx];
+      if (lv._json) { selectLevel(lvIdx); }
+      else fetch(lv._file).then(r=>r.json()).then(json=>{ lv._json=json; if(json.name) lv.name=json.name; selectLevel(lvIdx); });
+    }
+  } else {
+    const prev = (currentLevel - 1 + LEVELS.length) % LEVELS.length;
+    selectLevel(prev);
+  }
+}
+
 document.getElementById('skip-btn').addEventListener('click', skipLevel);
+document.getElementById('prev-btn').addEventListener('click', prevLevel);
 
 // Cheat code detector — type LESUPS anywhere (not in inputs)
 document.addEventListener('keydown', e => {
@@ -1861,7 +1896,9 @@ document.addEventListener('keydown', e => {
   keys[k] = true;
   if (e.key === ' ' && !e.repeat) { spacePressCount++; recordKey('keydown', ' '); }
   else if (k !== 'R') recordKey('keydown', k);
-  if (k === 'R' && !(state && state.won)) selectLevel(currentLevel);
+  if (k === 'R' && (!(state && state.won) || adminMode)) selectLevel(currentLevel);
+  if (adminMode && e.key === 'ArrowRight') { e.preventDefault(); skipLevel(); return; }
+  if (adminMode && e.key === 'ArrowLeft')  { e.preventDefault(); prevLevel(); return; }
   resumeAudio();
   if (!humOsc) startHum();
   e.preventDefault();
