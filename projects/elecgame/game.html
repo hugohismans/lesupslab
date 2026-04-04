@@ -1216,9 +1216,9 @@ function selectLevel(idx) {
   document.getElementById('next-level-wrap').style.display = 'none';
   document.getElementById('submit-level-btn').style.display = 'none';
   // Campaign timer: start only from first level; jumping mid-campaign breaks the run
-  const cp = CAMPAIGN.findIndex(c => c.idx !== undefined ? c.idx === idx : false);
+  const cp = campaignPos();
   if (cp === 0) campStart_();
-  else if (cp > 0 && !selectLevel._advancing) campStop(); // direct jump → no HOF
+  else if (!selectLevel._advancing && campRunning) campStop(); // direct jump → no HOF
   selectLevel._advancing = false;
   startRecording();
   if (AC) startHum();
