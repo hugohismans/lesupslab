@@ -3182,17 +3182,18 @@ function drawInductance(edge, nodes, ball) {
     ctx.stroke();
   }
 
-  // Label (always readable)
+  // Label (toujours lisible, jamais retourné)
   ctx.rotate(-angle);
-  if (angle > Math.PI / 2 || angle < -Math.PI / 2) ctx.rotate(Math.PI);
+  const flipped = angle > Math.PI / 2 || angle < -Math.PI / 2;
+  const labelY = flipped ? -18 : 26;
   ctx.shadowBlur = 0;
   ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
   ctx.fillStyle = col;
 
   if (waiting && ball.indWait !== undefined) {
-    ctx.fillText(ball.indWait.toFixed(1) + 's', 0, 26);
+    ctx.fillText(ball.indWait.toFixed(1) + 's', 0, labelY);
   } else {
-    ctx.fillText('L', 0, 26);
+    ctx.fillText('L', 0, labelY);
   }
 
   ctx.restore();
