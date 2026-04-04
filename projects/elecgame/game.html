@@ -1564,7 +1564,8 @@ function openCampSelect() {
     btn.style.borderColor = camp.color;
     btn.style.color = camp.color;
     btn.style.border = '1px solid ' + camp.color;
-    btn.innerHTML = `<span class="camp-emoji">${camp.emoji}</span><span class="camp-name">${camp.name}</span><span class="camp-desc">${camp.desc}</span>`;
+    const n = camp.levels.length;
+    btn.innerHTML = `<span class="camp-emoji">${camp.emoji}</span><span class="camp-name">${camp.name}</span><span class="camp-desc">${n} niveau${n > 1 ? 'x' : ''}</span>`;
     btn.onclick = () => {
       currentCampaignId = id;
       CAMPAIGN = camp.levels;
