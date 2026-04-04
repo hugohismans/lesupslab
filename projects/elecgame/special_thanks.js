@@ -5,7 +5,7 @@ const SPECIAL_THANKS = [
   { pseudo: 'Skunkz', level: 'Testeur' },
   { pseudo: 'Alex', level: 'Testeur' },
   { pseudo: 'AccurateCatFish', level: 'Testeur' },
-  { pseudo: 'KetaKoala', level: 'Createur de niveau' },
+  { pseudo: 'KetaKoala', level: 'créateur de niveau et conseiller' },
   { pseudo: 'Frigolite', level: 'Createur de niveau' },
   { pseudo: 'Philippe 1er (roi des Belges)', level: 'Merci de servir a rien' },
 ];
@@ -16,6 +16,7 @@ function specialThanksColor(level) {
   const r = (level || '').toLowerCase();
   if (r.includes('créateur du jeu') || r.includes('createur du jeu')) return '#ffcc44'; // or
   if (r.includes('créateur de niveau') || r.includes('createur de niveau'))  return '#44ff99'; // vert
+  if (r.includes('créateur de niveau et conseiller') || r.includes('createur de niveau et conseiller'))  return '#ff0000';
   if (r.includes('testeur')) return '#44aaff'; // bleu
   return '#556677'; // gris par défaut
 }
