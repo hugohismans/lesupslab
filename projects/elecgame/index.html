@@ -415,6 +415,41 @@ canvas#bg {
 }
 #editor-link:hover { color: #00ffcc; text-shadow: 0 0 14px #00ffcc88; border-color: #00cc99; }
 
+/* ── AUTH BLOCK (index) ──────────────────────────────────── */
+#auth-block {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  margin-top: 4px;
+}
+#auth-warning {
+  font-family: 'Courier New', monospace;
+  font-size: 11px; letter-spacing: 1px; line-height: 1.7;
+  color: #ff6644; text-align: center;
+  border: 1px solid #ff664433; padding: 8px 14px;
+  background: #1a0800;
+}
+#auth-warning strong { color: #ff4422; letter-spacing: 2px; }
+.auth-google-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #fff; color: #222; border: none;
+  font-family: 'Arial', sans-serif; font-size: 13px; font-weight: 500;
+  padding: 9px 20px; cursor: pointer; border-radius: 3px;
+  transition: opacity 0.15s; width: 100%; max-width: 280px;
+}
+.auth-google-btn:hover { opacity: 0.88; }
+#auth-logged-in {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+}
+#auth-pseudo-display {
+  font-family: 'Courier New', monospace; font-size: 12px;
+  color: #00ffcc; letter-spacing: 2px;
+}
+#auth-logout-btn {
+  background: none; border: 1px solid #1a4535; color: #224433;
+  font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 2px;
+  padding: 4px 10px; cursor: pointer; transition: all 0.15s;
+}
+#auth-logout-btn:hover { color: #ff4444; border-color: #ff444433; }
+
 /* ── AUDIO CONTROLS ──────────────────────────────────────── */
 #audio-controls {
   position: fixed;
@@ -496,6 +531,23 @@ canvas#bg {
     </div>
 
     <button id="play-btn" onclick="startGame()">▶ &nbsp;Jouer</button>
+
+    <!-- Auth block -->
+    <div id="auth-block">
+      <div id="auth-warning">
+        ⚠ Sans connexion, le Hall of Fame n'est pas accessible.<br>
+        <strong>Ton score sera perdu.</strong>
+      </div>
+      <button class="auth-google-btn" id="idx-google-btn">
+        <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Se connecter avec Google
+      </button>
+      <div id="auth-logged-in" style="display:none">
+        <span id="auth-pseudo-display"></span>
+        <button id="auth-logout-btn">Se déconnecter</button>
+      </div>
+    </div>
+
     <a id="editor-link" href="editor.html">éditeur de niveaux →</a>
   </div>
 </div>
@@ -518,6 +570,60 @@ canvas#bg {
 
 <div id="version-badge">v0.0.4</div>
 
+<script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+<script>
+const _fbApp = firebase.initializeApp({
+  apiKey: "AIzaSyANpHcNJeMKN46TZmPUE4Omvw0GNSMD8uI",
+  authDomain: "dieandretry-af391.firebaseapp.com",
+  databaseURL: "https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "dieandretry-af391",
+  storageBucket: "dieandretry-af391.firebasestorage.app",
+  messagingSenderId: "665502914455",
+  appId: "1:665502914455:web:d1f4c373cabca86b8ad6d2"
+});
+const _fbAuth = firebase.auth();
+const _googleProvider = new firebase.auth.GoogleAuthProvider();
+_googleProvider.setCustomParameters({ prompt: 'select_account' });
+const FB_USERS_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
+
+let _idxUser = null, _idxPseudo = null;
+
+_fbAuth.onAuthStateChanged(async user => {
+  _idxUser = user;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`${FB_USERS_URL}/${user.uid}/pseudo.json?auth=${token}`);
+      _idxPseudo = res.ok ? await res.json() : null;
+    } catch { _idxPseudo = null; }
+  } else { _idxPseudo = null; }
+  updateIdxAuthUI();
+});
+
+function updateIdxAuthUI() {
+  const warning   = document.getElementById('auth-warning');
+  const googleBtn = document.getElementById('idx-google-btn');
+  const loggedIn  = document.getElementById('auth-logged-in');
+  const pseudoEl  = document.getElementById('auth-pseudo-display');
+  if (_idxUser && _idxPseudo) {
+    warning.style.display   = 'none';
+    googleBtn.style.display = 'none';
+    loggedIn.style.display  = 'flex';
+    pseudoEl.textContent    = '👤 ' + _idxPseudo;
+  } else {
+    warning.style.display   = '';
+    googleBtn.style.display = '';
+    loggedIn.style.display  = 'none';
+  }
+}
+
+document.getElementById('idx-google-btn').onclick = async () => {
+  try { await _fbAuth.signInWithPopup(_googleProvider); }
+  catch(e) { if (e.code !== 'auth/popup-closed-by-user') console.error(e); }
+};
+document.getElementById('auth-logout-btn').onclick = () => _fbAuth.signOut();
+</script>
 <script src="special_thanks.js"></script>
 <script>
 // ── BACKGROUND : CIRCUIT BOARD ─────────────────────────────
