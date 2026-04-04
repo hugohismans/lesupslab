@@ -1726,16 +1726,23 @@ let currentPseudo = null;  // chosen pseudo (from /users/{uid}/pseudo)
 const FB_USERS_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
 
 // Auth state changes (login / logout)
+let _authReadyResolve = null;
+const authReady = new Promise(r => { _authReadyResolve = r; });
+
 _fbAuth.onAuthStateChanged(async user => {
   currentUser = user;
   if (user) {
-    // Load pseudo from DB (no email/name ever used)
     await loadPseudo(user.uid);
   } else {
     currentPseudo = null;
   }
   updateAuthUI();
+  if (_authReadyResolve) { _authReadyResolve(); _authReadyResolve = null; }
+  // If a pending post-login callback exists, run it now
+  if (_afterLoginCb) { const cb = _afterLoginCb; _afterLoginCb = null; cb(); }
 });
+
+let _afterLoginCb = null;
 
 async function loadPseudo(uid) {
   try {
@@ -1781,16 +1788,15 @@ function openAuthOverlay(mode, onDone) {
       statusEl.textContent = '';
       try {
         await _fbAuth.signInWithPopup(_googleProvider);
-        // onAuthStateChanged will fire and load/check pseudo
-        // Wait a tick then check
-        setTimeout(async () => {
+        // Wait for onAuthStateChanged + loadPseudo to finish
+        _afterLoginCb = () => {
           if (!currentPseudo) {
             openAuthOverlay('pseudo', onDone);
           } else {
             overlay.classList.remove('open');
             if (onDone) onDone();
           }
-        }, 300);
+        };
       } catch(e) {
         if (e.code !== 'auth/popup-closed-by-user') {
           statusEl.textContent = '✗ Erreur de connexion';
@@ -2107,10 +2113,14 @@ async function openFinish(timeMs, deaths) {
     document.getElementById('finish-google-btn').onclick = async () => {
       try {
         await _fbAuth.signInWithPopup(_googleProvider);
-        // Auth state change will update currentUser/currentPseudo
-        await new Promise(r => setTimeout(r, 400));
-        overlay.classList.remove('open');
-        openFinish(timeMs, deaths); // re-open with auth now active
+        _afterLoginCb = () => {
+          overlay.classList.remove('open');
+          if (!currentPseudo) {
+            openAuthOverlay('pseudo', () => openFinish(timeMs, deaths));
+          } else {
+            openFinish(timeMs, deaths);
+          }
+        };
       } catch(e) { if (e.code !== 'auth/popup-closed-by-user') statusEl.textContent = '✗ Erreur de connexion'; }
     };
     return;
