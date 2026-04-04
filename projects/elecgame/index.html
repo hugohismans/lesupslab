@@ -505,6 +505,7 @@ canvas#bg {
   <div class="panel-header">
     <div class="panel-title">🏆 Hall of Fame</div>
     <div class="hof-tabs" id="hof-tabs"></div>
+    <div class="hof-tabs" id="hof-diff-tabs" style="margin-top:4px"></div>
   </div>
   <div class="panel-body" id="ihof-list"></div>
 </div>
@@ -515,7 +516,7 @@ canvas#bg {
   <button class="audio-btn" id="btn-mute-hum" title="Couper le bruit électrique">⚡</button>
 </div>
 
-<div id="version-badge">v0.0.3</div>
+<div id="version-badge">v0.0.4</div>
 
 <script src="special_thanks.js"></script>
 <script>
@@ -919,9 +920,16 @@ function startGame() {
 }
 
 // ── SIDE PANELS ────────────────────────────────────────────
-const HOF_VERSIONS = ['v0_0_3', 'v0_0_2', 'v0_0_1'];
+const HOF_VERSIONS = ['v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1'];
+const HOF_DIFF_META = {
+  bebe:     { label: '🍼 Bébés',     color: '#44ff88' },
+  piquer:   { label: '⚡ Piquer',    color: '#ffaa00' },
+  cauchemar:{ label: '💀 Cauchemar', color: '#ff4466' },
+};
+const HOF_DIFFS = ['bebe', 'piquer', 'cauchemar'];
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
 let hofCurrentVersion = HOF_VERSIONS[0];
+let hofCurrentDiff = 'piquer';
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -944,13 +952,21 @@ function renderSpecials() {
 
 function buildHofTabs() {
   const tabs = document.getElementById('hof-tabs');
-  if (HOF_VERSIONS.length <= 1) {
-    tabs.innerHTML = `<span class="hof-tab active">${HOF_VERSIONS[0].replace(/_/g,'.')}</span>`;
-    return;
-  }
   tabs.innerHTML = HOF_VERSIONS.map(v =>
     `<button class="hof-tab${v === hofCurrentVersion ? ' active' : ''}" onclick="switchHofVersion('${v}')">${v.replace(/_/g,'.')}</button>`
   ).join('');
+  const diffTabs = document.getElementById('hof-diff-tabs');
+  if (hofCurrentVersion === 'v0_0_4') {
+    diffTabs.innerHTML = HOF_DIFFS.map(d => {
+      const meta = HOF_DIFF_META[d];
+      const isAct = d === hofCurrentDiff;
+      return `<button class="hof-tab${isAct ? ' active' : ''}" style="${isAct ? 'color:'+meta.color+';border-bottom-color:'+meta.color : ''}" onclick="switchHofDiff('${d}')">${meta.label}</button>`;
+    }).join('');
+    diffTabs.style.display = '';
+  } else {
+    diffTabs.innerHTML = '';
+    diffTabs.style.display = 'none';
+  }
 }
 
 function switchHofVersion(v) {
@@ -959,11 +975,20 @@ function switchHofVersion(v) {
   renderHOF();
 }
 
+function switchHofDiff(d) {
+  hofCurrentDiff = d;
+  buildHofTabs();
+  renderHOF();
+}
+
 async function renderHOF() {
   const el = document.getElementById('ihof-list');
   el.innerHTML = '<div class="panel-empty">Chargement…</div>';
   try {
-    const res = await fetch(`${FB_URL}/${hofCurrentVersion}.json`);
+    const path = hofCurrentVersion === 'v0_0_4'
+      ? `${FB_URL}/${hofCurrentVersion}/${hofCurrentDiff}.json`
+      : `${FB_URL}/${hofCurrentVersion}.json`;
+    const res = await fetch(path);
     const data = res.ok ? await res.json() : null;
     const entries = data
       ? Object.values(data).sort((a, b) => a.time - b.time).slice(0, 20)

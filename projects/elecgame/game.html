@@ -403,6 +403,45 @@
     50%       { box-shadow: 0 0 36px #00ffccaa, inset 0 0 16px #00ffcc22; }
   }
 
+  /* ── CAMPAIGN SELECTION OVERLAY ─────────────────────────── */
+  #camp-select-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,4,2,0.94);
+    z-index: 600;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 32px;
+  }
+  #camp-select-overlay.open { display: flex; }
+  #camp-select-title {
+    font-family: 'Courier New', monospace;
+    font-size: 15px;
+    letter-spacing: 6px;
+    color: #00ffcc;
+    text-align: center;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  #camp-select-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .camp-select-btn {
+    font-family: 'Courier New', monospace;
+    background: rgba(0,0,0,0.6);
+    cursor: pointer;
+    letter-spacing: 2px;
+    border-radius: 3px;
+    transition: all 0.15s;
+    min-width: 300px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 18px 36px;
+  }
+  .camp-select-btn:hover { transform: scale(1.04); filter: brightness(1.2); }
+  .camp-emoji { font-size: 26px; }
+  .camp-name  { font-size: 14px; font-weight: bold; letter-spacing: 3px; }
+  .camp-desc  { font-size: 10px; opacity: 0.65; letter-spacing: 1px; }
+
   /* ── HOF OVERLAY ─────────────────────────────────────────── */
   #hof-overlay {
     display: none;
@@ -454,6 +493,21 @@
   }
   .hof-tab:hover { color: #00ffcc; background: #0a1a14; }
   .hof-tab.active { color: #00ffcc; background: #0d2218; border-bottom: 2px solid #00ffcc; }
+  #hof-diff-row {
+    display: flex; gap: 0;
+    border-bottom: 1px solid #1a5a3a;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  #hof-diff-row.hidden { display: none; }
+  .hof-diff-tab {
+    background: none; border: none; border-right: 1px solid #1a5a3a;
+    font-family: 'Courier New', monospace; font-size: 11px;
+    letter-spacing: 2px; padding: 7px 14px; cursor: pointer; white-space: nowrap;
+    transition: all 0.12s;
+  }
+  .hof-diff-tab:hover { background: #0a1a14; }
+  .hof-diff-tab.active { background: #0d2218; border-bottom: 2px solid; }
   #hof-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
   #hof-body::-webkit-scrollbar { width: 4px; }
   #hof-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
@@ -691,6 +745,12 @@
 <!-- Language toggle -->
 <button id="lang-toggle">EN</button>
 
+<!-- Campaign selection overlay -->
+<div id="camp-select-overlay">
+  <h2 id="camp-select-title">⚡ Choisir une campagne</h2>
+  <div id="camp-select-btns"></div>
+</div>
+
 <!-- HOF overlay -->
 <div id="hof-overlay">
   <div id="hof-box">
@@ -699,6 +759,7 @@
       <button id="hof-close">✕</button>
     </div>
     <div id="hof-tabs"></div>
+    <div id="hof-diff-row"></div>
     <div id="hof-body"></div>
     <div id="hof-specials">
       <h3>✦ Special Thanks &amp; Content Creators</h3>
@@ -1138,24 +1199,49 @@ const LEVELS = [
   }
 ];
 
-// ── CAMPAIGN SEQUENCE ──────────────────────────────────────
-const CAMPAIGN = [
-  { idx: 0 },  // Tutoriel 1
-  { idx: 1 },  // Tutoriel 2
-  { idx: 2 },  // Tutoriel 3
-  { file: 'levels/gun.json' },              // Le Pistolet — switches Q+P sans résistance
-  { file: 'levels/TUTO4_resistance_eclair.json' },
-  { file: 'levels/tuto5_microprocesseur.json' },
-  { file: 'levels/complex_twoway.json' },
-  { file: 'levels/67.json' },
-  { file: 'levels/levelHard.json' },
-  { file: 'levels/snail.json' },
-  { file: 'levels/Nvidia.json' },
-  { file: 'levels/loic.json' },
-  { file: 'levels/keta.json' },
-
-
-];
+// ── CAMPAIGN DEFINITIONS ───────────────────────────────────
+const CAMPAIGNS = {
+  bebe: {
+    id: 'bebe', name: 'Pour les Bébés', emoji: '🍼',
+    color: '#44ff88', desc: '4 niveaux — parfait pour débuter',
+    levels: [
+      { idx: 0 }, { idx: 1 }, { idx: 2 },
+      { file: 'levels/gun.json' },
+    ]
+  },
+  piquer: {
+    id: 'piquer', name: 'Ça commence à piquer', emoji: '⚡',
+    color: '#ffaa00', desc: '10 niveaux — pour les initiés',
+    levels: [
+      { idx: 0 }, { idx: 1 }, { idx: 2 },
+      { file: 'levels/gun.json' },
+      { file: 'levels/TUTO4_resistance_eclair.json' },
+      { file: 'levels/tuto5_microprocesseur.json' },
+      { file: 'levels/complex_twoway.json' },
+      { file: 'levels/67.json' },
+      { file: 'levels/levelHard.json' },
+      { file: 'levels/snail.json' },
+    ]
+  },
+  cauchemar: {
+    id: 'cauchemar', name: 'Cauchemar', emoji: '💀',
+    color: '#ff4466', desc: '10 niveaux — pour les masochistes',
+    levels: [
+      { file: 'levels/gun.json' },
+      { file: 'levels/TUTO4_resistance_eclair.json' },
+      { file: 'levels/tuto5_microprocesseur.json' },
+      { file: 'levels/complex_twoway.json' },
+      { file: 'levels/67.json' },
+      { file: 'levels/levelHard.json' },
+      { file: 'levels/snail.json' },
+      { file: 'levels/Nvidia.json' },
+      { file: 'levels/loic.json' },
+      { file: 'levels/keta.json' },
+    ]
+  }
+};
+let currentCampaignId = 'piquer'; // active campaign
+let CAMPAIGN = CAMPAIGNS.piquer.levels;  // active campaign array (reassigned on selection)
 
 function campaignPos() {
   const lv = LEVELS[currentLevel];
@@ -1364,16 +1450,44 @@ function updateCampaignHUD() {
   const badge = document.getElementById('campaign-badge');
   const cd    = document.getElementById('camp-death-counter');
   const restartBtn = document.getElementById('restart-camp-btn');
-  if (badge)      badge.classList.toggle('active', campRunning);
+  if (badge) {
+    badge.classList.toggle('active', campRunning);
+    if (campRunning) {
+      const camp = CAMPAIGNS[currentCampaignId];
+      badge.textContent = camp.emoji + ' ' + camp.name.toUpperCase();
+    }
+  }
   if (cd)         cd.classList.toggle('active', campRunning);
   if (restartBtn) restartBtn.style.display = '';
 }
 
-document.getElementById('restart-camp-btn').addEventListener('click', () => {
-  closeMenu();
+function openCampSelect() {
   campStop();
   campRunning = false;
-  selectLevel(CAMPAIGN[0].idx);
+  const overlay = document.getElementById('camp-select-overlay');
+  const btnsEl  = document.getElementById('camp-select-btns');
+  btnsEl.innerHTML = '';
+  for (const [id, camp] of Object.entries(CAMPAIGNS)) {
+    const btn = document.createElement('button');
+    btn.className = 'camp-select-btn';
+    btn.style.borderColor = camp.color;
+    btn.style.color = camp.color;
+    btn.style.border = '1px solid ' + camp.color;
+    btn.innerHTML = `<span class="camp-emoji">${camp.emoji}</span><span class="camp-name">${camp.name}</span><span class="camp-desc">${camp.desc}</span>`;
+    btn.onclick = () => {
+      currentCampaignId = id;
+      CAMPAIGN = camp.levels;
+      overlay.classList.remove('open');
+      goNextCampaign(0);
+    };
+    btnsEl.appendChild(btn);
+  }
+  overlay.classList.add('open');
+}
+
+document.getElementById('restart-camp-btn').addEventListener('click', () => {
+  closeMenu();
+  openCampSelect();
 });
 
 function registerDeath() {
@@ -1522,9 +1636,26 @@ document.getElementById('submit-send').onclick = async () => {
 };
 
 // ── HALL OF FAME ───────────────────────────────────────────
-const HOF_VERSION  = 'v0_0_3';
-const HOF_VERSIONS = ['v0_0_3','v0_0_2', 'v0_0_1']; // add new versions here when they come
+const HOF_VERSION  = 'v0_0_4';
+const HOF_VERSIONS = ['v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1']; // add new versions here
+const HOF_DIFFS    = ['bebe', 'piquer', 'cauchemar']; // difficulties (v0_0_4+)
+const HOF_DIFF_META = {
+  bebe:     { label: '🍼 Bébés',  color: '#44ff88' },
+  piquer:   { label: '⚡ Piquer', color: '#ffaa00' },
+  cauchemar:{ label: '💀 Cauchemar', color: '#ff4466' },
+};
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+
+// Per-campaign score helpers
+function getCampScore(campId) {
+  const save = loadSave();
+  return save['hof_score_' + campId] || null; // { time, deaths, key, version }
+}
+function setCampScore(campId, time, deaths, key) {
+  const obj = {};
+  obj['hof_score_' + campId] = { time, deaths, key, version: HOF_VERSION };
+  writeSave(obj);
+}
 
 
 // ── Campaign timer & run tracking ──────────────────────────
@@ -1577,9 +1708,13 @@ function detectDevice() {
 const DEVICE_ICON = { pc: '🖥️', mobile: '📱', tablet: '📟' };
 
 // ── HOF fetch & display ────────────────────────────────────
-async function hofFetch(version) {
+async function hofFetch(version, diff) {
   try {
-    const res = await fetch(`${FB_URL}/${version}.json`);
+    // v0_0_4+ uses per-difficulty sub-paths; older versions are flat
+    const path = (version === 'v0_0_4' && diff)
+      ? `${FB_URL}/${version}/${diff}.json`
+      : `${FB_URL}/${version}.json`;
+    const res = await fetch(path);
     if (!res.ok) return [];
     const data = await res.json();
     if (!data) return [];
@@ -1615,16 +1750,35 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function hofBuildTabs(activeVersion) {
+function hofBuildTabs(activeVersion, activeDiff) {
+  // Version row
   const tabsEl = document.getElementById('hof-tabs');
   tabsEl.innerHTML = '';
   HOF_VERSIONS.forEach(v => {
     const btn = document.createElement('button');
     btn.className = 'hof-tab' + (v === activeVersion ? ' active' : '');
     btn.textContent = v.replace(/_/g, '.');
-    btn.onclick = () => openHOF(v);
+    btn.onclick = () => openHOF(v, v === 'v0_0_4' ? (activeDiff || currentCampaignId) : null);
     tabsEl.appendChild(btn);
   });
+  // Difficulty row (v0_0_4 only)
+  const diffRow = document.getElementById('hof-diff-row');
+  if (activeVersion === 'v0_0_4') {
+    diffRow.classList.remove('hidden');
+    diffRow.innerHTML = '';
+    HOF_DIFFS.forEach(d => {
+      const meta = HOF_DIFF_META[d];
+      const btn = document.createElement('button');
+      btn.className = 'hof-diff-tab' + (d === activeDiff ? ' active' : '');
+      btn.style.color = d === activeDiff ? meta.color : '#446655';
+      if (d === activeDiff) btn.style.borderBottomColor = meta.color;
+      btn.textContent = meta.label;
+      btn.onclick = () => openHOF(activeVersion, d);
+      diffRow.appendChild(btn);
+    });
+  } else {
+    diffRow.classList.add('hidden');
+  }
 }
 
 function hofBuildSpecials() {
@@ -1640,12 +1794,13 @@ function hofBuildSpecials() {
   ).join('');
 }
 
-async function openHOF(version = HOF_VERSION) {
+async function openHOF(version = HOF_VERSION, diff = null) {
+  if (version === 'v0_0_4' && !diff) diff = currentCampaignId;
   document.getElementById('hof-overlay').classList.add('open');
-  hofBuildTabs(version);
+  hofBuildTabs(version, diff);
   hofBuildSpecials();
   document.getElementById('hof-body').innerHTML = '<div class="hof-loading">Chargement…</div>';
-  const entries = await hofFetch(version);
+  const entries = await hofFetch(version, diff);
   hofRenderBody(entries);
 }
 
@@ -1664,13 +1819,13 @@ async function openFinish(timeMs, deaths) {
   const pseudoIn  = document.getElementById('finish-pseudo');
   const titleEl   = overlay.querySelector('h2');
 
-  // Previous best from localStorage — only valid if same version
-  const save          = loadSave();
-  const savedVersion  = save.hofVersion || null;
-  const sameVersion   = savedVersion === HOF_VERSION;
-  const prevTime      = sameVersion ? (save.hofBestTime   || null) : null;
-  const prevDeaths    = sameVersion ? (save.hofBestDeaths || null) : null;
-  const prevKey       = sameVersion ? (save.hofKey        || null) : null;  // Firebase entry key
+  // Previous best from localStorage — per-campaign, per-version
+  const diffId        = currentCampaignId;
+  const prevScore     = getCampScore(diffId);
+  const sameVersion   = prevScore?.version === HOF_VERSION;
+  const prevTime      = sameVersion ? (prevScore.time   || null) : null;
+  const prevDeaths    = sameVersion ? (prevScore.deaths || null) : null;
+  const prevKey       = sameVersion ? (prevScore.key    || null) : null;
 
   // Is this a new personal best? (lower time = better)
   const isFirstRun = prevTime === null;
@@ -1687,12 +1842,13 @@ async function openFinish(timeMs, deaths) {
     }
   }
 
-  titleEl.textContent = isFirstRun ? '🏆 CAMPAGNE TERMINÉE !' :
-                        isBetter   ? '🏆 NOUVEAU RECORD !'   : '💪 CAMPAGNE TERMINÉE !';
   scoreEl.innerHTML =
     `Temps : <span>${campFmtTime(timeMs)}</span>   Morts : <span>${deaths}</span>${comparison}`;
 
-  pseudoIn.value   = save.hofPseudo || '';
+  const camp = CAMPAIGNS[diffId];
+  titleEl.textContent = (isFirstRun ? '🏆 CAMPAGNE TERMINÉE !' : isBetter ? '🏆 NOUVEAU RECORD !' : '💪 CAMPAGNE TERMINÉE !') +
+    ' ' + camp.emoji;
+  pseudoIn.value   = loadSave().hofPseudo || '';
   statusEl.textContent = '';
   submitBtn.disabled   = false;
 
@@ -1729,14 +1885,15 @@ async function openFinish(timeMs, deaths) {
     submitBtn.disabled = true;
     statusEl.textContent = 'Envoi…';
     writeSave({ hofPseudo: pseudo });
-    const entry = { pseudo, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION, device: detectDevice() };
+    const entry = { pseudo, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION, diff: diffId, device: detectDevice() };
+    const fbBase = `${FB_URL}/${HOF_VERSION}/${diffId}`;
 
     try {
       let key = prevKey;
 
       if (key) {
         // Update existing entry (PUT replaces the node at that key)
-        const res = await fetch(`${FB_URL}/${HOF_VERSION}/${key}.json`, {
+        const res = await fetch(`${fbBase}/${key}.json`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entry)
@@ -1744,7 +1901,7 @@ async function openFinish(timeMs, deaths) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
       } else {
         // First submission — POST creates a new entry with a generated key
-        const res = await fetch(`${FB_URL}/${HOF_VERSION}.json`, {
+        const res = await fetch(`${fbBase}.json`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(entry)
@@ -1754,8 +1911,8 @@ async function openFinish(timeMs, deaths) {
         key = data.name; // Firebase returns { "name": "-generatedKey" }
       }
 
-      // Save the best score, Firebase key and current version locally
-      writeSave({ hofBestTime: timeMs, hofBestDeaths: deaths, hofKey: key, hofVersion: HOF_VERSION });
+      // Save the best score per-campaign
+      setCampScore(diffId, timeMs, deaths, key);
       statusEl.textContent = '✓ Enregistré !';
       setTimeout(() => { overlay.classList.remove('open'); openHOF(); }, 900);
     } catch(err) {
@@ -3818,7 +3975,10 @@ setupTouchBtn('btn-space',   ' ', { isSpace: true });
 setupTouchBtn('btn-restart', null, { isRestart: true });
 
 applyLang();
-if (!new URLSearchParams(location.search).has('test')) selectLevel(0);
+if (!new URLSearchParams(location.search).has('test')) {
+  selectLevel(0); // charge l'état initial (tutoriel 1)
+  openCampSelect(); // puis affiche la sélection de campagne
+}
 loop();
 </script>
 </body>
