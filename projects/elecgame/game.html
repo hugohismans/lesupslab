@@ -4,6 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>ElecGame</title>
+<!-- Firebase Auth (compat — minimal: app + auth only, no DB SDK needed) -->
+<script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js"></script>
+<script>
+const _fbApp  = firebase.initializeApp({
+  apiKey:            "AIzaSyANpHcNJeMKN46TZmPUE4Omvw0GNSMD8uI",
+  authDomain:        "dieandretry-af391.firebaseapp.com",
+  databaseURL:       "https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "dieandretry-af391",
+  storageBucket:     "dieandretry-af391.firebasestorage.app",
+  messagingSenderId: "665502914455",
+  appId:             "1:665502914455:web:d1f4c373cabca86b8ad6d2"
+});
+const _fbAuth = firebase.auth();
+// Minimal scope — uid only, no email/name requested beyond what Google requires
+const _googleProvider = new firebase.auth.GoogleAuthProvider();
+_googleProvider.setCustomParameters({ prompt: 'select_account' });
+</script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -403,6 +421,57 @@
     50%       { box-shadow: 0 0 36px #00ffccaa, inset 0 0 16px #00ffcc22; }
   }
 
+  /* ── AUTH OVERLAY ────────────────────────────────────────── */
+  #auth-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,4,2,0.93); z-index: 700;
+    align-items: center; justify-content: center; flex-direction: column; gap: 20px;
+  }
+  #auth-overlay.open { display: flex; }
+  #auth-box {
+    background: #05090a; border: 1px solid #00ffcc33;
+    box-shadow: 0 0 40px #00ffcc11;
+    width: min(360px, 94vw); padding: 32px 28px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    font-family: 'Courier New', monospace;
+  }
+  #auth-box h2 {
+    font-size: 13px; letter-spacing: 4px; color: #00ffcc;
+    text-transform: uppercase; margin: 0; text-align: center;
+  }
+  #auth-box p { font-size: 11px; color: #446655; text-align: center; line-height: 1.6; letter-spacing: 1px; }
+  #auth-box p.guest-note { color: #224433; font-size: 10px; }
+  .auth-google-btn {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; color: #222; border: none;
+    font-family: 'Arial', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 10px 20px; cursor: pointer; border-radius: 3px;
+    transition: opacity 0.15s; width: 100%; justify-content: center;
+  }
+  .auth-google-btn:hover { opacity: 0.88; }
+  .auth-google-btn svg { flex-shrink: 0; }
+  .auth-skip-btn {
+    background: none; border: none; color: #224433;
+    font-family: 'Courier New', monospace; font-size: 11px;
+    letter-spacing: 2px; cursor: pointer; text-decoration: underline;
+    padding: 4px;
+  }
+  .auth-skip-btn:hover { color: #446655; }
+  #pseudo-input {
+    background: #0a1a14; border: 1px solid #1a5a3a; color: #00ffcc;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    padding: 8px 12px; width: 100%; letter-spacing: 2px; text-align: center;
+  }
+  #pseudo-input::placeholder { color: #224433; }
+  .auth-submit-btn {
+    background: #0d2a1e; border: 1px solid #00ffcc; color: #00ffcc;
+    font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 3px;
+    padding: 10px 24px; cursor: pointer; width: 100%;
+    transition: all 0.15s;
+  }
+  .auth-submit-btn:hover { background: #1a4a2e; box-shadow: 0 0 12px #00ffcc33; }
+  #auth-status { font-size: 11px; color: #ff4444; min-height: 16px; letter-spacing: 1px; }
+
   /* ── CAMPAIGN SELECTION OVERLAY ─────────────────────────── */
   #camp-select-overlay {
     display: none;
@@ -745,6 +814,21 @@
 <!-- Language toggle -->
 <button id="lang-toggle">EN</button>
 
+<!-- Auth overlay (login + pseudo creation) -->
+<div id="auth-overlay">
+  <div id="auth-box">
+    <h2 id="auth-title">🏆 Hall of Fame</h2>
+    <p id="auth-desc">Connecte-toi pour soumettre ton score.<br>Seul un pseudo de ton choix sera visible — jamais ton nom réel.</p>
+    <button class="auth-google-btn" id="auth-google-btn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuer avec Google
+    </button>
+    <p class="guest-note" id="auth-guest-note">ou</p>
+    <button class="auth-skip-btn" id="auth-guest-btn">Jouer en mode invité (HOF désactivé)</button>
+    <div id="auth-status"></div>
+  </div>
+</div>
+
 <!-- Campaign selection overlay -->
 <div id="camp-select-overlay">
   <h2 id="camp-select-title">⚡ Choisir une campagne</h2>
@@ -796,6 +880,7 @@
     <div id="hint"></div>
     <div id="replay-save-wrap" style="display:none;"></div>
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
+      <button class="replay-btn" id="auth-sidebar-btn" style="border-color:#4488ff;color:#4488ff">👤 Connexion</button>
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
       <button class="replay-btn" id="restart-camp-btn" style="border-color:#00cc99;color:#00cc99;display:none">↩ Recommencer campagne</button>
       <a href="index.html" style="display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;color:#224433;text-decoration:none;padding:8px 14px;border:1px solid #1a4535;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='#00ffcc';this.style.borderColor='#336655'" onmouseout="this.style.color='#224433';this.style.borderColor='#1a4535'">⌂ Accueil</a>
@@ -1635,6 +1720,151 @@ document.getElementById('submit-send').onclick = async () => {
   }
 };
 
+// ── AUTH ───────────────────────────────────────────────────
+let currentUser  = null;   // firebase user object or null
+let currentPseudo = null;  // chosen pseudo (from /users/{uid}/pseudo)
+const FB_USERS_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
+
+// Auth state changes (login / logout)
+_fbAuth.onAuthStateChanged(async user => {
+  currentUser = user;
+  if (user) {
+    // Load pseudo from DB (no email/name ever used)
+    await loadPseudo(user.uid);
+  } else {
+    currentPseudo = null;
+  }
+  updateAuthUI();
+});
+
+async function loadPseudo(uid) {
+  try {
+    const token = await currentUser.getIdToken();
+    const res = await fetch(`${FB_USERS_URL}/${uid}/pseudo.json?auth=${token}`);
+    const data = res.ok ? await res.json() : null;
+    currentPseudo = data || null;
+  } catch { currentPseudo = null; }
+}
+
+async function savePseudo(uid, pseudo) {
+  const token = await currentUser.getIdToken();
+  await fetch(`${FB_USERS_URL}/${uid}.json?auth=${token}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pseudo })
+  });
+  currentPseudo = pseudo;
+}
+
+// Show/hide auth overlay — mode: 'login' or 'pseudo'
+function openAuthOverlay(mode, onDone) {
+  const overlay   = document.getElementById('auth-overlay');
+  const title     = document.getElementById('auth-title');
+  const desc      = document.getElementById('auth-desc');
+  const googleBtn = document.getElementById('auth-google-btn');
+  const guestNote = document.getElementById('auth-guest-note');
+  const guestBtn  = document.getElementById('auth-guest-btn');
+  const statusEl  = document.getElementById('auth-status');
+  statusEl.textContent = '';
+
+  if (mode === 'login') {
+    title.textContent = '🏆 Hall of Fame';
+    desc.textContent  = 'Connecte-toi pour soumettre ton score.\nSeul un pseudo de ton choix sera visible — jamais ton nom réel.';
+    googleBtn.style.display = '';
+    guestNote.style.display = '';
+    guestBtn.style.display  = '';
+    // Remove pseudo input if present
+    const pi = document.getElementById('auth-pseudo-wrap');
+    if (pi) pi.remove();
+
+    googleBtn.onclick = async () => {
+      statusEl.textContent = '';
+      try {
+        await _fbAuth.signInWithPopup(_googleProvider);
+        // onAuthStateChanged will fire and load/check pseudo
+        // Wait a tick then check
+        setTimeout(async () => {
+          if (!currentPseudo) {
+            openAuthOverlay('pseudo', onDone);
+          } else {
+            overlay.classList.remove('open');
+            if (onDone) onDone();
+          }
+        }, 300);
+      } catch(e) {
+        if (e.code !== 'auth/popup-closed-by-user') {
+          statusEl.textContent = '✗ Erreur de connexion';
+        }
+      }
+    };
+    guestBtn.onclick = () => { overlay.classList.remove('open'); };
+
+  } else if (mode === 'pseudo') {
+    title.textContent = '👤 Choisis ton pseudo';
+    desc.textContent  = 'Ce pseudo sera visible dans le Hall of Fame.\nTon vrai nom ne sera jamais utilisé ni affiché.';
+    googleBtn.style.display = 'none';
+    guestNote.style.display = 'none';
+    guestBtn.style.display  = 'none';
+
+    // Build pseudo input
+    let wrap = document.getElementById('auth-pseudo-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'auth-pseudo-wrap';
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;width:100%';
+      wrap.innerHTML = `
+        <input id="pseudo-input" type="text" maxlength="20" placeholder="Ton pseudo (2–20 caractères)" autocomplete="off">
+        <button class="auth-submit-btn" id="pseudo-submit-btn">VALIDER →</button>`;
+      statusEl.before(wrap);
+    }
+    document.getElementById('pseudo-submit-btn').onclick = async () => {
+      const val = document.getElementById('pseudo-input').value.trim();
+      if (val.length < 2) { statusEl.textContent = '⚠ Minimum 2 caractères'; return; }
+      statusEl.textContent = 'Enregistrement…';
+      try {
+        await savePseudo(currentUser.uid, val);
+        overlay.classList.remove('open');
+        if (onDone) onDone();
+      } catch { statusEl.textContent = '✗ Erreur — réessaie'; }
+    };
+  }
+
+  overlay.classList.add('open');
+}
+
+function closeAuthOverlay() {
+  document.getElementById('auth-overlay').classList.remove('open');
+}
+
+// Ensure user is logged in + has pseudo, then call onDone
+async function requireAuth(onDone) {
+  if (currentUser && currentPseudo) { onDone(); return; }
+  if (currentUser && !currentPseudo) { openAuthOverlay('pseudo', onDone); return; }
+  openAuthOverlay('login', onDone);
+}
+
+function updateAuthUI() {
+  const btn = document.getElementById('auth-sidebar-btn');
+  if (!btn) return;
+  if (currentUser && currentPseudo) {
+    btn.textContent = '👤 ' + currentPseudo;
+    btn.style.borderColor = '#00ffcc';
+    btn.style.color = '#00ffcc';
+    btn.onclick = () => {
+      if (confirm('Se déconnecter ?')) _fbAuth.signOut();
+    };
+  } else {
+    btn.textContent = '👤 Connexion';
+    btn.style.borderColor = '#4488ff';
+    btn.style.color = '#4488ff';
+    btn.onclick = () => { closeMenu(); openAuthOverlay('login', null); };
+  }
+}
+
+document.getElementById('auth-sidebar-btn').onclick = () => {
+  closeMenu(); openAuthOverlay('login', null);
+};
+
 // ── HALL OF FAME ───────────────────────────────────────────
 const HOF_VERSION  = 'v0_0_4';
 const HOF_VERSIONS = ['v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1']; // add new versions here
@@ -1806,7 +2036,10 @@ async function openHOF(version = HOF_VERSION, diff = null) {
 
 document.getElementById('hof-close').onclick = () =>
   document.getElementById('hof-overlay').classList.remove('open');
-document.getElementById('hof-open-btn').onclick = () => { closeMenu(); openHOF(); };
+document.getElementById('hof-open-btn').onclick = () => {
+  closeMenu();
+  requireAuth(() => openHOF());
+};
 
 
 // ── Finish overlay (campaign complete) ─────────────────────
@@ -1848,9 +2081,21 @@ async function openFinish(timeMs, deaths) {
   const camp = CAMPAIGNS[diffId];
   titleEl.textContent = (isFirstRun ? '🏆 CAMPAGNE TERMINÉE !' : isBetter ? '🏆 NOUVEAU RECORD !' : '💪 CAMPAGNE TERMINÉE !') +
     ' ' + camp.emoji;
-  pseudoIn.value   = loadSave().hofPseudo || '';
   statusEl.textContent = '';
   submitBtn.disabled   = false;
+  pseudoIn.style.display = 'none'; // pseudo now comes from account
+
+  // Mode invité — HOF non disponible
+  if (!currentUser || !currentPseudo) {
+    submitBtn.style.display = 'none';
+    pseudoIn.style.display  = 'none';
+    skipBtn.textContent = '← Retour';
+    statusEl.style.color = '#446655';
+    statusEl.textContent = '🔒 Mode invité — Hall of Fame non disponible';
+    overlay.classList.add('open');
+    skipBtn.onclick = () => { overlay.classList.remove('open'); };
+    return;
+  }
 
   // Admin skip invalidates HOF submission
   if (adminSkipped) {
@@ -1865,53 +2110,46 @@ async function openFinish(timeMs, deaths) {
   // If not a new record, hide the submit form and just show HOF
   if (!isBetter) {
     submitBtn.style.display = 'none';
-    pseudoIn.style.display  = 'none';
     skipBtn.textContent = 'Voir le Hall of Fame';
   } else {
     submitBtn.style.display = '';
-    pseudoIn.style.display  = '';
     submitBtn.textContent = prevKey ? 'METTRE À JOUR LE HOF →' : 'ENTRER AU HOF →';
     skipBtn.textContent = 'Passer';
+    statusEl.style.color = '#446655';
+    statusEl.textContent = '👤 ' + currentPseudo;
   }
 
   overlay.classList.add('open');
-  if (isBetter) setTimeout(() => pseudoIn.focus(), 80);
 
-  skipBtn.onclick = () => { overlay.classList.remove('open'); openHOF(); };
+  skipBtn.onclick = () => {
+    overlay.classList.remove('open');
+    requireAuth(() => openHOF());
+  };
 
   submitBtn.onclick = async () => {
-    const pseudo = pseudoIn.value.trim();
-    if (!pseudo) { statusEl.textContent = '⚠ Entre un pseudo !'; return; }
     submitBtn.disabled = true;
     statusEl.textContent = 'Envoi…';
-    writeSave({ hofPseudo: pseudo });
-    const entry = { pseudo, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION, diff: diffId, device: detectDevice() };
-    const fbBase = `${FB_URL}/${HOF_VERSION}/${diffId}`;
-
     try {
+      const token  = await currentUser.getIdToken();
+      const pseudo = currentPseudo;
+      const entry  = { pseudo, uid: currentUser.uid, time: timeMs, deaths, ts: Date.now(), version: HOF_VERSION, diff: diffId, device: detectDevice() };
+      const fbBase = `${FB_URL}/${HOF_VERSION}/${diffId}`;
       let key = prevKey;
 
       if (key) {
-        // Update existing entry (PUT replaces the node at that key)
-        const res = await fetch(`${fbBase}/${key}.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(entry)
+        const res = await fetch(`${fbBase}/${key}.json?auth=${token}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry)
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
       } else {
-        // First submission — POST creates a new entry with a generated key
-        const res = await fetch(`${fbBase}.json`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(entry)
+        const res = await fetch(`${fbBase}.json?auth=${token}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry)
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        key = data.name; // Firebase returns { "name": "-generatedKey" }
+        key = data.name;
       }
 
-      // Save the best score per-campaign
       setCampScore(diffId, timeMs, deaths, key);
       statusEl.textContent = '✓ Enregistré !';
       setTimeout(() => { overlay.classList.remove('open'); openHOF(); }, 900);
