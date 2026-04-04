@@ -1,3 +1,22 @@
+// =============================================
+// BULLE FORMATION — mettre null pour masquer
+// =============================================
+const PROCHAINE_FORMATION = {
+  texte: "Prochaine formation · 22 avril",
+  lien: "https://calendly.com/hugo-hismans",
+};
+// const PROCHAINE_FORMATION = null; // ← décommenter pour masquer la bulle
+
+if (PROCHAINE_FORMATION) {
+  const bulle = document.createElement('a');
+  bulle.href = PROCHAINE_FORMATION.lien;
+  bulle.target = '_blank';
+  bulle.rel = 'noopener noreferrer';
+  bulle.className = 'formation-bulle';
+  bulle.innerHTML = `<span class="formation-bulle-dot"></span>${PROCHAINE_FORMATION.texte} →`;
+  document.body.appendChild(bulle);
+}
+
 // Mobile nav toggle
 const toggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
