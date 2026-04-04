@@ -613,11 +613,12 @@ function updateIdxAuthUI() {
   const googleBtn = document.getElementById('idx-google-btn');
   const loggedIn  = document.getElementById('auth-logged-in');
   const pseudoEl  = document.getElementById('auth-pseudo-display');
-  if (_idxUser && _idxPseudo) {
+  if (_idxUser) {
     warning.style.display   = 'none';
     googleBtn.style.display = 'none';
     loggedIn.style.display  = 'flex';
-    pseudoEl.textContent    = '👤 ' + _idxPseudo;
+    // Pseudo pas encore défini — sera choisi dans le jeu au premier submit HOF
+    pseudoEl.textContent = _idxPseudo ? ('👤 ' + _idxPseudo) : '✓ Connecté — pseudo à définir en jeu';
   } else {
     warning.style.display   = '';
     googleBtn.style.display = '';
