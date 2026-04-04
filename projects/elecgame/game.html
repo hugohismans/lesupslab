@@ -1352,12 +1352,13 @@ function updateCampaignHUD() {
   const restartBtn = document.getElementById('restart-camp-btn');
   if (badge)      badge.classList.toggle('active', campRunning);
   if (cd)         cd.classList.toggle('active', campRunning);
-  if (restartBtn) restartBtn.style.display = campRunning ? '' : 'none';
+  if (restartBtn) restartBtn.style.display = '';
 }
 
 document.getElementById('restart-camp-btn').addEventListener('click', () => {
   closeMenu();
-  selectLevel._advancing = false;
+  campStop();
+  campRunning = false;
   selectLevel(CAMPAIGN[0].idx);
 });
 
