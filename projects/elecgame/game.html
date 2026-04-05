@@ -836,15 +836,15 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   .hof-tab.active { color: #00ffcc; background: #0d2218; border-bottom: 2px solid #00ffcc; }
   #hof-diff-row {
     display: flex; gap: 0;
-    border-bottom: 1px solid #1a5a3a;
+    flex-wrap: wrap;
     flex-shrink: 0;
-    overflow-x: auto;
   }
   #hof-diff-row.hidden { display: none; }
   .hof-diff-tab {
     background: none; border: none; border-right: 1px solid #1a5a3a;
+    border-bottom: 1px solid #1a5a3a;
     font-family: 'Courier New', monospace; font-size: 11px;
-    letter-spacing: 2px; padding: 7px 14px; cursor: pointer; white-space: nowrap;
+    letter-spacing: 1px; padding: 7px 12px; cursor: pointer; white-space: nowrap;
     transition: all 0.12s;
   }
   .hof-diff-tab:hover { background: #0a1a14; }
@@ -2454,9 +2454,9 @@ const HOF_DIFF_META = {
   bebe:          { label: '🍼 Bébés',          color: '#44ff88' },
   piquer:        { label: '⚡ Piquer',          color: '#ffaa00' },
   cauchemar:     { label: '💀 Cauchemar',       color: '#ff4466' },
-  bebe_inv:      { label: '🔄 Bébés Miroir',    color: '#99ffcc' },
-  piquer_inv:    { label: '🔄 Piquer Miroir',   color: '#ffcc66' },
-  cauchemar_inv: { label: '🔄 Cauchemar Miroir',color: '#ff88aa' },
+  bebe_inv:      { label: '🔄 Bébés',     color: '#99ffcc' },
+  piquer_inv:    { label: '🔄 Piquer',    color: '#ffcc66' },
+  cauchemar_inv: { label: '🔄 Cauchemar', color: '#ff88aa' },
 };
 // Retourne le diffId effectif selon le mode miroir actif
 function _diffId() { return currentCampaignId + (invertControls ? '_inv' : ''); }
@@ -2594,11 +2594,11 @@ function hofBuildTabs(activeVersion, activeDiff) {
     diffRow.classList.remove('hidden');
     diffRow.innerHTML = '';
     HOF_DIFFS.forEach(d => {
-      // Séparateur visuel entre normal et miroir
+      // Retour à la ligne entre normal et miroir
       if (d === 'bebe_inv') {
-        const sep = document.createElement('span');
-        sep.style.cssText = 'width:1px;background:#1a3a2a;margin:4px 2px;flex-shrink:0';
-        diffRow.appendChild(sep);
+        const br = document.createElement('div');
+        br.style.cssText = 'flex-basis:100%;height:0;border-top:1px solid #0d2a1a';
+        diffRow.appendChild(br);
       }
       const meta = HOF_DIFF_META[d];
       const btn = document.createElement('button');
