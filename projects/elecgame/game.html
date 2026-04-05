@@ -2418,7 +2418,7 @@ function registerDeath() {
     updateSurvivalHUD();
     if (survivalLives <= 0) setTimeout(() => { if (survivalRunning) endSurvival(); }, 900);
   }
-  checkAchievements('death');
+  if (!adminMode) checkAchievements('death');
   updateDeathDisplay();
   const el = document.getElementById('death-counter');
   if (el) {
@@ -2882,10 +2882,12 @@ function endSurvival() {
   survivalRunning = false;
   updateSurvivalHUD();
   // Achievements survie
-  if (survivalScore >= 5)  unlockAchievement('survie_5');
-  if (survivalScore >= 10) unlockAchievement('survie_10');
-  if (survivalScore >= 20) unlockAchievement('survie_20');
-  if (survivalScore >= 50) unlockAchievement('survie_50');
+  if (!adminMode) {
+    if (survivalScore >= 5)  unlockAchievement('survie_5');
+    if (survivalScore >= 10) unlockAchievement('survie_10');
+    if (survivalScore >= 20) unlockAchievement('survie_20');
+    if (survivalScore >= 50) unlockAchievement('survie_50');
+  }
   // Show game over overlay
   _openSurvivalGameOver();
 }
@@ -5679,8 +5681,8 @@ function loop(timestamp) {
     if (survivalRunning) {
       survivalScore++;
       survivalStreak++;
-      if (survivalStreak >= 3) unlockAchievement('survie_deathless');
-      if (survivalLives === 1) unlockAchievement('survie_comeback');
+      if (!adminMode && survivalStreak >= 3) unlockAchievement('survie_deathless');
+      if (!adminMode && survivalLives === 1) unlockAchievement('survie_comeback');
       updateSurvivalHUD();
       nlBtn.style.display = 'none';
       nlWrap.style.display = 'none';
