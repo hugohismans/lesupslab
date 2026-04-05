@@ -768,6 +768,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     position: fixed; inset: 0; z-index: 750;
     flex-direction: column; align-items: center; justify-content: center;
     gap: 16px; pointer-events: none;
+    background: transparent;
   }
   #gg-overlay.active { display: flex; }
   #gg-canvas {
@@ -2433,8 +2434,7 @@ function startGGCelebration(finalTime, finalDeaths, camp) {
     lastT = now;
     elapsed += dt;
 
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(0, 0, cvs.width, cvs.height);
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
 
     // Spawn rockets periodically
     if (elapsed < 5 && Math.random() < dt * 3.5) spawnRocket();
