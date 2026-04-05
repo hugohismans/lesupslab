@@ -762,6 +762,92 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   .invert-toggle-label { font-size: 11px; }
   .invert-toggle-keys  { font-size: 13px; letter-spacing: 1px; opacity: 0.7; }
 
+  /* ── ACHIEVEMENTS ────────────────────────────────────────── */
+  #ach-toast {
+    position: fixed;
+    bottom: 24px; right: 18px;
+    z-index: 900;
+    background: #081a12;
+    border: 1px solid #00ffcc55;
+    box-shadow: 0 0 20px #00ffcc22;
+    padding: 12px 16px;
+    font-family: 'Courier New', monospace;
+    max-width: 260px;
+    border-radius: 4px;
+    display: flex; gap: 12px; align-items: flex-start;
+    transform: translateX(320px);
+    transition: transform 0.35s cubic-bezier(0.22,1,0.36,1);
+    pointer-events: none;
+  }
+  #ach-toast.show { transform: translateX(0); }
+  #ach-toast-emoji { font-size: 24px; flex-shrink: 0; line-height: 1.2; }
+  #ach-toast-body { display: flex; flex-direction: column; gap: 2px; }
+  #ach-toast-header { font-size: 8px; letter-spacing: 3px; color: #00ffcc; opacity: 0.6; text-transform: uppercase; }
+  #ach-toast-name { font-size: 12px; letter-spacing: 1px; color: #00ffcc; font-weight: bold; }
+  #ach-toast-desc { font-size: 9px; letter-spacing: 1px; color: #3a7a5a; line-height: 1.5; }
+
+  #ach-overlay {
+    display: none; position: fixed; inset: 0; z-index: 650;
+    background: rgba(2,8,6,0.96);
+    align-items: center; justify-content: center;
+  }
+  #ach-overlay.open { display: flex; }
+  #ach-box {
+    background: #05120d;
+    border: 1px solid #1a5a3a;
+    width: min(480px, 94vw);
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #ach-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #1a5a3a;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    letter-spacing: 4px; color: #00ffcc;
+  }
+  #ach-close {
+    background: none; border: none; color: #446655; font-size: 16px;
+    cursor: pointer; font-family: 'Courier New', monospace;
+  }
+  #ach-close:hover { color: #00ffcc; }
+  #ach-progress {
+    padding: 8px 18px 12px;
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 2px; color: #2a6a4a;
+    border-bottom: 1px solid #0d2a1a;
+  }
+  #ach-list {
+    overflow-y: auto; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  #ach-list::-webkit-scrollbar { width: 4px; }
+  #ach-list::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
+  .ach-item {
+    display: grid; grid-template-columns: 36px 1fr;
+    gap: 10px; align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #0d2a1a; border-radius: 3px;
+    background: #060f0a;
+    transition: border-color 0.15s;
+  }
+  .ach-item.unlocked { border-color: #1a4535; background: #071510; }
+  .ach-item.unlocked:hover { border-color: #2a6650; }
+  .ach-emoji { font-size: 22px; text-align: center; }
+  .ach-item:not(.unlocked) .ach-emoji { filter: grayscale(1); opacity: 0.3; }
+  .ach-info { display: flex; flex-direction: column; gap: 2px; }
+  .ach-name {
+    font-family: 'Courier New', monospace; font-size: 11px;
+    letter-spacing: 1px; color: #446655;
+  }
+  .ach-item.unlocked .ach-name { color: #00ddaa; }
+  .ach-desc {
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 1px; color: #1a4535; line-height: 1.5;
+  }
+  .ach-item.unlocked .ach-desc { color: #2a6a4a; }
+
   /* ── LOADING OVERLAY ─────────────────────────────────────── */
   #loading-overlay {
     display: none;
@@ -1157,6 +1243,25 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   </div>
 </div>
 
+<!-- Achievement toast -->
+<div id="ach-toast">
+  <div id="ach-toast-emoji">🏅</div>
+  <div id="ach-toast-body">
+    <div id="ach-toast-header">HAUT-FAIT DÉBLOQUÉ</div>
+    <div id="ach-toast-name"></div>
+    <div id="ach-toast-desc"></div>
+  </div>
+</div>
+
+<!-- Achievement overlay -->
+<div id="ach-overlay">
+  <div id="ach-box">
+    <div id="ach-header">🏅 HAUTS-FAITS <button id="ach-close">✕</button></div>
+    <div id="ach-progress"></div>
+    <div id="ach-list"></div>
+  </div>
+</div>
+
 <!-- Loading overlay -->
 <div id="loading-overlay">
   <div id="loading-spinner"></div>
@@ -1224,6 +1329,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
       <button class="invert-toggle" id="invert-btn-sidebar"><span class="toggle-pip"></span>Mode miroir Q↔P</button>
       <button class="replay-btn" id="launch-camp-btn" style="border-color:#00cc99;color:#00cc99">⚡ Choisir une campagne</button>
+      <button class="replay-btn" id="ach-open-btn" style="border-color:#aa66ff;color:#aa66ff">🏅 Hauts-Faits</button>
       <button class="replay-btn" id="auth-sidebar-btn" style="border-color:#4488ff;color:#4488ff">👤 Connexion</button>
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
       <a href="index.html" style="display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;color:#224433;text-decoration:none;padding:8px 14px;border:1px solid #1a4535;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='#00ffcc';this.style.borderColor='#336655'" onmouseout="this.style.color='#224433';this.style.borderColor='#1a4535'">⌂ Accueil</a>
@@ -2072,6 +2178,7 @@ function registerDeath() {
   deathCount++;
   writeSave({ deaths: deathCount });
   if (campRunning) campDeaths++;
+  checkAchievements('death');
   updateDeathDisplay();
   const el = document.getElementById('death-counter');
   if (el) {
@@ -2194,6 +2301,111 @@ function _fetchLevel(lv, onSuccess) {
   };
   doFetch();
 }
+
+// ── HAUTS-FAITS (ACHIEVEMENTS) ─────────────────────────────
+
+const ACHIEVEMENTS = [
+  // — Morts —
+  { id:'first_death',      emoji:'💀', name:'Premier choc',          desc:'Mourir pour la première fois' },
+  { id:'centurion',        emoji:'⚡', name:'Paratonnerre',           desc:'Cumuler 100 morts au total' },
+  // — Campagnes —
+  { id:'bebe_won',         emoji:'🍼', name:'Apprenti électricien',   desc:'Terminer la campagne "Pour les Bébés"' },
+  { id:'piquer_won',       emoji:'⚡', name:'Résistance vaincue',     desc:'Terminer la campagne "Ça commence à piquer"' },
+  { id:'cauchemar_won',    emoji:'💀', name:'Survivant',              desc:'Terminer la campagne "Cauchemar"' },
+  // — Sans mourir —
+  { id:'bebe_deathless',   emoji:'🕊️', name:'Biberon propre',         desc:'Terminer "Pour les Bébés" sans mourir' },
+  { id:'piquer_deathless', emoji:'🛡️', name:'Intouchable',            desc:'Terminer "Piquer" sans mourir' },
+  { id:'cauchemar_deathless', emoji:'👑', name:'Dieu du circuit',     desc:'Terminer "Cauchemar" sans mourir' },
+  // — Vitesse —
+  { id:'bebe_speed',       emoji:'⏱️', name:'Court-circuit',          desc:'Terminer "Bébés" en moins de 3 minutes' },
+  { id:'cauchemar_speed',  emoji:'🏎️', name:'Vitesse de la lumière',  desc:'Terminer "Cauchemar" en moins de 15 minutes' },
+  // — Miroir —
+  { id:'mirror_won',       emoji:'🔄', name:'Monde à l\'envers',      desc:'Terminer une campagne en mode miroir' },
+  { id:'cauchemar_mirror', emoji:'🌀', name:'Dimension inversée',     desc:'Terminer "Cauchemar" en mode miroir' },
+  { id:'cauchemar_mirror_deathless', emoji:'🌟', name:'Au-delà du réel', desc:'Terminer "Cauchemar" en mode miroir sans mourir' },
+];
+
+const _ACH_LS = 'elecgame_achievements';
+let _achDone  = new Set(JSON.parse(localStorage.getItem(_ACH_LS) || '[]'));
+
+// Résultat de la dernière campagne terminée (set dans openFinish)
+let _lastCamp = null; // { campId, deaths, time, inv }
+
+// — Toast —
+let _toastQueue = [];
+let _toastBusy  = false;
+function _showToast(ach) {
+  _toastQueue.push(ach);
+  if (!_toastBusy) _nextToast();
+}
+function _nextToast() {
+  if (!_toastQueue.length) { _toastBusy = false; return; }
+  _toastBusy = true;
+  const ach = _toastQueue.shift();
+  const el  = document.getElementById('ach-toast');
+  document.getElementById('ach-toast-emoji').textContent = ach.emoji;
+  document.getElementById('ach-toast-name').textContent  = ach.name;
+  document.getElementById('ach-toast-desc').textContent  = ach.desc;
+  el.classList.add('show');
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(_nextToast, 400);
+  }, 4000);
+}
+
+function unlockAchievement(id) {
+  if (_achDone.has(id)) return;
+  _achDone.add(id);
+  localStorage.setItem(_ACH_LS, JSON.stringify([..._achDone]));
+  const ach = ACHIEVEMENTS.find(a => a.id === id);
+  if (ach) _showToast(ach);
+}
+
+function checkAchievements(trigger) {
+  // — Mort —
+  if (trigger === 'death') {
+    if (deathCount >= 1)   unlockAchievement('first_death');
+    if (deathCount >= 100) unlockAchievement('centurion');
+  }
+  // — Fin de campagne —
+  if (trigger === 'camp' && _lastCamp) {
+    const { campId, deaths, time, inv } = _lastCamp;
+    if (campId === 'bebe')      unlockAchievement('bebe_won');
+    if (campId === 'piquer')    unlockAchievement('piquer_won');
+    if (campId === 'cauchemar') unlockAchievement('cauchemar_won');
+    if (campId === 'bebe'      && deaths === 0) unlockAchievement('bebe_deathless');
+    if (campId === 'piquer'    && deaths === 0) unlockAchievement('piquer_deathless');
+    if (campId === 'cauchemar' && deaths === 0) unlockAchievement('cauchemar_deathless');
+    if (campId === 'bebe'      && time < 180000) unlockAchievement('bebe_speed');
+    if (campId === 'cauchemar' && time < 900000) unlockAchievement('cauchemar_speed');
+    if (inv)                             unlockAchievement('mirror_won');
+    if (campId === 'cauchemar' && inv)   unlockAchievement('cauchemar_mirror');
+    if (campId === 'cauchemar' && inv && deaths === 0) unlockAchievement('cauchemar_mirror_deathless');
+  }
+}
+
+// — Overlay —
+function openAchievements() {
+  const done  = _achDone.size;
+  const total = ACHIEVEMENTS.length;
+  document.getElementById('ach-progress').textContent =
+    done + ' / ' + total + ' débloqué' + (done > 1 ? 's' : '');
+  const list = document.getElementById('ach-list');
+  list.innerHTML = ACHIEVEMENTS.map(a => {
+    const unlocked = _achDone.has(a.id);
+    return `<div class="ach-item${unlocked ? ' unlocked' : ''}">
+      <div class="ach-emoji">${a.emoji}</div>
+      <div class="ach-info">
+        <div class="ach-name">${a.name}</div>
+        <div class="ach-desc">${unlocked ? a.desc : '???'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('ach-overlay').classList.add('open');
+}
+
+document.getElementById('ach-close').onclick   = () => document.getElementById('ach-overlay').classList.remove('open');
+document.getElementById('ach-open-btn').onclick = () => { closeMenu(); openAchievements(); };
 
 // ── SUBMIT TO ADMIN ────────────────────────────────────────
 const SUBMIT_COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
@@ -2777,6 +2989,9 @@ async function openFinish(timeMs, deaths) {
   const titleEl   = overlay.querySelector('h2');
   const diffId    = _diffId(); // tient compte du mode miroir
   const camp      = CAMPAIGNS[_baseCampId(diffId)];
+  // Enregistre le résultat pour checkAchievements
+  _lastCamp = { campId: _baseCampId(diffId), deaths, time: timeMs, inv: invertControls };
+  checkAchievements('camp');
 
   // Reset overlay state
   pseudoIn.style.display = 'none';
