@@ -1214,7 +1214,6 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
       <button class="invert-toggle" id="invert-btn-sidebar"><span class="toggle-pip"></span>Mode miroir Q↔P</button>
       <button class="replay-btn" id="launch-camp-btn" style="border-color:#00cc99;color:#00cc99">⚡ Choisir une campagne</button>
-      <button class="replay-btn" id="restart-camp-btn" style="border-color:#00cc99;color:#00cc99;display:none">↩ Recommencer campagne</button>
       <button class="replay-btn" id="auth-sidebar-btn" style="border-color:#4488ff;color:#4488ff">👤 Connexion</button>
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
       <a href="index.html" style="display:block;text-align:center;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;color:#224433;text-decoration:none;padding:8px 14px;border:1px solid #1a4535;transition:color 0.15s,border-color 0.15s" onmouseover="this.style.color='#00ffcc';this.style.borderColor='#336655'" onmouseout="this.style.color='#224433';this.style.borderColor='#1a4535'">⌂ Accueil</a>
@@ -1981,7 +1980,6 @@ document.getElementById('death-counter').addEventListener('click', resetDeaths);
 function updateCampaignHUD() {
   const badge = document.getElementById('campaign-badge');
   const cd    = document.getElementById('camp-death-counter');
-  const restartBtn = document.getElementById('restart-camp-btn');
   if (badge) {
     badge.classList.toggle('active', campRunning);
     if (campRunning) {
@@ -1989,8 +1987,7 @@ function updateCampaignHUD() {
       badge.textContent = camp.emoji + ' ' + camp.name.toUpperCase() + (invertControls ? '  🔄' : '');
     }
   }
-  if (cd)         cd.classList.toggle('active', campRunning);
-  if (restartBtn) restartBtn.style.display = '';
+  if (cd) cd.classList.toggle('active', campRunning);
 }
 
 function openCampSelect() {
@@ -2056,10 +2053,6 @@ function openCampSelect() {
   overlay.classList.add('open');
 }
 
-document.getElementById('restart-camp-btn').addEventListener('click', () => {
-  closeMenu();
-  openCampSelect();
-});
 document.getElementById('launch-camp-btn').addEventListener('click', () => {
   closeMenu();
   openCampSelect();
@@ -2141,7 +2134,6 @@ function toggleInvert() {
     campStop();
     campRunning = false;
     document.getElementById('campaign-badge').style.display = 'none';
-    document.getElementById('restart-camp-btn').style.display = 'none';
   }
   invertControls = !invertControls;
   // Remettre les touches à zéro pour éviter un état bloqué
