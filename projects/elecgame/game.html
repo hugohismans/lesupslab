@@ -1985,7 +1985,7 @@ function updateCampaignHUD() {
     badge.classList.toggle('active', campRunning);
     if (campRunning) {
       const camp = CAMPAIGNS[currentCampaignId];
-      badge.textContent = camp.emoji + ' ' + camp.name.toUpperCase();
+      badge.textContent = camp.emoji + ' ' + camp.name.toUpperCase() + (invertControls ? '  🔄' : '');
     }
   }
   if (cd)         cd.classList.toggle('active', campRunning);
