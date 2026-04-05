@@ -64,7 +64,12 @@ body {
   overflow: hidden;
 }
 #panel-left  { border-right: 1px solid #1a4535; background: linear-gradient(90deg, transparent, #03120e); }
-#panel-right { border-left:  1px solid #1a4535; background: linear-gradient(270deg, transparent, #03120e); }
+#panel-right {
+  border-left: 1px solid #1a4535;
+  background: linear-gradient(270deg, transparent, #03120e);
+  padding: 0;
+  gap: 0;
+}
 .panel-header {
   display: flex;
   flex-direction: column;
@@ -105,6 +110,24 @@ body {
 .panel-body::-webkit-scrollbar { width: 3px; }
 .panel-body::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
 
+/* Demi-sections du panel droit */
+.panel-half {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 12px;
+  gap: 10px;
+  overflow: hidden;
+}
+.panel-half:first-child { padding-top: 22px; }
+.panel-sep {
+  height: 1px;
+  background: #1a4535;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
 /* Special Thanks */
 .sp-entry { padding: 7px 4px; border-bottom: 1px solid #0d2a1a; }
 .sp-pseudo { color: #cc66ff; font-size: 13px; letter-spacing: 1px; text-shadow: 0 0 8px #cc44ff44; }
@@ -120,6 +143,19 @@ body {
 .ihof-2nd .ihof-pseudo { color: #cccccc; }
 .ihof-3rd .ihof-pseudo { color: #ee9944; }
 .panel-empty { color: #336644; font-size: 11px; letter-spacing: 1px; padding: 10px 4px; line-height: 1.6; }
+
+/* Achievement rank rows */
+.ach-rank-row { display: flex; align-items: center; gap: 6px; padding: 5px 4px; border-bottom: 1px solid #0d2a1a; }
+.ach-rank-pos  { font-size: 13px; flex-shrink: 0; width: 24px; }
+.ach-rank-pseudo { color: #00ddbb; font-size: 12px; letter-spacing: 1px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach-rank-count  { color: #aa66ff; font-size: 11px; flex-shrink: 0; white-space: nowrap; }
+.ach-rank-bar    { height: 2px; background: #aa44ff33; border-radius: 1px; margin-top: 2px; }
+.ach-rank-row.ar-1st .ach-rank-pseudo { color: #ffdd44; text-shadow: 0 0 8px #ffdd4466; }
+.ach-rank-row.ar-1st .ach-rank-count  { color: #ffdd44; }
+.ach-rank-row.ar-2nd .ach-rank-pseudo { color: #cccccc; }
+.ach-rank-row.ar-2nd .ach-rank-count  { color: #cccccc; }
+.ach-rank-row.ar-3rd .ach-rank-pseudo { color: #ee9944; }
+.ach-rank-row.ar-3rd .ach-rank-count  { color: #ee9944; }
 
 @media (max-width: 820px) { .side-panel { display: none; } }
 
@@ -604,18 +640,33 @@ canvas#bg {
   </div>
 </div>
 
-<!-- Right: Hall of Fame -->
+<!-- Right: Hall of Fame + Achievement ranks -->
 <div class="side-panel" id="panel-right">
-  <div class="panel-header">
-    <div class="panel-title" id="hof-panel-title" style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">🏆 Hall of Fame <span id="hof-mode-label" style="font-size:10px;letter-spacing:1px;color:#ff4466;font-weight:normal;opacity:0.8;white-space:nowrap">💀 Cauchemar</span></div>
-    <div style="display:flex;gap:4px;margin-bottom:2px">
-      <button class="hof-tab active" id="hof-mode-camp" onclick="switchHofMode('camp')">Campagne</button>
-      <button class="hof-tab" id="hof-mode-surv" onclick="switchHofMode('survie')">Survie</button>
+
+  <!-- Moitié haute : HOF -->
+  <div class="panel-half">
+    <div class="panel-header">
+      <div class="panel-title" style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">🏆 Hall of Fame <span id="hof-mode-label" style="font-size:10px;letter-spacing:1px;color:#ff4466;font-weight:normal;opacity:0.8;white-space:nowrap">💀 Cauchemar</span></div>
+      <div style="display:flex;gap:4px;margin-bottom:2px">
+        <button class="hof-tab active" id="hof-mode-camp" onclick="switchHofMode('camp')">Campagne</button>
+        <button class="hof-tab" id="hof-mode-surv" onclick="switchHofMode('survie')">Survie</button>
+      </div>
+      <div class="hof-tabs" id="hof-tabs"></div>
+      <div class="hof-tabs" id="hof-diff-tabs" style="margin-top:4px"></div>
     </div>
-    <div class="hof-tabs" id="hof-tabs"></div>
-    <div class="hof-tabs" id="hof-diff-tabs" style="margin-top:4px"></div>
+    <div class="panel-body" id="ihof-list"></div>
   </div>
-  <div class="panel-body" id="ihof-list"></div>
+
+  <div class="panel-sep"></div>
+
+  <!-- Moitié basse : classement hauts-faits -->
+  <div class="panel-half">
+    <div class="panel-header">
+      <div class="panel-title">🏅 Hauts-faits</div>
+    </div>
+    <div class="panel-body" id="ach-rank-list"></div>
+  </div>
+
 </div>
 
 <!-- Audio controls -->
@@ -1213,9 +1264,47 @@ async function renderHOF() {
   }
 }
 
+const FB_ACH_RANKS = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/achievement_ranks';
+const ACH_TOTAL = 19; // nb total de hauts-faits dans le jeu
+
+async function renderAchRanks() {
+  const el = document.getElementById('ach-rank-list');
+  el.innerHTML = '<div class="panel-empty">Chargement…</div>';
+  try {
+    const res = await fetch(`${FB_ACH_RANKS}.json`);
+    const data = res.ok ? await res.json() : null;
+    if (!data) { el.innerHTML = '<div class="panel-empty">Pas encore de données.</div>'; return; }
+    const entries = Object.values(data)
+      .filter(e => e.pseudo && e.count > 0)
+      .sort((a, b) => b.count - a.count || a.ts - b.ts)
+      .slice(0, 15);
+    if (!entries.length) { el.innerHTML = '<div class="panel-empty">Pas encore de données.</div>'; return; }
+    const medals = ['🥇','🥈','🥉'];
+    const cls    = ['ar-1st','ar-2nd','ar-3rd'];
+    el.innerHTML = entries.map((e, i) => {
+      const pct = Math.round((e.count / ACH_TOTAL) * 100);
+      return `<div class="ach-rank-row ${cls[i]||''}">
+        <span class="ach-rank-pos">${medals[i]||(i+1)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span class="ach-rank-pseudo">${escHtml(e.pseudo)}</span>
+            <span class="ach-rank-count">${e.count}/${ACH_TOTAL}</span>
+          </div>
+          <div style="height:2px;background:#aa44ff22;border-radius:1px;margin-top:3px">
+            <div style="height:100%;width:${pct}%;background:currentColor;opacity:0.4;border-radius:1px"></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = '<div class="panel-empty">Erreur de chargement.</div>';
+  }
+}
+
 renderSpecials();
 buildHofTabs();
 renderHOF();
+renderAchRanks();
 </script>
 </body>
 </html>

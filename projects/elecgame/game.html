@@ -2397,6 +2397,15 @@ document.getElementById('launch-camp-btn').addEventListener('click', () => {
 function registerDeath() {
   deathCount++;
   writeSave({ deaths: deathCount });
+  // Sync Firebase tous les 10 morts pour ne pas spammer
+  if (currentUser && deathCount % 10 === 0) {
+    currentUser.getIdToken().then(token =>
+      fetch(`${FB_USERS}/${currentUser.uid}/deaths.json?auth=${token}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(deathCount)
+      })
+    ).catch(() => {});
+  }
   if (campRunning) campDeaths++;
   if (survivalRunning) {
     survivalDeaths++;
@@ -2763,11 +2772,19 @@ function unlockAchievement(id) {
   localStorage.setItem(_ACH_LS, JSON.stringify([..._achDone]));
   const ach = ACHIEVEMENTS.find(a => a.id === id);
   if (ach) _showToast(ach);
-  if (currentUser) currentUser.getIdToken().then(token =>
+  if (currentUser) currentUser.getIdToken().then(token => {
+    // Sauvegarde l'achievement individuel
     fetch(`${FB_USERS}/${currentUser.uid}/achievements/${_b64(id)}.json?auth=${token}`, {
       method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'true'
-    })
-  ).catch(() => {});
+    }).catch(() => {});
+    // Met à jour le classement public (pseudo + count)
+    if (currentPseudo) {
+      fetch(`${FB_ACH_RANKS}/${currentUser.uid}.json?auth=${token}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ pseudo: currentPseudo, count: _achDone.size, ts: Date.now() })
+      }).catch(() => {});
+    }
+  }).catch(() => {});
 }
 
 function checkAchievements(trigger) {
@@ -3339,8 +3356,9 @@ const HOF_DIFF_META = {
 };
 // Retourne le diffId effectif selon le mode miroir actif
 function _diffId() { return currentCampaignId + (invertControls ? '_inv' : ''); }
-const FB_URL   = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
-const FB_USERS = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
+const FB_URL       = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+const FB_USERS     = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
+const FB_ACH_RANKS = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/achievement_ranks';
 
 // Per-campaign score helpers
 function _baseCampId(campId) { return campId.replace(/_inv$/, ''); }
@@ -3606,18 +3624,29 @@ async function loadDoneFromFirebase() {
   if (!currentUser) return;
   try {
     const token = await currentUser.getIdToken();
-    const [resN, resI, resA] = await Promise.all([
+    const [resN, resI, resA, resD] = await Promise.all([
       fetch(`${FB_USERS}/${currentUser.uid}/done.json?auth=${token}`),
       fetch(`${FB_USERS}/${currentUser.uid}/done_inv.json?auth=${token}`),
       fetch(`${FB_USERS}/${currentUser.uid}/achievements.json?auth=${token}`),
+      fetch(`${FB_USERS}/${currentUser.uid}/deaths.json?auth=${token}`),
     ]);
     if (resN.ok) { const d = await resN.json(); if (d) Object.keys(d).forEach(k => _doneLevels.add(_d64(k))); }
     if (resI.ok) { const d = await resI.json(); if (d) Object.keys(d).forEach(k => _doneInvLevels.add(_d64(k))); }
     if (resA.ok) { const d = await resA.json(); if (d) Object.keys(d).forEach(k => _achDone.add(_d64(k))); }
+    if (resD.ok) { const d = await resD.json(); if (typeof d === 'number' && d > deathCount) {
+      deathCount = d; writeSave({ deaths: deathCount }); updateDeathDisplay();
+    }}
     localStorage.setItem(_DONE_LS,     JSON.stringify([..._doneLevels]));
     localStorage.setItem(_DONE_INV_LS, JSON.stringify([..._doneInvLevels]));
     localStorage.setItem(_ACH_LS,      JSON.stringify([..._achDone]));
     _applyDoneUI();
+    // Sync le classement public hauts-faits (au login, pour les hauts-faits déjà débloqués)
+    if (currentPseudo && _achDone.size > 0) {
+      fetch(`${FB_ACH_RANKS}/${currentUser.uid}.json?auth=${token}`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ pseudo: currentPseudo, count: _achDone.size, ts: Date.now() })
+      }).catch(() => {});
+    }
   } catch(e) {}
 }
 
