@@ -2359,6 +2359,11 @@ function unlockAchievement(id) {
   localStorage.setItem(_ACH_LS, JSON.stringify([..._achDone]));
   const ach = ACHIEVEMENTS.find(a => a.id === id);
   if (ach) _showToast(ach);
+  if (currentUser) currentUser.getIdToken().then(token =>
+    fetch(`${FB_USERS}/${currentUser.uid}/achievements/${_b64(id)}.json?auth=${token}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'true'
+    })
+  ).catch(() => {});
 }
 
 function checkAchievements(trigger) {
@@ -2962,15 +2967,17 @@ async function loadDoneFromFirebase() {
   if (!currentUser) return;
   try {
     const token = await currentUser.getIdToken();
-    // Charge normal + miroir en parallèle
-    const [resN, resI] = await Promise.all([
+    const [resN, resI, resA] = await Promise.all([
       fetch(`${FB_USERS}/${currentUser.uid}/done.json?auth=${token}`),
       fetch(`${FB_USERS}/${currentUser.uid}/done_inv.json?auth=${token}`),
+      fetch(`${FB_USERS}/${currentUser.uid}/achievements.json?auth=${token}`),
     ]);
     if (resN.ok) { const d = await resN.json(); if (d) Object.keys(d).forEach(k => _doneLevels.add(_d64(k))); }
     if (resI.ok) { const d = await resI.json(); if (d) Object.keys(d).forEach(k => _doneInvLevels.add(_d64(k))); }
+    if (resA.ok) { const d = await resA.json(); if (d) Object.keys(d).forEach(k => _achDone.add(_d64(k))); }
     localStorage.setItem(_DONE_LS,     JSON.stringify([..._doneLevels]));
     localStorage.setItem(_DONE_INV_LS, JSON.stringify([..._doneInvLevels]));
+    localStorage.setItem(_ACH_LS,      JSON.stringify([..._achDone]));
     _applyDoneUI();
   } catch(e) {}
 }
