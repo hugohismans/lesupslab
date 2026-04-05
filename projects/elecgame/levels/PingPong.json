@@ -1,0 +1,321 @@
+{
+  "name": "PingPong",
+  "ballSpeedMult": 2,
+  "nodes": [
+    {
+      "id": 2,
+      "type": "source",
+      "x": 100,
+      "y": 300
+    },
+    {
+      "id": 3,
+      "type": "node",
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": 4,
+      "type": "node",
+      "x": 300,
+      "y": 100
+    },
+    {
+      "id": 6,
+      "type": "node",
+      "x": 700,
+      "y": 100
+    },
+    {
+      "id": 8,
+      "type": "node",
+      "x": 900,
+      "y": 100
+    },
+    {
+      "id": 11,
+      "type": "node",
+      "x": 300,
+      "y": -100
+    },
+    {
+      "id": 12,
+      "type": "node",
+      "x": 1100,
+      "y": -100
+    },
+    {
+      "id": 13,
+      "type": "bulb",
+      "x": 900,
+      "y": 300
+    },
+    {
+      "id": 14,
+      "type": "node",
+      "x": 1100,
+      "y": -80
+    },
+    {
+      "id": 15,
+      "type": "node",
+      "x": 1100,
+      "y": 100
+    },
+    {
+      "id": 16,
+      "type": "node",
+      "x": 520,
+      "y": 100
+    },
+    {
+      "id": 17,
+      "type": "node",
+      "x": 700,
+      "y": -100
+    },
+    {
+      "id": 18,
+      "type": "source",
+      "x": 1200,
+      "y": -140
+    },
+    {
+      "id": 19,
+      "type": "node",
+      "x": 820,
+      "y": 60
+    },
+    {
+      "id": 20,
+      "type": "node",
+      "x": 560,
+      "y": -40
+    },
+    {
+      "id": 21,
+      "type": "node",
+      "x": 260,
+      "y": 60
+    },
+    {
+      "id": 22,
+      "type": "teleporter",
+      "x": -60,
+      "y": 0
+    },
+    {
+      "id": 26,
+      "type": "teleporter",
+      "x": 1220,
+      "y": -20
+    },
+    {
+      "id": 27,
+      "type": "node",
+      "x": 440,
+      "y": 40
+    },
+    {
+      "id": 29,
+      "type": "bulb",
+      "x": 120,
+      "y": -80
+    }
+  ],
+  "edges": [
+    {
+      "id": 0,
+      "from": 2,
+      "to": 3,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 4,
+      "from": 3,
+      "to": 11,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 6,
+      "from": 12,
+      "to": 8,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 8,
+      "from": 8,
+      "to": 13,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": false
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 9,
+      "from": 14,
+      "to": 15,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 10,
+      "from": 16,
+      "to": 8,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 11,
+      "from": 16,
+      "to": 3,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 12,
+      "from": 11,
+      "to": 17,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 13,
+      "from": 17,
+      "to": 12,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 14,
+      "from": 16,
+      "to": 17,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 15,
+      "from": 18,
+      "to": 19,
+      "wayY": null,
+      "switch": null,
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 16,
+      "from": 19,
+      "to": 20,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": false
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 17,
+      "from": 20,
+      "to": 21,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": false
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 18,
+      "from": 21,
+      "to": 22,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 21,
+      "from": 26,
+      "to": 27,
+      "wayY": null,
+      "switch": {
+        "key": "Q",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    },
+    {
+      "id": 23,
+      "from": 27,
+      "to": 29,
+      "wayY": null,
+      "switch": {
+        "key": "P",
+        "initOpen": true
+      },
+      "resistance": false,
+      "inductance": false,
+      "micro": false
+    }
+  ]
+}
