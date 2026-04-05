@@ -1113,15 +1113,10 @@ function startGame() {
 
 // ── SIDE PANELS ────────────────────────────────────────────
 const HOF_VERSIONS = ['v0_0_5', 'v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1'];
-const HOF_DIFF_META = {
-  bebe:     { label: '🍼 Bébés',     color: '#44ff88' },
-  piquer:   { label: '⚡ Piquer',    color: '#ffaa00' },
-  cauchemar:{ label: '💀 Cauchemar', color: '#ff4466' },
-};
-const HOF_DIFFS = ['bebe', 'piquer', 'cauchemar'];
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
+// index.html : uniquement le cauchemar, toutes versions
+const HOF_FIXED_DIFF = 'cauchemar';
 let hofCurrentVersion = HOF_VERSIONS[0];
-let hofCurrentDiff = 'piquer';
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1147,28 +1142,14 @@ function buildHofTabs() {
   tabs.innerHTML = HOF_VERSIONS.map(v =>
     `<button class="hof-tab${v === hofCurrentVersion ? ' active' : ''}" onclick="switchHofVersion('${v}')">${v.replace(/_/g,'.')}</button>`
   ).join('');
+  // Pas de diff tabs sur index.html — uniquement cauchemar
   const diffTabs = document.getElementById('hof-diff-tabs');
-  if (hofCurrentVersion === 'v0_0_5' || hofCurrentVersion === 'v0_0_4') {
-    diffTabs.innerHTML = HOF_DIFFS.map(d => {
-      const meta = HOF_DIFF_META[d];
-      const isAct = d === hofCurrentDiff;
-      return `<button class="hof-tab${isAct ? ' active' : ''}" style="${isAct ? 'color:'+meta.color+';border-bottom-color:'+meta.color : ''}" onclick="switchHofDiff('${d}')">${meta.label}</button>`;
-    }).join('');
-    diffTabs.style.display = '';
-  } else {
-    diffTabs.innerHTML = '';
-    diffTabs.style.display = 'none';
-  }
+  diffTabs.innerHTML = '';
+  diffTabs.style.display = 'none';
 }
 
 function switchHofVersion(v) {
   hofCurrentVersion = v;
-  buildHofTabs();
-  renderHOF();
-}
-
-function switchHofDiff(d) {
-  hofCurrentDiff = d;
   buildHofTabs();
   renderHOF();
 }
@@ -1178,7 +1159,7 @@ async function renderHOF() {
   el.innerHTML = '<div class="panel-empty">Chargement…</div>';
   try {
     const path = (hofCurrentVersion === 'v0_0_5' || hofCurrentVersion === 'v0_0_4')
-      ? `${FB_URL}/${hofCurrentVersion}/${hofCurrentDiff}.json`
+      ? `${FB_URL}/${hofCurrentVersion}/${HOF_FIXED_DIFF}.json`
       : `${FB_URL}/${hofCurrentVersion}.json`;
     const res = await fetch(path);
     const data = res.ok ? await res.json() : null;

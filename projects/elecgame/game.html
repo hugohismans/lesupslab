@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>ElecGame</title>
+<title>Die and Relight</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Firebase Auth (compat — minimal: app + auth only, no DB SDK needed) -->
 <script src="https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js"></script>
@@ -2449,22 +2449,27 @@ document.getElementById('auth-sidebar-btn').onclick = () => {
 // ── HALL OF FAME ───────────────────────────────────────────
 const HOF_VERSION  = 'v0_0_5';
 const HOF_VERSIONS = ['v0_0_5', 'v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1']; // add new versions here
-const HOF_DIFFS    = ['bebe', 'piquer', 'cauchemar']; // difficulties (v0_0_4+)
+const HOF_DIFFS    = ['bebe', 'piquer', 'cauchemar', 'bebe_inv', 'piquer_inv', 'cauchemar_inv'];
 const HOF_DIFF_META = {
-  bebe:     { label: '🍼 Bébés',  color: '#44ff88' },
-  piquer:   { label: '⚡ Piquer', color: '#ffaa00' },
-  cauchemar:{ label: '💀 Cauchemar', color: '#ff4466' },
+  bebe:          { label: '🍼 Bébés',          color: '#44ff88' },
+  piquer:        { label: '⚡ Piquer',          color: '#ffaa00' },
+  cauchemar:     { label: '💀 Cauchemar',       color: '#ff4466' },
+  bebe_inv:      { label: '🔄 Bébés Miroir',    color: '#99ffcc' },
+  piquer_inv:    { label: '🔄 Piquer Miroir',   color: '#ffcc66' },
+  cauchemar_inv: { label: '🔄 Cauchemar Miroir',color: '#ff88aa' },
 };
+// Retourne le diffId effectif selon le mode miroir actif
+function _diffId() { return currentCampaignId + (invertControls ? '_inv' : ''); }
 const FB_URL   = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
 const FB_USERS = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/users';
 
 // Per-campaign score helpers
+function _baseCampId(campId) { return campId.replace(/_inv$/, ''); }
 function getCampScore(campId) {
   const save = loadSave();
   const score = save['hof_score_' + campId] || null;
   if (!score) return null;
-  // Invalide si version différente ou nombre de niveaux différent
-  const currentLevelCount = CAMPAIGNS[campId]?.levels.length ?? 0;
+  const currentLevelCount = CAMPAIGNS[_baseCampId(campId)]?.levels.length ?? 0;
   if (score.version !== HOF_VERSION) return null;
   if (score.levelCount !== currentLevelCount) return null;
   return score;
@@ -2474,7 +2479,7 @@ function setCampScore(campId, time, deaths, key) {
   obj['hof_score_' + campId] = {
     time, deaths, key,
     version: HOF_VERSION,
-    levelCount: CAMPAIGNS[campId]?.levels.length ?? 0
+    levelCount: CAMPAIGNS[_baseCampId(campId)]?.levels.length ?? 0
   };
   writeSave(obj);
 }
@@ -2589,6 +2594,12 @@ function hofBuildTabs(activeVersion, activeDiff) {
     diffRow.classList.remove('hidden');
     diffRow.innerHTML = '';
     HOF_DIFFS.forEach(d => {
+      // Séparateur visuel entre normal et miroir
+      if (d === 'bebe_inv') {
+        const sep = document.createElement('span');
+        sep.style.cssText = 'width:1px;background:#1a3a2a;margin:4px 2px;flex-shrink:0';
+        diffRow.appendChild(sep);
+      }
       const meta = HOF_DIFF_META[d];
       const btn = document.createElement('button');
       btn.className = 'hof-diff-tab' + (d === activeDiff ? ' active' : '');
@@ -2617,7 +2628,7 @@ function hofBuildSpecials() {
 }
 
 async function openHOF(version = HOF_VERSION, diff = null) {
-  if ((version === 'v0_0_5' || version === 'v0_0_4') && !diff) diff = currentCampaignId;
+  if ((version === 'v0_0_5' || version === 'v0_0_4') && !diff) diff = _diffId();
   document.getElementById('hof-overlay').classList.add('open');
   hofBuildTabs(version, diff);
   hofBuildSpecials();
@@ -2715,8 +2726,8 @@ async function openFinish(timeMs, deaths) {
   const skipBtn   = document.getElementById('finish-skip');
   const pseudoIn  = document.getElementById('finish-pseudo');
   const titleEl   = overlay.querySelector('h2');
-  const diffId    = currentCampaignId;
-  const camp      = CAMPAIGNS[diffId];
+  const diffId    = _diffId(); // tient compte du mode miroir
+  const camp      = CAMPAIGNS[_baseCampId(diffId)];
 
   // Reset overlay state
   pseudoIn.style.display = 'none';
@@ -3279,7 +3290,7 @@ const KEY_COLOR = {
   Q: { main: '#ffaa00', glow: '#ff6600', dim: '#3a2a00' },
   P: { main: '#cc44ff', glow: '#8800ff', dim: '#2a0040' },
 };
-function keyColor(key) { return KEY_COLOR[key] || { main: '#00ffcc', glow: '#00ffcc', dim: '#1a4035' }; }
+function keyColor(key) { const k = _ikey(key); return KEY_COLOR[k] || { main: '#00ffcc', glow: '#00ffcc', dim: '#1a4035' }; }
 
 function dot(x, y, active) {
   ctx.save();
@@ -3324,7 +3335,7 @@ function drawSwitch(sw) {
   ctx.textAlign = 'center';
   ctx.fillStyle = c.main;
   ctx.shadowBlur = open ? 0 : 6; ctx.shadowColor = c.glow;
-  ctx.fillText('[' + sw.key + ']', x, labelY);
+  ctx.fillText('[' + _ikey(sw.key) + ']', x, labelY);
   ctx.restore();
 }
 
@@ -3386,13 +3397,14 @@ function drawSource(x, y) {
 }
 
 function drawKeyIndicator(key, px, py) {
-  const held = !!keys[key];
-  const c = keyColor(key);
+  const dk   = _ikey(key);          // touche effective affichée
+  const held = !!keys[dk];
+  const c = keyColor(key);          // keyColor applique _ikey en interne
   ctx.save();
   ctx.font = 'bold 14px Courier New'; ctx.textAlign = 'left';
   ctx.fillStyle = held ? c.main : c.dim;
   ctx.shadowBlur = held ? 10 : 0; ctx.shadowColor = c.glow;
-  ctx.fillText(key + '  ' + (held ? t('key.closed') : t('key.open')), px, py);
+  ctx.fillText(dk + '  ' + (held ? t('key.closed') : t('key.open')), px, py);
   ctx.restore();
 }
 
@@ -4533,7 +4545,7 @@ function drawCustom() {
       ctx.font = 'bold 12px Courier New'; ctx.textAlign = 'center';
       ctx.fillStyle = c.main;
       ctx.shadowBlur = sw.open ? 0 : 6; ctx.shadowColor = c.glow;
-      ctx.fillText('[' + sw.key + ']', 0, 44);
+      ctx.fillText('[' + _ikey(sw.key) + ']', 0, 44);
       ctx.restore();
 
       ctx.restore(); // undo translate+rotate
