@@ -2641,7 +2641,7 @@ document.getElementById('hof-close').onclick = () =>
   document.getElementById('hof-overlay').classList.remove('open');
 document.getElementById('hof-open-btn').onclick = () => {
   closeMenu();
-  requireAuth(() => openHOF());
+  openHOF(); // consultation libre, pas besoin d'être connecté
 };
 
 
