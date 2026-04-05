@@ -1959,6 +1959,7 @@ for (const [campId, camp] of Object.entries(CAMPAIGNS)) {
   label.innerHTML = '<span>' + camp.emoji + '</span><span>' + camp.name.toUpperCase() + '</span>';
   lsDiv.appendChild(label);
   for (const entry of camp.levels) {
+    if (entry.isGG) continue; // pas de bouton sidebar pour le niveau GG
     if (entry.idx !== undefined) {
       _addCampBtn(LEVELS[entry.idx], entry.idx);
     } else {
