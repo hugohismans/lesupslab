@@ -467,6 +467,8 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     resize: none;
   }
   #submit-box input:focus, #submit-box textarea:focus { border-color: #aa44ff; }
+  #submit-levelname-row { width: 100%; }
+  #submit-levelname { width: 100%; }
   #submit-box .submit-btns { display: flex; gap: 8px; justify-content: flex-end; }
   #submit-box button {
     background: transparent;
@@ -1022,6 +1024,10 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   <div id="submit-box">
     <h3 id="submit-title" data-i18n="submit.title">📤 SOUMETTRE À L'ADMIN</h3>
     <p id="submit-desc"></p>
+    <div id="submit-levelname-row" style="display:none">
+      <label id="submit-levelname-label" style="font-size:10px;color:#664488;letter-spacing:1px;display:block;margin-bottom:4px">NOM DU NIVEAU</label>
+      <input id="submit-levelname" type="text" maxlength="60" placeholder="Nom de ton niveau…">
+    </div>
     <input id="submit-name" type="text" maxlength="40">
     <textarea id="submit-msg" rows="3"></textarea>
     <div id="submit-status"></div>
@@ -1907,8 +1913,20 @@ function openSubmitOverlay() {
 
   status.textContent = '';
   document.getElementById('submit-send').disabled = false;
+
+  // Si nom par défaut, montrer le champ de renommage
+  const levelJSON = localStorage.getItem('elecgame_test_level') || '{}';
+  const levelObj  = JSON.parse(levelJSON);
+  const levelName = levelObj.name || '';
+  const isDefaultName = levelName === 'Mon niveau' || levelName === 'My level' || !levelName;
+  const levelnameRow = document.getElementById('submit-levelname-row');
+  const levelnameInput = document.getElementById('submit-levelname');
+  levelnameRow.style.display = isDefaultName ? 'block' : 'none';
+  if (isDefaultName) levelnameInput.value = '';
+
   document.getElementById('submit-overlay').classList.add('open');
-  document.getElementById('submit-name').focus();
+  if (isDefaultName) levelnameInput.focus();
+  else document.getElementById('submit-name').focus();
 }
 
 document.getElementById('submit-cancel').onclick = () => {
@@ -1946,14 +1964,30 @@ document.getElementById('submit-send').onclick = async () => {
 
   const levelJSON = localStorage.getItem('elecgame_test_level') || '{}';
   const levelObj  = JSON.parse(levelJSON);
-  const levelName = levelObj.name || 'level';
+  let   levelName = levelObj.name || '';
+
+  // Si champ de renommage visible, utiliser sa valeur
+  const levelnameRow = document.getElementById('submit-levelname-row');
+  if (levelnameRow.style.display !== 'none') {
+    const newName = document.getElementById('submit-levelname').value.trim();
+    if (!newName) {
+      status.style.color = '#ff4444';
+      status.textContent = currentLang === 'fr'
+        ? '⚠ Donne un nom à ton niveau avant d\'envoyer.'
+        : '⚠ Give your level a name before sending.';
+      document.getElementById('submit-levelname').focus();
+      return;
+    }
+    levelObj.name = newName;
+    levelName = newName;
+  }
 
   // Nom de niveau par défaut = refusé
-  if (levelName === 'Mon niveau' || levelName === 'My level') {
+  if (!levelName || levelName === 'Mon niveau' || levelName === 'My level') {
     status.style.color = '#ff4444';
     status.textContent = currentLang === 'fr'
-      ? '⚠ Donne un vrai nom à ton niveau dans l\'éditeur avant de soumettre.'
-      : '⚠ Give your level a proper name in the editor before submitting.';
+      ? '⚠ Donne un vrai nom à ton niveau avant de soumettre.'
+      : '⚠ Give your level a proper name before submitting.';
     return;
   }
 
