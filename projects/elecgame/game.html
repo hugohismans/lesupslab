@@ -697,6 +697,62 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   .camp-select-btn.libre .camp-btn-body { padding: 10px 16px; }
   .camp-select-btn.libre .camp-name { font-size: 11px; letter-spacing: 3px; }
 
+  /* ── LOADING OVERLAY ─────────────────────────────────────── */
+  #loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 800;
+    background: rgba(2,8,6,0.92);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 18px;
+    font-family: 'Courier New', monospace;
+  }
+  #loading-overlay.visible { display: flex; }
+
+  #loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid #0a2a1a;
+    border-top-color: #00ffcc;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loading-msg {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #1a6648;
+    text-transform: uppercase;
+  }
+
+  #loading-error {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  #loading-overlay.error #loading-spinner { display: none; }
+  #loading-overlay.error #loading-error   { display: flex; }
+  #loading-overlay.error #loading-msg     { color: #ff4444; }
+
+  #loading-retry {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: #00ffcc;
+    background: transparent;
+    border: 1px solid #00ffcc44;
+    padding: 8px 20px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  #loading-retry:hover { border-color: #00ffcc; box-shadow: 0 0 10px #00ffcc33; }
+
   /* ── HOF OVERLAY ─────────────────────────────────────────── */
   #hof-overlay {
     display: none;
@@ -1026,6 +1082,15 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
 <div id="camp-select-overlay">
   <h2 id="camp-select-title">⚡ Choisir une campagne</h2>
   <div id="camp-select-btns"></div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div id="loading-spinner"></div>
+  <div id="loading-msg">Chargement…</div>
+  <div id="loading-error">
+    <button id="loading-retry">↺ Réessayer</button>
+  </div>
 </div>
 
 <!-- HOF overlay -->
@@ -1399,7 +1464,7 @@ function prevLevel() {
       }
       const lv = LEVELS[lvIdx];
       if (lv._json) { selectLevel(lvIdx); }
-      else fetch(lv._file).then(r=>r.json()).then(json=>{ lv._json=json; if(json.name) lv.name=json.name; selectLevel(lvIdx); });
+      else _fetchLevel(lv, () => selectLevel(lvIdx));
     }
   } else {
     const prev = (currentLevel - 1 + LEVELS.length) % LEVELS.length;
@@ -1562,10 +1627,7 @@ function goNextCampaign(campIdx) {
     if (lv._json) {
       selectLevel(lvIdx);
     } else {
-      fetch(lv._file)
-        .then(r => r.json())
-        .then(json => { lv._json = json; if (json.name) lv.name = json.name; if (json.made_by) lv.made_by = json.made_by; selectLevel(lvIdx); })
-        .catch(() => alert(t('alert.load_failed') + entry.file));
+      _fetchLevel(lv, () => selectLevel(lvIdx));
     }
   }
 }
@@ -1634,9 +1696,7 @@ function _addCampBtn(lv, lvIdx) {
   btn.dataset.lv = lvIdx;
   btn.onclick = () => {
     if (lv._json === null) {
-      fetch(lv._file).then(r => r.json())
-        .then(json => { lv._json = json; if (json.name) { lv.name = json.name; btn.textContent = lv.name; } if (json.made_by) lv.made_by = json.made_by; selectLevel(lvIdx); })
-        .catch(() => alert(t('alert.load_failed') + lv._file));
+      _fetchLevel(lv, () => { if (lv.name) btn.textContent = lv.name; selectLevel(lvIdx); });
     } else {
       selectLevel(lvIdx);
     }
@@ -1992,6 +2052,47 @@ function downloadReplay() {
   a.download = recorder.levelName.toLowerCase().replace(/\s+/g, '_') + '_replay.json';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── LEVEL FETCH HELPER ─────────────────────────────────────
+const _loadingEl  = document.getElementById('loading-overlay');
+const _loadingMsg = document.getElementById('loading-msg');
+const _loadingRetryBtn = document.getElementById('loading-retry');
+let   _loadingRetryFn  = null;
+
+function _showLoading(msg) {
+  _loadingEl.classList.remove('error');
+  _loadingEl.classList.add('visible');
+  _loadingMsg.textContent = msg || 'Chargement…';
+}
+function _hideLoading() {
+  _loadingEl.classList.remove('visible', 'error');
+}
+function _showLoadingError(msg, retryFn) {
+  _loadingEl.classList.add('error');
+  _loadingMsg.textContent = msg || 'Échec du chargement';
+  _loadingRetryFn = retryFn || null;
+}
+_loadingRetryBtn.onclick = () => {
+  if (_loadingRetryFn) { _loadingEl.classList.remove('error'); _loadingRetryFn(); }
+};
+
+// Charge un niveau JSON avec affichage loading + gestion erreur propre
+function _fetchLevel(lv, onSuccess) {
+  _showLoading('Chargement…');
+  const doFetch = () => {
+    fetch(lv._file)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(json => {
+        lv._json = json;
+        if (json.name)    lv.name    = json.name;
+        if (json.made_by) lv.made_by = json.made_by;
+        _hideLoading();
+        onSuccess(json);
+      })
+      .catch(() => _showLoadingError('Impossible de charger le niveau', doFetch));
+  };
+  doFetch();
 }
 
 // ── SUBMIT TO ADMIN ────────────────────────────────────────
