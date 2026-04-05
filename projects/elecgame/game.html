@@ -697,6 +697,36 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   .camp-select-btn.libre .camp-btn-body { padding: 10px 16px; }
   .camp-select-btn.libre .camp-name { font-size: 11px; letter-spacing: 3px; }
 
+  /* ── INVERT TOGGLE ───────────────────────────────────────── */
+  .invert-toggle {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid #1a4535;
+    color: #2a6a4a;
+    padding: 7px 16px;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .invert-toggle:hover { border-color: #00ffcc55; color: #00ffcc88; }
+  .invert-toggle.active {
+    border-color: #ff8800;
+    color: #ff8800;
+    box-shadow: 0 0 10px #ff880033;
+  }
+  .invert-toggle .toggle-pip {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
   /* ── LOADING OVERLAY ─────────────────────────────────────── */
   #loading-overlay {
     display: none;
@@ -1082,6 +1112,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
 <div id="camp-select-overlay">
   <h2 id="camp-select-title">⚡ Choisir une campagne</h2>
   <div id="camp-select-btns"></div>
+  <button class="invert-toggle" id="invert-btn-camp"><span class="toggle-pip"></span>Mode miroir Q↔P</button>
 </div>
 
 <!-- Loading overlay -->
@@ -1149,6 +1180,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
       </div>
     </div>
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
+      <button class="invert-toggle" id="invert-btn-sidebar"><span class="toggle-pip"></span>Mode miroir Q↔P</button>
       <button class="replay-btn" id="auth-sidebar-btn" style="border-color:#4488ff;color:#4488ff">👤 Connexion</button>
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
       <button class="replay-btn" id="restart-camp-btn" style="border-color:#00cc99;color:#00cc99;display:none">↩ Recommencer campagne</button>
@@ -1635,6 +1667,9 @@ function goNextCampaign(campIdx) {
 let currentLevel = 0;
 let state = LEVELS[0].make();
 const keys = {};
+let invertControls = false;
+// Swape Q↔P quand le mode miroir est actif
+function _ikey(k) { return invertControls ? (k === 'Q' ? 'P' : k === 'P' ? 'Q' : k) : k; }
 
 function selectLevel(idx) {
   replayMode = false;
@@ -2053,6 +2088,32 @@ function downloadReplay() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ── MODE MIROIR (invert Q↔P) ───────────────────────────────
+const _invertBtns = () => document.querySelectorAll('.invert-toggle');
+
+function _applyInvertUI() {
+  _invertBtns().forEach(b => b.classList.toggle('active', invertControls));
+}
+
+function toggleInvert() {
+  // Si campagne en cours → confirmation
+  if (campRunning && !invertControls) {
+    const ok = confirm('Activer le mode miroir annulera la campagne en cours.\nContinuer ?');
+    if (!ok) return;
+    campStop();
+    campRunning = false;
+    document.getElementById('campaign-badge').style.display = 'none';
+    document.getElementById('restart-camp-btn').style.display = 'none';
+  }
+  invertControls = !invertControls;
+  // Remettre les touches à zéro pour éviter un état bloqué
+  for (const k in keys) keys[k] = false;
+  _applyInvertUI();
+}
+
+document.getElementById('invert-btn-camp').addEventListener('click', toggleInvert);
+document.getElementById('invert-btn-sidebar').addEventListener('click', toggleInvert);
 
 // ── LEVEL FETCH HELPER ─────────────────────────────────────
 const _loadingEl  = document.getElementById('loading-overlay');
@@ -3146,7 +3207,7 @@ function update(dt) {
   // Switch state + sound on change
   for (const sw of state.switches) {
     const wasOpen = sw.open;
-    sw.open = sw.initOpen !== !!keys[sw.key];
+    sw.open = sw.initOpen !== !!keys[_ikey(sw.key)];
     if (sw.open !== wasOpen) {
       if (!sw.open) sfxSwitchClose();
       else          sfxSwitchOpen();
@@ -3734,7 +3795,7 @@ function updateCustom(dt) {
   // Update switch states
   for (const [eid, sw] of switchMap) {
     const wasOpen = sw.open;
-    sw.open = sw.initOpen !== !!keys[sw.key];
+    sw.open = sw.initOpen !== !!keys[_ikey(sw.key)];
     if (sw.open !== wasOpen) {
       if (!sw.open) sfxSwitchClose();
       else          sfxSwitchOpen();
