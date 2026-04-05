@@ -134,7 +134,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   /* ── CAMPAIGN HUD ────────────────────────────────────────── */
   #campaign-badge {
     position: fixed;
-    top: 34px;
+    top: 52px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 150;
@@ -177,7 +177,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   }
   #camp-death-counter.active { display: block; }
 
-  /* ── LEVEL TITLE ─────────────────────────────────────────── */
+  /* ── LEVEL TITLE + AUTHOR ───────────────────────────────── */
   #level-title {
     position: fixed;
     top: 14px;
@@ -189,6 +189,19 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     font-size: 13px;
     letter-spacing: 2px;
     text-transform: uppercase;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #level-author {
+    position: fixed;
+    top: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    color: #1a4535;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
     pointer-events: none;
     white-space: nowrap;
   }
@@ -829,8 +842,9 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
 <!-- Hamburger -->
 <button id="menu-btn">☰</button>
 
-<!-- Level title -->
+<!-- Level title + author -->
 <div id="level-title">Tutoriel 1</div>
+<div id="level-author"></div>
 
 <!-- Campaign badge -->
 <div id="campaign-badge">⚡ CAMPAGNE</div>
@@ -1413,7 +1427,7 @@ function goNextCampaign(campIdx) {
     } else {
       fetch(lv._file)
         .then(r => r.json())
-        .then(json => { lv._json = json; if (json.name) lv.name = json.name; selectLevel(lvIdx); })
+        .then(json => { lv._json = json; if (json.name) lv.name = json.name; if (json.made_by) lv.made_by = json.made_by; selectLevel(lvIdx); })
         .catch(() => alert(t('alert.load_failed') + entry.file));
     }
   }
@@ -1452,6 +1466,8 @@ function selectLevel(idx) {
   if (sidebarTitle) sidebarTitle.textContent = LEVELS[idx].name || t('levels');
   const levelTitleEl = document.getElementById('level-title');
   if (levelTitleEl) levelTitleEl.textContent = LEVELS[idx].name || '';
+  const authorEl = document.getElementById('level-author');
+  if (authorEl) authorEl.textContent = LEVELS[idx].made_by ? 'par ' + LEVELS[idx].made_by : '';
   LEVELS.forEach((lv, i) => { (lv._btns || []).forEach(b => b.classList.toggle('active', i === idx)); });
   document.getElementById('replay-save-wrap').style.display = 'none';
   document.getElementById('next-level-wrap').style.display = 'none';
@@ -1482,7 +1498,7 @@ function _addCampBtn(lv, lvIdx) {
   btn.onclick = () => {
     if (lv._json === null) {
       fetch(lv._file).then(r => r.json())
-        .then(json => { lv._json = json; if (json.name) { lv.name = json.name; btn.textContent = lv.name; } selectLevel(lvIdx); })
+        .then(json => { lv._json = json; if (json.name) { lv.name = json.name; btn.textContent = lv.name; } if (json.made_by) lv.made_by = json.made_by; selectLevel(lvIdx); })
         .catch(() => alert(t('alert.load_failed') + lv._file));
     } else {
       selectLevel(lvIdx);
@@ -1568,6 +1584,7 @@ for (const [campId, camp] of Object.entries(CAMPAIGNS)) {
       fetch(lv._file).then(r => r.json()).then(json => {
         lv._json = json;
         if (json.name) lv.name = json.name;
+        if (json.made_by) lv.made_by = json.made_by;
         if (_target === lvIdx) _render(json);
       }).catch(() => {});
     }
