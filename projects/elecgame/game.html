@@ -3805,6 +3805,16 @@ let replayStartTime = 0;
 let replayInputIdx = 0;
 
 function loadReplayFile(json) {
+  // Couper tous les modes actifs qui pourraient interférer
+  survivalRunning = false;
+  updateSurvivalHUD();
+  campStop();
+  document.getElementById('survival-gameover').classList.remove('open');
+  document.getElementById('gg-overlay').classList.remove('active');
+  document.getElementById('camp-select-overlay').classList.remove('open');
+  document.getElementById('next-level-wrap').style.display = 'none';
+  closeMenu();
+
   // Load level first (selectLevel resets replayMode and starts recording)
   if (json.levelJSON) {
     const existing = LEVELS.findIndex(l => l._json && l.name === json.levelName);
@@ -3829,8 +3839,6 @@ function loadReplayFile(json) {
   }
 
   // Override to replay mode AFTER selectLevel
-  // Do NOT clear state.waiting here — balls must stay frozen until the first
-  // recorded input fires, exactly mirroring what happened during recording.
   replayMode = true;
   replayData = json;
   replayInputIdx = 0;
@@ -3864,6 +3872,12 @@ function updateReplay() {
       elapsed > (replayData.duration || 0) + 2000) {
     replayMode = false;
     for (const k in keys) keys[k] = false;
+    // Proposer de revoir depuis le début
+    const nlWrap = document.getElementById('next-level-wrap');
+    const nlBtn  = document.getElementById('next-level-btn');
+    nlBtn.textContent = '↺ Revoir depuis le début';
+    nlBtn.onclick = () => { nlWrap.style.display = 'none'; loadReplayFile(replayData); };
+    nlWrap.style.display = 'block';
   }
 }
 
@@ -3873,6 +3887,7 @@ document.addEventListener('click', e => {
   replayMode = false;
   for (const k in keys) keys[k] = false;
   recorder.active = false;
+  document.getElementById('next-level-wrap').style.display = 'none';
   // If clicked element is a level button, let its onclick fire normally
   // (selectLevel will be called, which also resets replayMode — harmless double-reset)
 }, true);
