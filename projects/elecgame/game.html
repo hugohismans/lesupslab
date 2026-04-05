@@ -2705,10 +2705,10 @@ function startGGCelebration(finalTime, finalDeaths, camp) {
   spawnRocket(); spawnRocket();
   _rafGG = requestAnimationFrame(frameGG);
 
-  // Déclenche openFinish après la célébration (pas en mode admin)
+  // Déclenche openFinish après la célébration (jamais en mode admin)
   setTimeout(() => {
     overlay.classList.remove('active');
-    if (!adminSkipped) openFinish(finalTime, finalDeaths);
+    if (!adminMode && !adminSkipped) openFinish(finalTime, finalDeaths);
   }, 5500);
 }
 
@@ -5702,8 +5702,8 @@ function loop(timestamp) {
         campStop();
         nlBtn.textContent = t('btn.choose_level');
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; openMenu(); };
-        // Show finish popup only for a full run (started from level 0), sans skip admin
-        if (wasFullRun && !adminSkipped) setTimeout(() => openFinish(finalTime, finalDeaths), 1200);
+        // Show finish popup only for a full run, jamais en mode admin
+        if (wasFullRun && !adminMode && !adminSkipped) setTimeout(() => openFinish(finalTime, finalDeaths), 1200);
       }
     }
 
