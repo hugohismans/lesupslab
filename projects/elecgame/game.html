@@ -885,6 +885,122 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   }
   .ach-item.unlocked .ach-desc { color: #2a6a4a; }
 
+  /* ── PROFILE OVERLAY ────────────────────────────────────── */
+  #profile-overlay {
+    display: none; position: fixed; inset: 0; z-index: 650;
+    background: rgba(2,8,6,0.96);
+    align-items: center; justify-content: center;
+  }
+  #profile-overlay.open { display: flex; }
+  #profile-box {
+    background: #05120d;
+    border: 1px solid #1a5a3a;
+    width: min(420px, 94vw);
+    max-height: 85vh;
+    display: flex; flex-direction: column;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #profile-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #1a5a3a;
+    font-family: 'Courier New', monospace; font-size: 13px;
+    letter-spacing: 4px; color: #00ffcc;
+  }
+  #profile-close {
+    background: none; border: none; color: #446655; font-size: 16px;
+    cursor: pointer; font-family: 'Courier New', monospace;
+  }
+  #profile-close:hover { color: #00ffcc; }
+  #profile-content {
+    overflow-y: auto; padding: 14px 18px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  #profile-content::-webkit-scrollbar { width: 4px; }
+  #profile-content::-webkit-scrollbar-thumb { background: #1a5a3a; border-radius: 2px; }
+  .prof-pseudo {
+    font-family: 'Courier New', monospace; font-size: 18px;
+    letter-spacing: 3px; color: #00ffcc;
+    text-shadow: 0 0 14px #00ffcc66; text-align: center; padding: 8px 0;
+  }
+  .prof-section-title {
+    font-family: 'Courier New', monospace; font-size: 9px;
+    letter-spacing: 3px; color: #224433; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .prof-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: 'Courier New', monospace; font-size: 11px;
+    padding: 5px 0; border-bottom: 1px solid #0a2018;
+  }
+  .prof-label { color: #3a7a5a; letter-spacing: 1px; }
+  .prof-val   { color: #00ccaa; letter-spacing: 1px; font-size: 12px; }
+  .prof-val.empty { color: #224433; }
+
+  /* ── SURVIVAL HUD ────────────────────────────────────────── */
+  #survival-hud {
+    display: none;
+    position: fixed;
+    top: 52px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid #ff446655;
+    padding: 4px 12px;
+    color: #ff4466;
+    pointer-events: none;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  #survival-hud.active { display: flex; }
+  #survival-hud:not(.active) { display: none; }
+  #sg-lives { font-size: 14px; letter-spacing: 2px; }
+  #sg-counter { font-size: 11px; color: #ff8899; }
+
+  /* ── SURVIVAL GAME OVER ──────────────────────────────────── */
+  #survival-gameover {
+    display: none; position: fixed; inset: 0; z-index: 700;
+    background: rgba(0,0,0,0.85);
+    align-items: center; justify-content: center;
+  }
+  #survival-gameover.open { display: flex; }
+  #sg-box {
+    background: #08040a;
+    border: 1px solid #ff446688;
+    box-shadow: 0 0 50px #ff446622;
+    padding: 28px 32px;
+    width: min(360px, 92vw);
+    display: flex; flex-direction: column; gap: 14px;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+  }
+  #sg-box h2 { margin: 0; font-size: 18px; letter-spacing: 3px; color: #ff4466; text-shadow: 0 0 20px #ff4466; }
+  #sg-result { font-size: 12px; color: #446655; letter-spacing: 1px; line-height: 1.8; }
+  #sg-result span { color: #ff8899; font-size: 20px; }
+  #sg-pseudo {
+    background: #0a1a14; border: 1px solid #1a5a3a; color: #00ffcc;
+    font-family: 'Courier New', monospace; font-size: 14px;
+    padding: 10px 12px; outline: none; text-align: center; letter-spacing: 2px;
+  }
+  #sg-pseudo:focus { border-color: #00ffcc; }
+  #sg-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  #sg-btns button {
+    background: transparent; font-family: 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 2px; padding: 8px 16px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  #sg-submit { border: 1px solid #00ffcc; color: #00ffcc; }
+  #sg-submit:hover { background: #00ffcc18; box-shadow: 0 0 14px #00ffcc66; }
+  #sg-retry { border: 1px solid #ff4466; color: #ff4466; }
+  #sg-retry:hover { background: #ff446618; }
+  #sg-skip2 { border: 1px solid #224433; color: #224433; }
+  #sg-skip2:hover { color: #446655; border-color: #446655; }
+  #sg-status { font-size: 11px; color: #224433; min-height: 16px; }
+
   /* ── LOADING OVERLAY ─────────────────────────────────────── */
   #loading-overlay {
     display: none;
@@ -1270,6 +1386,14 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
 <div id="camp-select-overlay">
   <h2 id="camp-select-title">⚡ Choisir une campagne</h2>
   <div id="camp-select-btns"></div>
+  <div class="camp-libre-sep" style="width:min(360px,90vw);opacity:0.6"></div>
+  <button class="camp-select-btn libre" id="survival-start-btn" style="width:min(360px,90vw);border:1px solid #ff446655" onclick="startSurvival()">
+    <div class="camp-btn-badge" style="font-size:22px;min-height:52px;border-color:#ff446644;color:#ff4466">💀</div>
+    <div class="camp-btn-body">
+      <div class="camp-name" style="color:#ff4466;font-size:12px">Mode Survie</div>
+      <div class="camp-desc" style="opacity:0.7">3 vies — niveaux Cauchemar aléatoires — infini</div>
+    </div>
+  </button>
   <div id="invert-camp-wrap">
     <button class="invert-toggle" id="invert-btn-camp">
       <span class="toggle-pip"></span>
@@ -1303,6 +1427,38 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     <div id="ach-header">🏅 HAUTS-FAITS <button id="ach-close">✕</button></div>
     <div id="ach-progress"></div>
     <div id="ach-list"></div>
+  </div>
+</div>
+
+<!-- Profile overlay -->
+<div id="profile-overlay">
+  <div id="profile-box">
+    <div id="profile-header">
+      👤 PROFIL
+      <button id="profile-close">✕</button>
+    </div>
+    <div id="profile-content"></div>
+  </div>
+</div>
+
+<!-- Survival HUD -->
+<div id="survival-hud">
+  <span id="sg-lives">❤️❤️❤️</span>
+  <span id="sg-counter">0 niveau</span>
+</div>
+
+<!-- Survival Game Over -->
+<div id="survival-gameover">
+  <div id="sg-box">
+    <h2>💀 SURVIE TERMINÉE</h2>
+    <div id="sg-result">Tu as survécu à <span id="sg-score">0</span> niveau(x)</div>
+    <input id="sg-pseudo" type="text" maxlength="24" placeholder="Ton pseudo…" autocomplete="off">
+    <div id="sg-status"></div>
+    <div id="sg-btns">
+      <button id="sg-submit">Entrer au HOF →</button>
+      <button id="sg-retry">↺ Rejouer</button>
+      <button id="sg-skip2">Passer</button>
+    </div>
   </div>
 </div>
 
@@ -1373,6 +1529,7 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     <div style="margin-top:auto;padding-top:12px;border-top:1px solid #1a5a3a;display:flex;flex-direction:column;gap:4px">
       <button class="invert-toggle" id="invert-btn-sidebar"><span class="toggle-pip"></span>Mode miroir Q↔P</button>
       <button class="replay-btn" id="launch-camp-btn" style="border-color:#00cc99;color:#00cc99">⚡ Choisir une campagne</button>
+      <button class="replay-btn" id="profile-open-btn" style="border-color:#00ddaa;color:#00ddaa">👤 Profil</button>
       <button class="replay-btn" id="ach-open-btn" style="border-color:#aa66ff;color:#aa66ff">🏅 Hauts-Faits</button>
       <button class="replay-btn" id="auth-sidebar-btn" style="border-color:#4488ff;color:#4488ff">👤 Connexion</button>
       <button class="replay-btn" id="hof-open-btn" style="border-color:#ffdd44;color:#ffdd44">🏆 Hall of Fame</button>
@@ -2167,6 +2324,8 @@ function updateCampaignHUD() {
 function openCampSelect() {
   campStop();
   campRunning = false;
+  survivalRunning = false;
+  updateSurvivalHUD();
   const overlay = document.getElementById('camp-select-overlay');
   const btnsEl  = document.getElementById('camp-select-btns');
   btnsEl.innerHTML = '';
@@ -2236,6 +2395,13 @@ function registerDeath() {
   deathCount++;
   writeSave({ deaths: deathCount });
   if (campRunning) campDeaths++;
+  if (survivalRunning) {
+    survivalDeaths++;
+    survivalStreak = 0;
+    survivalLives--;
+    updateSurvivalHUD();
+    if (survivalLives <= 0) setTimeout(() => { if (survivalRunning) endSurvival(); }, 900);
+  }
   checkAchievements('death');
   updateDeathDisplay();
   const el = document.getElementById('death-counter');
@@ -2395,6 +2561,20 @@ function sfxFanfare() {
   });
 }
 
+function sfxFireworkPop() {
+  resumeAudio();
+  if (!AC || allMuted) return;
+  const osc  = AC.createOscillator();
+  const gain = AC.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(300 + Math.random() * 500, AC.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(40 + Math.random() * 40, AC.currentTime + 0.18);
+  gain.gain.setValueAtTime(0.18, AC.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + 0.18);
+  osc.connect(gain); gain.connect(masterGain);
+  osc.start(); osc.stop(AC.currentTime + 0.2);
+}
+
 function startGGCelebration(finalTime, finalDeaths, camp) {
   // Overlay texte
   const overlay = document.getElementById('gg-overlay');
@@ -2461,6 +2641,7 @@ function startGGCelebration(finalTime, finalDeaths, camp) {
         if (r.y <= r.targetY || r.vy > -0.5) {
           // Explode
           r.exploded = true;
+          sfxFireworkPop();
           for (let j = 0; j < 55; j++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 1.5 + Math.random() * 4;
@@ -2536,6 +2717,13 @@ const ACHIEVEMENTS = [
   { id:'mirror_won',       emoji:'🔄', name:'Monde à l\'envers',      desc:'Terminer une campagne en mode miroir' },
   { id:'cauchemar_mirror', emoji:'🌀', name:'Dimension inversée',     desc:'Terminer "Cauchemar" en mode miroir' },
   { id:'cauchemar_mirror_deathless', emoji:'🌟', name:'Au-delà du réel', desc:'Terminer "Cauchemar" en mode miroir sans mourir' },
+  // — Survie —
+  { id:'survie_5',         emoji:'💪', name:'Survivant',              desc:'Survivre à 5 niveaux en mode survie' },
+  { id:'survie_10',        emoji:'🩸', name:'Résistant',              desc:'Survivre à 10 niveaux en mode survie' },
+  { id:'survie_20',        emoji:'💀', name:'Indestructible',         desc:'Survivre à 20 niveaux en mode survie' },
+  { id:'survie_50',        emoji:'👑', name:'Légende vivante',        desc:'Survivre à 50 niveaux en mode survie' },
+  { id:'survie_deathless', emoji:'🩺', name:'Médecin urgentiste',     desc:'Terminer 3 niveaux de survie sans mourir une seule fois' },
+  { id:'survie_comeback',  emoji:'🔋', name:'Dernier souffle',        desc:'Gagner un niveau avec une seule vie restante' },
 ];
 
 const _ACH_LS = 'elecgame_achievements';
@@ -2585,6 +2773,7 @@ function checkAchievements(trigger) {
     if (deathCount >= 1)   unlockAchievement('first_death');
     if (deathCount >= 100) unlockAchievement('centurion');
   }
+  // — Survie (inline dans endSurvival / win hook) — handled elsewhere
   // — Fin de campagne —
   if (trigger === 'camp' && _lastCamp) {
     const { campId, deaths, time, inv } = _lastCamp;
@@ -2601,6 +2790,118 @@ function checkAchievements(trigger) {
     if (campId === 'cauchemar' && inv && deaths === 0) unlockAchievement('cauchemar_mirror_deathless');
   }
 }
+
+// ── MODE SURVIE ─────────────────────────────────────────────
+let survivalRunning  = false;
+let survivalLives    = 3;
+let survivalScore    = 0;   // niveaux réussis
+let survivalDeaths   = 0;   // morts pendant le run (toutes vies confondues)
+let survivalHistory  = [];  // fichiers des 5 derniers niveaux joués (évite répétitions)
+let survivalStreak   = 0;   // niveaux consécutifs sans mourir
+
+const SURVIVAL_POOL = CAMPAIGNS.cauchemar.levels.filter(e => !e.isGG);
+
+function survivalPickNext() {
+  const history = survivalHistory.slice(-5);
+  let pool = SURVIVAL_POOL.filter(e => !history.includes(e.file));
+  if (!pool.length) pool = SURVIVAL_POOL; // fallback si pool vide
+  const entry = pool[Math.floor(Math.random() * pool.length)];
+  survivalHistory.push(entry.file);
+  return entry;
+}
+
+function updateSurvivalHUD() {
+  const hud = document.getElementById('survival-hud');
+  if (!survivalRunning) { hud.classList.remove('active'); return; }
+  hud.classList.add('active');
+  const lives = Math.max(0, survivalLives);
+  document.getElementById('sg-lives').textContent =
+    '❤️'.repeat(lives) + '🖤'.repeat(Math.max(0, 3 - lives));
+  document.getElementById('sg-counter').textContent =
+    survivalScore + ' niveau' + (survivalScore > 1 ? 'x' : '');
+}
+
+function goSurvivalLevel(entry) {
+  selectLevel._advancing = true;
+  let lvIdx = LEVELS.findIndex(lv => lv._file === entry.file);
+  if (lvIdx < 0) {
+    lvIdx = LEVELS.length;
+    LEVELS.push({
+      name: entry.name || entry.file.split('/').pop().replace('.json', ''),
+      get hint() { return t('hint.restart'); },
+      _file: entry.file, _json: null,
+      make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
+    });
+  }
+  const lv = LEVELS[lvIdx];
+  if (lv._json) selectLevel(lvIdx);
+  else _fetchLevel(lv, () => selectLevel(lvIdx));
+}
+
+function startSurvival() {
+  if (campRunning) campStop();
+  survivalRunning  = true;
+  survivalLives    = 3;
+  survivalScore    = 0;
+  survivalDeaths   = 0;
+  survivalStreak   = 0;
+  survivalHistory  = [];
+  invertControls   = false;
+  _applyInvertUI();
+  document.getElementById('camp-select-overlay').classList.remove('open');
+  closeMenu();
+  updateSurvivalHUD();
+  goSurvivalLevel(survivalPickNext());
+}
+
+function endSurvival() {
+  survivalRunning = false;
+  updateSurvivalHUD();
+  // Achievements survie
+  if (survivalScore >= 5)  unlockAchievement('survie_5');
+  if (survivalScore >= 10) unlockAchievement('survie_10');
+  if (survivalScore >= 20) unlockAchievement('survie_20');
+  if (survivalScore >= 50) unlockAchievement('survie_50');
+  // Show game over overlay
+  document.getElementById('sg-score').textContent = survivalScore;
+  const pseudoEl = document.getElementById('sg-pseudo');
+  if (currentPseudo) pseudoEl.value = currentPseudo;
+  document.getElementById('sg-status').textContent = '';
+  document.getElementById('survival-gameover').classList.add('open');
+}
+
+async function _submitSurvivalScore() {
+  const pseudoEl = document.getElementById('sg-pseudo');
+  const statusEl = document.getElementById('sg-status');
+  const pseudo = pseudoEl.value.trim();
+  if (!pseudo) { statusEl.textContent = 'Entre ton pseudo.'; return; }
+  if (!currentUser) { statusEl.textContent = 'Connecte-toi pour soumettre.'; return; }
+  statusEl.textContent = 'Envoi…';
+  try {
+    const token = await currentUser.getIdToken();
+    const entry = {
+      pseudo, uid: currentUser.uid,
+      score: survivalScore,
+      ts: Date.now(), device: detectDevice()
+    };
+    await fetch(`${FB_URL}/${HOF_VERSION}/survie.json?auth=${token}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(entry)
+    });
+    statusEl.textContent = '✓ Score soumis !';
+    if (!currentPseudo) { currentPseudo = pseudo; updateAuthUI(); }
+  } catch { statusEl.textContent = '✗ Erreur.'; }
+}
+
+document.getElementById('sg-submit').onclick = _submitSurvivalScore;
+document.getElementById('sg-retry').onclick = () => {
+  document.getElementById('survival-gameover').classList.remove('open');
+  startSurvival();
+};
+document.getElementById('sg-skip2').onclick = () => {
+  document.getElementById('survival-gameover').classList.remove('open');
+};
 
 // — Overlay —
 function openAchievements() {
@@ -2624,6 +2925,58 @@ function openAchievements() {
 
 document.getElementById('ach-close').onclick   = () => document.getElementById('ach-overlay').classList.remove('open');
 document.getElementById('ach-open-btn').onclick = () => { closeMenu(); openAchievements(); };
+document.getElementById('profile-close').onclick = () => document.getElementById('profile-overlay').classList.remove('open');
+document.getElementById('profile-open-btn').onclick = () => { closeMenu(); openProfile(); };
+
+function openProfile() {
+  const pseudo = currentPseudo || (currentUser ? '(sans pseudo)' : 'Mode invité');
+  const campRows = ['bebe', 'piquer', 'cauchemar'].map(id => {
+    const s = getCampScore(id);
+    const camp = CAMPAIGNS[id];
+    const val  = s ? campFmtTime(s.time) + ' / ' + s.deaths + '💀' : null;
+    return `<div class="prof-row">
+      <span class="prof-label">${camp.emoji} ${camp.name}</span>
+      <span class="prof-val${val ? '' : ' empty'}">${val || '—'}</span>
+    </div>`;
+  });
+  const mirrorRows = ['bebe_inv', 'piquer_inv', 'cauchemar_inv'].map(id => {
+    const s = getCampScore(id);
+    const baseId = id.replace('_inv', '');
+    const camp = CAMPAIGNS[baseId];
+    const val  = s ? campFmtTime(s.time) + ' / ' + s.deaths + '💀' : null;
+    return `<div class="prof-row">
+      <span class="prof-label" style="color:#2a6a6a">🔄 ${camp.name}</span>
+      <span class="prof-val${val ? '' : ' empty'}">${val || '—'}</span>
+    </div>`;
+  });
+  const achCount = _achDone.size;
+  const achTotal = ACHIEVEMENTS.length;
+  document.getElementById('profile-content').innerHTML = `
+    <div style="text-align:center;padding:10px 0 4px">
+      <div class="prof-pseudo">${escHtml(pseudo)}</div>
+    </div>
+    <div>
+      <div class="prof-section-title">Stats</div>
+      <div class="prof-row">
+        <span class="prof-label">💀 Morts totales</span>
+        <span class="prof-val">${deathCount}</span>
+      </div>
+      <div class="prof-row">
+        <span class="prof-label">🏅 Hauts-faits</span>
+        <span class="prof-val">${achCount} / ${achTotal}</span>
+      </div>
+    </div>
+    <div>
+      <div class="prof-section-title">Meilleur temps par campagne</div>
+      ${campRows.join('')}
+    </div>
+    <div>
+      <div class="prof-section-title">Mode miroir</div>
+      ${mirrorRows.join('')}
+    </div>
+  `;
+  document.getElementById('profile-overlay').classList.add('open');
+}
 
 // ── SUBMIT TO ADMIN ────────────────────────────────────────
 const SUBMIT_COOLDOWN_MS = 60 * 60 * 1000; // 1 heure
@@ -2918,7 +3271,7 @@ document.getElementById('auth-sidebar-btn').onclick = () => {
 // ── HALL OF FAME ───────────────────────────────────────────
 const HOF_VERSION  = 'v0_0_5';
 const HOF_VERSIONS = ['v0_0_5', 'v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1']; // add new versions here
-const HOF_DIFFS    = ['bebe', 'piquer', 'cauchemar', 'bebe_inv', 'piquer_inv', 'cauchemar_inv'];
+const HOF_DIFFS    = ['bebe', 'piquer', 'cauchemar', 'bebe_inv', 'piquer_inv', 'cauchemar_inv', 'survie'];
 const HOF_DIFF_META = {
   bebe:          { label: '🍼 Bébés',          color: '#44ff88' },
   piquer:        { label: '⚡ Piquer',          color: '#ffaa00' },
@@ -2926,6 +3279,7 @@ const HOF_DIFF_META = {
   bebe_inv:      { label: '🔄 Bébés',     color: '#99ffcc' },
   piquer_inv:    { label: '🔄 Piquer',    color: '#ffcc66' },
   cauchemar_inv: { label: '🔄 Cauchemar', color: '#ff88aa' },
+  survie:        { label: '💀 Survie',    color: '#ff4466', survival: true },
 };
 // Retourne le diffId effectif selon le mode miroir actif
 function _diffId() { return currentCampaignId + (invertControls ? '_inv' : ''); }
@@ -3014,19 +3368,35 @@ async function hofFetch(version, diff) {
     if (!res.ok) return [];
     const data = await res.json();
     if (!data) return [];
+    const isSurvival = diff === 'survie';
     return Object.values(data)
-      .sort((a, b) => a.time - b.time)
+      .sort(isSurvival ? (a, b) => b.score - a.score || a.ts - b.ts : (a, b) => a.time - b.time)
       .slice(0, 50);
   } catch { return []; }
 }
 
-function hofRenderBody(entries) {
+function hofRenderBody(entries, isSurvival = false) {
   const body = document.getElementById('hof-body');
   if (!entries.length) {
     body.innerHTML = '<div class="hof-loading">Pas encore d\'entrée — sois le premier !</div>';
     return;
   }
   const medals = ['🥇','🥈','🥉'];
+  if (isSurvival) {
+    body.innerHTML = `<table class="hof-table">
+      <thead><tr>
+        <th>#</th><th>Pseudo</th><th>⚡ Niveaux</th><th>Date</th><th></th>
+      </tr></thead>
+      <tbody>${entries.map((e, i) => `<tr>
+        <td class="hof-rank">${medals[i] || (i+1)}</td>
+        <td class="hof-pseudo">${escHtml(e.pseudo)}</td>
+        <td class="hof-time" style="color:#ff8899">${e.score}</td>
+        <td style="color:#224433;font-size:10px">${new Date(e.ts).toLocaleDateString()}</td>
+        <td title="${e.device || 'pc'}" style="font-size:14px">${DEVICE_ICON[e.device] || DEVICE_ICON.pc}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+    return;
+  }
   body.innerHTML = `<table class="hof-table">
     <thead><tr>
       <th>#</th><th>Pseudo</th><th>Temps</th><th>💀 Morts</th><th>Date</th><th></th>
@@ -3063,8 +3433,8 @@ function hofBuildTabs(activeVersion, activeDiff) {
     diffRow.classList.remove('hidden');
     diffRow.innerHTML = '';
     HOF_DIFFS.forEach(d => {
-      // Retour à la ligne entre normal et miroir
-      if (d === 'bebe_inv') {
+      // Retour à la ligne entre normal et miroir, et avant survie
+      if (d === 'bebe_inv' || d === 'survie') {
         const br = document.createElement('div');
         br.style.cssText = 'flex-basis:100%;height:0;border-top:1px solid #0d2a1a';
         diffRow.appendChild(br);
@@ -3103,7 +3473,7 @@ async function openHOF(version = HOF_VERSION, diff = null) {
   hofBuildSpecials();
   document.getElementById('hof-body').innerHTML = '<div class="hof-loading">Chargement…</div>';
   const entries = await hofFetch(version, diff);
-  hofRenderBody(entries);
+  hofRenderBody(entries, diff === 'survie');
 }
 
 document.getElementById('hof-close').onclick = () =>
@@ -5201,10 +5571,22 @@ function loop(timestamp) {
     const nlBtn     = document.getElementById('next-level-btn');
     const submitBtn = document.getElementById('submit-level-btn');
 
+    // Mode survie : auto-avance au niveau suivant
+    if (survivalRunning) {
+      survivalScore++;
+      survivalStreak++;
+      if (survivalStreak >= 3) unlockAchievement('survie_deathless');
+      if (survivalLives === 1) unlockAchievement('survie_comeback');
+      updateSurvivalHUD();
+      nlBtn.style.display = 'none';
+      nlWrap.style.display = 'none';
+      setTimeout(() => { if (survivalRunning) goSurvivalLevel(survivalPickNext()); }, 1600);
+    }
+
     // Bouton campagne
     const cp = campaignPos();
-    nlBtn.style.display = cp >= 0 ? '' : 'none';
-    if (cp >= 0) {
+    nlBtn.style.display = (cp >= 0 && !survivalRunning) ? '' : 'none';
+    if (cp >= 0 && !survivalRunning) {
       if (cp + 1 < CAMPAIGN.length) {
         nlBtn.innerHTML = t('btn.next_level') + '<br><span style="font-size:11px;letter-spacing:2px;opacity:0.5">' + (currentLang === 'fr' ? '[ ESPACE ]' : '[ SPACE ]') + '</span>';
         nlBtn.onclick = () => { nlWrap.style.display = 'none'; goNextCampaign(cp + 1); };
@@ -5229,7 +5611,7 @@ function loop(timestamp) {
       submitBtn.style.display = 'none';
     }
 
-    if (cp >= 0 || (isTestMode && currentLevel === testLevelIdx)) nlWrap.style.display = 'block';
+    if ((cp >= 0 && !survivalRunning) || (isTestMode && currentLevel === testLevelIdx)) nlWrap.style.display = 'block';
   }
   // Show/hide micro numpad
   const showNumpad = state.type === 'custom' && !!state.microChallenge && !state.dead && !state.won;

@@ -607,7 +607,11 @@ canvas#bg {
 <!-- Right: Hall of Fame -->
 <div class="side-panel" id="panel-right">
   <div class="panel-header">
-    <div class="panel-title" style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">🏆 Hall of Fame <span style="font-size:10px;letter-spacing:1px;color:#ff4466;font-weight:normal;opacity:0.8;white-space:nowrap">💀 Cauchemar</span></div>
+    <div class="panel-title" id="hof-panel-title" style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">🏆 Hall of Fame <span id="hof-mode-label" style="font-size:10px;letter-spacing:1px;color:#ff4466;font-weight:normal;opacity:0.8;white-space:nowrap">💀 Cauchemar</span></div>
+    <div style="display:flex;gap:4px;margin-bottom:2px">
+      <button class="hof-tab active" id="hof-mode-camp" onclick="switchHofMode('camp')">Campagne</button>
+      <button class="hof-tab" id="hof-mode-surv" onclick="switchHofMode('survie')">Survie</button>
+    </div>
     <div class="hof-tabs" id="hof-tabs"></div>
     <div class="hof-tabs" id="hof-diff-tabs" style="margin-top:4px"></div>
   </div>
@@ -1114,9 +1118,19 @@ function startGame() {
 // ── SIDE PANELS ────────────────────────────────────────────
 const HOF_VERSIONS = ['v0_0_5', 'v0_0_4', 'v0_0_3', 'v0_0_2', 'v0_0_1'];
 const FB_URL = 'https://dieandretry-af391-default-rtdb.europe-west1.firebasedatabase.app/hof';
-// index.html : uniquement le cauchemar, toutes versions
 const HOF_FIXED_DIFF = 'cauchemar';
 let hofCurrentVersion = HOF_VERSIONS[0];
+let hofCurrentMode = 'camp'; // 'camp' or 'survie'
+
+function switchHofMode(mode) {
+  hofCurrentMode = mode;
+  document.getElementById('hof-mode-camp').classList.toggle('active', mode === 'camp');
+  document.getElementById('hof-mode-surv').classList.toggle('active', mode === 'survie');
+  document.getElementById('hof-mode-label').textContent =
+    mode === 'survie' ? '💀 Survie' : '💀 Cauchemar';
+  buildHofTabs();
+  renderHOF();
+}
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1142,7 +1156,7 @@ function buildHofTabs() {
   tabs.innerHTML = HOF_VERSIONS.map(v =>
     `<button class="hof-tab${v === hofCurrentVersion ? ' active' : ''}" onclick="switchHofVersion('${v}')">${v.replace(/_/g,'.')}</button>`
   ).join('');
-  // Pas de diff tabs sur index.html — uniquement cauchemar
+  // Pas de diff tabs — mode fixe (cauchemar ou survie)
   const diffTabs = document.getElementById('hof-diff-tabs');
   diffTabs.innerHTML = '';
   diffTabs.style.display = 'none';
@@ -1157,14 +1171,18 @@ function switchHofVersion(v) {
 async function renderHOF() {
   const el = document.getElementById('ihof-list');
   el.innerHTML = '<div class="panel-empty">Chargement…</div>';
+  const isSurvival = hofCurrentMode === 'survie';
   try {
+    const diff = isSurvival ? 'survie' : HOF_FIXED_DIFF;
     const path = (hofCurrentVersion === 'v0_0_5' || hofCurrentVersion === 'v0_0_4')
-      ? `${FB_URL}/${hofCurrentVersion}/${HOF_FIXED_DIFF}.json`
-      : `${FB_URL}/${hofCurrentVersion}.json`;
+      ? `${FB_URL}/${hofCurrentVersion}/${diff}.json`
+      : (isSurvival ? `${FB_URL}/${hofCurrentVersion}/survie.json` : `${FB_URL}/${hofCurrentVersion}.json`);
     const res = await fetch(path);
     const data = res.ok ? await res.json() : null;
     const entries = data
-      ? Object.values(data).sort((a, b) => a.time - b.time).slice(0, 20)
+      ? Object.values(data)
+          .sort(isSurvival ? (a, b) => b.score - a.score || a.ts - b.ts : (a, b) => a.time - b.time)
+          .slice(0, 20)
       : [];
     if (!entries.length) {
       el.innerHTML = '<div class="panel-empty">Pas encore d\'entrée —<br>sois le premier !</div>';
@@ -1172,14 +1190,24 @@ async function renderHOF() {
     }
     const medals = ['🥇','🥈','🥉'];
     const cls    = ['ihof-1st','ihof-2nd','ihof-3rd'];
-    el.innerHTML = entries.map((e, i) =>
-      `<div class="ihof-row ${cls[i]||''}">
-        <span class="ihof-rank">${medals[i]||(i+1)}</span>
-        <span class="ihof-pseudo">${escHtml(e.pseudo)}</span>
-        <span class="ihof-time">${fmtTime(e.time)}</span>
-        <span class="ihof-deaths">${e.deaths}💀</span>
-      </div>`
-    ).join('');
+    if (isSurvival) {
+      el.innerHTML = entries.map((e, i) =>
+        `<div class="ihof-row ${cls[i]||''}">
+          <span class="ihof-rank">${medals[i]||(i+1)}</span>
+          <span class="ihof-pseudo">${escHtml(e.pseudo)}</span>
+          <span class="ihof-time" style="color:#ff8899">${e.score} niv.</span>
+        </div>`
+      ).join('');
+    } else {
+      el.innerHTML = entries.map((e, i) =>
+        `<div class="ihof-row ${cls[i]||''}">
+          <span class="ihof-rank">${medals[i]||(i+1)}</span>
+          <span class="ihof-pseudo">${escHtml(e.pseudo)}</span>
+          <span class="ihof-time">${fmtTime(e.time)}</span>
+          <span class="ihof-deaths">${e.deaths}💀</span>
+        </div>`
+      ).join('');
+    }
   } catch {
     el.innerHTML = '<div class="panel-empty">Erreur de chargement</div>';
   }
