@@ -762,6 +762,42 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   .invert-toggle-label { font-size: 11px; }
   .invert-toggle-keys  { font-size: 13px; letter-spacing: 1px; opacity: 0.7; }
 
+  /* ── GG CELEBRATION ──────────────────────────────────────── */
+  #gg-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 750;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; pointer-events: none;
+  }
+  #gg-overlay.active { display: flex; }
+  #gg-canvas {
+    position: fixed; inset: 0; z-index: 749; pointer-events: none;
+  }
+  #gg-text {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(22px, 5vw, 42px);
+    letter-spacing: 6px;
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 0 30px #ffff44, 0 0 60px #ffaa00;
+    animation: gg-pulse 0.8s ease-in-out infinite alternate;
+    z-index: 751;
+  }
+  #gg-sub {
+    font-family: 'Courier New', monospace;
+    font-size: clamp(11px, 2.5vw, 16px);
+    letter-spacing: 4px;
+    color: #00ffcc;
+    text-shadow: 0 0 16px #00ffcc;
+    text-align: center;
+    z-index: 751;
+    opacity: 0.85;
+  }
+  @keyframes gg-pulse {
+    from { text-shadow: 0 0 20px #ffff44, 0 0 40px #ffaa00; transform: scale(1); }
+    to   { text-shadow: 0 0 40px #ffff88, 0 0 80px #ffcc00; transform: scale(1.04); }
+  }
+
   /* ── ACHIEVEMENTS ────────────────────────────────────────── */
   #ach-toast {
     position: fixed;
@@ -1241,6 +1277,13 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     </button>
     <p id="invert-camp-desc">Inverse les touches de contrôle — Q pilote les interrupteurs P, et vice-versa.</p>
   </div>
+</div>
+
+<!-- GG Celebration -->
+<canvas id="gg-canvas"></canvas>
+<div id="gg-overlay">
+  <div id="gg-text">🎉 FÉLICITATIONS ! 🎉</div>
+  <div id="gg-sub"></div>
 </div>
 
 <!-- Achievement toast -->
@@ -1744,6 +1787,7 @@ const CAMPAIGNS = {
       { file: 'levels/67.json',                      name: '67' },
       { file: "levels/Le Pistolet.json",             name: 'Le Pistolet' },
       { file: 'levels/Merry Christmas.json',         name: 'Merry Christmas' },
+      { file: 'levels/Final_gg.json',                name: 'GG !', isGG: true },
     ]
   },
   piquer: {
@@ -1757,6 +1801,7 @@ const CAMPAIGNS = {
       { file: 'levels/levelHard.json',               name: 'Level Hard' },
       { file: "levels/Snaked.json",                  name: 'Snaked' },
       { file: 'levels/Merry Christmas.json',         name: 'Merry Christmas' },
+      { file: 'levels/Final_gg.json',                name: 'GG !', isGG: true },
     ]
   },
   cauchemar: {
@@ -1773,6 +1818,7 @@ const CAMPAIGNS = {
       { file: "levels/L'ascenseur.json",             name: "L'ascenseur" },
       { file: 'levels/Just In (Bieber).json',        name: 'Just In (Bieber)' },
       { file: 'levels/Slug.json',                    name: 'Slug' },
+      { file: 'levels/Final_gg.json',                name: 'GG !', isGG: true },
     ]
   }
 };
@@ -1797,7 +1843,8 @@ function goNextCampaign(campIdx) {
       // Pas dans index.json — créer une entrée dynamique
       lvIdx = LEVELS.length;
       LEVELS.push({
-        name: entry.file.split('/').pop().replace('.json', ''),
+        name: entry.name || entry.file.split('/').pop().replace('.json', ''),
+        isGG: entry.isGG || false,
         get hint() { return t('hint.restart'); },
         _file: entry.file, _json: null,
         make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
@@ -1827,6 +1874,14 @@ function selectLevel(idx) {
   const prevLevel_ = currentLevel;
   currentLevel = idx;
   try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
+
+  // GG level : déclenche la célébration immédiatement, sans que le joueur joue
+  if (LEVELS[idx]?.isGG && campRunning) {
+    const ft = campElapsed(), fd = campDeaths;
+    campStop();
+    startGGCelebration(ft, fd, CAMPAIGNS[currentCampaignId]);
+    return;
+  }
   // Resize canvas and compute fit transform for custom levels
   const touchH = window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 100 : 0;
   if (state.type === 'custom') {
@@ -1911,6 +1966,7 @@ for (const [campId, camp] of Object.entries(CAMPAIGNS)) {
         lvIdx = LEVELS.length;
         LEVELS.push({
           name: entry.name || entry.file.split('/').pop().replace('.json', ''),
+          isGG: entry.isGG || false,
           get hint() { return t('hint.restart'); },
           _file: entry.file, _json: null,
           make() { if (!this._json) throw new Error('not loaded'); return makeCustomLevel(this._json); }
@@ -2300,6 +2356,161 @@ function _fetchLevel(lv, onSuccess) {
       .catch(() => _showLoadingError('Impossible de charger le niveau', doFetch));
   };
   doFetch();
+}
+
+// ── GG CELEBRATION ─────────────────────────────────────────
+
+function sfxFanfare() {
+  resumeAudio();
+  if (!AC) return;
+  const t0 = AC.currentTime;
+  // Mélodie do-mi-sol-do (C4 E4 G4 C5) + chord final
+  const melody = [261.63, 329.63, 392.00, 523.25, 659.25];
+  melody.forEach((freq, i) => {
+    const osc  = AC.createOscillator();
+    const gain = AC.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0 + i * 0.18);
+    gain.gain.linearRampToValueAtTime(0.22, t0 + i * 0.18 + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + i * 0.18 + 0.35);
+    osc.connect(gain); gain.connect(masterGain);
+    osc.start(t0 + i * 0.18);
+    osc.stop(t0 + i * 0.18 + 0.4);
+  });
+  // Chord final joyeux (do-mi-sol) ensemble
+  [523.25, 659.25, 783.99].forEach(freq => {
+    const osc  = AC.createOscillator();
+    const gain = AC.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const t1 = t0 + melody.length * 0.18 + 0.05;
+    gain.gain.setValueAtTime(0, t1);
+    gain.gain.linearRampToValueAtTime(0.18, t1 + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, t1 + 1.2);
+    osc.connect(gain); gain.connect(masterGain);
+    osc.start(t1); osc.stop(t1 + 1.4);
+  });
+}
+
+function startGGCelebration(finalTime, finalDeaths, camp) {
+  // Overlay texte
+  const overlay = document.getElementById('gg-overlay');
+  document.getElementById('gg-sub').textContent =
+    (camp ? camp.emoji + ' ' + camp.name.toUpperCase() : '') +
+    '  —  ' + campFmtTime(finalTime) + ' / ' + finalDeaths + ' mort' + (finalDeaths > 1 ? 's' : '');
+  overlay.classList.add('active');
+
+  // Fireworks canvas
+  const cvs = document.getElementById('gg-canvas');
+  cvs.width  = window.innerWidth;
+  cvs.height = window.innerHeight;
+  const ctx  = cvs.getContext('2d');
+  cvs.style.display = 'block';
+
+  const COLORS = ['#00ffcc','#ffcc00','#ff6688','#44aaff','#ffaa00','#88ff44','#ff44ff','#ffffff'];
+  const rockets = [];
+
+  function spawnRocket() {
+    rockets.push({
+      x: window.innerWidth * (0.15 + Math.random() * 0.7),
+      y: window.innerHeight,
+      vy: -(window.innerHeight * 0.012 + Math.random() * window.innerHeight * 0.008),
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      trail: [],
+      exploded: false,
+      particles: [],
+      targetY: window.innerHeight * (0.1 + Math.random() * 0.4),
+    });
+  }
+
+  let _rafGG;
+  let elapsed = 0;
+  let lastT   = performance.now();
+
+  function frameGG(now) {
+    const dt = Math.min((now - lastT) / 1000, 0.05);
+    lastT = now;
+    elapsed += dt;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+    // Spawn rockets periodically
+    if (elapsed < 5 && Math.random() < dt * 3.5) spawnRocket();
+
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      if (!r.exploded) {
+        r.trail.push({ x: r.x, y: r.y });
+        if (r.trail.length > 14) r.trail.shift();
+        // Draw trail
+        r.trail.forEach((p, ti) => {
+          const a = (ti / r.trail.length) * 0.7;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2 * (ti / r.trail.length), 0, Math.PI * 2);
+          ctx.fillStyle = r.color;
+          ctx.globalAlpha = a;
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+        r.y += r.vy;
+        r.vy *= 0.985;
+
+        if (r.y <= r.targetY || r.vy > -0.5) {
+          // Explode
+          r.exploded = true;
+          for (let j = 0; j < 55; j++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1.5 + Math.random() * 4;
+            r.particles.push({
+              x: r.x, y: r.y,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed - 1,
+              life: 1, color: j % 4 === 0 ? '#ffffff' : r.color,
+              size: 1.5 + Math.random() * 2,
+            });
+          }
+        }
+      } else {
+        let alive = false;
+        for (const p of r.particles) {
+          if (p.life <= 0) continue;
+          alive = true;
+          p.x += p.vx; p.y += p.vy;
+          p.vy += 0.12; // gravity
+          p.vx *= 0.96; p.vy *= 0.96;
+          p.life -= dt * 0.9;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.life * 0.85;
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        if (!alive) rockets.splice(i, 1);
+      }
+    }
+
+    if (elapsed < 6.5) {
+      _rafGG = requestAnimationFrame(frameGG);
+    } else {
+      ctx.clearRect(0, 0, cvs.width, cvs.height);
+      cvs.style.display = 'none';
+      overlay.classList.remove('active');
+    }
+  }
+
+  // Fanfare + démarrage
+  setTimeout(sfxFanfare, 200);
+  spawnRocket(); spawnRocket();
+  _rafGG = requestAnimationFrame(frameGG);
+
+  // Déclenche openFinish après la célébration
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    openFinish(finalTime, finalDeaths);
+  }, 5500);
 }
 
 // ── HAUTS-FAITS (ACHIEVEMENTS) ─────────────────────────────
