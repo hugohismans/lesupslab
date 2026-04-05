@@ -698,27 +698,50 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
   .camp-select-btn.libre .camp-name { font-size: 11px; letter-spacing: 3px; }
 
   /* ── INVERT TOGGLE ───────────────────────────────────────── */
+  #invert-camp-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  #invert-camp-desc {
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: #2a5040;
+    text-align: center;
+    margin: 0;
+    max-width: 280px;
+    line-height: 1.6;
+    transition: color 0.15s;
+  }
+  #invert-btn-camp.active ~ #invert-camp-desc,
+  #invert-camp-wrap:has(#invert-btn-camp.active) #invert-camp-desc {
+    color: #cc6600;
+  }
+
   .invert-toggle {
     font-family: 'Courier New', monospace;
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 2px;
     text-transform: uppercase;
     background: transparent;
     border: 1px solid #1a4535;
-    color: #2a6a4a;
-    padding: 7px 16px;
+    color: #3a7a5a;
+    padding: 8px 18px;
     cursor: pointer;
     border-radius: 3px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
   }
-  .invert-toggle:hover { border-color: #00ffcc55; color: #00ffcc88; }
+  .invert-toggle:hover { border-color: #00ffcc55; color: #00ffcc99; }
   .invert-toggle.active {
     border-color: #ff8800;
     color: #ff8800;
-    box-shadow: 0 0 10px #ff880033;
+    box-shadow: 0 0 12px #ff880033;
   }
   .invert-toggle .toggle-pip {
     width: 8px; height: 8px;
@@ -726,6 +749,8 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     background: currentColor;
     flex-shrink: 0;
   }
+  .invert-toggle-label { font-size: 11px; }
+  .invert-toggle-keys  { font-size: 13px; letter-spacing: 1px; opacity: 0.7; }
 
   /* ── LOADING OVERLAY ─────────────────────────────────────── */
   #loading-overlay {
@@ -1112,7 +1137,14 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
 <div id="camp-select-overlay">
   <h2 id="camp-select-title">⚡ Choisir une campagne</h2>
   <div id="camp-select-btns"></div>
-  <button class="invert-toggle" id="invert-btn-camp"><span class="toggle-pip"></span>Mode miroir Q↔P</button>
+  <div id="invert-camp-wrap">
+    <button class="invert-toggle" id="invert-btn-camp">
+      <span class="toggle-pip"></span>
+      <span class="invert-toggle-label">Mode miroir</span>
+      <span class="invert-toggle-keys">Q ↔ P</span>
+    </button>
+    <p id="invert-camp-desc">Inverse les touches de contrôle — Q pilote les interrupteurs P, et vice-versa.</p>
+  </div>
 </div>
 
 <!-- Loading overlay -->
