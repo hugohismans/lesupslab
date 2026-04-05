@@ -584,39 +584,118 @@ _googleProvider.setCustomParameters({ prompt: 'select_account' });
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,4,2,0.94);
+    background: rgba(2,8,6,0.96);
     z-index: 600;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 32px;
+    gap: 24px;
   }
   #camp-select-overlay.open { display: flex; }
+
   #camp-select-title {
     font-family: 'Courier New', monospace;
-    font-size: 15px;
-    letter-spacing: 6px;
+    font-size: 11px;
+    letter-spacing: 8px;
     color: #00ffcc;
     text-align: center;
     text-transform: uppercase;
     margin: 0;
+    opacity: 0.6;
   }
-  #camp-select-btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+  #camp-select-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    width: min(360px, 90vw);
+  }
+
   .camp-select-btn {
     font-family: 'Courier New', monospace;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.55);
     cursor: pointer;
-    letter-spacing: 2px;
-    border-radius: 3px;
-    transition: all 0.15s;
-    min-width: 300px;
-    display: flex; flex-direction: column; align-items: center; gap: 5px;
-    padding: 18px 36px;
+    border-radius: 4px;
+    transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    align-items: center;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    text-align: left;
   }
-  .camp-select-btn:hover { transform: scale(1.04); filter: brightness(1.2); }
-  .camp-emoji { font-size: 26px; }
-  .camp-name  { font-size: 14px; font-weight: bold; letter-spacing: 3px; }
-  .camp-desc  { font-size: 10px; opacity: 0.65; letter-spacing: 1px; }
+  .camp-select-btn:hover {
+    transform: translateX(4px);
+    background: rgba(0,0,0,0.75);
+  }
+
+  .camp-btn-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    height: 100%;
+    min-height: 72px;
+    background: rgba(0,0,0,0.3);
+    border-right: 1px solid;
+    flex-shrink: 0;
+  }
+
+  .camp-btn-body {
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .camp-name {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .camp-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .camp-desc {
+    font-size: 9px;
+    letter-spacing: 1px;
+    opacity: 0.5;
+  }
+
+  .camp-difficulty {
+    display: flex;
+    gap: 3px;
+  }
+  .camp-difficulty span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    opacity: 0.9;
+  }
+
+  .camp-libre-sep {
+    height: 1px;
+    background: #1a3a2a;
+    opacity: 0.4;
+    margin: 2px 0;
+  }
+
+  .camp-select-btn.libre {
+    opacity: 0.45;
+    grid-template-columns: 48px 1fr;
+  }
+  .camp-select-btn.libre:hover { opacity: 0.7; transform: translateX(4px); }
+  .camp-select-btn.libre .camp-btn-badge { font-size: 20px; min-height: 50px; }
+  .camp-select-btn.libre .camp-btn-body { padding: 10px 16px; }
+  .camp-select-btn.libre .camp-name { font-size: 11px; letter-spacing: 3px; }
 
   /* ── HOF OVERLAY ─────────────────────────────────────────── */
   #hof-overlay {
@@ -1792,14 +1871,30 @@ function openCampSelect() {
   const overlay = document.getElementById('camp-select-overlay');
   const btnsEl  = document.getElementById('camp-select-btns');
   btnsEl.innerHTML = '';
+  // difficulté visuelle : 1 = facile (bebe), 2 = moyen, 3 = difficile (cauchemar)
+  const CAMP_DIFF = { bebe: 1, piquer: 2, cauchemar: 3 };
   for (const [id, camp] of Object.entries(CAMPAIGNS)) {
     const btn = document.createElement('button');
     btn.className = 'camp-select-btn';
-    btn.style.borderColor = camp.color;
+    btn.style.border = '1px solid ' + camp.color + '55';
+    btn.style.boxShadow = '0 0 18px ' + camp.color + '18, inset 0 0 30px ' + camp.color + '06';
     btn.style.color = camp.color;
-    btn.style.border = '1px solid ' + camp.color;
     const n = camp.levels.length;
-    btn.innerHTML = `<span class="camp-emoji">${camp.emoji}</span><span class="camp-name">${camp.name}</span><span class="camp-desc">${n} niveau${n > 1 ? 'x' : ''}</span>`;
+    const diff = CAMP_DIFF[id] || 1;
+    const dots = [1,2,3].map(d =>
+      `<span style="background:${d <= diff ? camp.color : 'transparent'};border:1px solid ${camp.color}66"></span>`
+    ).join('');
+    btn.innerHTML = `
+      <div class="camp-btn-badge" style="border-color:${camp.color}33;color:${camp.color}">${camp.emoji}</div>
+      <div class="camp-btn-body">
+        <span class="camp-name">${camp.name}</span>
+        <div class="camp-meta">
+          <span class="camp-desc">${n} niveau${n > 1 ? 'x' : ''}</span>
+          <div class="camp-difficulty">${dots}</div>
+        </div>
+      </div>`;
+    btn.onmouseenter = () => { btn.style.boxShadow = '0 0 28px ' + camp.color + '38, inset 0 0 40px ' + camp.color + '0c'; };
+    btn.onmouseleave = () => { btn.style.boxShadow = '0 0 18px ' + camp.color + '18, inset 0 0 30px ' + camp.color + '06'; };
     btn.onclick = () => {
       currentCampaignId = id;
       CAMPAIGN = camp.levels;
@@ -1810,13 +1905,18 @@ function openCampSelect() {
   }
   // Mode libre
   const libreSep = document.createElement('div');
-  libreSep.style.cssText = 'width:100%;height:1px;background:#1a3a2a;margin:4px 0;opacity:0.5';
+  libreSep.className = 'camp-libre-sep';
   btnsEl.appendChild(libreSep);
   const libreBtn = document.createElement('button');
-  libreBtn.className = 'camp-select-btn';
-  libreBtn.style.border = '1px solid #2a4a3a';
-  libreBtn.style.color = '#446655';
-  libreBtn.innerHTML = '<span class="camp-emoji">🎮</span><span class="camp-name">MODE LIBRE</span><span class="camp-desc">Choisir ses niveaux dans la liste</span>';
+  libreBtn.className = 'camp-select-btn libre';
+  libreBtn.style.border = '1px solid #2a4a3a44';
+  libreBtn.style.color = '#3a6650';
+  libreBtn.innerHTML = `
+    <div class="camp-btn-badge" style="border-color:#2a4a3a33;color:#3a6650">🎮</div>
+    <div class="camp-btn-body">
+      <span class="camp-name">Mode libre</span>
+      <span class="camp-desc">Choisir ses niveaux dans la liste</span>
+    </div>`;
   libreBtn.onclick = () => {
     currentCampaignId = 'libre';
     CAMPAIGN = [];
