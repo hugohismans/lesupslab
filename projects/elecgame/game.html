@@ -1865,11 +1865,22 @@ document.getElementById('submit-cancel').onclick = () => {
 
 document.getElementById('submit-send').onclick = async () => {
   if (!SUBMIT_WEBHOOK) return;
-  const name    = document.getElementById('submit-name').value.trim() || (currentLang === 'fr' ? 'Anonyme' : 'Anonymous');
-  const isAdmin = name.toLowerCase() === 'lesups';
-  const msg     = document.getElementById('submit-msg').value.trim();
+  const name    = document.getElementById('submit-name').value.trim();
   const status  = document.getElementById('submit-status');
   const sendBtn = document.getElementById('submit-send');
+
+  // Pseudo obligatoire
+  if (!name) {
+    status.style.color = '#ff4444';
+    status.textContent = currentLang === 'fr'
+      ? '⚠ Entre ton prénom ou pseudo avant d\'envoyer.'
+      : '⚠ Enter your name or username before sending.';
+    document.getElementById('submit-name').focus();
+    return;
+  }
+
+  const isAdmin = name.toLowerCase() === 'lesups';
+  const msg     = document.getElementById('submit-msg').value.trim();
 
   if (!isAdmin) {
     const lastSubmit = parseInt(loadSave().lastSubmit || 0);
@@ -1881,11 +1892,26 @@ document.getElementById('submit-send').onclick = async () => {
     }
   }
 
-  const levelJSON  = localStorage.getItem('elecgame_test_level') || '{}';
-  const levelName  = JSON.parse(levelJSON).name || 'level';
+  const levelJSON = localStorage.getItem('elecgame_test_level') || '{}';
+  const levelObj  = JSON.parse(levelJSON);
+  const levelName = levelObj.name || 'level';
+
+  // Nom de niveau par défaut = refusé
+  if (levelName === 'Mon niveau' || levelName === 'My level') {
+    status.style.color = '#ff4444';
+    status.textContent = currentLang === 'fr'
+      ? '⚠ Donne un vrai nom à ton niveau dans l\'éditeur avant de soumettre.'
+      : '⚠ Give your level a proper name in the editor before submitting.';
+    return;
+  }
+
+  // Injecter made_by dans le JSON envoyé
+  levelObj.made_by = name;
+  const levelJSONFinal = JSON.stringify(levelObj);
+
   const replayData = {
     levelName: recorder.levelName || levelName,
-    levelJSON: JSON.parse(levelJSON),
+    levelJSON: levelObj,
     duration:  recorder.wonTime,
     inputs:    recorder.inputs
   };
@@ -1895,14 +1921,14 @@ document.getElementById('submit-send').onclick = async () => {
   sendBtn.disabled = true;
 
   try {
-    const form = new FormData();
-    const encoded  = btoa(unescape(encodeURIComponent(levelJSON))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    const form     = new FormData();
+    const encoded  = btoa(unescape(encodeURIComponent(levelJSONFinal))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
     const testUrl  = `https://hugohismans.github.io/lesupslab/projects/elecgame/game.html?lvl=${encoded}`;
     const baseContent = `${t('submit.discord_content')}\n👤 ${name}${msg ? '\n💬 ' + msg : ''}\n⏱ ${(replayData.duration / 1000).toFixed(2)}s`;
     const withLink = baseContent + `\n▶ Tester : ${testUrl}`;
-    const content = withLink.length <= 2000 ? withLink : baseContent + '\n📎 Niveau trop grand pour lien direct — charge le fichier joint.';
+    const content  = withLink.length <= 2000 ? withLink : baseContent + '\n📎 Niveau trop grand pour lien direct — charge le fichier joint.';
     form.append('payload_json', JSON.stringify({ content }));
-    form.append('files[0]', new Blob([JSON.stringify(JSON.parse(levelJSON), null, 2)], { type: 'application/json' }), levelName + '.json');
+    form.append('files[0]', new Blob([JSON.stringify(levelObj, null, 2)], { type: 'application/json' }), levelName + '.json');
     form.append('files[1]', new Blob([JSON.stringify(replayData, null, 2)], { type: 'application/json' }), levelName + '_replay.json');
 
     const res = await fetch(SUBMIT_WEBHOOK, { method: 'POST', body: form });
