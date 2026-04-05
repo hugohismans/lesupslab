@@ -1875,12 +1875,12 @@ function selectLevel(idx) {
   currentLevel = idx;
   try { state = LEVELS[idx].make(); } catch(e) { return; } // not loaded yet
 
-  // GG level : déclenche la célébration immédiatement, sans que le joueur joue
+  // GG level : déclenche la célébration par-dessus le niveau qui tourne
   if (LEVELS[idx]?.isGG && campRunning) {
     const ft = campElapsed(), fd = campDeaths;
     campStop();
     startGGCelebration(ft, fd, CAMPAIGNS[currentCampaignId]);
-    return;
+    // pas de return — le niveau GG continue de tourner en fond
   }
   // Resize canvas and compute fit transform for custom levels
   const touchH = window.matchMedia('(hover: none) and (pointer: coarse)').matches ? 100 : 0;
@@ -2481,8 +2481,9 @@ function startGGCelebration(finalTime, finalDeaths, camp) {
           p.vy += 0.12; // gravity
           p.vx *= 0.96; p.vy *= 0.96;
           p.life -= dt * 0.9;
+          if (p.life <= 0) { p.life = 0; continue; }
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, Math.max(0.01, p.size * p.life), 0, Math.PI * 2);
           ctx.fillStyle = p.color;
           ctx.globalAlpha = p.life * 0.85;
           ctx.fill();
