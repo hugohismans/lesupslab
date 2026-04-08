@@ -30,6 +30,23 @@ const translations = {
     "bag.bamboo":       "Éventail bambou",
     "bag.woven":        "Tressé bleu ciel",
 
+    // Card descriptions
+    "bag.navy.desc":        "Grand cabas en tissu bleu marine texturé, orné de perles roses et dorées. Anses courtes, grande capacité. Idéal pour le quotidien ou une sortie.",
+    "bag.halfmoon.desc":    "Sac demi-lune en raphia crocheté naturel, avec franges et coquillages. Bandoulière tressée. Une pièce boho et légère, parfaite pour l'été.",
+    "bag.caramel.desc":     "Petit cabas en raphia crocheté couleur caramel, compact et solide. Parfait pour les courses, la plage ou une balade.",
+    "bag.terracotta.desc":  "Grand sac en tissu orange terracotta, décoration de coquillages. Forme généreuse, très grande capacité. Une couleur chaleureuse qui habille n'importe quelle tenue.",
+    "bag.mandala.desc":     "Grand sac rond en raphia crocheté, motif mandala élaboré, gland en cuir naturel. Bandoulière longue. Une pièce unique avec beaucoup de caractère.",
+    "bag.ikat.desc":        "Sac en tissu imprimé ikat vert et blanc, décoration de boutons noirs. Forme arrondie, anses courtes. Un modèle graphique et original.",
+    "bag.stripes.desc":     "Grand sac en tissu rayures bleu marine et blanc, orné d'une fleur en tissu. Anses en tissu assorties. Un classique revisité avec beaucoup de fraîcheur.",
+    "bag.granny.desc":      "Sac banane en raphia crocheté, motif granny square, petit gland décoratif. Pratique et original, il se porte à la taille ou en bandoulière.",
+    "bag.bamboo.desc":      "Grand sac en raphia crocheté beige, anses rondes en bambou naturel, forme éventail plissé. Élégant et estival, il se porte facilement au quotidien.",
+    "bag.woven.desc":       "Grand sac en tissu bleu ciel tressé, anses noires, gland décoratif en cuir noir avec perle en bois. Un modèle structuré au look très soigné.",
+
+    // Modal
+    "modal.material":   "Matière",
+    "modal.price":      "Prix",
+    "modal.order":      "Commander ce sac",
+
     // Custom orders
     "section.custom":       "Sur mesure",
     "section.custom.sub":   "Votre sac, votre style",
@@ -100,6 +117,21 @@ const translations = {
     "bag.bamboo":       "Abanico bambú",
     "bag.woven":        "Trenzado azul cielo",
 
+    "bag.navy.desc":        "Gran bolso de tela azul marino texturada, adornado con cuentas rosas y doradas. Asas cortas, gran capacidad. Ideal para el día a día.",
+    "bag.halfmoon.desc":    "Bolso media luna de rafia ganchillo natural, con flecos y conchas. Bandolera trenzada. Una pieza boho y ligera, perfecta para el verano.",
+    "bag.caramel.desc":     "Pequeño bolso de rafia ganchillo color caramelo, compacto y resistente. Perfecto para la compra, la playa o un paseo.",
+    "bag.terracotta.desc":  "Gran bolso de tela naranja terracota, decoración de conchas. Forma generosa, gran capacidad. Un color cálido que combina con todo.",
+    "bag.mandala.desc":     "Gran bolso redondo de rafia ganchillo, motivo mandala elaborado, borla de cuero natural. Bandolera larga. Una pieza única con mucho carácter.",
+    "bag.ikat.desc":        "Bolso de tela estampada ikat verde y blanco, decoración de botones negros. Forma redondeada, asas cortas. Un modelo gráfico y original.",
+    "bag.stripes.desc":     "Gran bolso de tela a rayas azul marino y blanco, adornado con una flor de tela. Asas de tela a juego. Un clásico revisitado con mucha frescura.",
+    "bag.granny.desc":      "Riñonera de rafia ganchillo, motivo granny square, pequeña borla decorativa. Práctica y original, se lleva en la cintura o en bandolera.",
+    "bag.bamboo.desc":      "Gran bolso de rafia ganchillo beige, asas redondas de bambú natural, forma de abanico plisado. Elegante y veraniego, perfecto para el día a día.",
+    "bag.woven.desc":       "Gran bolso de tela azul cielo trenzada, asas negras, borla decorativa de cuero negro con cuenta de madera. Un modelo estructurado de aspecto muy cuidado.",
+
+    "modal.material":   "Material",
+    "modal.price":      "Precio",
+    "modal.order":      "Pedir este bolso",
+
     "section.custom":       "A medida",
     "section.custom.sub":   "Tu bolso, tu estilo",
     "custom.text":          "¿Quieres un bolso en un color especial, un tamaño específico o un modelo personalizado? Cada creación puede adaptarse a tus deseos. Contáctame para hablarlo.",
@@ -165,6 +197,21 @@ const translations = {
     "bag.granny":       "Granny belt bag",
     "bag.bamboo":       "Bamboo fan bag",
     "bag.woven":        "Sky blue woven",
+
+    "bag.navy.desc":        "Large navy blue textured fabric tote, decorated with pink and gold beads. Short handles, generous capacity. A great everyday bag.",
+    "bag.halfmoon.desc":    "Natural crocheted raffia half-moon bag, with fringe and shells. Braided shoulder strap. A light boho piece, perfect for summer.",
+    "bag.caramel.desc":     "Small caramel-coloured crocheted raffia tote, compact and sturdy. Great for shopping, the beach or a stroll.",
+    "bag.terracotta.desc":  "Large terracotta orange fabric bag, decorated with shells. Generous shape, very spacious. A warm colour that goes with everything.",
+    "bag.mandala.desc":     "Large round crocheted raffia bag, intricate mandala pattern, natural leather tassel. Long shoulder strap. A truly unique statement piece.",
+    "bag.ikat.desc":        "Green and white ikat-print fabric bag, decorated with black buttons. Rounded shape, short handles. A bold and original design.",
+    "bag.stripes.desc":     "Large navy and white striped fabric bag, adorned with a fabric flower. Matching fabric handles. A fresh take on a classic.",
+    "bag.granny.desc":      "Crocheted raffia belt bag, granny square pattern, small decorative tassel. Practical and fun, worn at the waist or as a crossbody.",
+    "bag.bamboo.desc":      "Large beige crocheted raffia bag, round bamboo handles, pleated fan shape. Elegant and summery, an effortless everyday piece.",
+    "bag.woven.desc":       "Large sky blue woven fabric tote, black handles, black leather tassel with wooden bead. A structured bag with a very polished look.",
+
+    "modal.material":   "Material",
+    "modal.price":      "Price",
+    "modal.order":      "Order this bag",
 
     "section.custom":       "Custom orders",
     "section.custom.sub":   "Your bag, your style",
