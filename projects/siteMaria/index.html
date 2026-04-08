@@ -447,10 +447,90 @@
       letter-spacing: 0.08em;
     }
 
+    /* ── HAMBURGER ── */
+    .burger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+
+    .burger span {
+      display: block;
+      width: 100%;
+      height: 1.5px;
+      background: var(--dark);
+      transition: transform 0.3s, opacity 0.3s;
+      transform-origin: center;
+    }
+
+    .burger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .burger.open span:nth-child(2) { opacity: 0; }
+    .burger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 64px;
+      left: 0; right: 0;
+      background: rgba(247, 243, 238, 0.98);
+      border-bottom: 1px solid var(--sand);
+      padding: 1.5rem 2rem;
+      z-index: 99;
+      flex-direction: column;
+      gap: 1.4rem;
+    }
+
+    .mobile-menu.open { display: flex; }
+
+    .mobile-menu a {
+      text-decoration: none;
+      color: var(--text);
+      font-size: 1rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
     /* ── RESPONSIVE ── */
-    @media (max-width: 640px) {
+    /* Tablette */
+    @media (max-width: 900px) {
+      .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      }
+    }
+
+    /* Mobile */
+    @media (max-width: 700px) {
       .nav-links { display: none; }
+      .burger { display: flex; }
+
+      section { padding: 3rem 1.25rem; }
+
+      .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+      }
+
       .form-row { grid-template-columns: 1fr; }
+
+      .form-reassurance { flex-direction: column; align-items: center; gap: 0.8rem; }
+
+      .hero-content h1 { letter-spacing: 0.12em; }
+
+      .livraison-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Très petit mobile */
+    @media (max-width: 400px) {
+      .gallery-grid { grid-template-columns: 1fr; }
+
+      nav { padding: 0 1rem; }
     }
   </style>
 </head>
@@ -470,7 +550,18 @@
       <button class="lang-btn"        onclick="setLang('es')">ES</button>
       <button class="lang-btn"        onclick="setLang('en')">EN</button>
     </div>
+    <button class="burger" id="burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+
+  <!-- Menu mobile -->
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#creations" data-i18n="nav.collections">Créations</a>
+    <a href="#surMesure" data-i18n="nav.custom">Sur mesure</a>
+    <a href="#livraison" data-i18n="nav.shipping">Livraison</a>
+    <a href="#contact"   data-i18n="nav.contact">Contact</a>
+  </div>
 
   <!-- ═══ HERO ═══ -->
   <section class="hero">
@@ -722,6 +813,22 @@
   <!-- ═══ i18n + JS ═══ -->
   <script src="i18n.js"></script>
   <script>
+    // ── Hamburger ──
+    const burger = document.getElementById('burger');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    burger.addEventListener('click', () => {
+      burger.classList.toggle('open');
+      mobileMenu.classList.toggle('open');
+    });
+
+    mobileMenu.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', () => {
+        burger.classList.remove('open');
+        mobileMenu.classList.remove('open');
+      });
+    });
+
     let currentLang = 'fr';
 
     function setLang(lang) {
