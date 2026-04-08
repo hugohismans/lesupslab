@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:/Users/FlowUP/project/github-pages-starter/projects/siteMaria/img\")",
+      "Bash(mv 4f310059-d624-48e6-bb3d-826cf896e73c.jpg img/sac-tissu-bleu-marine.jpg)",
+      "Bash(mv 5f94507a-91b8-4519-88b8-24c1341af184.jpg img/sac-raphia-demilune-coquillages.jpg)",
+      "Bash(mv ae09d681-c25f-41a7-954f-d08817354eac.jpg img/sac-raphia-caramel-cabas.jpg)",
+      "Bash(mv ae81bd17-629a-4c40-8e33-bb6456a1d5ca.jpg img/sac-tissu-orange-terracotta.jpg)"
+    ]
+  }
+}
