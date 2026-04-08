@@ -985,7 +985,7 @@
   </footer>
 
   <!-- ═══ i18n + JS ═══ -->
-  <script src="i18n.js"></script>
+  <script src="i18n.js?v=3"></script>
   <script>
     // ── Modal ──
     const overlay    = document.getElementById('modalOverlay');
@@ -999,15 +999,16 @@
     const modalCta   = document.getElementById('modalCta');
 
     function openModal(card) {
-      const t = translations[currentLang];
-      modalImg.src        = card.dataset.img;
-      modalImg.alt        = t[card.dataset.name] || '';
-      modalTag.textContent  = t[card.dataset.tag]  || '';
-      modalName.textContent = t[card.dataset.name] || '';
-      modalDesc.textContent = t[card.dataset.desc] || '';
-      modalMat.textContent  = t[card.dataset.tag]  || '';
+      const t = translations[currentLang] || translations['fr'];
+      const get = key => (t[key] !== undefined ? t[key] : (translations['fr'][key] || ''));
+      modalImg.src           = card.dataset.img;
+      modalImg.alt           = get(card.dataset.name);
+      modalTag.textContent   = get(card.dataset.tag);
+      modalName.textContent  = get(card.dataset.name);
+      modalDesc.textContent  = get(card.dataset.desc);
+      modalMat.textContent   = get(card.dataset.tag);
       modalPrice.textContent = card.dataset.price;
-      modalCta.textContent  = t['modal.order']     || '';
+      modalCta.textContent   = get('modal.order');
       overlay.classList.add('open');
       document.body.style.overflow = 'hidden';
     }
