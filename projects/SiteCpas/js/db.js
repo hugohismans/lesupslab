@@ -180,7 +180,9 @@ function approxIntervalMs(type, n) {
 // Helpers partagés (utilisés par calendar.js, modal.js, app.js)
 // ───────────────────────────────────────────────────────────────────
 
-function isoDate(d)    { return d.toISOString().slice(0, 10); }
+function isoDate(d)    {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function genId()       { return Math.random().toString(36).slice(2, 11); }
 
