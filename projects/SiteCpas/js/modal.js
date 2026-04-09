@@ -311,7 +311,7 @@ const MODAL = {
       const conflicts = [];
       myOccs.forEach(occ => {
         const clash = DB.getInRange(occ._start, occ._end).filter(r =>
-          r.localId === localId && r.id !== this._editId && !r.isPermanent
+          parseInt(r.localId) === localId && r.id !== this._editId && !r.isPermanent
           && r._start < occ._end && r._end > occ._start
         );
         if (clash.length) conflicts.push({ occ, clash });
@@ -335,7 +335,7 @@ const MODAL = {
       startDT = `${ds}T${String(CONFIG.HOURS_START).padStart(2,'0')}:00`;
 
       const futureConflicts = Object.entries(DB.getAll()).filter(([id, r]) =>
-        id !== this._editId && r.localId === localId && !r.isPermanent
+        id !== this._editId && parseInt(r.localId) === localId && !r.isPermanent
       );
 
       if (futureConflicts.length) {
@@ -583,7 +583,7 @@ const MODAL = {
     if (localId) {
       const conflictOccs = myOccs.filter(occ =>
         DB.getInRange(occ._start, occ._end).some(r =>
-          r.localId === localId && r.id !== this._editId && !r.isPermanent
+          parseInt(r.localId) === localId && r.id !== this._editId && !r.isPermanent
           && r._start < occ._end && r._end > occ._start
         )
       );

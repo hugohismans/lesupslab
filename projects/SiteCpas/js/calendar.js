@@ -75,9 +75,9 @@ const CAL = {
         // Cette cellule est couverte par un rowspan précédent → on l'ignore
         if (coveredUntil[l] > i) return;
 
-        const perm = occs.find(r => r.localId === l && r.isPermanent);
+        const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
         const res  = occs.find(r =>
-          r.localId === l && !r.isPermanent && r._start < sE && r._end > sS
+          parseInt(r.localId) === l && !r.isPermanent && r._start < sE && r._end > sS
         );
 
         if (perm) {
@@ -350,9 +350,9 @@ function updateStatusBar() {
   const occs = DB.getInRange(dayS, dayE);
 
   pills.innerHTML = CONFIG.LOCALS.map(l => {
-    const perm = occs.find(r => r.localId === l && r.isPermanent);
+    const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
     const res  = occs.find(r =>
-      r.localId === l && !r.isPermanent && r._start <= dt && r._end > dt
+      parseInt(r.localId) === l && !r.isPermanent && r._start <= dt && r._end > dt
     );
 
     if (perm) {
