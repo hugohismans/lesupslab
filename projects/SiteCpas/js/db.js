@@ -6,7 +6,7 @@ const DB = {
   _db:        null,
   _data:      {},
   _cbs:       [],
-  _config:    { agents: [], services: [] },
+  _config:    { agents: [], services: [], localLabels: {} },
   _configCbs: [],
 
   init() {
@@ -23,8 +23,9 @@ const DB = {
     this._db.ref('appConfig').on('value', snap => {
       const d = snap.val() || {};
       this._config = {
-        agents:   d.agents   ? Object.values(d.agents)   : CONFIG.AGENTS.filter(a => a !== 'Autre'),
-        services: d.services ? Object.values(d.services) : CONFIG.SERVICES.filter(s => s !== 'Autre')
+        agents:      d.agents      ? Object.values(d.agents)   : CONFIG.AGENTS.filter(a => a !== 'Autre'),
+        services:    d.services    ? Object.values(d.services) : CONFIG.SERVICES.filter(s => s !== 'Autre'),
+        localLabels: d.localLabels || {}
       };
       this._configCbs.forEach(fn => fn());
     });
@@ -33,6 +34,11 @@ const DB = {
   onConfigChange(fn) { this._configCbs.push(fn); },
   getAgents()        { return [...this._config.agents,   'Autre']; },
   getServices()      { return [...this._config.services, 'Autre']; },
+  getLocalLabel(id)  { return this._config.localLabels[id] || `Local ${id}`; },
+  async setLocalLabel(id, label) {
+    const val = label.trim() || null;
+    await this._db.ref(`appConfig/localLabels/${id}`).set(val);
+  },
 
   async addAgent(name) {
     await this._db.ref('appConfig/agents').push(name);

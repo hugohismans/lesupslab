@@ -48,7 +48,7 @@ const CAL = {
     let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">${dateLabel}</div>`;
     h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
-    CONFIG.LOCALS.forEach(l => h += `<th class="loc-hd">Local ${l}</th>`);
+    CONFIG.LOCALS.forEach(l => h += `<th class="loc-hd">${DB.getLocalLabel(l)}</th>`);
     h += '</tr></thead><tbody>';
 
     slots.forEach((slot, i) => {
@@ -293,7 +293,7 @@ function updateStatusBar() {
     if (perm) {
       const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
       return `<div class="lpill is-perm" title="${svc}">
-        <div class="lp-num">Local ${l}</div>
+        <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">🔒 Permanent</div>
         <div class="lp-detail">${svc}</div>
       </div>`;
@@ -305,7 +305,7 @@ function updateStatusBar() {
         ? res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
         : '';
       return `<div class="lpill is-booked" title="${svc} — ${agt}">
-        <div class="lp-num">Local ${l}</div>
+        <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">🔴 Réservé</div>
         <div class="lp-detail">${svc}</div>
         ${endH ? `<div class="lp-until">jusqu'à ${endH}</div>` : ''}

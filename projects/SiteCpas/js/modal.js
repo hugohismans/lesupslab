@@ -5,22 +5,23 @@
 const MODAL = {
   _editId: null,
 
-  // Recharge les listes agents/services depuis Firebase
+  // Recharge les listes locaux/agents/services depuis Firebase
   refreshSelects() {
     const curLocal   = g('fLocal').value;
     const curService = g('fService').value;
     const curAgent   = g('fAgent').value;
 
+    g('fLocal').innerHTML = '<option value="">— Sélectionner —</option>' +
+      CONFIG.LOCALS.map(l => `<option value="${l}">${DB.getLocalLabel(l)}</option>`).join('');
     g('fService').innerHTML = '<option value="">— Sélectionner —</option>' +
       DB.getServices().map(s => `<option value="${s}">${s}</option>`).join('');
     g('fAgent').innerHTML = '<option value="">— Sélectionner —</option>' +
       DB.getAgents().map(a => `<option value="${a}">${a}</option>`).join('');
 
-    // Restaurer la sélection en cours si elle existe encore
+    if (curLocal)   g('fLocal').value   = curLocal;
     if (curService) g('fService').value = curService;
     if (curAgent)   g('fAgent').value   = curAgent;
 
-    // Re-rendre la liste paramètres si le panneau est ouvert
     if (!g('settingsOverlay').classList.contains('hidden')) {
       this._renderSettingsList();
     }
@@ -36,6 +37,7 @@ const MODAL = {
     const agents   = DB.getAgents().filter(a => a !== 'Autre');
     const services = DB.getServices().filter(s => s !== 'Autre');
 
+    // Listes agents / services
     const makeList = (items, type, containerId) => {
       g(containerId).innerHTML = items.length
         ? items.map(name => `
@@ -45,28 +47,55 @@ const MODAL = {
             </div>`).join('')
         : '<p class="st-empty">Aucun élément.</p>';
     };
-
     makeList(agents,   'agent',   'stAgentList');
     makeList(services, 'service', 'stSvcList');
 
+    // Liste locaux avec libellés éditables
+    g('stLocalList').innerHTML = CONFIG.LOCALS.map(id => `
+      <div class="st-local-row">
+        <span class="st-local-num">Local ${id}</span>
+        <input class="st-local-input" type="text" data-localid="${id}"
+               value="${escapeHtml(DB.getLocalLabel(id))}" placeholder="Local ${id}">
+        <button class="st-local-save" data-localid="${id}" title="Sauvegarder">✓</button>
+      </div>`).join('');
+
+    // Bind suppression agents/services
     g('settingsOverlay').querySelectorAll('.st-del').forEach(btn => {
       btn.addEventListener('click', async () => {
         const { type, name } = btn.dataset;
         if (!confirm(`Supprimer "${name}" ?`)) return;
         btn.disabled = true;
-        if (type === 'agent')   await DB.removeAgent(name);
-        else                    await DB.removeService(name);
+        if (type === 'agent') await DB.removeAgent(name);
+        else                  await DB.removeService(name);
+      });
+    });
+
+    // Bind sauvegarde libellés locaux
+    g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
+      const save = async () => {
+        const id    = parseInt(btn.dataset.localid);
+        const input = g('settingsOverlay').querySelector(`.st-local-input[data-localid="${id}"]`);
+        btn.disabled = true;
+        await DB.setLocalLabel(id, input.value);
+        btn.disabled = false;
+        btn.textContent = '✓';
+      };
+      btn.addEventListener('click', save);
+    });
+    g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const id  = input.dataset.localid;
+          const btn = g('settingsOverlay').querySelector(`.st-local-save[data-localid="${id}"]`);
+          btn?.click();
+        }
       });
     });
   },
 
   init() {
-    // Listes locaux (statiques)
-    CONFIG.LOCALS.forEach(l =>
-      g('fLocal').innerHTML += `<option value="${l}">Local ${l}</option>`
-    );
-    // Agents et services : chargés dynamiquement via refreshSelects()
-    // (appelé par DB.onConfigChange dans app.js)
+    // Locaux, agents et services : chargés dynamiquement via refreshSelects()
+    // (appelé par DB.onConfigChange dans app.js au démarrage)
 
     // Champs conditionnels
     g('fService').addEventListener('change', function() {
@@ -176,7 +205,7 @@ const MODAL = {
     const recL  = { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle' };
 
     let html = `
-      <div class="det-row"><span class="det-l">Local</span>   <span class="det-v">Local ${res.localId}</span></div>
+      <div class="det-row"><span class="det-l">Local</span>   <span class="det-v">${DB.getLocalLabel(res.localId)}</span></div>
       <div class="det-row"><span class="det-l">Service</span> <span class="det-v">${svc}</span></div>
       <div class="det-row"><span class="det-l">Agent</span>   <span class="det-v">${agt}</span></div>`;
 
@@ -246,8 +275,8 @@ const MODAL = {
         const allBooked = new Set(DB.getInRange(s, e).map(r => r.localId));
         const free      = CONFIG.LOCALS.filter(l => !allBooked.has(l));
         const msg = free.length
-          ? `Local ${localId} est déjà réservé sur cette plage.\n\nLocaux disponibles : ${free.map(l => 'Local ' + l).join(', ')}\n\nForcer l'enregistrement quand même ?`
-          : `Local ${localId} est déjà réservé et aucun autre local n'est disponible sur cette plage.`;
+          ? `${DB.getLocalLabel(localId)} est déjà réservé sur cette plage.\n\nLocaux disponibles : ${free.map(l => DB.getLocalLabel(l)).join(', ')}\n\nForcer l'enregistrement quand même ?`
+          : `${DB.getLocalLabel(localId)} est déjà réservé et aucun autre local n'est disponible sur cette plage.`;
         if (!free.length || !confirm(msg)) return;
       }
     } else {
