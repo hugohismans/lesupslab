@@ -994,7 +994,7 @@
         <span class="livraison-icon">📦</span>
         <h3 data-i18n="shipping.spain.title">Espagne</h3>
         <p  data-i18n="shipping.spain.text">
-          Livraison disponible partout en Espagne. Frais de port à la charge du client.
+          Livraison disponible. Frais selon destination, précisés à la commande.
         </p>
       </div>
 
@@ -1002,7 +1002,7 @@
         <span class="livraison-icon">✈️</span>
         <h3 data-i18n="shipping.intl.title">International</h3>
         <p  data-i18n="shipping.intl.text">
-          Envoi possible à l'étranger. Frais de port à la charge du client.
+          Livraison disponible. Frais selon destination, précisés à la commande.
         </p>
       </div>
 
@@ -1272,6 +1272,9 @@
         alert(translations[currentLang]['form.network']);
       }
     });
+
+    // Initialise toutes les traductions au chargement
+    setLang('fr');
   </script>
 
 </body>
