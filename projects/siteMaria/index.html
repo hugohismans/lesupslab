@@ -43,14 +43,14 @@
       align-items: center;
       justify-content: space-between;
       padding: 0 2rem;
-      height: 64px;
+      height: 72px;
       background: rgba(247, 243, 238, 0.93);
       backdrop-filter: blur(6px);
       border-bottom: 1px solid var(--sand);
     }
 
     .nav-logo { text-decoration: none; display: flex; align-items: center; }
-    .nav-logo img { height: 52px; width: auto; display: block; }
+    .nav-logo img { height: 85px; width: auto; display: block; }
 
     .nav-links {
       display: flex;
@@ -94,8 +94,8 @@
 
     /* ── HERO ── */
     .hero {
-      margin-top: 64px;
-      height: calc(100vh - 64px);
+      margin-top: 72px;
+      height: calc(100vh - 72px);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -670,6 +670,55 @@
       .modal-name { font-size: 1.3rem; }
     }
 
+    /* ── LIGHTBOX ── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+
+    .lightbox.open { display: flex; }
+
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.2rem;
+      background: rgba(255,255,255,0.12);
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .lightbox-close:hover { background: rgba(255,255,255,0.25); }
+
+    .modal-img {
+      cursor: zoom-in;
+      transition: opacity 0.2s;
+    }
+
+    .modal-img:hover { opacity: 0.9; }
+
     /* ── HAMBURGER ── */
     .burger {
       display: none;
@@ -700,7 +749,7 @@
     .mobile-menu {
       display: none;
       position: fixed;
-      top: 64px;
+      top: 72px;
       left: 0; right: 0;
       background: rgba(247, 243, 238, 0.98);
       border-bottom: 1px solid var(--sand);
@@ -983,11 +1032,6 @@
         <span>💬</span>
         <span>+34 681 965 174</span>
       </a>
-      <div class="contact-info-sep"></div>
-      <a href="tel:+34681965174" class="contact-info-item">
-        <span>📱</span>
-        <span>+34 681 965 174</span>
-      </a>
     </div>
 
     <!-- Remplacer YOUR_FORM_ID par l'ID Formspree de Maria -->
@@ -1081,6 +1125,12 @@
     </div>
   </div>
 
+  <!-- ═══ LIGHTBOX ═══ -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <img id="lightboxImg" src="" alt="" />
+  </div>
+
   <!-- ═══ WHATSAPP FLOTTANT ═══ -->
   <a href="https://wa.me/34681965174" target="_blank" rel="noopener"
      class="whatsapp-float" aria-label="WhatsApp">
@@ -1136,9 +1186,26 @@
 
     modalClose.addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
     modalCta.addEventListener('click', closeModal);
+
+    // ── Lightbox ──
+    const lightbox      = document.getElementById('lightbox');
+    const lightboxImg   = document.getElementById('lightboxImg');
+    const lightboxClose = document.getElementById('lightboxClose');
+
+    modalImg.addEventListener('click', (e) => {
+      e.stopPropagation();
+      lightboxImg.src = modalImg.src;
+      lightboxImg.alt = modalImg.alt;
+      lightbox.classList.add('open');
+    });
+
+    function closeLightbox() { lightbox.classList.remove('open'); }
+
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', e => { if (e.target === lightbox || e.target === lightboxImg) closeLightbox(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLightbox(); closeModal(); } });
 
     // ── Hamburger ──
     const burger = document.getElementById('burger');
