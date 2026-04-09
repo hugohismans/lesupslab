@@ -150,7 +150,7 @@ function expandReservation(id, res, viewStart, viewEnd) {
   }
 
   let guard = 0;
-  while (cur <= viewEnd && guard++ < 700) {
+  while (cur < viewEnd && guard++ < 700) {
     if (recEnd && cur > recEnd) break;
     const end = new Date(cur.getTime() + dur);
     if (end > viewStart) {
