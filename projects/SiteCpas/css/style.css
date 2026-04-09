@@ -540,8 +540,23 @@ body {
   .lp-until  { display: none; }
 
   .form-row  { grid-template-columns: 1fr; }
-  .modal     { max-height: 96vh; border-radius: 12px 12px 0 0; margin-top: auto; margin-bottom: 0; }
-  .overlay   { align-items: flex-end; padding: 0; }
+  .overlay   {
+    align-items: flex-end;
+    padding: 0;
+    /* Exclure la barre de navigation Chrome/Safari du bas */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .modal {
+    border-radius: 12px 12px 0 0;
+    margin-top: auto;
+    margin-bottom: 0;
+    /* dvh = hauteur sans les barres navigateur, vh ne l'inclut pas */
+    max-height: calc(92dvh - env(safe-area-inset-bottom, 0px));
+  }
+  /* Padding bas du footer modal pour ne pas être coupé */
+  .modal .modal-ft {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), .75rem);
+  }
   .mo-cell   { min-height: 48px; padding: .28rem .22rem; }
   .mo-dn     { font-size: .62rem; }
 }
