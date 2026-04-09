@@ -22,19 +22,25 @@ const DB = {
   initConfig() {
     this._db.ref('appConfig').on('value', snap => {
       const d = snap.val() || {};
+      // Stocker {key, name} pour pouvoir supprimer directement par clé Firebase
       this._config = {
-        agents:      d.agents      ? Object.values(d.agents)   : CONFIG.AGENTS.filter(a => a !== 'Autre'),
-        services:    d.services    ? Object.values(d.services) : CONFIG.SERVICES.filter(s => s !== 'Autre'),
+        agents:      d.agents      ? Object.entries(d.agents).map(([k,v])  => ({key: k, name: v}))
+                                   : CONFIG.AGENTS.filter(a => a !== 'Autre').map(name => ({key: null, name})),
+        services:    d.services    ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v}))
+                                   : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels: d.localLabels || {}
       };
       this._configCbs.forEach(fn => fn());
     });
   },
 
-  onConfigChange(fn) { this._configCbs.push(fn); },
-  getAgents()        { return [...this._config.agents,   'Autre']; },
-  getServices()      { return [...this._config.services, 'Autre']; },
-  getLocalLabel(id)  { return this._config.localLabels[id] || `Local ${id}`; },
+  onConfigChange(fn)      { this._configCbs.push(fn); },
+  getAgents()             { return [...this._config.agents.map(a => a.name),   'Autre']; },
+  getServices()           { return [...this._config.services.map(s => s.name), 'Autre']; },
+  getAgentsWithKeys()     { return this._config.agents; },
+  getServicesWithKeys()   { return this._config.services; },
+  getLocalLabel(id)       { return this._config.localLabels[id] || `Local ${id}`; },
+
   async setLocalLabel(id, label) {
     const val = label.trim() || null;
     await this._db.ref(`appConfig/localLabels/${id}`).set(val);
@@ -43,20 +49,14 @@ const DB = {
   async addAgent(name) {
     await this._db.ref('appConfig/agents').push(name);
   },
-  async removeAgent(name) {
-    const snap = await this._db.ref('appConfig/agents').once('value');
-    const data = snap.val() || {};
-    const key  = Object.keys(data).find(k => data[k] === name);
-    if (key) await this._db.ref(`appConfig/agents/${key}`).remove();
+  async removeAgentByKey(key) {
+    await this._db.ref(`appConfig/agents/${key}`).remove();
   },
   async addService(name) {
     await this._db.ref('appConfig/services').push(name);
   },
-  async removeService(name) {
-    const snap = await this._db.ref('appConfig/services').once('value');
-    const data = snap.val() || {};
-    const key  = Object.keys(data).find(k => data[k] === name);
-    if (key) await this._db.ref(`appConfig/services/${key}`).remove();
+  async removeServiceByKey(key) {
+    await this._db.ref(`appConfig/services/${key}`).remove();
   },
 
   async seedConfigIfEmpty() {

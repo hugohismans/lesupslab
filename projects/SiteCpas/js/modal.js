@@ -40,18 +40,18 @@ const MODAL = {
     const agents   = DB.getAgents().filter(a => a !== 'Autre');
     const services = DB.getServices().filter(s => s !== 'Autre');
 
-    // Listes agents / services
+    // Listes agents / services — on stocke la clé Firebase dans data-key
     const makeList = (items, type, containerId) => {
       g(containerId).innerHTML = items.length
-        ? items.map(name => `
+        ? items.map(({key, name}) => `
             <div class="st-item">
               <span class="st-name">${name}</span>
-              <button class="st-del" data-type="${type}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
+              <button class="st-del" data-type="${type}" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
             </div>`).join('')
         : '<p class="st-empty">Aucun élément.</p>';
     };
-    makeList(agents,   'agent',   'stAgentList');
-    makeList(services, 'service', 'stSvcList');
+    makeList(DB.getAgentsWithKeys(),   'agent',   'stAgentList');
+    makeList(DB.getServicesWithKeys(), 'service', 'stSvcList');
 
     // Liste locaux avec libellés éditables
     g('stLocalList').innerHTML = CONFIG.LOCALS.map(id => `
@@ -62,15 +62,15 @@ const MODAL = {
         <button class="st-local-save" data-localid="${id}" title="Sauvegarder">✓</button>
       </div>`).join('');
 
-    // Bind suppression agents/services
+    // Bind suppression agents/services — suppression directe par clé Firebase
     g('settingsOverlay').querySelectorAll('.st-del').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const { type, name } = btn.dataset;
+        const { type, key, name } = btn.dataset;
+        if (!key) return alert('Clé Firebase manquante, rechargez la page.');
         if (!confirm(`Supprimer "${name}" ?`)) return;
         btn.disabled = true;
-        if (type === 'agent') await DB.removeAgent(name);
-        else                  await DB.removeService(name);
-        // Re-rendu immédiat sans attendre le callback Firebase
+        if (type === 'agent') await DB.removeAgentByKey(key);
+        else                  await DB.removeServiceByKey(key);
         this.refreshSelects();
         showToast('Supprimé ✓');
       });
