@@ -153,6 +153,7 @@ const MODAL = {
       await DB.addAgent(name);
       g('stAgentInput').value = '';
       g('stAgentAdd').disabled = false;
+      this.refreshSelects();
       showToast('Agent ajouté ✓');
     });
     g('stAgentInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stAgentAdd').click(); });
@@ -166,6 +167,7 @@ const MODAL = {
       await DB.addService(name);
       g('stSvcInput').value = '';
       g('stSvcAdd').disabled = false;
+      this.refreshSelects();
       showToast('Service ajouté ✓');
     });
     g('stSvcInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stSvcAdd').click(); });
