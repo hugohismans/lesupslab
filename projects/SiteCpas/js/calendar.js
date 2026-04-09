@@ -126,7 +126,15 @@ const CAL = {
     const slots  = getSlots();
     const today  = new Date();
 
+    // Titre : "Semaine du X au Y mois AAAA"
+    const wE2 = addDays(wS, 6);
+    const sameMonth = wS.getMonth() === wE2.getMonth();
+    const weekTitle = sameMonth
+      ? `${wS.getDate()} – ${wE2.toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`
+      : `${wS.toLocaleDateString('fr-BE', { day: 'numeric', month: 'short' })} – ${wE2.toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
     let h = '<div class="cv-week">';
+    h += `<div class="cv-period-bar">${weekTitle}</div>`;
 
     // En-tête : 7 jours Lun-Dim
     h += '<div class="cv-week-hd"><div class="tc-hd"></div>';
@@ -190,7 +198,9 @@ const CAL = {
     const dow = (mS.getDay() + 6) % 7; // Lun=0
     gS.setDate(gS.getDate() - dow);
 
+    const monthTitle = mS.toLocaleDateString('fr-BE', { month: 'long', year: 'numeric' });
     let h = '<div class="cv-month">';
+    h += `<div class="cv-period-bar">${monthTitle}</div>`;
 
     // En-tête jours (Lun-Dim)
     h += '<div class="mo-hd">';
