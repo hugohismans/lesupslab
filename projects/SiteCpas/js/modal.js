@@ -294,18 +294,42 @@ const MODAL = {
       endDT   = `${de}T${te}`;
       if (new Date(startDT) >= new Date(endDT)) return alert('La fin doit être après le début.');
 
-      // Vérification de conflit
-      const s = new Date(startDT), e = new Date(endDT);
-      const conflict = DB.getInRange(s, e).find(r =>
-        r.localId === localId && r.id !== this._editId && !r.isPermanent
-        && r._start < e && r._end > s
-      );
-      if (conflict) {
-        const allBooked = new Set(DB.getInRange(s, e).map(r => r.localId));
-        const free      = CONFIG.LOCALS.filter(l => !allBooked.has(l));
+      // Vérification de conflit sur toutes les occurrences (récurrence incluse)
+      const recType2  = g('fRecType').value;
+      const recEnd2   = g('fRecEnd').value === 'date' ? g('fRecEndDate').value : null;
+      const interval2 = parseInt(g('fInterval').value) || 1;
+
+      // Construire un objet temporaire pour simuler l'expansion
+      const tempRes = {
+        localId, isPermanent: false,
+        startDateTime: startDT, endDateTime: endDT,
+        recurrence: { type: recType2, interval: interval2, endDate: recEnd2, seriesId: null }
+      };
+
+      // Fenêtre de vérification : de la 1ère occurrence à 1 an max (ou fin de série)
+      const checkEnd = recEnd2
+        ? new Date(recEnd2 + 'T23:59:59')
+        : advDate(new Date(startDT), recType2 !== 'none' ? recType2 : 'daily', recType2 !== 'none' ? 365 : 0);
+
+      const myOccs = expandReservation('__temp__', tempRes, new Date(startDT), checkEnd);
+      const conflictOcc = myOccs.find(occ => {
+        return DB.getInRange(occ._start, occ._end).some(r =>
+          r.localId === localId && r.id !== this._editId && !r.isPermanent
+          && r._start < occ._end && r._end > occ._start
+        );
+      });
+
+      if (conflictOcc) {
+        const dateStr = conflictOcc._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
+        const free    = CONFIG.LOCALS.filter(l => l !== localId &&
+          !DB.getInRange(conflictOcc._start, conflictOcc._end).some(r =>
+            r.localId === l && r.id !== this._editId && !r.isPermanent
+            && r._start < conflictOcc._end && r._end > conflictOcc._start
+          )
+        );
         const msg = free.length
-          ? `${DB.getLocalLabel(localId)} est déjà réservé sur cette plage.\n\nLocaux disponibles : ${free.map(l => DB.getLocalLabel(l)).join(', ')}\n\nForcer l'enregistrement quand même ?`
-          : `${DB.getLocalLabel(localId)} est déjà réservé et aucun autre local n'est disponible sur cette plage.`;
+          ? `${DB.getLocalLabel(localId)} est déjà réservé le ${dateStr}.\n\nLocaux disponibles ce jour-là : ${free.map(l => DB.getLocalLabel(l)).join(', ')}\n\nForcer quand même ?`
+          : `${DB.getLocalLabel(localId)} est déjà réservé le ${dateStr} et aucun autre local n'est disponible.`;
         if (!free.length || !confirm(msg)) return;
       }
     } else {
