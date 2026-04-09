@@ -21,13 +21,16 @@ const DB = {
   // ── Config dynamique (agents / services) ─────────────────────────
   initConfig() {
     this._db.ref('appConfig').on('value', snap => {
+      const hasConfig = snap.val() !== null; // false = jamais configuré → on utilise les défauts
       const d = snap.val() || {};
       // Stocker {key, name} pour pouvoir supprimer directement par clé Firebase
       this._config = {
-        agents:      d.agents      ? Object.entries(d.agents).map(([k,v])  => ({key: k, name: v}))
-                                   : CONFIG.AGENTS.filter(a => a !== 'Autre').map(name => ({key: null, name})),
-        services:    d.services    ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v}))
-                                   : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
+        agents:   hasConfig
+          ? (d.agents   ? Object.entries(d.agents).map(([k,v])  => ({key: k, name: v})) : [])
+          : CONFIG.AGENTS.filter(a => a !== 'Autre').map(name => ({key: null, name})),
+        services: hasConfig
+          ? (d.services ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v})) : [])
+          : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels: d.localLabels || {}
       };
       this._configCbs.forEach(fn => fn());
