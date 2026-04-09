@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPAS de Quaregnon — Réservation des locaux</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="app-page">
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<header class="hd">
+  <div class="hd-brand">
+    <img src="logo.png" alt="Logo CPAS" class="hd-logo-img">
+    <span class="hd-title">CPAS de Quaregnon</span>
+  </div>
+
+  <nav class="hd-tabs">
+    <button class="tab active" data-view="day">Jour</button>
+    <button class="tab" data-view="week">Semaine</button>
+    <button class="tab" data-view="month">Mois</button>
+  </nav>
+
+  <div class="hd-nav">
+    <button class="btn-nav" id="btnPrev" title="Précédent">&#8249;</button>
+    <button class="btn-today" id="btnToday">Aujourd'hui</button>
+    <button class="btn-nav" id="btnNext" title="Suivant">&#8250;</button>
+    <button class="btn-new" id="btnNew">+ Réserver</button>
+    <button class="btn-logout" id="btnLogout" title="Se déconnecter">✕</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATUS BAR — Vérificateur de disponibilité
+═══════════════════════════════════════════════════════════ -->
+<div class="sb">
+  <div class="sb-check">
+    <span class="sb-label">État des locaux au :</span>
+    <input type="date" id="checkDate">
+    <input type="time" id="checkTime" step="1800">
+  </div>
+  <div class="sb-pills" id="localPills">
+    <span class="sb-hint">Chargement...</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CALENDRIER
+═══════════════════════════════════════════════════════════ -->
+<main class="cal" id="cal">
+  <div class="cal-loading">Connexion à Firebase...</div>
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LÉGENDE
+═══════════════════════════════════════════════════════════ -->
+<div class="legend">
+  <span class="leg-item"><span class="leg-dot" style="background:#bbf7d0"></span>7/7 libres</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#86efac"></span>5–6 libres</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#fde68a"></span>3–4 libres</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#fdba74"></span>1–2 libres</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#fca5a5"></span>Complet</span>
+  <span class="leg-item"><span class="leg-dot" style="background:#c4b5fd"></span>Permanent</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Nouvelle réservation / Modification
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="resOverlay">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 id="resTitle">Nouvelle réservation</h2>
+      <button class="modal-x" data-close="resOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+
+      <div class="form-row">
+        <div class="field">
+          <label>Local *</label>
+          <select id="fLocal" required>
+            <option value="">— Sélectionner —</option>
+          </select>
+          <small class="hint" id="localHint"></small>
+        </div>
+        <div class="field">
+          <label>Service *</label>
+          <select id="fService" required>
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field hidden" id="fServiceCustomWrap">
+        <label>Préciser le service</label>
+        <input type="text" id="fServiceCustom" placeholder="Nom du service...">
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Agent *</label>
+          <select id="fAgent" required>
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+        <div class="field hidden" id="fAgentCustomWrap">
+          <label>Préciser l'agent</label>
+          <input type="text" id="fAgentCustom" placeholder="Nom de l'agent...">
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="cb-label">
+          <input type="checkbox" id="fPermanent">
+          <span>Réservation permanente — local bloqué définitivement pour ce service</span>
+        </label>
+      </div>
+
+      <div id="fDatesWrap">
+        <div class="form-row">
+          <div class="field">
+            <label>Date début *</label>
+            <input type="date" id="fDateStart">
+          </div>
+          <div class="field">
+            <label>Heure début *</label>
+            <input type="time" id="fTimeStart" step="900">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Date fin *</label>
+            <input type="date" id="fDateEnd">
+          </div>
+          <div class="field">
+            <label>Heure fin *</label>
+            <input type="time" id="fTimeEnd" step="900">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Récurrence</label>
+          <select id="fRecType">
+            <option value="none">Aucune</option>
+            <option value="daily">Quotidienne</option>
+            <option value="weekly">Hebdomadaire</option>
+            <option value="monthly">Mensuelle</option>
+          </select>
+        </div>
+
+        <div id="fRecOptions" class="rec-box hidden">
+          <div class="form-row">
+            <div class="field">
+              <label>Répéter tous les</label>
+              <div class="inline-f">
+                <input type="number" id="fInterval" value="1" min="1" max="52" style="width:64px">
+                <span id="fIntervalUnit">semaine(s)</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Fin de récurrence</label>
+              <select id="fRecEnd">
+                <option value="forever">Pour toujours</option>
+                <option value="date">Jusqu'au...</option>
+              </select>
+            </div>
+          </div>
+          <div class="field hidden" id="fRecEndDateWrap">
+            <label>Date de fin de série</label>
+            <input type="date" id="fRecEndDate">
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Commentaire</label>
+        <textarea id="fComment" rows="2" placeholder="Informations complémentaires..."></textarea>
+      </div>
+
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" data-close="resOverlay">Annuler</button>
+      <button class="btn-primary" id="resSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Détail réservation
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="detOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-hd">
+      <h2>Détail de la réservation</h2>
+      <button class="modal-x" data-close="detOverlay">✕</button>
+    </div>
+    <div class="modal-bd" id="detBody"></div>
+    <div class="modal-ft">
+      <button class="btn-danger" id="detDelete">Supprimer</button>
+      <button class="btn-cancel" id="detEdit">Modifier</button>
+      <button class="btn-primary" data-close="detOverlay">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Confirmation suppression
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="confOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>Confirmer la suppression</h2>
+    </div>
+    <div class="modal-bd">
+      <p id="confText"></p>
+      <div id="confSeriesOpts" class="hidden" style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem">
+        <label class="rb-label">
+          <input type="radio" name="delType" value="single" checked>
+          Cette occurrence uniquement
+        </label>
+        <label class="rb-label">
+          <input type="radio" name="delType" value="series">
+          Toute la série récurrente
+        </label>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" data-close="confOverlay">Annuler</button>
+      <button class="btn-danger" id="confConfirm">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- App scripts (ordre important) -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/calendar.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
