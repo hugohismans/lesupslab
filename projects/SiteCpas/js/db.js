@@ -220,7 +220,8 @@ function expandReservation(id, res, viewStart, viewEnd) {
     if (recEnd && cur > recEnd) break;
     const end = new Date(cur.getTime() + dur);
     const occDate = isoDate(cur);
-    if (end > viewStart && !exceptions[occDate]) {
+    const dow = cur.getDay(); // 0=Dim, 6=Sam
+    if (end > viewStart && !exceptions[occDate] && dow !== 0 && dow !== 6) {
       results.push({ id, ...res, _start: new Date(cur), _end: end, _occDate: occDate });
     }
     cur = advDate(cur, type, interval);

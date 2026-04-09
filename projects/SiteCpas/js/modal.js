@@ -427,10 +427,24 @@ const MODAL = {
       if (this._editId) await DB.update(this._editId, data);
       else              await DB.add(data);
       g('resOverlay').classList.add('hidden');
-      // Avertissement récurrence mensuelle sur jour 29+
-      if (!isPerm && recType === 'monthly' && startDT) {
-        const day = new Date(startDT).getDate();
-        if (day >= 29) showToast('⚠️ Récurrence mensuelle : les mois plus courts décaleront l\'occurrence au mois suivant.');
+      // Avertissements récurrence
+      if (!isPerm && recType !== 'none' && startDT) {
+        // Mensuelle sur jour 29+
+        if (recType === 'monthly' && new Date(startDT).getDate() >= 29)
+          showToast('⚠️ Récurrence mensuelle : les mois plus courts décaleront l\'occurrence au mois suivant.');
+        // Vérifier si des occurrences brutes tombent un week-end (avant filtrage)
+        let wkCur = new Date(startDT);
+        const intv = data.recurrence.interval;
+        const chkEnd = advDate(wkCur, recType, intv * 52);
+        let hasWeekendOcc = false;
+        let wkGuard = 0;
+        while (wkCur <= chkEnd && wkGuard++ < 700) {
+          const d = wkCur.getDay();
+          if (d === 0 || d === 6) { hasWeekendOcc = true; break; }
+          wkCur = advDate(wkCur, recType, intv);
+        }
+        if (hasWeekendOcc)
+          showToast('⚠️ Certaines occurrences tombent un week-end et seront automatiquement ignorées.');
       }
     } catch (err) {
       alert('Erreur : ' + err.message);
