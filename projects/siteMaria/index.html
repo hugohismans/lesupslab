@@ -447,6 +447,83 @@
       letter-spacing: 0.08em;
     }
 
+    /* ── BADGE ── */
+    .card { position: relative; }
+
+    .badge {
+      position: absolute;
+      top: 0.75rem;
+      left: 0.75rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: 2px;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+      z-index: 1;
+    }
+
+    .badge-available { background: rgba(255,255,255,0.88); color: var(--brown); }
+    .badge-sold      { background: rgba(30,20,15,0.65);   color: rgba(255,255,255,0.8); }
+
+    .card.sold .card-img { filter: grayscale(60%); opacity: 0.7; }
+
+    /* ── À PROPOS ── */
+    #about { background: var(--dark); color: var(--light); }
+
+    #about .section-title  { color: var(--light); }
+    #about .section-subtitle { color: var(--sand); }
+
+    .about-content {
+      max-width: 680px;
+      margin: 0 auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.8rem;
+    }
+
+    .about-img {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      object-fit: cover;
+      object-position: center;
+      border: 3px solid rgba(255,255,255,0.15);
+    }
+
+    .about-text {
+      font-size: 1rem;
+      line-height: 1.9;
+      color: rgba(255,255,255,0.75);
+    }
+
+    /* ── WHATSAPP FLOTTANT ── */
+    .whatsapp-float {
+      position: fixed;
+      bottom: 1.8rem;
+      right: 1.8rem;
+      z-index: 150;
+      width: 52px;
+      height: 52px;
+      background: #25d366;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+    }
+
+    .whatsapp-float:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 22px rgba(0,0,0,0.3);
+    }
+
+    .whatsapp-float svg { width: 28px; height: 28px; fill: white; }
+
     /* ── MODAL ── */
     .modal-overlay {
       display: none;
@@ -691,6 +768,7 @@
     <a href="#" class="nav-logo">MISKA</a>
     <ul class="nav-links">
       <li><a href="#creations"  data-i18n="nav.collections">Créations</a></li>
+      <li><a href="#about"      data-i18n="nav.about">À propos</a></li>
       <li><a href="#surMesure"  data-i18n="nav.custom">Sur mesure</a></li>
       <li><a href="#livraison"  data-i18n="nav.shipping">Livraison</a></li>
       <li><a href="#contact"    data-i18n="nav.contact">Contact</a></li>
@@ -708,6 +786,7 @@
   <!-- Menu mobile -->
   <div class="mobile-menu" id="mobileMenu">
     <a href="#creations" data-i18n="nav.collections">Créations</a>
+    <a href="#about"     data-i18n="nav.about">À propos</a>
     <a href="#surMesure" data-i18n="nav.custom">Sur mesure</a>
     <a href="#livraison" data-i18n="nav.shipping">Livraison</a>
     <a href="#contact"   data-i18n="nav.contact">Contact</a>
@@ -731,6 +810,7 @@
     <div class="gallery-grid">
 
       <div class="card" data-img="img/sac-tissu-bleu-marine.jpg" data-name="bag.navy" data-tag="material.fabric" data-desc="bag.navy.desc" data-price="35€ – 45€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-tissu-bleu-marine.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.fabric">Tissu</p>
@@ -740,6 +820,7 @@
       </div>
 
       <div class="card" data-img="img/sac-raphia-demilune-coquillages.jpg" data-name="bag.halfmoon" data-tag="material.raffia" data-desc="bag.halfmoon.desc" data-price="25€ – 35€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-raphia-demilune-coquillages.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.raffia">Raphia</p>
@@ -749,6 +830,7 @@
       </div>
 
       <div class="card" data-img="img/sac-raphia-caramel-cabas.jpg" data-name="bag.caramel" data-tag="material.raffia" data-desc="bag.caramel.desc" data-price="20€ – 30€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-raphia-caramel-cabas.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.raffia">Raphia</p>
@@ -758,6 +840,7 @@
       </div>
 
       <div class="card" data-img="img/sac-tissu-orange-terracotta.jpg" data-name="bag.terracotta" data-tag="material.fabric" data-desc="bag.terracotta.desc" data-price="30€ – 45€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-tissu-orange-terracotta.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.fabric">Tissu</p>
@@ -767,6 +850,7 @@
       </div>
 
       <div class="card" data-img="img/sac-raphia-rond-mandala.jpg" data-name="bag.mandala" data-tag="material.raffia" data-desc="bag.mandala.desc" data-price="30€ – 40€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-raphia-rond-mandala.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.raffia">Raphia</p>
@@ -776,6 +860,7 @@
       </div>
 
       <div class="card" data-img="img/sac-tissu-ikat-vert.jpg" data-name="bag.ikat" data-tag="material.fabric" data-desc="bag.ikat.desc" data-price="25€ – 40€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-tissu-ikat-vert.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.fabric">Tissu</p>
@@ -785,6 +870,7 @@
       </div>
 
       <div class="card" data-img="img/sac-tissu-rayures-marine.jpg" data-name="bag.stripes" data-tag="material.fabric" data-desc="bag.stripes.desc" data-price="25€ – 40€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-tissu-rayures-marine.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.fabric">Tissu</p>
@@ -794,6 +880,7 @@
       </div>
 
       <div class="card" data-img="img/sac-raphia-banane-granny.jpg" data-name="bag.granny" data-tag="material.raffia" data-desc="bag.granny.desc" data-price="15€ – 25€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-raphia-banane-granny.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.raffia">Raphia</p>
@@ -803,6 +890,7 @@
       </div>
 
       <div class="card" data-img="img/sac-raphia-eventail-bambou.jpg" data-name="bag.bamboo" data-tag="material.raffia" data-desc="bag.bamboo.desc" data-price="30€ – 45€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-raphia-eventail-bambou.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.raffia">Raphia</p>
@@ -812,6 +900,7 @@
       </div>
 
       <div class="card" data-img="img/sac-tissu-bleu-ciel-tresse.jpg" data-name="bag.woven" data-tag="material.fabric" data-desc="bag.woven.desc" data-price="35€ – 45€">
+        <span class="badge badge-available" data-i18n="badge.available">Disponible</span>
         <img class="card-img" src="img/sac-tissu-bleu-ciel-tresse.jpg" alt="" />
         <div class="card-body">
           <p  class="card-tag"  data-i18n="material.fabric">Tissu</p>
@@ -820,6 +909,18 @@
         </div>
       </div>
 
+    </div>
+  </section>
+
+  <!-- ═══ À PROPOS ═══ -->
+  <section id="about">
+    <div class="about-content">
+      <h2 class="section-title"    data-i18n="section.about">À propos</h2>
+      <p  class="section-subtitle" data-i18n="section.about.sub">La créatrice derrière MISKA</p>
+      <img class="about-img" src="maria.jpg" alt="Maria" />
+      <p class="about-text" data-i18n="about.text">
+        Bonjour, je m'appelle Maria ! Je crée des sacs artisanaux en tissu et en raphia depuis plusieurs années, avec passion et soin. Chaque pièce est unique, faite à la main, et pensée pour vous accompagner au quotidien avec style. N'hésitez pas à me contacter pour une création sur mesure.
+      </p>
     </div>
   </section>
 
@@ -877,14 +978,19 @@
     <p  class="section-subtitle" data-i18n="section.contact.sub">Une question ? Une commande ?</p>
 
     <div class="contact-info">
-      <a href="mailto:miska.creations@email.com" class="contact-info-item">
+      <a href="mailto:mariamgz@icloud.com" class="contact-info-item">
         <span>✉️</span>
-        <span>miska.creations@email.com</span>
+        <span>mariamgz@icloud.com</span>
       </a>
       <div class="contact-info-sep"></div>
-      <a href="tel:+34600000000" class="contact-info-item">
+      <a href="https://wa.me/34681965174" target="_blank" rel="noopener" class="contact-info-item">
+        <span>💬</span>
+        <span>+34 681 965 174</span>
+      </a>
+      <div class="contact-info-sep"></div>
+      <a href="tel:+34681965174" class="contact-info-item">
         <span>📱</span>
-        <span>+34 600 000 000</span>
+        <span>+34 681 965 174</span>
       </a>
     </div>
 
@@ -979,13 +1085,21 @@
     </div>
   </div>
 
+  <!-- ═══ WHATSAPP FLOTTANT ═══ -->
+  <a href="https://wa.me/34681965174" target="_blank" rel="noopener"
+     class="whatsapp-float" aria-label="WhatsApp">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  </a>
+
   <!-- ═══ FOOTER ═══ -->
   <footer>
     <p>© 2025 MISKA — <span data-i18n="footer.tagline">Créations artisanales faites main</span></p>
   </footer>
 
   <!-- ═══ i18n + JS ═══ -->
-  <script src="i18n.js?v=3"></script>
+  <script src="i18n.js?v=4"></script>
   <script>
     // ── Modal ──
     const overlay    = document.getElementById('modalOverlay');

@@ -2,6 +2,7 @@ const translations = {
   fr: {
     // Nav
     "nav.collections":  "Créations",
+    "nav.about":        "À propos",
     "nav.custom":       "Sur mesure",
     "nav.shipping":     "Livraison",
     "nav.contact":      "Contact",
@@ -13,6 +14,15 @@ const translations = {
     // Collections
     "section.collections":       "Créations",
     "section.collections.sub":   "Pièces uniques faites main",
+
+    // Badges
+    "badge.available":  "Disponible",
+    "badge.sold":       "Vendu",
+
+    // À propos
+    "section.about":      "À propos",
+    "section.about.sub":  "La créatrice derrière MISKA",
+    "about.text":         "Bonjour, je m'appelle Maria ! Je crée des sacs artisanaux en tissu et en raphia depuis plusieurs années, avec passion et soin. Chaque pièce est unique, faite à la main, et pensée pour vous accompagner au quotidien avec style. N'hésitez pas à me contacter pour une création sur mesure.",
 
     // Card materials
     "material.fabric":  "Tissu",
@@ -57,9 +67,9 @@ const translations = {
     "section.shipping":       "Livraison",
     "section.shipping.sub":   "Espagne &amp; international",
     "shipping.spain.title":   "Espagne",
-    "shipping.spain.text":    "Livraison disponible partout en Espagne. Frais de port à la charge du client.",
+    "shipping.spain.text":    "Livraison disponible partout en Espagne. Les frais de port vous seront communiqués lors de votre commande.",
     "shipping.intl.title":    "International",
-    "shipping.intl.text":     "Envoi possible à l'étranger. Frais de port à la charge du client.",
+    "shipping.intl.text":     "Envoi possible à l'étranger. Les frais de port vous seront précisés selon votre destination.",
     "shipping.custom.title":  "Commande sur mesure",
     "shipping.custom.text":   "Contactez-moi d'abord pour valider votre commande avant tout envoi.",
 
@@ -93,6 +103,7 @@ const translations = {
 
   es: {
     "nav.collections":  "Creaciones",
+    "nav.about":        "Sobre mí",
     "nav.custom":       "A medida",
     "nav.shipping":     "Envíos",
     "nav.contact":      "Contacto",
@@ -102,6 +113,13 @@ const translations = {
 
     "section.collections":       "Creaciones",
     "section.collections.sub":   "Piezas únicas hechas a mano",
+
+    "badge.available":  "Disponible",
+    "badge.sold":       "Agotado",
+
+    "section.about":      "Sobre mí",
+    "section.about.sub":  "La creadora detrás de MISKA",
+    "about.text":         "¡Hola, soy Maria! Llevo varios años creando bolsos artesanales en tela y rafia, con pasión y cuidado. Cada pieza es única, hecha a mano, pensada para acompañarte en tu día a día con estilo. No dudes en contactarme para un pedido a medida.",
 
     "material.fabric":  "Tela",
     "material.raffia":  "Rafia",
@@ -140,9 +158,9 @@ const translations = {
     "section.shipping":       "Envíos",
     "section.shipping.sub":   "España e internacional",
     "shipping.spain.title":   "España",
-    "shipping.spain.text":    "Envío disponible en toda España. Gastos de envío a cargo del cliente.",
+    "shipping.spain.text":    "Envío disponible en toda España. Los gastos de envío se calcularán al confirmar tu pedido.",
     "shipping.intl.title":    "Internacional",
-    "shipping.intl.text":     "Envío posible al extranjero. Gastos de envío a cargo del cliente.",
+    "shipping.intl.text":     "Envío posible al extranjero. Los gastos de envío se informarán según el destino.",
     "shipping.custom.title":  "Pedido a medida",
     "shipping.custom.text":   "Contáctame primero para confirmar tu pedido antes del envío.",
 
@@ -174,6 +192,7 @@ const translations = {
 
   en: {
     "nav.collections":  "Collections",
+    "nav.about":        "About",
     "nav.custom":       "Custom",
     "nav.shipping":     "Shipping",
     "nav.contact":      "Contact",
@@ -183,6 +202,13 @@ const translations = {
 
     "section.collections":       "Collections",
     "section.collections.sub":   "Unique handmade pieces",
+
+    "badge.available":  "Available",
+    "badge.sold":       "Sold",
+
+    "section.about":      "About",
+    "section.about.sub":  "The maker behind MISKA",
+    "about.text":         "Hi, I'm Maria! I've been crafting handmade bags in fabric and raffia for several years, with passion and care. Every piece is unique, handmade, and designed to accompany you in style every day. Feel free to get in touch for a custom creation.",
 
     "material.fabric":  "Fabric",
     "material.raffia":  "Raffia",
@@ -221,9 +247,9 @@ const translations = {
     "section.shipping":       "Shipping",
     "section.shipping.sub":   "Spain &amp; worldwide",
     "shipping.spain.title":   "Spain",
-    "shipping.spain.text":    "Delivery available throughout Spain. Shipping costs are the buyer's responsibility.",
+    "shipping.spain.text":    "Delivery available throughout Spain. Shipping costs will be confirmed when you place your order.",
     "shipping.intl.title":    "International",
-    "shipping.intl.text":     "Worldwide shipping available. Shipping costs are the buyer's responsibility.",
+    "shipping.intl.text":     "Worldwide shipping available. Shipping costs will be provided based on your destination.",
     "shipping.custom.title":  "Custom order",
     "shipping.custom.text":   "Please get in touch first to confirm your order before shipping.",
 
