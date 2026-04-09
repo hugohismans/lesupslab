@@ -352,11 +352,16 @@ const MODAL = {
         const conflictGroups = Object.entries(byId).map(([id, { res, firstOcc, count }]) => {
           const isRec = res?.recurrence?.type && res.recurrence.type !== 'none';
           // Construire une pseudo-occurrence descriptive
-          const recLabels = { daily: 'Tous les jours', weekly: 'Toutes les semaines', monthly: 'Tous les mois' };
+          const interval = parseInt(res.recurrence.interval) || 1;
+          const recLabels = {
+            daily:   interval > 1 ? `Tous les ${interval} jours`     : 'Tous les jours',
+            weekly:  interval > 1 ? `Toutes les ${interval} semaines` : 'Toutes les semaines',
+            monthly: interval > 1 ? `Tous les ${interval} mois`       : 'Tous les mois',
+          };
           const label = isRec
             ? { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate,
                 _isRec: true, _recLabel: recLabels[res.recurrence.type] || 'Récurrent',
-                _interval: res.recurrence.interval || 1 }
+                _interval: interval }
             : { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate };
           return { occ: label, clash: [{ id, ...res }] };
         });
