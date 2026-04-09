@@ -107,6 +107,18 @@ const MODAL = {
   },
 
   init() {
+    // Peupler les selects d'heure (créneaux de 30 min)
+    const timeOpts = [];
+    for (let h = CONFIG.HOURS_START; h <= CONFIG.HOURS_END; h++) {
+      for (let m = 0; m < 60; m += CONFIG.SLOT_MIN) {
+        if (h === CONFIG.HOURS_END && m > 0) break;
+        const label = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        timeOpts.push(`<option value="${label}">${label}</option>`);
+      }
+    }
+    g('fTimeStart').innerHTML = timeOpts.join('');
+    g('fTimeEnd').innerHTML   = timeOpts.join('');
+
     // Locaux, agents et services : chargés dynamiquement via refreshSelects()
     // (appelé par DB.onConfigChange dans app.js au démarrage)
 
@@ -427,23 +439,41 @@ const MODAL = {
   },
 
   _updateHint() {
-    const ds = g('fDateStart').value;
-    const ts = g('fTimeStart').value;
-    const de = g('fDateEnd').value;
-    const te = g('fTimeEnd').value;
-    const hint = g('localHint');
-    if (!ds || !ts || !de || !te) { hint.textContent = ''; return; }
+    const ds      = g('fDateStart').value;
+    const ts      = g('fTimeStart').value;
+    const de      = g('fDateEnd').value;
+    const te      = g('fTimeEnd').value;
+    const localId = parseInt(g('fLocal').value);
+    const hint    = g('localHint');
+
+    if (!ds || !ts || !de || !te) { hint.innerHTML = ''; hint.className = 'hint'; return; }
 
     const s = new Date(`${ds}T${ts}`);
     const e = new Date(`${de}T${te}`);
-    if (s >= e) { hint.textContent = ''; return; }
+    if (s >= e) { hint.innerHTML = ''; hint.className = 'hint'; return; }
 
-    const booked = new Set(DB.getInRange(s, e).map(r => r.localId));
+    const booked = new Set(DB.getInRange(s, e).filter(r => r.id !== this._editId).map(r => r.localId));
     const free   = CONFIG.LOCALS.filter(l => !booked.has(l));
-    hint.textContent  = free.length
-      ? `✅ Libres sur cette plage : ${free.map(l => DB.getLocalLabel(l)).join(', ')}`
-      : '❌ Aucun local disponible sur cette plage';
-    hint.style.color = free.length ? '#16a34a' : '#dc2626';
+
+    // Warning si le local sélectionné n'est pas disponible
+    if (localId && booked.has(localId)) {
+      const freeList = free.length
+        ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
+        : '<em>Aucun local disponible</em>';
+      hint.innerHTML  = `⚠️ <b>${DB.getLocalLabel(localId)}</b> est déjà réservé sur cette plage.<br>Locaux libres :${freeList}`;
+      hint.className  = 'hint hint-warn';
+      return;
+    }
+
+    if (!free.length) {
+      hint.innerHTML = '❌ Aucun local disponible sur cette plage.';
+      hint.className = 'hint hint-err';
+      return;
+    }
+
+    const freeList = '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>';
+    hint.innerHTML = '✅ Locaux libres sur cette plage :' + freeList;
+    hint.className = 'hint hint-ok';
   }
 };
 
