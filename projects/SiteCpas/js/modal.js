@@ -563,10 +563,14 @@ const MODAL = {
         const freeList = free.length
           ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
           : '<em>Aucun local disponible</em>';
+        const conflictDates = conflictOccs.map(occ =>
+          occ._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' })
+        ).join(', ');
         const suffix = isRec && conflictOccs.length > 1
-          ? ` sur <b>${conflictOccs.length} occurrences</b> de la série`
-          : '';
-        hint.innerHTML = `⚠️ <b>${label}</b> est déjà réservé${suffix}.<br>Locaux libres (1ère occurrence) :${freeList}`;
+          ? ` sur <b>${conflictOccs.length} occurrences</b> : ${conflictDates}`
+          : ` le <b>${conflictDates}</b>`;
+        const freeTitle = conflictOccs.length === 1 ? 'Locaux libres ce jour-là :' : 'Locaux libres (1ère date conflictuelle) :';
+        hint.innerHTML = `⚠️ <b>${label}</b> est déjà réservé${suffix}.<br>${freeTitle}${freeList}`;
         hint.className = 'hint hint-warn';
         return;
       }
