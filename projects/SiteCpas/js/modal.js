@@ -72,15 +72,14 @@ const MODAL = {
 
     // Bind sauvegarde libellés locaux
     g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
-      const save = async () => {
+      btn.addEventListener('click', async () => {
         const id    = parseInt(btn.dataset.localid);
         const input = g('settingsOverlay').querySelector(`.st-local-input[data-localid="${id}"]`);
         btn.disabled = true;
         await DB.setLocalLabel(id, input.value);
         btn.disabled = false;
-        btn.textContent = '✓';
-      };
-      btn.addEventListener('click', save);
+        showToast('Libellé enregistré ✓');
+      });
     });
     g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
       input.addEventListener('keydown', e => {
@@ -140,6 +139,7 @@ const MODAL = {
       await DB.addAgent(name);
       g('stAgentInput').value = '';
       g('stAgentAdd').disabled = false;
+      showToast('Agent ajouté ✓');
     });
     g('stAgentInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stAgentAdd').click(); });
 
@@ -152,6 +152,7 @@ const MODAL = {
       await DB.addService(name);
       g('stSvcInput').value = '';
       g('stSvcAdd').disabled = false;
+      showToast('Service ajouté ✓');
     });
     g('stSvcInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stSvcAdd').click(); });
 
@@ -436,6 +437,18 @@ const MODAL = {
 
 function g(id) { return document.getElementById(id); }
 function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showToast(msg = 'Modification enregistrée') {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add('toast-in'));
+  setTimeout(() => {
+    t.classList.remove('toast-in');
+    t.addEventListener('transitionend', () => t.remove());
+  }, 2200);
+}
 
 // cls(id, hidden) — cache ou affiche via la classe CSS 'hidden'
 function cls(id, hidden) {
