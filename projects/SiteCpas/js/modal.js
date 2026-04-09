@@ -608,17 +608,28 @@ const MODAL = {
         )
       );
       if (conflictOccs.length) {
-        const label   = DB.getLocalLabel(localId);
+        const label = DB.getLocalLabel(localId);
         const freeList = free.length
           ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
           : '<em>Aucun local disponible</em>';
-        const conflictDates = conflictOccs.map(occ =>
-          occ._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' })
-        ).join(', ');
-        const suffix = isRec && conflictOccs.length > 1
-          ? ` sur <b>${conflictOccs.length} occurrences</b> : ${conflictDates}`
-          : ` le <b>${conflictDates}</b>`;
-        const freeTitle = conflictOccs.length === 1 ? 'Locaux libres ce jour-là :' : 'Locaux libres (1ère date conflictuelle) :';
+
+        let suffix;
+        if (!isRec || conflictOccs.length === 1) {
+          // Réservation simple ou 1 seul conflit → date précise
+          const dateStr = conflictOccs[0]._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' });
+          suffix = ` le <b>${dateStr}</b>`;
+        } else {
+          // Série → 1ère date conflictuelle + fréquence
+          const firstDate = conflictOccs[0]._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' });
+          const recLbls = {
+            daily:   interval2 > 1 ? `tous les ${interval2} jours`     : 'tous les jours',
+            weekly:  interval2 > 1 ? `toutes les ${interval2} semaines` : 'toutes les semaines',
+            monthly: interval2 > 1 ? `tous les ${interval2} mois`       : 'tous les mois',
+          };
+          suffix = ` à partir du <b>${firstDate}</b> (${recLbls[recType2] || 'récurrent'} · ${conflictOccs.length} occurrence${conflictOccs.length > 1 ? 's' : ''})`;
+        }
+
+        const freeTitle = 'Locaux libres (1ère date conflictuelle) :';
         hint.innerHTML = `⚠️ <b>${label}</b> est déjà réservé${suffix}.<br>${freeTitle}${freeList}`;
         hint.className = 'hint hint-warn';
         return;
