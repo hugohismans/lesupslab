@@ -311,8 +311,8 @@ const MODAL = {
       const conflicts = [];
       myOccs.forEach(occ => {
         const clash = DB.getInRange(occ._start, occ._end).filter(r =>
-          parseInt(r.localId) === localId && r.id !== this._editId && !r.isPermanent
-          && r._start < occ._end && r._end > occ._start
+          parseInt(r.localId) === localId && r.id !== this._editId
+          && (r.isPermanent || (r._start < occ._end && r._end > occ._start))
         );
         if (clash.length) conflicts.push({ occ, clash });
       });
@@ -325,12 +325,12 @@ const MODAL = {
             if (!byId[r.id]) {
               const src = DB.getAll()[r.id];
               const srcIsRec = src?.recurrence?.type && src.recurrence.type !== 'none';
-              byId[r.id] = { firstOcc: occ, count: 0, res: src, _isRec: srcIsRec };
+              byId[r.id] = { firstOcc: occ, count: 0, res: src, _isRec: srcIsRec, _isPerm: src?.isPermanent };
             }
             byId[r.id].count++;
           });
         });
-        const groupedConflicts = Object.entries(byId).map(([id, { firstOcc, count, res, _isRec }]) => {
+        const groupedConflicts = Object.entries(byId).map(([id, { firstOcc, count, res, _isRec, _isPerm }]) => {
           const interval = parseInt(res?.recurrence?.interval) || 1;
           const recLbls  = {
             daily:   interval > 1 ? `tous les ${interval} jours`     : 'tous les jours',
@@ -339,7 +339,7 @@ const MODAL = {
           };
           return {
             occ: { ...firstOcc,
-              _isRec,
+              _isRec, _isPerm,
               _recLabel: _isRec ? recLbls[res.recurrence.type] : null,
               _seriesCount: count
             },
@@ -367,7 +367,7 @@ const MODAL = {
       const permStart = new Date(startDT);
       const permEnd   = new Date(permStart); permEnd.setFullYear(permEnd.getFullYear() + 5);
       const allOccs   = DB.getInRange(permStart, permEnd).filter(r =>
-        parseInt(r.localId) === localId && r.id !== this._editId && !r.isPermanent
+        parseInt(r.localId) === localId && r.id !== this._editId
       );
 
       if (allOccs.length) {
@@ -391,7 +391,8 @@ const MODAL = {
             ? { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate,
                 _isRec: true, _recLabel: recLabels[res.recurrence.type] || 'Récurrent',
                 _interval: interval }
-            : { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate };
+            : { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate,
+                _isPerm: res?.isPermanent };
           return { occ: label, clash: [{ id, ...res }] };
         });
 
@@ -426,6 +427,11 @@ const MODAL = {
       if (this._editId) await DB.update(this._editId, data);
       else              await DB.add(data);
       g('resOverlay').classList.add('hidden');
+      // Avertissement récurrence mensuelle sur jour 29+
+      if (!isPerm && recType === 'monthly' && startDT) {
+        const day = new Date(startDT).getDate();
+        if (day >= 29) showToast('⚠️ Récurrence mensuelle : les mois plus courts décaleront l\'occurrence au mois suivant.');
+      }
     } catch (err) {
       alert('Erreur : ' + err.message);
     }
@@ -443,6 +449,9 @@ const MODAL = {
         : `<b>${label}</b> est déjà réservé sur <b>${n} créneau${n > 1 ? 'x' : ''}</b> :`;
 
       g('conflictList').innerHTML = conflicts.map(({occ}) => {
+        if (occ._isPerm) {
+          return `<li>🔒 Réservation permanente (local bloqué définitivement)</li>`;
+        }
         const dateStr = occ._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         const tS = occ._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         const tE = occ._end ? occ._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -454,8 +463,9 @@ const MODAL = {
         return `<li>${dateStr} · ${timeStr}</li>`;
       }).join('');
 
-      // Afficher/masquer le bouton "exceptions" selon si c'est récurrent
-      cls('conflictBtnExceptions', !isRec);
+      // Masquer "exceptions" si pas récurrent OU si un conflit est une permanente
+      const hasPerm = conflicts.some(({occ}) => occ._isPerm);
+      cls('conflictBtnExceptions', !isRec || hasPerm);
 
       g('conflictOverlay').classList.remove('hidden');
 
@@ -617,13 +627,13 @@ const MODAL = {
     const bookedOnAny = new Set();
     myOccs.forEach(occ => {
       DB.getInRange(occ._start, occ._end)
-        .filter(r => r.id !== this._editId && !r.isPermanent)
-        .forEach(r => bookedOnAny.add(r.localId));
+        .filter(r => r.id !== this._editId)
+        .forEach(r => bookedOnAny.add(parseInt(r.localId)));
     });
 
     // Locaux occupés uniquement sur la 1ère occurrence (pour la liste "libres")
     const bookedFirst = new Set(
-      DB.getInRange(s, e).filter(r => r.id !== this._editId && !r.isPermanent).map(r => r.localId)
+      DB.getInRange(s, e).filter(r => r.id !== this._editId).map(r => parseInt(r.localId))
     );
     const free = CONFIG.LOCALS.filter(l => !bookedFirst.has(l));
 
@@ -631,8 +641,8 @@ const MODAL = {
     if (localId) {
       const conflictOccs = myOccs.filter(occ =>
         DB.getInRange(occ._start, occ._end).some(r =>
-          parseInt(r.localId) === localId && r.id !== this._editId && !r.isPermanent
-          && r._start < occ._end && r._end > occ._start
+          parseInt(r.localId) === localId && r.id !== this._editId
+          && (r.isPermanent || (r._start < occ._end && r._end > occ._start))
         )
       );
       if (conflictOccs.length) {
@@ -641,13 +651,18 @@ const MODAL = {
           ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
           : '<em>Aucun local disponible</em>';
 
+        // Vérifier si le conflit est dû à une réservation permanente
+        const permConflict = DB.getInRange(conflictOccs[0]._start, conflictOccs[0]._end).find(r =>
+          parseInt(r.localId) === localId && r.id !== this._editId && r.isPermanent
+        );
+
         let suffix;
-        if (!isRec || conflictOccs.length === 1) {
-          // Réservation simple ou 1 seul conflit → date précise
+        if (permConflict) {
+          suffix = ` est <b>bloqué définitivement</b> par une réservation permanente`;
+        } else if (!isRec || conflictOccs.length === 1) {
           const dateStr = conflictOccs[0]._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' });
           suffix = ` le <b>${dateStr}</b>`;
         } else {
-          // Série → 1ère date conflictuelle + fréquence
           const firstDate = conflictOccs[0]._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short' });
           const recLbls = {
             daily:   interval2 > 1 ? `tous les ${interval2} jours`     : 'tous les jours',
@@ -657,8 +672,8 @@ const MODAL = {
           suffix = ` à partir du <b>${firstDate}</b> (${recLbls[recType2] || 'récurrent'} · ${conflictOccs.length} occurrence${conflictOccs.length > 1 ? 's' : ''})`;
         }
 
-        const freeTitle = 'Locaux libres (1ère date conflictuelle) :';
-        hint.innerHTML = `⚠️ <b>${label}</b> est déjà réservé${suffix}.<br>${freeTitle}${freeList}`;
+        const freeTitle = permConflict ? 'Locaux libres :' : 'Locaux libres (1ère date conflictuelle) :';
+        hint.innerHTML = `⚠️ <b>${label}</b>${permConflict ? '' : ' est déjà réservé'}${suffix}.<br>${freeTitle}${freeList}`;
         hint.className = 'hint hint-warn';
         return;
       }
