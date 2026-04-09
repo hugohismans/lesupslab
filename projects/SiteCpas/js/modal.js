@@ -330,8 +330,35 @@ const MODAL = {
         }
       }
     } else {
+      // Réservation permanente — vérifier les réservations existantes sur ce local
       const ds = g('fDateStart').value || isoDate(new Date());
       startDT = `${ds}T${String(CONFIG.HOURS_START).padStart(2,'0')}:00`;
+
+      const futureConflicts = Object.entries(DB.getAll()).filter(([id, r]) =>
+        id !== this._editId && r.localId === localId && !r.isPermanent
+      );
+
+      if (futureConflicts.length) {
+        const label = DB.getLocalLabel(localId);
+        const list  = futureConflicts.map(([, r]) => {
+          const d = new Date(r.startDateTime);
+          return d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+        }).join(', ');
+        const n = futureConflicts.length;
+        const choice = await this._showConflictModal(
+          futureConflicts.map(([, r]) => ({
+            occ:   { _start: new Date(r.startDateTime), _end: new Date(r.endDateTime), _occDate: r.startDateTime?.slice(0,10) },
+            clash: [r]
+          })),
+          localId,
+          false
+        );
+        if (choice === 'cancel') return;
+        if (choice === 'replace') {
+          for (const [id] of futureConflicts) await DB.remove(id);
+        }
+        // 'exceptions' non applicable aux permanents → traité comme cancel silencieux (bouton masqué)
+      }
     }
 
     const recType = g('fRecType').value;
@@ -367,8 +394,10 @@ const MODAL = {
       const label = DB.getLocalLabel(localId);
       const n = conflicts.length;
 
-      g('conflictSummary').innerHTML =
-        `<b>${label}</b> est déjà réservé sur <b>${n} créneau${n > 1 ? 'x' : ''}</b> :`;
+      const isPerm = g('fPermanent').checked;
+      g('conflictSummary').innerHTML = isPerm
+        ? `⚠️ Réservation permanente sur <b>${label}</b> — ${n} réservation${n > 1 ? 's' : ''} existante${n > 1 ? 's' : ''} seront écrasées :`
+        : `<b>${label}</b> est déjà réservé sur <b>${n} créneau${n > 1 ? 'x' : ''}</b> :`;
 
       g('conflictList').innerHTML = conflicts.map(({occ}) => {
         const dateStr = occ._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
