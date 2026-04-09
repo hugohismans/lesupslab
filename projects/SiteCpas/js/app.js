@@ -16,10 +16,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     updateStatusBar();
   });
 
-  // Charger données de démo si Firebase est vide (premier lancement)
+  // Charger la config par défaut si Firebase est vide (premier lancement)
   try {
     await DB.seedConfigIfEmpty();
-    await DB.seedIfEmpty();
+    // DB.seedIfEmpty() désactivé — données de démo supprimées
   } catch (e) {
     console.warn('Seed skipped (Firebase non configuré) :', e.message);
   }
