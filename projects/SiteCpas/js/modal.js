@@ -342,18 +342,25 @@ const MODAL = {
       );
 
       if (allOccs.length) {
-        // Dédoublonner par id source pour la suppression, mais lister toutes les occurrences
-        const choice = await this._showConflictModal(
-          allOccs.map(r => ({
-            occ:   { _start: r._start, _end: r._end, _occDate: r._occDate },
-            clash: [r]
-          })),
-          localId,
-          false
-        );
+        // Grouper par série source (id) — 1 ligne par réservation/série, pas par occurrence
+        const byId = {};
+        allOccs.forEach(r => {
+          if (!byId[r.id]) byId[r.id] = { res: DB.getAll()[r.id], firstOcc: r, count: 0 };
+          byId[r.id].count++;
+        });
+
+        const conflictGroups = Object.entries(byId).map(([id, { res, firstOcc, count }]) => {
+          const isRec = res?.recurrence?.type && res.recurrence.type !== 'none';
+          // Construire une pseudo-occurrence descriptive
+          const label = isRec
+            ? { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate, _seriesCount: count, _isRec: true }
+            : { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate };
+          return { occ: label, clash: [{ id, ...res }] };
+        });
+
+        const choice = await this._showConflictModal(conflictGroups, localId, false);
         if (choice === 'cancel') return;
         if (choice === 'replace') {
-          // Supprimer les séries sources (pas les occurrences individuelles)
           const toDelete = new Set(allOccs.map(r => r.id));
           for (const id of toDelete) await DB.remove(id);
         }
@@ -401,8 +408,11 @@ const MODAL = {
       g('conflictList').innerHTML = conflicts.map(({occ}) => {
         const dateStr = occ._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         const tS = occ._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
-        const tE = occ._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
-        return `<li>${dateStr} · ${tS}–${tE}</li>`;
+        const tE = occ._end ? occ._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
+        const suffix = occ._isRec
+          ? ` <em>(série récurrente · ${occ._seriesCount} occurrence${occ._seriesCount > 1 ? 's' : ''})</em>`
+          : '';
+        return `<li>${dateStr} · ${tS}${tE ? '–' + tE : ''}${suffix}</li>`;
       }).join('');
 
       // Afficher/masquer le bouton "exceptions" selon si c'est récurrent
