@@ -136,6 +136,14 @@ const MODAL = {
       cls('fRecOptions', this.value === 'none');
       const units = { daily: 'jour(s)', weekly: 'semaine(s)', monthly: 'mois' };
       g('fIntervalUnit').textContent = units[this.value] || '';
+      // Quotidienne : intervalle forcé à 1, non modifiable
+      const intervalInput = g('fInterval');
+      if (this.value === 'daily') {
+        intervalInput.value = '1';
+        intervalInput.disabled = true;
+      } else {
+        intervalInput.disabled = false;
+      }
       // Mensuelle : interdire "pour toujours", forcer une date de fin
       const foreverOpt = g('fRecEnd').querySelector('option[value="forever"]');
       if (this.value === 'monthly') {
@@ -614,6 +622,9 @@ const MODAL = {
         g('fInterval').value = rec.interval || 1;
         const units = { daily: 'jour(s)', weekly: 'semaine(s)', monthly: 'mois' };
         g('fIntervalUnit').textContent = units[rec.type] || '';
+        // Quotidienne : intervalle forcé à 1
+        if (rec.type === 'daily') g('fInterval').disabled = true;
+        else g('fInterval').disabled = false;
         // Mensuelle : forcer une date de fin (désactiver "pour toujours")
         if (rec.type === 'monthly') {
           const foreverOpt = g('fRecEnd').querySelector('option[value="forever"]');
@@ -643,6 +654,7 @@ const MODAL = {
     g('fRecType').value  = 'none';
     g('fRecEnd').value   = 'forever';
     g('fInterval').value = '1';
+    g('fInterval').disabled = false;
     cls('fServiceCustomWrap', true);
     cls('fAgentCustomWrap',   true);
     cls('fRecOptions',        true);
