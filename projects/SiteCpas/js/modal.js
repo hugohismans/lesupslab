@@ -425,7 +425,7 @@ const MODAL = {
     const booked = new Set(DB.getInRange(s, e).map(r => r.localId));
     const free   = CONFIG.LOCALS.filter(l => !booked.has(l));
     hint.textContent  = free.length
-      ? `✅ Libres sur cette plage : ${free.map(l => 'Local ' + l).join(', ')}`
+      ? `✅ Libres sur cette plage : ${free.map(l => DB.getLocalLabel(l)).join(', ')}`
       : '❌ Aucun local disponible sur cette plage';
     hint.style.color = free.length ? '#16a34a' : '#dc2626';
   }
