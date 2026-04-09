@@ -289,6 +289,27 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Avertissement occurrences week-end
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="weekendWarnOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-hd">
+      <h2>⚠️ Occurrences en week-end</h2>
+    </div>
+    <div class="modal-bd">
+      <p>Certaines occurrences de cette série tombent un <b>samedi ou dimanche</b> et seront automatiquement ignorées car le CPAS est fermé le week-end :</p>
+      <ul id="weekendWarnList" class="conflict-list"></ul>
+      <p id="weekendWarnMore" class="hidden" style="color:#6b7280;font-style:italic;margin-top:.5rem"></p>
+      <p style="margin-top:1rem">Les autres occurrences seront enregistrées normalement. Souhaitez-vous continuer ?</p>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="weekendWarnCancel">Annuler</button>
+      <button class="btn-primary" id="weekendWarnConfirm">Continuer sans ces dates</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>

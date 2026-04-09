@@ -136,6 +136,15 @@ const MODAL = {
       cls('fRecOptions', this.value === 'none');
       const units = { daily: 'jour(s)', weekly: 'semaine(s)', monthly: 'mois' };
       g('fIntervalUnit').textContent = units[this.value] || '';
+      // Mensuelle : interdire "pour toujours", forcer une date de fin
+      const foreverOpt = g('fRecEnd').querySelector('option[value="forever"]');
+      if (this.value === 'monthly') {
+        if (foreverOpt) foreverOpt.disabled = true;
+        g('fRecEnd').value = 'date';
+        cls('fRecEndDateWrap', false);
+      } else {
+        if (foreverOpt) foreverOpt.disabled = false;
+      }
     });
     g('fRecEnd').addEventListener('change', function() {
       cls('fRecEndDateWrap', this.value !== 'date');
@@ -152,7 +161,7 @@ const MODAL = {
     });
 
     // Fermer sur clic sur l'overlay
-    ['resOverlay','detOverlay','confOverlay','settingsOverlay'].forEach(id => {
+    ['resOverlay','detOverlay','confOverlay','settingsOverlay','weekendWarnOverlay'].forEach(id => {
       g(id).addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
     });
 
@@ -307,6 +316,22 @@ const MODAL = {
 
       const myOccs = expandReservation('__temp__', tempRes, new Date(startDT), checkEnd);
 
+      // Vérifier les occurrences qui tombent un week-end (avant filtrage db.js)
+      if (isRec) {
+        const weekendDates = [];
+        let wkCur = new Date(startDT);
+        let wkGuard = 0;
+        while (wkCur <= checkEnd && wkGuard++ < 700) {
+          const d = wkCur.getDay();
+          if (d === 0 || d === 6) weekendDates.push(new Date(wkCur));
+          wkCur = advDate(wkCur, recType2, interval2);
+        }
+        if (weekendDates.length) {
+          const confirmed = await this._showWeekendWarning(weekendDates);
+          if (!confirmed) return;
+        }
+      }
+
       // Trouver TOUS les conflits
       const conflicts = [];
       myOccs.forEach(occ => {
@@ -427,28 +452,39 @@ const MODAL = {
       if (this._editId) await DB.update(this._editId, data);
       else              await DB.add(data);
       g('resOverlay').classList.add('hidden');
-      // Avertissements récurrence
-      if (!isPerm && recType !== 'none' && startDT) {
-        // Mensuelle sur jour 29+
-        if (recType === 'monthly' && new Date(startDT).getDate() >= 29)
-          showToast('⚠️ Récurrence mensuelle : les mois plus courts décaleront l\'occurrence au mois suivant.');
-        // Vérifier si des occurrences brutes tombent un week-end (avant filtrage)
-        let wkCur = new Date(startDT);
-        const intv = data.recurrence.interval;
-        const chkEnd = advDate(wkCur, recType, intv * 52);
-        let hasWeekendOcc = false;
-        let wkGuard = 0;
-        while (wkCur <= chkEnd && wkGuard++ < 700) {
-          const d = wkCur.getDay();
-          if (d === 0 || d === 6) { hasWeekendOcc = true; break; }
-          wkCur = advDate(wkCur, recType, intv);
-        }
-        if (hasWeekendOcc)
-          showToast('⚠️ Certaines occurrences tombent un week-end et seront automatiquement ignorées.');
-      }
     } catch (err) {
       alert('Erreur : ' + err.message);
     }
+  },
+
+  // ─── Modal d'avertissement occurrences week-end ────────────────
+  _showWeekendWarning(weekendDates) {
+    const MAX_SHOWN = 10;
+    const shown = weekendDates.slice(0, MAX_SHOWN);
+    g('weekendWarnList').innerHTML = shown.map(d =>
+      `<li>${d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</li>`
+    ).join('');
+    const extra = weekendDates.length - MAX_SHOWN;
+    const moreEl = g('weekendWarnMore');
+    if (extra > 0) {
+      moreEl.textContent = `... et ${extra} autre${extra > 1 ? 's' : ''} occurrence${extra > 1 ? 's' : ''} en week-end.`;
+      moreEl.classList.remove('hidden');
+    } else {
+      moreEl.classList.add('hidden');
+    }
+    g('weekendWarnOverlay').classList.remove('hidden');
+    return new Promise(resolve => {
+      const done = confirmed => {
+        g('weekendWarnOverlay').classList.add('hidden');
+        g('weekendWarnCancel').removeEventListener('click', cancelH);
+        g('weekendWarnConfirm').removeEventListener('click', confirmH);
+        resolve(confirmed);
+      };
+      const cancelH  = () => done(false);
+      const confirmH = () => done(true);
+      g('weekendWarnCancel').addEventListener('click', cancelH);
+      g('weekendWarnConfirm').addEventListener('click', confirmH);
+    });
   },
 
   // ─── Modal de résolution de conflits ───────────────────────────
@@ -578,7 +614,14 @@ const MODAL = {
         g('fInterval').value = rec.interval || 1;
         const units = { daily: 'jour(s)', weekly: 'semaine(s)', monthly: 'mois' };
         g('fIntervalUnit').textContent = units[rec.type] || '';
-        if (rec.endDate) {
+        // Mensuelle : forcer une date de fin (désactiver "pour toujours")
+        if (rec.type === 'monthly') {
+          const foreverOpt = g('fRecEnd').querySelector('option[value="forever"]');
+          if (foreverOpt) foreverOpt.disabled = true;
+          g('fRecEnd').value = 'date';
+          cls('fRecEndDateWrap', false);
+          if (rec.endDate) g('fRecEndDate').value = rec.endDate;
+        } else if (rec.endDate) {
           g('fRecEnd').value = 'date';
           cls('fRecEndDateWrap', false);
           g('fRecEndDate').value = rec.endDate;
