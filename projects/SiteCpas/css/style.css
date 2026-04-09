@@ -511,23 +511,25 @@ body {
   .btn-new   { padding: .3rem .65rem; font-size: .76rem; }
 
   /* Status bar : colonne compacte, pills en ligne scrollable */
-  .sb        { flex-direction: column; align-items: stretch; gap: .3rem; padding: .4rem .75rem; overflow: visible; }
+  .sb        { flex-direction: column; align-items: stretch; gap: .3rem; padding: .4rem .75rem; }
   .sb-check  { flex-wrap: nowrap; gap: .4rem; }
   .sb-label  { font-size: .68rem; }
   .sb-pills  {
+    /* override base: flex:1 + flex-wrap:wrap → ne scrollait pas */
+    flex: none;
+    width: 100%;
+    display: flex;
     flex-wrap: nowrap;
     overflow-x: auto;
-    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     gap: .3rem;
-    padding-bottom: .25rem;
-    /* barre de scroll visible sur iOS */
+    padding-bottom: .2rem;
     scrollbar-width: thin;
   }
   .lpill {
     flex-shrink: 0;
-    min-width: 0;
-    width: 72px;
+    width: 70px;
+    min-width: 70px;
     padding: .2rem .35rem;
     border-radius: 8px;
     border-width: 1.5px;
