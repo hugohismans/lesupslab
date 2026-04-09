@@ -312,7 +312,7 @@ function updateStatusBar() {
       </div>`;
     }
     return `<div class="lpill is-free">
-      <div class="lp-num">Local ${l}</div>
+      <div class="lp-num">${DB.getLocalLabel(l)}</div>
       <div class="lp-status">🟢 Libre</div>
     </div>`;
   }).join('');
