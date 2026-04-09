@@ -10,7 +10,11 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Config dynamique (agents / services) — écoute Firebase
   DB.initConfig();
-  DB.onConfigChange(() => MODAL.refreshSelects());
+  DB.onConfigChange(() => {
+    MODAL.refreshSelects();
+    CAL.render();
+    updateStatusBar();
+  });
 
   // Charger données de démo si Firebase est vide (premier lancement)
   try {

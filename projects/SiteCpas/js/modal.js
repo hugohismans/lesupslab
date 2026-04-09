@@ -22,8 +22,11 @@ const MODAL = {
     if (curService) g('fService').value = curService;
     if (curAgent)   g('fAgent').value   = curAgent;
 
-    if (!g('settingsOverlay').classList.contains('hidden')) {
-      this._renderSettingsList();
+    // Re-rendre la liste paramètres uniquement si aucun input n'est en cours d'édition
+    const overlay = g('settingsOverlay');
+    if (!overlay.classList.contains('hidden')) {
+      const focused = overlay.querySelector('input:focus');
+      if (!focused) this._renderSettingsList();
     }
   },
 
@@ -67,18 +70,29 @@ const MODAL = {
         btn.disabled = true;
         if (type === 'agent') await DB.removeAgent(name);
         else                  await DB.removeService(name);
+        // Re-rendu immédiat sans attendre le callback Firebase
+        this.refreshSelects();
+        showToast('Supprimé ✓');
       });
     });
 
     // Bind sauvegarde libellés locaux
     g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id    = parseInt(btn.dataset.localid);
-        const input = g('settingsOverlay').querySelector(`.st-local-input[data-localid="${id}"]`);
+        const id    = btn.dataset.localid;
+        const row   = btn.closest('.st-local-row');
+        const input = row ? row.querySelector('input') : null;
+        if (!input) return;
+        const val = input.value;  // capturer avant tout await
         btn.disabled = true;
-        await DB.setLocalLabel(id, input.value);
-        btn.disabled = false;
-        showToast('Libellé enregistré ✓');
+        try {
+          await DB.setLocalLabel(id, val);
+          showToast('Libellé enregistré ✓');
+          this.refreshSelects();  // mise à jour immédiate sans attendre Firebase
+        } catch (e) {
+          alert('Erreur : ' + e.message);
+          btn.disabled = false;
+        }
       });
     });
     g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
