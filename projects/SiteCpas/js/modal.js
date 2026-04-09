@@ -334,20 +334,18 @@ const MODAL = {
       const ds = g('fDateStart').value || isoDate(new Date());
       startDT = `${ds}T${String(CONFIG.HOURS_START).padStart(2,'0')}:00`;
 
-      const futureConflicts = Object.entries(DB.getAll()).filter(([id, r]) =>
-        id !== this._editId && parseInt(r.localId) === localId && !r.isPermanent
+      // Utiliser getInRange sur 5 ans pour avoir TOUTES les occurrences expandées
+      const permStart = new Date(startDT);
+      const permEnd   = new Date(permStart); permEnd.setFullYear(permEnd.getFullYear() + 5);
+      const allOccs   = DB.getInRange(permStart, permEnd).filter(r =>
+        parseInt(r.localId) === localId && r.id !== this._editId && !r.isPermanent
       );
 
-      if (futureConflicts.length) {
-        const label = DB.getLocalLabel(localId);
-        const list  = futureConflicts.map(([, r]) => {
-          const d = new Date(r.startDateTime);
-          return d.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-        }).join(', ');
-        const n = futureConflicts.length;
+      if (allOccs.length) {
+        // Dédoublonner par id source pour la suppression, mais lister toutes les occurrences
         const choice = await this._showConflictModal(
-          futureConflicts.map(([, r]) => ({
-            occ:   { _start: new Date(r.startDateTime), _end: new Date(r.endDateTime), _occDate: r.startDateTime?.slice(0,10) },
+          allOccs.map(r => ({
+            occ:   { _start: r._start, _end: r._end, _occDate: r._occDate },
             clash: [r]
           })),
           localId,
@@ -355,9 +353,10 @@ const MODAL = {
         );
         if (choice === 'cancel') return;
         if (choice === 'replace') {
-          for (const [id] of futureConflicts) await DB.remove(id);
+          // Supprimer les séries sources (pas les occurrences individuelles)
+          const toDelete = new Set(allOccs.map(r => r.id));
+          for (const id of toDelete) await DB.remove(id);
         }
-        // 'exceptions' non applicable aux permanents → traité comme cancel silencieux (bouton masqué)
       }
     }
 
