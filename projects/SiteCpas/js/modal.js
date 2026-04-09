@@ -352,8 +352,11 @@ const MODAL = {
         const conflictGroups = Object.entries(byId).map(([id, { res, firstOcc, count }]) => {
           const isRec = res?.recurrence?.type && res.recurrence.type !== 'none';
           // Construire une pseudo-occurrence descriptive
+          const recLabels = { daily: 'Tous les jours', weekly: 'Toutes les semaines', monthly: 'Tous les mois' };
           const label = isRec
-            ? { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate, _seriesCount: count, _isRec: true }
+            ? { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate,
+                _isRec: true, _recLabel: recLabels[res.recurrence.type] || 'Récurrent',
+                _interval: res.recurrence.interval || 1 }
             : { _start: firstOcc._start, _end: firstOcc._end, _occDate: firstOcc._occDate };
           return { occ: label, clash: [{ id, ...res }] };
         });
@@ -410,9 +413,12 @@ const MODAL = {
         const tS = occ._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         const tE = occ._end ? occ._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
         const suffix = occ._isRec
-          ? ` <em>(série récurrente · ${occ._seriesCount} occurrence${occ._seriesCount > 1 ? 's' : ''})</em>`
+          ? ` <em>(${occ._recLabel} à partir du ${dateStr})</em>`
           : '';
-        return `<li>${dateStr} · ${tS}${tE ? '–' + tE : ''}${suffix}</li>`;
+        const timeStr = tE ? `${tS}–${tE}` : tS;
+        return occ._isRec
+          ? `<li>${timeStr} ${suffix}</li>`
+          : `<li>${dateStr} · ${timeStr}</li>`;
       }).join('');
 
       // Afficher/masquer le bouton "exceptions" selon si c'est récurrent
