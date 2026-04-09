@@ -260,10 +260,36 @@ body {
   border-collapse: collapse;
 }
 
+/* Bandeau date de la vue jour */
+.cv-day-datebar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  background: #fff;
+  border-bottom: 2px solid #c9d4e0;
+  padding: .45rem 1rem;
+  font-size: .88rem;
+  font-weight: 800;
+  color: #1a3a5c;
+  text-transform: capitalize;
+  letter-spacing: .01em;
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}
+.cv-day-datebar.is-today {
+  background: #e8f4fd;
+  color: #1a6496;
+}
+.cv-day-datebar.is-today::after {
+  content: ' — Aujourd\'hui';
+  font-weight: 600;
+  color: #2a6496;
+  font-size: .78rem;
+}
+
 /* En-tête sticky */
 .cv-day-table thead th {
   position: sticky;
-  top: 0;
+  top: 36px;   /* hauteur du .cv-day-datebar */
   z-index: 20;
   background: #eef4fb;
   border-bottom: 2px solid #c9d4e0;

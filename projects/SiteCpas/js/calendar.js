@@ -42,7 +42,11 @@ const CAL = {
     const coveredUntil = {};
     CONFIG.LOCALS.forEach(l => coveredUntil[l] = 0);
 
-    let h = '<table class="cv-day-table"><thead><tr>';
+    const dateLabel = d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const isToday   = sameDay(d, new Date());
+
+    let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">${dateLabel}</div>`;
+    h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     CONFIG.LOCALS.forEach(l => h += `<th class="loc-hd">Local ${l}</th>`);
     h += '</tr></thead><tbody>';
