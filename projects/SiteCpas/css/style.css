@@ -180,6 +180,15 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 .btn-new:hover { background: #1e8449; }
+.btn-settings {
+  background: transparent; border: 1px solid rgba(255,255,255,.25);
+  color: rgba(255,255,255,.7); width: 30px; height: 30px;
+  border-radius: 6px; cursor: pointer; font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.btn-settings:hover { background: rgba(255,255,255,.18); color: #fff; }
+
 .btn-logout {
   background: transparent; border: 1px solid rgba(255,255,255,.2);
   color: rgba(255,255,255,.5); width: 30px; height: 30px;
@@ -516,6 +525,44 @@ body {
 }
 .badge-perm { background: #ede9fe; color: #6d28d9; }
 .badge-rec  { background: #dbeafe; color: #1d4ed8; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   PARAMÈTRES — liste agents / services
+═══════════════════════════════════════════════════════════════════ */
+.st-title {
+  font-size: .75rem; font-weight: 900; text-transform: uppercase;
+  letter-spacing: .07em; color: #1a3a5c; margin-bottom: .5rem;
+}
+.st-list {
+  display: flex; flex-direction: column; gap: .3rem;
+  max-height: 180px; overflow-y: auto;
+  border: 1.5px solid #e5e7eb; border-radius: 8px;
+  padding: .35rem; background: #f9fafb;
+}
+.st-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .3rem .5rem; background: #fff; border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+.st-name { font-size: .85rem; color: #1e293b; flex: 1; }
+.st-del {
+  background: none; border: none; color: #dc2626; cursor: pointer;
+  font-size: .75rem; width: 22px; height: 22px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s; flex-shrink: 0;
+}
+.st-del:hover { background: #fee2e2; }
+.st-empty { font-size: .82rem; color: #94a3b8; padding: .3rem .5rem; }
+.st-add {
+  display: flex; gap: .5rem; margin-top: .5rem;
+}
+.st-add input {
+  flex: 1; padding: .5rem .65rem;
+  border: 1.5px solid #d1d5db; border-radius: 8px;
+  font-size: .85rem; font-family: inherit; color: #111827;
+}
+.st-add input:focus { outline: none; border-color: #2a6496; }
+.st-add .btn-primary { padding: .5rem .9rem; font-size: .83rem; white-space: nowrap; }
 
 /* ═══════════════════════════════════════════════════════════════════
    RESPONSIVE

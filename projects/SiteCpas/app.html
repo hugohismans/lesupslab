@@ -28,6 +28,7 @@
     <button class="btn-today" id="btnToday">Aujourd'hui</button>
     <button class="btn-nav" id="btnNext" title="Suivant">&#8250;</button>
     <button class="btn-new" id="btnNew">+ Réserver</button>
+    <button class="btn-settings" id="btnSettings" title="Paramètres">⚙</button>
     <button class="btn-logout" id="btnLogout" title="Se déconnecter">✕</button>
   </div>
 </header>
@@ -228,6 +229,38 @@
     <div class="modal-ft">
       <button class="btn-cancel" data-close="confOverlay">Annuler</button>
       <button class="btn-danger" id="confConfirm">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Paramètres (agents / services)
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="settingsOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-hd">
+      <h2>⚙ Paramètres</h2>
+      <button class="modal-x" data-close="settingsOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+
+      <h3 class="st-title">Agents</h3>
+      <div id="stAgentList" class="st-list"></div>
+      <div class="st-add">
+        <input type="text" id="stAgentInput" placeholder="Nom de l'agent...">
+        <button class="btn-primary" id="stAgentAdd">Ajouter</button>
+      </div>
+
+      <h3 class="st-title" style="margin-top:1.25rem">Services</h3>
+      <div id="stSvcList" class="st-list"></div>
+      <div class="st-add">
+        <input type="text" id="stSvcInput" placeholder="Nom du service...">
+        <button class="btn-primary" id="stSvcAdd">Ajouter</button>
+      </div>
+
+    </div>
+    <div class="modal-ft">
+      <button class="btn-primary" data-close="settingsOverlay">Fermer</button>
     </div>
   </div>
 </div>

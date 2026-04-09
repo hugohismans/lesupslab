@@ -5,17 +5,68 @@
 const MODAL = {
   _editId: null,
 
+  // Recharge les listes agents/services depuis Firebase
+  refreshSelects() {
+    const curLocal   = g('fLocal').value;
+    const curService = g('fService').value;
+    const curAgent   = g('fAgent').value;
+
+    g('fService').innerHTML = '<option value="">— Sélectionner —</option>' +
+      DB.getServices().map(s => `<option value="${s}">${s}</option>`).join('');
+    g('fAgent').innerHTML = '<option value="">— Sélectionner —</option>' +
+      DB.getAgents().map(a => `<option value="${a}">${a}</option>`).join('');
+
+    // Restaurer la sélection en cours si elle existe encore
+    if (curService) g('fService').value = curService;
+    if (curAgent)   g('fAgent').value   = curAgent;
+
+    // Re-rendre la liste paramètres si le panneau est ouvert
+    if (!g('settingsOverlay').classList.contains('hidden')) {
+      this._renderSettingsList();
+    }
+  },
+
+  // Ouvrir le panneau paramètres
+  openSettings() {
+    this._renderSettingsList();
+    g('settingsOverlay').classList.remove('hidden');
+  },
+
+  _renderSettingsList() {
+    const agents   = DB.getAgents().filter(a => a !== 'Autre');
+    const services = DB.getServices().filter(s => s !== 'Autre');
+
+    const makeList = (items, type, containerId) => {
+      g(containerId).innerHTML = items.length
+        ? items.map(name => `
+            <div class="st-item">
+              <span class="st-name">${name}</span>
+              <button class="st-del" data-type="${type}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
+            </div>`).join('')
+        : '<p class="st-empty">Aucun élément.</p>';
+    };
+
+    makeList(agents,   'agent',   'stAgentList');
+    makeList(services, 'service', 'stSvcList');
+
+    g('settingsOverlay').querySelectorAll('.st-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const { type, name } = btn.dataset;
+        if (!confirm(`Supprimer "${name}" ?`)) return;
+        btn.disabled = true;
+        if (type === 'agent')   await DB.removeAgent(name);
+        else                    await DB.removeService(name);
+      });
+    });
+  },
+
   init() {
-    // Remplir les listes déroulantes
+    // Listes locaux (statiques)
     CONFIG.LOCALS.forEach(l =>
       g('fLocal').innerHTML += `<option value="${l}">Local ${l}</option>`
     );
-    CONFIG.SERVICES.forEach(s =>
-      g('fService').innerHTML += `<option value="${s}">${s}</option>`
-    );
-    CONFIG.AGENTS.forEach(a =>
-      g('fAgent').innerHTML += `<option value="${a}">${a}</option>`
-    );
+    // Agents et services : chargés dynamiquement via refreshSelects()
+    // (appelé par DB.onConfigChange dans app.js)
 
     // Champs conditionnels
     g('fService').addEventListener('change', function() {
@@ -47,9 +98,36 @@ const MODAL = {
     });
 
     // Fermer sur clic sur l'overlay
-    ['resOverlay','detOverlay','confOverlay'].forEach(id => {
+    ['resOverlay','detOverlay','confOverlay','settingsOverlay'].forEach(id => {
       g(id).addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
     });
+
+    // Paramètres — ajouter agent
+    g('stAgentAdd').addEventListener('click', async () => {
+      const name = g('stAgentInput').value.trim();
+      if (!name) return;
+      if (DB.getAgents().includes(name)) return alert('Cet agent existe déjà.');
+      g('stAgentAdd').disabled = true;
+      await DB.addAgent(name);
+      g('stAgentInput').value = '';
+      g('stAgentAdd').disabled = false;
+    });
+    g('stAgentInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stAgentAdd').click(); });
+
+    // Paramètres — ajouter service
+    g('stSvcAdd').addEventListener('click', async () => {
+      const name = g('stSvcInput').value.trim();
+      if (!name) return;
+      if (DB.getServices().includes(name)) return alert('Ce service existe déjà.');
+      g('stSvcAdd').disabled = true;
+      await DB.addService(name);
+      g('stSvcInput').value = '';
+      g('stSvcAdd').disabled = false;
+    });
+    g('stSvcInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stSvcAdd').click(); });
+
+    // Bouton paramètres dans le header
+    g('btnSettings').addEventListener('click', () => this.openSettings());
 
     // Enregistrer
     g('resSave').addEventListener('click', () => this.save());
@@ -328,6 +406,7 @@ const MODAL = {
 // ───────────────────────────────────────────────────────────────────
 
 function g(id) { return document.getElementById(id); }
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // cls(id, hidden) — cache ou affiche via la classe CSS 'hidden'
 function cls(id, hidden) {

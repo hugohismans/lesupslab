@@ -8,8 +8,13 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.init();
   MODAL.init();
 
+  // Config dynamique (agents / services) — écoute Firebase
+  DB.initConfig();
+  DB.onConfigChange(() => MODAL.refreshSelects());
+
   // Charger données de démo si Firebase est vide (premier lancement)
   try {
+    await DB.seedConfigIfEmpty();
     await DB.seedIfEmpty();
   } catch (e) {
     console.warn('Seed skipped (Firebase non configuré) :', e.message);

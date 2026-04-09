@@ -3,9 +3,11 @@
 // ═══════════════════════════════════════════════════════════════════
 
 const DB = {
-  _db:   null,
-  _data: {},
-  _cbs:  [],
+  _db:        null,
+  _data:      {},
+  _cbs:       [],
+  _config:    { agents: [], services: [] },
+  _configCbs: [],
 
   init() {
     if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
@@ -14,6 +16,54 @@ const DB = {
       this._data = snap.val() || {};
       this._cbs.forEach(fn => fn());
     });
+  },
+
+  // ── Config dynamique (agents / services) ─────────────────────────
+  initConfig() {
+    this._db.ref('appConfig').on('value', snap => {
+      const d = snap.val() || {};
+      this._config = {
+        agents:   d.agents   ? Object.values(d.agents)   : CONFIG.AGENTS.filter(a => a !== 'Autre'),
+        services: d.services ? Object.values(d.services) : CONFIG.SERVICES.filter(s => s !== 'Autre')
+      };
+      this._configCbs.forEach(fn => fn());
+    });
+  },
+
+  onConfigChange(fn) { this._configCbs.push(fn); },
+  getAgents()        { return [...this._config.agents,   'Autre']; },
+  getServices()      { return [...this._config.services, 'Autre']; },
+
+  async addAgent(name) {
+    await this._db.ref('appConfig/agents').push(name);
+  },
+  async removeAgent(name) {
+    const snap = await this._db.ref('appConfig/agents').once('value');
+    const data = snap.val() || {};
+    const key  = Object.keys(data).find(k => data[k] === name);
+    if (key) await this._db.ref(`appConfig/agents/${key}`).remove();
+  },
+  async addService(name) {
+    await this._db.ref('appConfig/services').push(name);
+  },
+  async removeService(name) {
+    const snap = await this._db.ref('appConfig/services').once('value');
+    const data = snap.val() || {};
+    const key  = Object.keys(data).find(k => data[k] === name);
+    if (key) await this._db.ref(`appConfig/services/${key}`).remove();
+  },
+
+  async seedConfigIfEmpty() {
+    const snap = await this._db.ref('appConfig').once('value');
+    if (snap.val() !== null) return;
+    const updates = {};
+    CONFIG.AGENTS.filter(a => a !== 'Autre').forEach(a => {
+      updates[`appConfig/agents/${genId()}`] = a;
+    });
+    CONFIG.SERVICES.filter(s => s !== 'Autre').forEach(s => {
+      updates[`appConfig/services/${genId()}`] = s;
+    });
+    await this._db.ref().update(updates);
   },
 
   onChange(fn) { this._cbs.push(fn); },
