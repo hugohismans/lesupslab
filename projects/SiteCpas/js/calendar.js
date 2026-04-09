@@ -113,6 +113,7 @@ const CAL = {
     h += '</tbody></table>';
     el.innerHTML = h;
     this._bind(el);
+    this._renderNowLine(el, d);
   },
 
   // ─────────────────────────────────────────────────────────────────
@@ -242,6 +243,54 @@ const CAL = {
     h += '</div></div>';
     el.innerHTML = h;
     this._bind(el);
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // BARRE "MAINTENANT" — vue jour seulement
+  // ─────────────────────────────────────────────────────────────────
+  _nowTimer: null,
+
+  _renderNowLine(el, viewDay) {
+    // Nettoyer le timer précédent
+    if (this._nowTimer) { clearInterval(this._nowTimer); this._nowTimer = null; }
+
+    const update = () => {
+      const now = new Date();
+      // N'afficher que si on est sur le bon jour
+      if (!sameDay(now, viewDay)) return;
+
+      const totalMin = (CONFIG.HOURS_END - CONFIG.HOURS_START) * 60;
+      const elapsed  = (now.getHours() - CONFIG.HOURS_START) * 60 + now.getMinutes();
+      if (elapsed < 0 || elapsed > totalMin) return;
+
+      const pct = (elapsed / totalMin) * 100;
+
+      // Chercher ou créer la ligne
+      let line = el.querySelector('.now-line');
+      if (!line) {
+        line = document.createElement('div');
+        line.className = 'now-line';
+        el.style.position = 'relative';
+        el.appendChild(line);
+      }
+
+      // Trouver la hauteur de la zone scrollable (thead exclu)
+      const table  = el.querySelector('.cv-day-table');
+      const thead  = table?.querySelector('thead');
+      const datebar = el.querySelector('.cv-day-datebar');
+      const topOffset = (datebar?.offsetHeight || 0) + (thead?.offsetHeight || 0);
+      const totalH = table ? table.offsetHeight - (thead?.offsetHeight || 0) : 0;
+
+      line.style.top = (topOffset + (pct / 100) * totalH) + 'px';
+
+      // Heure affichée
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      line.setAttribute('data-time', `${hh}:${mm}`);
+    };
+
+    update();
+    this._nowTimer = setInterval(update, 60000); // mise à jour chaque minute
   },
 
   // ─────────────────────────────────────────────────────────────────

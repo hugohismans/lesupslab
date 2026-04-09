@@ -376,6 +376,38 @@ body {
 .ct small { color: #64748b; font-size: .65rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ct-time  { color: #94a3b8 !important; font-size: .62rem !important; margin-top: .15rem; }
 
+/* Barre heure actuelle */
+.now-line {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: #e53e3e;
+  pointer-events: none;
+  z-index: 15;
+}
+.now-line::before {
+  content: attr(data-time);
+  position: absolute;
+  left: 2px;
+  top: -9px;
+  font-size: .62rem;
+  font-weight: 800;
+  color: #e53e3e;
+  background: #fff;
+  padding: 0 3px;
+  border-radius: 3px;
+  line-height: 1.6;
+}
+.now-line::after {
+  content: '';
+  position: absolute;
+  left: 52px; /* aligne avec la première colonne local */
+  top: -4px;
+  width: 10px; height: 10px;
+  background: #e53e3e;
+  border-radius: 50%;
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    VUE SEMAINE
 ═══════════════════════════════════════════════════════════════════ */
