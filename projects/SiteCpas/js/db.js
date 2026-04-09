@@ -103,6 +103,11 @@ const DB = {
     await this._db.ref(`reservations/${id}`).remove();
   },
 
+  // Ajoute une date d'exception (suppression d'une seule occurrence)
+  async addException(id, occDate) {
+    await this._db.ref(`reservations/${id}/exceptions/${occDate}`).set(true);
+  },
+
   async removeSeries(seriesId) {
     const updates = {};
     Object.entries(this._data).forEach(([id, r]) => {
@@ -208,12 +213,15 @@ function expandReservation(id, res, viewStart, viewEnd) {
     if (skip > 0) cur = advDate(cur, type, interval * skip);
   }
 
+  const exceptions = res.exceptions || {};
+
   let guard = 0;
   while (cur < viewEnd && guard++ < 700) {
     if (recEnd && cur > recEnd) break;
     const end = new Date(cur.getTime() + dur);
-    if (end > viewStart) {
-      results.push({ id, ...res, _start: new Date(cur), _end: end, _occDate: isoDate(cur) });
+    const occDate = isoDate(cur);
+    if (end > viewStart && !exceptions[occDate]) {
+      results.push({ id, ...res, _start: new Date(cur), _end: end, _occDate: occDate });
     }
     cur = advDate(cur, type, interval);
   }

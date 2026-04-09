@@ -376,11 +376,15 @@ const MODAL = {
   },
 
   async _doDelete() {
-    const res  = DB.getAll()[this._editId];
-    const type = document.querySelector('input[name=delType]:checked')?.value || 'single';
+    const res    = DB.getAll()[this._editId];
+    const type   = document.querySelector('input[name=delType]:checked')?.value || 'single';
+    const isRec  = res?.recurrence?.type && res.recurrence.type !== 'none';
     try {
       if (type === 'series' && res?.recurrence?.seriesId) {
         await DB.removeSeries(res.recurrence.seriesId);
+      } else if (type === 'single' && isRec && this._occDate) {
+        // Ajouter une exception pour cette date uniquement
+        await DB.addException(this._editId, this._occDate);
       } else {
         await DB.remove(this._editId);
       }
