@@ -141,8 +141,8 @@ const MODAL = {
       cls('fRecEndDateWrap', this.value !== 'date');
     });
 
-    // Mise à jour de l'indice de disponibilité quand les dates changent
-    ['fDateStart','fTimeStart','fDateEnd','fTimeEnd','fLocal'].forEach(id => {
+    // Mise à jour de l'indice de disponibilité quand les dates/récurrence changent
+    ['fDateStart','fTimeStart','fDateEnd','fTimeEnd','fLocal','fRecType','fInterval','fRecEnd','fRecEndDate'].forEach(id => {
       g(id)?.addEventListener('change', () => this._updateHint());
     });
 
@@ -272,65 +272,62 @@ const MODAL = {
     const agent   = g('fAgent').value;
     const isPerm  = g('fPermanent').checked;
 
-    if (!localId || !service || !agent) {
+    if (!localId || !service || !agent)
       return alert('Veuillez remplir les champs obligatoires : Local, Service, Agent.');
-    }
-    if (service === 'Autre' && !g('fServiceCustom').value.trim()) {
+    if (service === 'Autre' && !g('fServiceCustom').value.trim())
       return alert('Veuillez préciser le service.');
-    }
-    if (agent === 'Autre' && !g('fAgentCustom').value.trim()) {
+    if (agent === 'Autre' && !g('fAgentCustom').value.trim())
       return alert("Veuillez préciser l'agent.");
-    }
 
     let startDT = null, endDT = null;
+    let exceptionDates = {}; // dates à exclure si l'utilisateur choisit "avec exceptions"
 
     if (!isPerm) {
-      const ds = g('fDateStart').value;
-      const ts = g('fTimeStart').value;
-      const de = g('fDateEnd').value;
-      const te = g('fTimeEnd').value;
+      const ds = g('fDateStart').value, ts = g('fTimeStart').value;
+      const de = g('fDateEnd').value,   te = g('fTimeEnd').value;
       if (!ds || !ts || !de || !te) return alert('Veuillez remplir les dates et heures.');
       startDT = `${ds}T${ts}`;
       endDT   = `${de}T${te}`;
       if (new Date(startDT) >= new Date(endDT)) return alert('La fin doit être après le début.');
 
-      // Vérification de conflit sur toutes les occurrences (récurrence incluse)
       const recType2  = g('fRecType').value;
       const recEnd2   = g('fRecEnd').value === 'date' ? g('fRecEndDate').value : null;
       const interval2 = parseInt(g('fInterval').value) || 1;
+      const isRec     = recType2 !== 'none';
 
-      // Construire un objet temporaire pour simuler l'expansion
+      // Simuler toutes les occurrences de la série
       const tempRes = {
         localId, isPermanent: false,
         startDateTime: startDT, endDateTime: endDT,
         recurrence: { type: recType2, interval: interval2, endDate: recEnd2, seriesId: null }
       };
-
-      // Fenêtre de vérification : de la 1ère occurrence à 1 an max (ou fin de série)
       const checkEnd = recEnd2
         ? new Date(recEnd2 + 'T23:59:59')
-        : advDate(new Date(startDT), recType2 !== 'none' ? recType2 : 'daily', recType2 !== 'none' ? 365 : 0);
+        : advDate(new Date(startDT), isRec ? recType2 : 'daily', isRec ? 365 : 0);
 
       const myOccs = expandReservation('__temp__', tempRes, new Date(startDT), checkEnd);
-      const conflictOcc = myOccs.find(occ => {
-        return DB.getInRange(occ._start, occ._end).some(r =>
+
+      // Trouver TOUS les conflits
+      const conflicts = [];
+      myOccs.forEach(occ => {
+        const clash = DB.getInRange(occ._start, occ._end).filter(r =>
           r.localId === localId && r.id !== this._editId && !r.isPermanent
           && r._start < occ._end && r._end > occ._start
         );
+        if (clash.length) conflicts.push({ occ, clash });
       });
 
-      if (conflictOcc) {
-        const dateStr = conflictOcc._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long' });
-        const free    = CONFIG.LOCALS.filter(l => l !== localId &&
-          !DB.getInRange(conflictOcc._start, conflictOcc._end).some(r =>
-            r.localId === l && r.id !== this._editId && !r.isPermanent
-            && r._start < conflictOcc._end && r._end > conflictOcc._start
-          )
-        );
-        const msg = free.length
-          ? `${DB.getLocalLabel(localId)} est déjà réservé le ${dateStr}.\n\nLocaux disponibles ce jour-là : ${free.map(l => DB.getLocalLabel(l)).join(', ')}\n\nForcer quand même ?`
-          : `${DB.getLocalLabel(localId)} est déjà réservé le ${dateStr} et aucun autre local n'est disponible.`;
-        if (!free.length || !confirm(msg)) return;
+      if (conflicts.length) {
+        const choice = await this._showConflictModal(conflicts, localId, isRec);
+        if (choice === 'cancel') return;
+        if (choice === 'exceptions') {
+          conflicts.forEach(c => { exceptionDates[c.occ._occDate] = true; });
+        }
+        if (choice === 'replace') {
+          const toDelete = new Set();
+          conflicts.forEach(c => c.clash.forEach(r => toDelete.add(r.id)));
+          for (const id of toDelete) await DB.remove(id);
+        }
       }
     } else {
       const ds = g('fDateStart').value || isoDate(new Date());
@@ -353,6 +350,7 @@ const MODAL = {
         seriesId: this._editId ? (DB.getAll()[this._editId]?.recurrence?.seriesId || null) : null
       }
     };
+    if (Object.keys(exceptionDates).length) data.exceptions = exceptionDates;
 
     try {
       if (this._editId) await DB.update(this._editId, data);
@@ -361,6 +359,48 @@ const MODAL = {
     } catch (err) {
       alert('Erreur : ' + err.message);
     }
+  },
+
+  // ─── Modal de résolution de conflits ───────────────────────────
+  _showConflictModal(conflicts, localId, isRec) {
+    return new Promise(resolve => {
+      const label = DB.getLocalLabel(localId);
+      const n = conflicts.length;
+
+      g('conflictSummary').innerHTML =
+        `<b>${label}</b> est déjà réservé sur <b>${n} créneau${n > 1 ? 'x' : ''}</b> :`;
+
+      g('conflictList').innerHTML = conflicts.map(({occ}) => {
+        const dateStr = occ._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const tS = occ._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        const tE = occ._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+        return `<li>${dateStr} · ${tS}–${tE}</li>`;
+      }).join('');
+
+      // Afficher/masquer le bouton "exceptions" selon si c'est récurrent
+      cls('conflictBtnExceptions', !isRec);
+
+      g('conflictOverlay').classList.remove('hidden');
+
+      const done = choice => {
+        g('conflictOverlay').classList.add('hidden');
+        ['conflictBtnCancel','conflictBtnExceptions','conflictBtnReplace'].forEach(id => {
+          const el = g(id);
+          el.removeEventListener('click', el._conflictHandler);
+        });
+        resolve(choice);
+      };
+
+      [
+        { id: 'conflictBtnCancel',     choice: 'cancel'     },
+        { id: 'conflictBtnExceptions', choice: 'exceptions' },
+        { id: 'conflictBtnReplace',    choice: 'replace'    },
+      ].forEach(({ id, choice }) => {
+        const el = g(id);
+        el._conflictHandler = () => done(choice);
+        el.addEventListener('click', el._conflictHandler);
+      });
+    });
   },
 
   // ─── Suppression ───────────────────────────────────────────────
@@ -480,17 +520,56 @@ const MODAL = {
     const e = new Date(`${de}T${te}`);
     if (s >= e) { hint.innerHTML = ''; hint.className = 'hint'; return; }
 
-    const booked = new Set(DB.getInRange(s, e).filter(r => r.id !== this._editId).map(r => r.localId));
-    const free   = CONFIG.LOCALS.filter(l => !booked.has(l));
+    const recType2  = g('fRecType').value;
+    const recEnd2   = g('fRecEnd').value === 'date' ? g('fRecEndDate').value : null;
+    const interval2 = parseInt(g('fInterval').value) || 1;
+    const isRec     = recType2 !== 'none';
 
-    // Warning si le local sélectionné n'est pas disponible
-    if (localId && booked.has(localId)) {
-      const freeList = free.length
-        ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
-        : '<em>Aucun local disponible</em>';
-      hint.innerHTML  = `⚠️ <b>${DB.getLocalLabel(localId)}</b> est déjà réservé sur cette plage.<br>Locaux libres :${freeList}`;
-      hint.className  = 'hint hint-warn';
-      return;
+    // Simuler toutes les occurrences pour trouver les conflits
+    const tempRes = {
+      localId: localId || 0, isPermanent: false,
+      startDateTime: `${ds}T${ts}`, endDateTime: `${de}T${te}`,
+      recurrence: { type: recType2, interval: interval2, endDate: recEnd2, seriesId: null }
+    };
+    const checkEnd = recEnd2
+      ? new Date(recEnd2 + 'T23:59:59')
+      : advDate(s, isRec ? recType2 : 'daily', isRec ? 365 : 0);
+    const myOccs = expandReservation('__hint__', tempRes, s, checkEnd);
+
+    // Locaux occupés sur au moins une occurrence
+    const bookedOnAny = new Set();
+    myOccs.forEach(occ => {
+      DB.getInRange(occ._start, occ._end)
+        .filter(r => r.id !== this._editId && !r.isPermanent)
+        .forEach(r => bookedOnAny.add(r.localId));
+    });
+
+    // Locaux occupés uniquement sur la 1ère occurrence (pour la liste "libres")
+    const bookedFirst = new Set(
+      DB.getInRange(s, e).filter(r => r.id !== this._editId && !r.isPermanent).map(r => r.localId)
+    );
+    const free = CONFIG.LOCALS.filter(l => !bookedFirst.has(l));
+
+    // Compter les conflits si un local est sélectionné
+    if (localId) {
+      const conflictOccs = myOccs.filter(occ =>
+        DB.getInRange(occ._start, occ._end).some(r =>
+          r.localId === localId && r.id !== this._editId && !r.isPermanent
+          && r._start < occ._end && r._end > occ._start
+        )
+      );
+      if (conflictOccs.length) {
+        const label   = DB.getLocalLabel(localId);
+        const freeList = free.length
+          ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
+          : '<em>Aucun local disponible</em>';
+        const suffix = isRec && conflictOccs.length > 1
+          ? ` sur <b>${conflictOccs.length} occurrences</b> de la série`
+          : '';
+        hint.innerHTML = `⚠️ <b>${label}</b> est déjà réservé${suffix}.<br>Locaux libres (1ère occurrence) :${freeList}`;
+        hint.className = 'hint hint-warn';
+        return;
+      }
     }
 
     if (!free.length) {
@@ -498,6 +577,9 @@ const MODAL = {
       hint.className = 'hint hint-err';
       return;
     }
+
+    // Avertir si des conflits de série existent même si le local sélectionné est libre
+    const seriesWarn = isRec && localId && bookedOnAny.has(localId) ? '' : '';
 
     const freeList = '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>';
     hint.innerHTML = '✅ Locaux libres sur cette plage :' + freeList;

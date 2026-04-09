@@ -126,7 +126,7 @@
           </div>
           <div class="field">
             <label>Heure début *</label>
-            <input type="time" id="fTimeStart" step="900">
+            <select id="fTimeStart"></select>
           </div>
         </div>
         <div class="form-row">
@@ -136,7 +136,7 @@
           </div>
           <div class="field">
             <label>Heure fin *</label>
-            <input type="time" id="fTimeEnd" step="900">
+            <select id="fTimeEnd"></select>
           </div>
         </div>
 
@@ -264,6 +264,27 @@
     </div>
     <div class="modal-ft">
       <button class="btn-primary" data-close="settingsOverlay">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Résolution de conflits
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="conflictOverlay">
+  <div class="modal modal-sm">
+    <div class="modal-hd">
+      <h2>⚠️ Conflits détectés</h2>
+    </div>
+    <div class="modal-bd">
+      <p id="conflictSummary"></p>
+      <ul id="conflictList" class="conflict-list"></ul>
+      <p class="conflict-question">Comment souhaitez-vous procéder ?</p>
+    </div>
+    <div class="modal-ft" style="flex-direction:column; gap:.5rem">
+      <button class="btn-primary" id="conflictBtnExceptions">Créer la série en sautant ces dates</button>
+      <button class="btn-danger"  id="conflictBtnReplace">Remplacer les réservations existantes</button>
+      <button class="btn-cancel"  id="conflictBtnCancel">Annuler</button>
     </div>
   </div>
 </div>

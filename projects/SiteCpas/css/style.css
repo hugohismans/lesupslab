@@ -610,6 +610,20 @@ body {
 .st-local-save:hover { background: #dcfce7; }
 
 /* ═══════════════════════════════════════════════════════════════════
+   MODAL CONFLITS
+═══════════════════════════════════════════════════════════════════ */
+.conflict-list {
+  margin: .5rem 0 .75rem 1.25rem;
+  padding: 0;
+  font-size: .85rem;
+  color: #b45309;
+  display: flex; flex-direction: column; gap: .2rem;
+}
+.conflict-question {
+  font-size: .83rem; font-weight: 700; color: #374151; margin-top: .5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    TOAST — notification légère
 ═══════════════════════════════════════════════════════════════════ */
 .toast {

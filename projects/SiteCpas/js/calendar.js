@@ -10,14 +10,27 @@ const CAL = {
 
   navigate(dir) {
     const d = new Date(this.date);
-    if (this.view === 'day')   d.setDate(d.getDate() + dir);
+    if (this.view === 'day') {
+      d.setDate(d.getDate() + dir);
+      // Sauter le week-end
+      const dow = d.getDay(); // 0=Dim, 6=Sam
+      if (dow === 6) d.setDate(d.getDate() + (dir > 0 ? 2 : -1));
+      if (dow === 0) d.setDate(d.getDate() + (dir > 0 ? 1 : -2));
+    }
     if (this.view === 'week')  d.setDate(d.getDate() + 7 * dir);
     if (this.view === 'month') d.setMonth(d.getMonth() + dir);
     this.date = d;
     this.render();
   },
 
-  goToday() { this.date = new Date(); this.render(); },
+  goToday() {
+    const d = new Date();
+    const dow = d.getDay();
+    if (dow === 6) d.setDate(d.getDate() + 2); // Sam → Lun
+    if (dow === 0) d.setDate(d.getDate() + 1); // Dim → Lun
+    this.date = d;
+    this.render();
+  },
 
   render() {
     const el = document.getElementById('cal');
@@ -127,8 +140,8 @@ const CAL = {
     const slots  = getSlots();
     const today  = new Date();
 
-    // Titre : "Semaine du X au Y mois AAAA"
-    const wE2 = addDays(wS, 6);
+    // Titre : "Semaine du X au Y mois AAAA" (Lun → Ven)
+    const wE2 = addDays(wS, 4);
     const sameMonth = wS.getMonth() === wE2.getMonth();
     const weekTitle = sameMonth
       ? `${wS.getDate()} – ${wE2.toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`
@@ -137,9 +150,9 @@ const CAL = {
     let h = '<div class="cv-week">';
     h += `<div class="cv-period-bar">${weekTitle}</div>`;
 
-    // En-tête : 7 jours Lun-Dim
-    h += '<div class="cv-week-hd"><div class="tc-hd"></div>';
-    for (let i = 0; i < 7; i++) {
+    // En-tête : 5 jours Lun-Ven
+    h += '<div class="cv-week-hd cv-week-hd-5"><div class="tc-hd"></div>';
+    for (let i = 0; i < 5; i++) {
       const day = addDays(wS, i);
       const isTd = sameDay(day, today);
       h += `<div class="wkd-hd${isTd ? ' is-today' : ''}" data-date="${isoDate(day)}" data-act="go-day">
@@ -149,11 +162,11 @@ const CAL = {
     }
     h += '</div>';
 
-    // Lignes de créneaux
+    // Lignes de créneaux — 5 jours
     slots.forEach((slot, i) => {
-      h += `<div class="cv-row${i % 2 ? ' alt' : ''}"><div class="tc">${slot.label}</div>`;
+      h += `<div class="cv-row cv-row-5${i % 2 ? ' alt' : ''}"><div class="tc">${slot.label}</div>`;
 
-      for (let d = 0; d < 7; d++) {
+      for (let d = 0; d < 5; d++) {
         const day  = addDays(wS, d);
         const sS   = new Date(day); sS.setHours(slot.h, slot.m, 0, 0);
         const sE   = new Date(sS.getTime() + CONFIG.SLOT_MIN * 60000);
@@ -203,15 +216,19 @@ const CAL = {
     let h = '<div class="cv-month">';
     h += `<div class="cv-period-bar">${monthTitle}</div>`;
 
-    // En-tête jours (Lun-Dim)
-    h += '<div class="mo-hd">';
-    ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].forEach(n => h += `<div class="mo-dn">${n}</div>`);
-    h += '</div><div class="mo-grid">';
+    // En-tête jours (Lun-Ven seulement)
+    h += '<div class="mo-hd mo-hd-5">';
+    ['Lun','Mar','Mer','Jeu','Ven'].forEach(n => h += `<div class="mo-dn">${n}</div>`);
+    h += '</div><div class="mo-grid mo-grid-5">';
 
     let cursor = new Date(gS);
     let weeks = 0;
     while (weeks < 6) {
       for (let d = 0; d < 7; d++) {
+        const dow = (cursor.getDay() + 6) % 7; // Lun=0 … Dim=6
+        // Sauter Sam (dow=5) et Dim (dow=6)
+        if (dow >= 5) { cursor = addDays(cursor, 1); continue; }
+
         const inMonth = cursor.getMonth() === month && cursor.getFullYear() === year;
         const isTd    = sameDay(cursor, today);
 
@@ -236,7 +253,6 @@ const CAL = {
         cursor = addDays(cursor, 1);
       }
       weeks++;
-      // Arrêter si on est bien au-delà du mois
       if (cursor > mE && cursor.getMonth() !== month) break;
     }
 
