@@ -318,7 +318,36 @@ const MODAL = {
       });
 
       if (conflicts.length) {
-        const choice = await this._showConflictModal(conflicts, localId, isRec);
+        // Grouper par série source pour éviter de lister 700 occurrences
+        const byId = {};
+        conflicts.forEach(({ occ, clash }) => {
+          clash.forEach(r => {
+            if (!byId[r.id]) {
+              const src = DB.getAll()[r.id];
+              const srcIsRec = src?.recurrence?.type && src.recurrence.type !== 'none';
+              byId[r.id] = { firstOcc: occ, count: 0, res: src, _isRec: srcIsRec };
+            }
+            byId[r.id].count++;
+          });
+        });
+        const groupedConflicts = Object.entries(byId).map(([id, { firstOcc, count, res, _isRec }]) => {
+          const interval = parseInt(res?.recurrence?.interval) || 1;
+          const recLbls  = {
+            daily:   interval > 1 ? `tous les ${interval} jours`     : 'tous les jours',
+            weekly:  interval > 1 ? `toutes les ${interval} semaines` : 'toutes les semaines',
+            monthly: interval > 1 ? `tous les ${interval} mois`       : 'tous les mois',
+          };
+          return {
+            occ: { ...firstOcc,
+              _isRec,
+              _recLabel: _isRec ? recLbls[res.recurrence.type] : null,
+              _seriesCount: count
+            },
+            clash: [{ id, ...res }]
+          };
+        });
+
+        const choice = await this._showConflictModal(groupedConflicts, localId, isRec);
         if (choice === 'cancel') return;
         if (choice === 'exceptions') {
           conflicts.forEach(c => { exceptionDates[c.occ._occDate] = true; });
@@ -417,13 +446,12 @@ const MODAL = {
         const dateStr = occ._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         const tS = occ._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         const tE = occ._end ? occ._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
-        const suffix = occ._isRec
-          ? ` <em>(${occ._recLabel} à partir du ${dateStr})</em>`
-          : '';
         const timeStr = tE ? `${tS}–${tE}` : tS;
-        return occ._isRec
-          ? `<li>${timeStr} ${suffix}</li>`
-          : `<li>${dateStr} · ${timeStr}</li>`;
+        if (occ._isRec) {
+          const firstDate = occ._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+          return `<li>${timeStr} <em>(${occ._recLabel} à partir du ${firstDate})</em></li>`;
+        }
+        return `<li>${dateStr} · ${timeStr}</li>`;
       }).join('');
 
       // Afficher/masquer le bouton "exceptions" selon si c'est récurrent
