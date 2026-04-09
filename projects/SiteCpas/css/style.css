@@ -483,8 +483,31 @@ body {
   .btn-today { display: none; }
   .tab       { padding: .28rem .55rem; font-size: .76rem; }
   .btn-new   { padding: .3rem .65rem; font-size: .76rem; }
-  .sb        { gap: .5rem; }
-  .lpill     { min-width: 70px; }
+
+  /* Status bar : colonne compacte, pills en ligne scrollable */
+  .sb        { flex-direction: column; align-items: stretch; gap: .3rem; padding: .4rem .75rem; }
+  .sb-check  { flex-wrap: nowrap; gap: .4rem; }
+  .sb-label  { font-size: .68rem; }
+  .sb-pills  {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: .3rem;
+    padding-bottom: .15rem;
+  }
+  .lpill {
+    flex-shrink: 0;
+    min-width: 0;
+    width: 72px;
+    padding: .2rem .35rem;
+    border-radius: 8px;
+    border-width: 1.5px;
+  }
+  .lp-num    { font-size: .65rem; }
+  .lp-status { font-size: .62rem; }
+  .lp-detail { display: none; }  /* masqué sur mobile, visible au clic */
+  .lp-until  { display: none; }
+
   .form-row  { grid-template-columns: 1fr; }
   .modal     { max-height: 96vh; border-radius: 12px 12px 0 0; margin-top: auto; margin-bottom: 0; }
   .overlay   { align-items: flex-end; padding: 0; }
