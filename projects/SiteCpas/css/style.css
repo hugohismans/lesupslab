@@ -145,7 +145,7 @@ body {
   z-index: 100;
 }
 .hd-brand { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
-.hd-logo-img { height: 36px; width: auto; object-fit: contain; filter: brightness(0) invert(1); }
+.hd-logo-img { height: 36px; width: auto; object-fit: contain; border-radius: 4px; }
 .hd-title { font-size: .95rem; font-weight: 800; white-space: nowrap; letter-spacing: .01em; }
 
 .hd-tabs { display: flex; background: rgba(255,255,255,.12); border-radius: 8px; padding: 3px; gap: 2px; }
