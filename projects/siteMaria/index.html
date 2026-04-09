@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MISKA — Créations artisanales</title>
+  <link rel="icon" href="logo.png" />
   <style>
     /* ── Reset & base ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,13 +49,8 @@
       border-bottom: 1px solid var(--sand);
     }
 
-    .nav-logo {
-      font-family: var(--font-head);
-      font-size: 1.6rem;
-      letter-spacing: 0.18em;
-      color: var(--dark);
-      text-decoration: none;
-    }
+    .nav-logo { text-decoration: none; display: flex; align-items: center; }
+    .nav-logo img { height: 52px; width: auto; display: block; }
 
     .nav-links {
       display: flex;
@@ -765,7 +761,7 @@
 
   <!-- ═══ NAV ═══ -->
   <nav>
-    <a href="#" class="nav-logo">MISKA</a>
+    <a href="#" class="nav-logo"><img src="logo.png" alt="MISKA" /></a>
     <ul class="nav-links">
       <li><a href="#creations"  data-i18n="nav.collections">Créations</a></li>
       <li><a href="#about"      data-i18n="nav.about">À propos</a></li>
@@ -1095,6 +1091,7 @@
 
   <!-- ═══ FOOTER ═══ -->
   <footer>
+    <img src="logo.png" alt="MISKA" style="height:56px; width:auto; opacity:0.5; margin-bottom:0.8rem; display:block; margin-inline:auto;" />
     <p>© 2025 MISKA — <span data-i18n="footer.tagline">Créations artisanales faites main</span></p>
   </footer>
 
