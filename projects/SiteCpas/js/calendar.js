@@ -378,7 +378,7 @@ function updateStatusBar() {
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">🔴 Réservé</div>
         <div class="lp-detail">${svc}</div>
-        <div class="lp-agent">${agt}</div>
+        <div class="lp-agent" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${agt}</div>
         ${endH ? `<div class="lp-until">jusqu'à ${endH}</div>` : ''}
       </div>`;
     }
