@@ -165,8 +165,13 @@ const MODAL = {
     g('stLocalList').innerHTML = localIds.length
       ? localIds.map(id => `
           <div class="st-local-row">
-            <input class="st-local-input" type="text" data-localid="${id}"
-                   value="${escapeHtml(DB.getLocalLabel(id))}" placeholder="Local ${id}">
+            <div class="st-local-labels">
+              <input class="st-local-input" type="text" data-localid="${id}"
+                     value="${escapeHtml(DB.getLocalLabel(id))}" placeholder="Nom interne (Local ${id})">
+              <input class="st-local-pub-input" type="text" data-localid="${id}"
+                     value="${escapeHtml(DB.getPublicLocalLabel(id) === DB.getLocalLabel(id) ? '' : DB.getPublicLocalLabel(id))}"
+                     placeholder="Nom public (facultatif)">
+            </div>
             <button class="st-local-save" data-localid="${id}" title="Enregistrer">✓</button>
             <button class="st-local-del" data-localid="${id}" data-lieu="${currentLieuId}" title="Supprimer">✕</button>
           </div>`).join('')
@@ -174,14 +179,15 @@ const MODAL = {
 
     g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
       btn.addEventListener('click', () => this._requireAdmin(async () => {
-        const id    = btn.dataset.localid;
-        const row   = btn.closest('.st-local-row');
-        const input = row?.querySelector('input');
+        const id       = btn.dataset.localid;
+        const row      = btn.closest('.st-local-row');
+        const input    = row?.querySelector('.st-local-input');
+        const pubInput = row?.querySelector('.st-local-pub-input');
         if (!input) return;
-        const val = input.value;
         btn.disabled = true;
         try {
-          await DB.setLocalLabel(id, val);
+          await DB.setLocalLabel(id, input.value);
+          await DB.setPublicLocalLabel(id, pubInput?.value || '');
           showToast('Libellé enregistré ✓');
           this.refreshSelects();
         } catch (e) {
@@ -190,7 +196,7 @@ const MODAL = {
         }
       }));
     });
-    g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
+    g('settingsOverlay').querySelectorAll('.st-local-input, .st-local-pub-input').forEach(input => {
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           g('settingsOverlay').querySelector(`.st-local-save[data-localid="${input.dataset.localid}"]`)?.click();

@@ -6,7 +6,7 @@ const DB = {
   _db:           null,
   _data:         {},
   _cbs:          [],
-  _config:       { agents: [], services: [], localLabels: {} },
+  _config:       { agents: [], services: [], localLabels: {}, publicLabels: {} },
   _configCbs:    [],
   _lieux:        {},
   _currentLieuId: null,
@@ -32,7 +32,8 @@ const DB = {
         services: hasConfig
           ? (d.services ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v})) : [])
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
-        localLabels:       d.localLabels || {},
+        localLabels:       d.localLabels  || {},
+        publicLabels:      d.publicLabels || {},
         agentColors:       d.agentColors  || {},
         agentEmojis:       d.agentEmojis  || {},
         features:          d.features     || {},
@@ -81,7 +82,8 @@ const DB = {
   getServices()           { return [...this._config.services.map(s => s.name), 'Autre']; },
   getAgentsWithKeys()     { return this._config.agents; },
   getServicesWithKeys()   { return this._config.services; },
-  getLocalLabel(id)       { return this._config.localLabels[id] || `Local ${id}`; },
+  getLocalLabel(id)       { return this._config.localLabels[id]  || `Local ${id}`; },
+  getPublicLocalLabel(id) { return this._config.publicLabels[id] || this.getLocalLabel(id); },
   getAdminHash()           { return this._config.adminPasswordHash || null; },
   async setAdminHash(hash) { await this._db.ref('appConfig/adminPasswordHash').set(hash); },
   getAppHash()             { return this._config.appPasswordHash   || null; },
@@ -90,6 +92,10 @@ const DB = {
   async setLocalLabel(id, label) {
     const val = label.trim() || null;
     await this._db.ref(`appConfig/localLabels/${id}`).set(val);
+  },
+  async setPublicLocalLabel(id, label) {
+    const val = label.trim() || null;
+    await this._db.ref(`appConfig/publicLabels/${id}`).set(val);
   },
 
   // ── Couleurs agents ──────────────────────────────────────────────

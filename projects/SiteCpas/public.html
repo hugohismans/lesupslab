@@ -58,12 +58,13 @@ firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
 let _reservations = {};
-let _config = { agents: [], localLabels: {}, agentColors: {}, agentEmojis: {}, features: {}, messageJour: '', messageJourAt: null, lieux: {} };
+let _config = { agents: [], localLabels: {}, publicLabels: {}, agentColors: {}, agentEmojis: {}, features: {}, messageJour: '', messageJourAt: null, lieux: {} };
 let _agentStatus = {};
 let _currentLieuId = null;
 let _locals = CONFIG.LOCALS;
 
-function getLocalLabel(id) { return _config.localLabels[id] || `Local ${id}`; }
+function getLocalLabel(id)       { return _config.localLabels[id]  || `Local ${id}`; }
+function getPublicLocalLabel(id) { return _config.publicLabels[id] || getLocalLabel(id); }
 function getAgentColor(name) {
   const agent = _config.agents.find(a => a.name === name);
   if (!agent?.key) return null;
@@ -173,7 +174,7 @@ function render() {
       ? occs.filter(r => parseInt(r.localId) === l && !r.isPermanent && r._start > now)
              .sort((a,b) => a._start - b._start)[0]
       : null;
-    const label = getLocalLabel(l);
+    const label = getPublicLocalLabel(l);
 
     if (perm) {
       const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
@@ -225,6 +226,7 @@ db.ref('appConfig').on('value', snap => {
   _config.features    = d.features    || {};
   _config.messageJour   = d.messageJour   || '';
   _config.messageJourAt = d.messageJourAt || null;
+  _config.publicLabels  = d.publicLabels  || {};
 
   // Lieu — prendre le premier ou celui sauvegardé
   if (d.lieux) {
