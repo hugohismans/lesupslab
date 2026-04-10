@@ -336,29 +336,18 @@ body {
 }
 
 /* Bandeau période — commun semaine / mois */
-.cv-period-bar {
-  position: sticky;
-  top: 0;
-  z-index: 25;
-  background: #fff;
-  border-bottom: 2px solid #c9d4e0;
-  padding: .45rem 1rem;
-  font-size: .88rem;
-  font-weight: 800;
-  color: #1a3a5c;
-  text-transform: capitalize;
-  letter-spacing: .01em;
-  box-shadow: 0 2px 6px rgba(0,0,0,.06);
-}
-
-/* Bandeau date de la vue jour */
+.cv-period-bar,
 .cv-day-datebar {
   position: sticky;
   top: 0;
   z-index: 25;
+  height: 36px;           /* fixe : correspond au top des sous-headers sticky */
+  display: flex;
+  align-items: center;
+  gap: .75rem;
   background: #fff;
   border-bottom: 2px solid #c9d4e0;
-  padding: .45rem 1rem;
+  padding: 0 1rem;
   font-size: .88rem;
   font-weight: 800;
   color: #1a3a5c;
@@ -366,15 +355,10 @@ body {
   letter-spacing: .01em;
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
 }
-.cv-day-datebar.is-today {
-  background: #e8f4fd;
-  color: #1a6496;
-}
+.cv-day-datebar.is-today { background: #e8f4fd; color: #1a6496; }
 .cv-day-datebar.is-today::after {
-  content: ' — Aujourd\'hui';
-  font-weight: 600;
-  color: #2a6496;
-  font-size: .78rem;
+  content: '— Aujourd\'hui';
+  font-weight: 600; color: #2a6496; font-size: .78rem;
 }
 
 /* En-tête sticky */
