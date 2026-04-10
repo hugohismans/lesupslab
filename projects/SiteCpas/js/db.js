@@ -84,12 +84,37 @@ const DB = {
   getServices()           { return [...this._config.services.map(s => s.name), 'Autre']; },
   getAgentsWithKeys()     { return this._config.agents; },
   getServicesWithKeys()   { return this._config.services; },
+  getById(id)             { return this._reservations[id] ? { id, ...this._reservations[id] } : null; },
   getLocalLabel(id)       { return this._config.localLabels[id]  || `Local ${id}`; },
   getPublicLocalLabel(id) { return this._config.publicLabels[id] || this.getLocalLabel(id); },
   getAdminHash()           { return this._config.adminPasswordHash || null; },
   async setAdminHash(hash) { await this._db.ref('appConfig/adminPasswordHash').set(hash); },
   getAppHash()             { return this._config.appPasswordHash   || null; },
   async setAppHash(hash)   { await this._db.ref('appConfig/appPasswordHash').set(hash); },
+
+  async moveReservation(id, newLocalId, newStartISO, newEndISO) {
+    await this._db.ref(`reservations/${id}`).update({
+      localId:       String(newLocalId),
+      startDateTime: newStartISO,
+      endDateTime:   newEndISO,
+    });
+  },
+
+  async moveOccurrence(id, occDateISO, newLocalId, newStartISO, newEndISO) {
+    const res = this._reservations[id];
+    if (!res) throw new Error('Réservation introuvable');
+    // Marquer l'occurrence originale comme exception
+    await this._db.ref(`reservations/${id}/exceptions/${occDateISO}`).set(true);
+    // Créer une nouvelle réservation ponctuelle pour cette occurrence
+    const { recurrence, exceptions, ...base } = res;
+    await this._db.ref('reservations').push({
+      ...base,
+      localId:       String(newLocalId),
+      startDateTime: newStartISO,
+      endDateTime:   newEndISO,
+      recurrence:    { type: 'none' },
+    });
+  },
 
   async setLocalLabel(id, label) {
     const val = label.trim() || null;

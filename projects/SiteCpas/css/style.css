@@ -244,7 +244,12 @@ body {
   font-size: .82rem; font-weight: 600; display: flex; align-items: center; gap: .35rem;
   transition: all .15s;
 }
-.btn-live:hover { background: rgba(255,255,255,.25); }
+.btn-live:hover, .btn-presence-hd:hover { background: rgba(255,255,255,.25); }
+.btn-presence-hd {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; padding: .35rem .75rem; border-radius: 6px; cursor: pointer;
+  font-size: .82rem; font-weight: 600; transition: all .15s;
+}
 .btn-settings {
   background: transparent; border: 1px solid rgba(255,255,255,.25);
   color: rgba(255,255,255,.7); width: 30px; height: 30px;
@@ -412,6 +417,12 @@ body {
   transition: filter .1s;
 }
 .cv-cell.is-free:hover    { background: #e8f4fd; filter: none; }
+
+/* ── Drag & Drop ───────────────────────────────────────────────── */
+.cv-cell.is-booked[draggable="true"] { cursor: grab; }
+.cv-cell.is-booked[draggable="true"]:active { cursor: grabbing; }
+.cv-cell.dnd-dragging  { opacity: .35; cursor: grabbing; }
+.cv-cell.dnd-over      { background: #bfdbfe !important; outline: 2px dashed #2563eb; outline-offset: -2px; }
 .cv-cell.is-booked        { background: #dbeafe; border-left: 3px solid #2a6496; }
 .cv-cell.is-booked.is-rec { background: #e0f2fe; border-left-color: #0284c7; }
 .cv-cell.is-perm          { background: #ede9fe; border-left: 3px solid #7c3aed; }

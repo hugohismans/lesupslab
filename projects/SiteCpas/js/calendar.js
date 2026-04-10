@@ -72,7 +72,7 @@ const CAL = {
       const sS = new Date(d); sS.setHours(slot.h, slot.m, 0, 0);
       const sE = new Date(sS.getTime() + CONFIG.SLOT_MIN * 60000);
 
-      h += `<tr class="cv-row${i % 2 ? ' alt' : ''}">`;
+      h += `<tr class="cv-row${i % 2 ? ' alt' : ''}" data-slot="${i}">`;
       h += `<td class="tc">${slot.label}</td>`;
 
       CONFIG.LOCALS.forEach(l => {
@@ -118,7 +118,9 @@ const CAL = {
           const colorStyle = agentColor ? ` style="background:${agentColor}20;border-left:3px solid ${agentColor}"` : '';
           const comment = res.comment ? res.comment.trim() : '';
           h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}" rowspan="${span}"
-            data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"${colorStyle}>
+            data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"
+            data-slot="${i}" data-local="${l}" data-span="${span}" data-occ-date="${isoDate(res._start)}"
+            draggable="true"${colorStyle}>
             <span class="ct">
               <b>${svc}</b><br>
               <small>${agtFmt}</small><br>
@@ -128,7 +130,7 @@ const CAL = {
           </td>`;
 
         } else {
-          h += `<td class="cv-cell is-free" data-local="${l}" data-date="${isoDate(d)}" data-time="${slot.label}" data-act="new"></td>`;
+          h += `<td class="cv-cell is-free" data-local="${l}" data-date="${isoDate(d)}" data-time="${slot.label}" data-slot="${i}" data-act="new"></td>`;
         }
       });
 
@@ -138,6 +140,7 @@ const CAL = {
     h += '</tbody></table>';
     el.innerHTML = h;
     this._bind(el);
+    this._bindDnd(el, d);
     this._renderNowLine(el, d);
   },
 
@@ -329,9 +332,117 @@ const CAL = {
   // ─────────────────────────────────────────────────────────────────
   // Liaison des événements sur les cellules
   // ─────────────────────────────────────────────────────────────────
+  _dnd: null,
+  _justDragged: false,
+
+  _bindDnd(el, d) {
+    const self  = this;
+    const slots = getSlots();
+    const pad   = n => String(n).padStart(2, '0');
+
+    // ── Drag start (cellules réservées) ─────────────────────────────
+    el.querySelectorAll('.cv-cell.is-booked').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        const res = DB.getById(card.dataset.id);
+        if (!res) { e.preventDefault(); return; }
+        const isRec  = res.recurrence?.type && res.recurrence.type !== 'none';
+        const span   = parseInt(card.dataset.span) || 1;
+        self._dnd = {
+          resId:       card.dataset.id,
+          isRec,
+          span,
+          durMs:       span * CONFIG.SLOT_MIN * 60000,
+          occDate:     card.dataset.occDate,
+          origLocalId: parseInt(card.dataset.local),
+        };
+        card.classList.add('dnd-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.id);
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dnd-dragging');
+        el.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+        self._justDragged = true;
+        self._dnd = null;
+      });
+    });
+
+    // ── Drag over / leave / drop (cellules libres) ───────────────────
+    el.querySelectorAll('.cv-cell.is-free').forEach(target => {
+      target.addEventListener('dragover', e => {
+        if (!self._dnd) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        el.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+
+        // Surligner toutes les cellules de la colonne pour la durée
+        const targetSlot  = parseInt(target.dataset.slot);
+        const targetLocal = parseInt(target.dataset.local);
+        for (let s = targetSlot; s < targetSlot + self._dnd.span; s++) {
+          const row = el.querySelector(`tr[data-slot="${s}"]`);
+          if (!row) continue;
+          // Chercher la cellule libre de ce local dans cette ligne
+          const cell = row.querySelector(`.cv-cell[data-local="${targetLocal}"]`);
+          if (cell && cell.classList.contains('is-free')) cell.classList.add('dnd-over');
+          else if (!cell) {
+            // Cellule couverte par un rowspan amont = libre (continuité)
+            target.classList.add('dnd-over');
+          }
+        }
+        if (!target.classList.contains('dnd-over')) target.classList.add('dnd-over');
+      });
+
+      target.addEventListener('dragleave', () => target.classList.remove('dnd-over'));
+
+      target.addEventListener('drop', async e => {
+        e.preventDefault();
+        el.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+        const dnd = self._dnd;
+        if (!dnd) return;
+
+        const newLocalId = parseInt(target.dataset.local);
+        const newDate    = target.dataset.date;
+        const newTime    = target.dataset.time;           // "09:30"
+        const [hh, mm]   = newTime.split(':').map(Number);
+        const newStart   = new Date(`${newDate}T${pad(hh)}:${pad(mm)}:00`);
+        const newEnd     = new Date(newStart.getTime() + dnd.durMs);
+        const newStartISO = `${newDate}T${pad(hh)}:${pad(mm)}`;
+        const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
+
+        // Vérification des conflits via DB
+        const conflicts = DB.getInRange(newStart, newEnd).filter(r =>
+          parseInt(r.localId) === newLocalId && r.id !== dnd.resId
+        );
+        if (conflicts.length > 0) {
+          showToast('⚠ Conflit : créneau déjà occupé pour ce local.');
+          return;
+        }
+
+        try {
+          if (dnd.isRec) {
+            const fromDate = new Date(dnd.occDate + 'T00:00:00')
+              .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const ok = confirm(
+              `Réservation récurrente.\n\nOK = déplacer seulement l'occurrence du ${fromDate}\nAnnuler = ne rien faire`
+            );
+            if (!ok) return;
+            await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO);
+          } else {
+            await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO);
+          }
+          showToast('Réservation déplacée ✓');
+        } catch (err) {
+          showToast('Erreur : ' + err.message);
+        }
+      });
+    });
+  },
+
   _bind(el) {
     el.querySelectorAll('[data-act]').forEach(cell => {
       cell.addEventListener('click', () => {
+        if (this._justDragged) { this._justDragged = false; return; }
         const act = cell.dataset.act;
         if (act === 'detail') {
           MODAL.openDetail(cell.dataset.id, cell.dataset.occ || '');

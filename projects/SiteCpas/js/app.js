@@ -145,14 +145,16 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.getElementById('btnLiveClose').addEventListener('click', () => LIVE.close());
 
   // ─── Statut présence ───────────────────────────────────────────
-  document.getElementById('btnPresence').addEventListener('click', () => {
+  function openPresenceOverlay() {
     const sel = document.getElementById('presenceAgent');
     sel.innerHTML = DB.getAgentsWithKeys().map(({key, name}) =>
       `<option value="${key}">${name}</option>`).join('');
     document.getElementById('presenceStatus').value = '';
     document.getElementById('presenceTimeWrap').style.display = 'none';
     document.getElementById('presenceOverlay').classList.remove('hidden');
-  });
+  }
+  document.getElementById('btnPresence').addEventListener('click', openPresenceOverlay);
+  document.getElementById('btnPresenceHd').addEventListener('click', openPresenceOverlay);
   document.getElementById('presenceStatus').addEventListener('change', function () {
     document.getElementById('presenceTimeWrap').style.display = this.value === 'late' ? '' : 'none';
   });
