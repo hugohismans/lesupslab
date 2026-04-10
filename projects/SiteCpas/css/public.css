@@ -216,6 +216,57 @@ body {
   color: var(--muted);
 }
 
+/* ── Popup appel bénéficiaire ──────────────────────────────────── */
+.next-call-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  animation: nc-fade-in .3s ease;
+  cursor: pointer;
+}
+.next-call-overlay.hidden { display: none; }
+
+@keyframes nc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.next-call-box {
+  background: #fff;
+  border-radius: 28px;
+  padding: 3.5rem 5rem;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0,0,0,.35);
+  animation: nc-pop .35s cubic-bezier(.34,1.56,.64,1);
+  max-width: 600px; width: 90%;
+}
+@keyframes nc-pop {
+  from { transform: scale(.7); opacity: 0; }
+  to   { transform: scale(1);  opacity: 1; }
+}
+
+.next-call-bell   { font-size: 4rem; animation: nc-ring .5s ease .2s; }
+@keyframes nc-ring {
+  0%,100% { transform: rotate(0deg); }
+  20%     { transform: rotate(-20deg); }
+  40%     { transform: rotate(20deg); }
+  60%     { transform: rotate(-15deg); }
+  80%     { transform: rotate(10deg); }
+}
+
+.next-call-label  { font-size: 1.5rem; font-weight: 700; color: var(--muted); margin: .75rem 0 .25rem; text-transform: uppercase; letter-spacing: .08em; }
+.next-call-bureau { font-size: 3rem; font-weight: 900; color: #1d4ed8; line-height: 1.1; margin: .25rem 0 .75rem; }
+.next-call-hint   { font-size: 1rem; color: var(--muted); }
+
+/* ── Banner déverrouillage son ─────────────────────────────────── */
+.sound-unlock {
+  position: fixed; bottom: 3rem; left: 50%; transform: translateX(-50%);
+  background: #1e293b; color: #fff; padding: .6rem 1.4rem;
+  border-radius: 999px; font-size: .85rem; z-index: 400;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+}
+.sound-unlock.hidden { display: none; }
+
 /* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .pub-header    { padding: .85rem 1rem; }

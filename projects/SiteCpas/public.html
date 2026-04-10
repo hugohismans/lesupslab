@@ -39,6 +39,21 @@
   <span id="pubLastUpdate"></span>
 </footer>
 
+<!-- Popup appel bénéficiaire -->
+<div class="next-call-overlay hidden" id="nextCallOverlay">
+  <div class="next-call-box">
+    <div class="next-call-bell">🔔</div>
+    <div class="next-call-label">Bénéficiaire suivant</div>
+    <div class="next-call-bureau" id="nextCallBureau"></div>
+    <div class="next-call-hint">Veuillez vous présenter au bureau</div>
+  </div>
+</div>
+
+<!-- Banner déverrouillage son (requis par les navigateurs) -->
+<div class="sound-unlock hidden" id="soundUnlock">
+  🔇 Cliquez n'importe où pour activer le son
+</div>
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -245,6 +260,88 @@ db.ref('appConfig').on('value', snap => {
 db.ref(`agentStatus/${isoDate(new Date())}`).on('value', snap => {
   _agentStatus = snap.val() || {};
   render();
+});
+
+// ── Son (Web Audio API) ───────────────────────────────────────────
+let _audioCtx = null;
+let _audioReady = false;
+
+function _ensureAudio() {
+  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+}
+
+function playChime() {
+  try {
+    _ensureAudio();
+    // Carillon ascendant : Do - Mi - Sol - Do (octave)
+    [[523.25, 0], [659.25, 0.22], [783.99, 0.44], [1046.50, 0.66]].forEach(([freq, delay]) => {
+      const osc  = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(_audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = _audioCtx.currentTime + delay;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.35, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+      osc.start(t);
+      osc.stop(t + 0.72);
+    });
+  } catch (e) { console.warn('Audio non disponible', e); }
+}
+
+// Déverrouillage son au premier clic (requis par les navigateurs)
+document.addEventListener('click', () => {
+  if (_audioReady) return;
+  _ensureAudio();
+  _audioReady = true;
+  document.getElementById('soundUnlock').classList.add('hidden');
+}, { once: false });
+
+// Afficher le banner si le contexte est suspendu
+window.addEventListener('load', () => {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === 'suspended') {
+    document.getElementById('soundUnlock').classList.remove('hidden');
+  }
+  ctx.close();
+});
+
+// ── Popup "Bénéficiaire suivant" ─────────────────────────────────
+let _prevQueue = {};
+let _queueReady = false;
+let _callDismissTimer = null;
+
+function showNextCall(localId) {
+  playChime();
+  document.getElementById('nextCallBureau').textContent = getPublicLocalLabel(localId);
+  const overlay = document.getElementById('nextCallOverlay');
+  overlay.classList.remove('hidden');
+  if (_callDismissTimer) clearTimeout(_callDismissTimer);
+  _callDismissTimer = setTimeout(() => overlay.classList.add('hidden'), 7000);
+}
+
+document.getElementById('nextCallOverlay').addEventListener('click', () => {
+  document.getElementById('nextCallOverlay').classList.add('hidden');
+  if (_callDismissTimer) clearTimeout(_callDismissTimer);
+});
+
+// Écoute Firebase — file d'attente
+db.ref(`queues/${isoDate(new Date())}`).on('value', snap => {
+  const newQueue = snap.val() || {};
+  if (_queueReady) {
+    // Détecter une diminution sur n'importe quel local
+    Object.entries(_prevQueue).forEach(([localId, prev]) => {
+      const next = newQueue[localId] ?? 0;
+      if (next < prev && prev > 0 && _locals.includes(parseInt(localId))) {
+        showNextCall(parseInt(localId));
+      }
+    });
+  }
+  _prevQueue  = { ...newQueue };
+  _queueReady = true;
 });
 
 // Horloge chaque seconde
