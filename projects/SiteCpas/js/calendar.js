@@ -178,8 +178,10 @@ const CAL = {
         const sE   = new Date(sS.getTime() + CONFIG.SLOT_MIN * 60000);
         const isTd = sameDay(day, today);
 
+        const localsSet = new Set(CONFIG.LOCALS.map(Number));
         const booked = new Set();
         occs.forEach(r => {
+          if (!localsSet.has(parseInt(r.localId))) return;
           if (r.isPermanent) { booked.add(r.localId); return; }
           if (r._start && sameDay(r._start, day) && r._start < sE && r._end > sS) booked.add(r.localId);
         });
@@ -240,8 +242,10 @@ const CAL = {
 
         let free = CONFIG.LOCALS.length;
         if (inMonth) {
+          const localsSet = new Set(CONFIG.LOCALS.map(Number));
           const booked = new Set();
           occs.forEach(r => {
+            if (!localsSet.has(parseInt(r.localId))) return;
             if (r.isPermanent) { booked.add(r.localId); return; }
             if (r._start && sameDay(r._start, cursor)) booked.add(r.localId);
           });
@@ -253,7 +257,7 @@ const CAL = {
         h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}"
           data-date="${isoDate(cursor)}" data-act="go-day">
           <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}</div>
-          ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/7</div>` : ''}
+          ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/${CONFIG.LOCALS.length}</div>` : ''}
         </div>`;
 
         cursor = addDays(cursor, 1);
