@@ -241,60 +241,87 @@
 <!-- ═══════════════════════════════════════════════════════════
      MODAL — Paramètres (agents / services)
 ═══════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Choix du mode paramètres
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="settingsModeOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>⚙ Paramètres</h2>
+      <button class="modal-x" data-close="settingsModeOverlay">✕</button>
+    </div>
+    <div class="modal-bd" style="display:flex;flex-direction:column;gap:.75rem;padding:1.25rem">
+      <button class="btn-mode-settings" id="btnModeAgent">
+        <span class="bms-icon">🎨</span>
+        <span class="bms-label">Réglages Agent</span>
+        <span class="bms-sub">Personnaliser ma couleur</span>
+      </button>
+      <button class="btn-mode-settings" id="btnModeAdmin">
+        <span class="bms-icon">🔐</span>
+        <span class="bms-label">Réglages Admin</span>
+        <span class="bms-sub">Lieux, agents, services, mots de passe</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay hidden" id="settingsOverlay">
   <div class="modal modal-sm">
     <div class="modal-hd">
-      <h2>⚙ Paramètres</h2>
+      <h2 id="settingsTitle">⚙ Paramètres</h2>
       <button class="modal-x" data-close="settingsOverlay">✕</button>
     </div>
     <div class="modal-bd">
 
-      <h3 class="st-title">Lieux</h3>
-      <div id="stLieuList" class="st-list"></div>
-      <div class="st-add">
-        <input type="text" id="stLieuInput" placeholder="Nom du lieu...">
-        <button class="btn-primary" id="stLieuAdd">Ajouter</button>
+      <div class="st-admin-section">
+        <h3 class="st-title">Lieux</h3>
+        <div id="stLieuList" class="st-list"></div>
+        <div class="st-add">
+          <input type="text" id="stLieuInput" placeholder="Nom du lieu...">
+          <button class="btn-primary" id="stLieuAdd">Ajouter</button>
+        </div>
+
+        <h3 class="st-title" style="margin-top:1.25rem">Locaux — <span id="stLieuName" style="font-weight:700;text-transform:none"></span></h3>
+        <div id="stLocalList" class="st-local-list"></div>
+        <div class="st-add" style="margin-top:.5rem">
+          <input type="text" id="stLocalInput" placeholder="Nom du nouveau local...">
+          <button class="btn-primary" id="stLocalAdd">Ajouter</button>
+        </div>
       </div>
 
-      <h3 class="st-title" style="margin-top:1.25rem">Locaux — <span id="stLieuName" style="font-weight:700;text-transform:none"></span></h3>
-      <div id="stLocalList" class="st-local-list"></div>
-      <div class="st-add" style="margin-top:.5rem">
-        <input type="text" id="stLocalInput" placeholder="Nom du nouveau local...">
-        <button class="btn-primary" id="stLocalAdd">Ajouter</button>
-      </div>
-
-      <h3 class="st-title" style="margin-top:1.25rem">Agents</h3>
+      <h3 class="st-title" style="margin-top:1.25rem">🎨 Couleurs des agents</h3>
       <div id="stAgentList" class="st-list"></div>
-      <div class="st-add">
+      <div class="st-add st-admin-section">
         <input type="text" id="stAgentInput" placeholder="Nom de l'agent...">
         <button class="btn-primary" id="stAgentAdd">Ajouter</button>
       </div>
 
-      <h3 class="st-title" style="margin-top:1.25rem">Services</h3>
-      <div id="stSvcList" class="st-list"></div>
-      <div class="st-add">
-        <input type="text" id="stSvcInput" placeholder="Nom du service...">
-        <button class="btn-primary" id="stSvcAdd">Ajouter</button>
-      </div>
+      <div class="st-admin-section">
+        <h3 class="st-title" style="margin-top:1.25rem">Services</h3>
+        <div id="stSvcList" class="st-list"></div>
+        <div class="st-add">
+          <input type="text" id="stSvcInput" placeholder="Nom du service...">
+          <button class="btn-primary" id="stSvcAdd">Ajouter</button>
+        </div>
 
-    </div>
-      <h3 class="st-title" style="margin-top:1.25rem">Mot de passe application</h3>
-      <div class="field">
-        <input type="password" id="stAppPwdNew" placeholder="Nouveau mot de passe...">
-      </div>
-      <div class="field">
-        <input type="password" id="stAppPwdConfirm" placeholder="Confirmer...">
-      </div>
-      <button class="btn-primary" id="stAppPwdSave" style="width:100%">Changer le mot de passe application</button>
+        <h3 class="st-title" style="margin-top:1.25rem">Mot de passe application</h3>
+        <div class="field">
+          <input type="password" id="stAppPwdNew" placeholder="Nouveau mot de passe...">
+        </div>
+        <div class="field">
+          <input type="password" id="stAppPwdConfirm" placeholder="Confirmer...">
+        </div>
+        <button class="btn-primary" id="stAppPwdSave" style="width:100%">Changer le mot de passe application</button>
 
-      <h3 class="st-title" style="margin-top:1.25rem">Mot de passe administrateur</h3>
-      <div class="field">
-        <input type="password" id="stAdminPwdNew" placeholder="Nouveau mot de passe...">
+        <h3 class="st-title" style="margin-top:1.25rem">Mot de passe administrateur</h3>
+        <div class="field">
+          <input type="password" id="stAdminPwdNew" placeholder="Nouveau mot de passe...">
+        </div>
+        <div class="field">
+          <input type="password" id="stAdminPwdConfirm" placeholder="Confirmer le mot de passe...">
+        </div>
+        <button class="btn-primary" id="stAdminPwdSave" style="width:100%">Changer le mot de passe admin</button>
       </div>
-      <div class="field">
-        <input type="password" id="stAdminPwdConfirm" placeholder="Confirmer le mot de passe...">
-      </div>
-      <button class="btn-primary" id="stAdminPwdSave" style="width:100%">Changer le mot de passe admin</button>
 
     </div>
     <div class="modal-ft">

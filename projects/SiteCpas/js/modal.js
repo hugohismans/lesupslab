@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════════════════════════
 
 const MODAL = {
-  _editId: null,
+  _editId:       null,
+  _settingsMode: 'agent', // 'agent' | 'admin'
 
   // Recharge les listes locaux/agents/services depuis Firebase
   refreshSelects() {
@@ -84,9 +85,16 @@ const MODAL = {
     }
   },
 
-  // Ouvrir le panneau paramètres
-  openSettings() {
+  // Ouvrir le panneau paramètres dans un mode donné
+  openSettings(mode) {
+    this._settingsMode = mode;
+    const isAdmin = mode === 'admin';
+    g('settingsTitle').textContent = isAdmin ? '🔐 Paramètres Admin' : '🎨 Réglages Agent';
+    g('settingsOverlay').querySelectorAll('.st-admin-section').forEach(el => {
+      el.style.display = isAdmin ? '' : 'none';
+    });
     this._renderSettingsList();
+    g('settingsModeOverlay').classList.add('hidden');
     g('settingsOverlay').classList.remove('hidden');
   },
 
@@ -180,6 +188,7 @@ const MODAL = {
 
     // ── Agents ────────────────────────────────────────────────────
     const agents = DB.getAgentsWithKeys();
+    const isAdmin = this._settingsMode === 'admin';
     g('stAgentList').innerHTML = agents.length
       ? agents.map(({key, name}) => {
           const color = DB.getAgentColorByKey(key) || '#a5b4fc';
@@ -187,7 +196,7 @@ const MODAL = {
             <div class="st-item">
               <input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Couleur de ${escapeHtml(name)}">
               <span class="st-name">${escapeHtml(name)}</span>
-              <button class="st-del" data-type="agent" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
+              ${isAdmin ? `<button class="st-del" data-type="agent" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>` : ''}
             </div>`;
         }).join('')
       : '<p class="st-empty">Aucun élément.</p>';
@@ -286,7 +295,7 @@ const MODAL = {
     });
 
     // Fermer sur clic sur l'overlay
-    ['resOverlay','detOverlay','confOverlay','settingsOverlay','weekendWarnOverlay','adminAuthOverlay'].forEach(id => {
+    ['resOverlay','detOverlay','confOverlay','settingsModeOverlay','settingsOverlay','weekendWarnOverlay','adminAuthOverlay'].forEach(id => {
       g(id).addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
     });
 
@@ -345,8 +354,10 @@ const MODAL = {
     }));
     g('stLocalInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLocalAdd').click(); });
 
-    // Bouton paramètres — ouvert à tous (les actions sensibles demandent le mdp admin)
-    g('btnSettings').addEventListener('click', () => this.openSettings());
+    // Bouton paramètres — affiche le choix de mode
+    g('btnSettings').addEventListener('click', () => g('settingsModeOverlay').classList.remove('hidden'));
+    g('btnModeAgent').addEventListener('click', () => this.openSettings('agent'));
+    g('btnModeAdmin').addEventListener('click', () => this._requireAdmin(() => this.openSettings('admin')));
 
     // Changer le mot de passe application depuis les paramètres (admin)
     g('stAppPwdSave').addEventListener('click', () => this._requireAdmin(async () => {

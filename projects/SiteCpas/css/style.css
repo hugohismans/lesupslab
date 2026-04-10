@@ -649,6 +649,16 @@ body {
   flex-shrink: 0; transition: background .12s;
 }
 .st-local-del:hover { background: #fee2e2; }
+.btn-mode-settings {
+  display: flex; align-items: center; gap: .9rem;
+  width: 100%; padding: .85rem 1rem;
+  background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px;
+  cursor: pointer; text-align: left; transition: background .12s, border-color .12s;
+}
+.btn-mode-settings:hover { background: #eff6ff; border-color: #93c5fd; }
+.bms-icon  { font-size: 1.5rem; flex-shrink: 0; }
+.bms-label { font-size: .95rem; font-weight: 700; color: #1e293b; display: block; }
+.bms-sub   { font-size: .78rem; color: #64748b; display: block; margin-top: .1rem; }
 .st-agent-color {
   width: 28px; height: 28px; padding: 1px; border: 1.5px solid #cbd5e1;
   border-radius: 6px; cursor: pointer; flex-shrink: 0;
