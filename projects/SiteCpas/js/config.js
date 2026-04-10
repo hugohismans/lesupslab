@@ -19,7 +19,7 @@ const CONFIG = {
   // ── HORAIRES D'OUVERTURE ─────────────────────────────────────────
   // [FAKE — À CONFIRMER AVEC LE CLIENT]
   HOURS_START: 8,   // 8h00
-  HOURS_END:   18,  // 18h00
+  HOURS_END:   22,  // 22h00
   SLOT_MIN:    30,  // tranches de 30 minutes
 
   // ── LOCAUX ───────────────────────────────────────────────────────
