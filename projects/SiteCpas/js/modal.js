@@ -198,7 +198,7 @@ const MODAL = {
           return `
             <div class="st-item">
               <input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Couleur de ${escapeHtml(name)}">
-              ${emojiEnabled ? `<input type="text" class="st-agent-emoji" data-key="${key || ''}" value="${escapeHtml(emoji)}" placeholder="🧑‍💼" maxlength="4" title="Emoji de ${escapeHtml(name)}">` : ''}
+              ${emojiEnabled ? `<button class="st-agent-emoji-btn" data-key="${key || ''}" title="Choisir un emoji">${emoji || '🧑‍💼'}</button>` : ''}
               <span class="st-name">${escapeHtml(name)}</span>
               ${isAdmin ? `<button class="st-del" data-type="agent" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>` : ''}
             </div>`;
@@ -213,15 +213,15 @@ const MODAL = {
         CAL.render();
       });
     });
-    g('settingsOverlay').querySelectorAll('.st-agent-emoji').forEach(input => {
-      input.addEventListener('change', async () => {
-        const key = input.dataset.key;
+    g('settingsOverlay').querySelectorAll('.st-agent-emoji-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
         if (!key) return;
-        // Garder uniquement le premier caractère emoji
-        const val = [...input.value.trim()].slice(0, 2).join('');
-        input.value = val;
-        await DB.setAgentEmoji(key, val);
-        CAL.render();
+        EMOJI_PICKER.open(async emoji => {
+          btn.textContent = emoji;
+          await DB.setAgentEmoji(key, emoji);
+          CAL.render();
+        });
       });
     });
 
@@ -404,6 +404,9 @@ const MODAL = {
       this._renderSettingsList();
       CAL.render();
     }));
+
+    // Emoji picker
+    EMOJI_PICKER.init();
 
     // Modal auth admin
     g('adminAuthConfirm').addEventListener('click', () => this._submitAdminPwd());

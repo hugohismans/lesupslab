@@ -667,11 +667,39 @@ body {
 }
 .st-agent-color::-webkit-color-swatch-wrapper { padding: 0; }
 .st-agent-color::-webkit-color-swatch { border: none; border-radius: 4px; }
-.st-agent-emoji {
-  width: 38px; height: 28px; text-align: center; font-size: 1rem;
-  border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 0 2px;
-  flex-shrink: 0;
+.st-agent-emoji-btn {
+  width: 34px; height: 28px; font-size: 1.1rem; line-height: 1;
+  border: 1.5px solid #cbd5e1; border-radius: 6px; cursor: pointer;
+  background: #f8fafc; flex-shrink: 0; transition: border-color .12s;
 }
+.st-agent-emoji-btn:hover { border-color: #93c5fd; background: #eff6ff; }
+
+/* ── Emoji Picker ──────────────────────────────────────────────── */
+.ep-search-wrap { margin-bottom: .5rem; }
+.ep-search {
+  width: 100%; padding: .4rem .6rem; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: .85rem; box-sizing: border-box;
+}
+.ep-cats {
+  display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .6rem;
+}
+.ep-cat {
+  padding: .25rem .55rem; font-size: .85rem; border-radius: 20px;
+  border: 1.5px solid #e2e8f0; background: #f8fafc; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.ep-cat:hover  { background: #eff6ff; border-color: #93c5fd; }
+.ep-cat.active { background: #dbeafe; border-color: #3b82f6; font-weight: 600; }
+.ep-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: .25rem; max-height: 280px; overflow-y: auto;
+}
+.ep-btn {
+  font-size: 1.4rem; line-height: 1; padding: .3rem; border-radius: 8px;
+  border: none; background: none; cursor: pointer; text-align: center;
+  transition: background .1s;
+}
+.ep-btn:hover { background: #f1f5f9; }
 .st-toggle-row {
   display: flex; align-items: center; gap: .5rem;
   font-size: .85rem; color: #475569; cursor: pointer;
