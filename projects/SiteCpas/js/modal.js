@@ -33,27 +33,54 @@ const MODAL = {
   // ─── Authentification admin ────────────────────────────────────
   _adminCallback: null,
 
-  _requireAdmin(callback) {
-    if (sessionStorage.getItem('cpas_admin') === '1') {
-      callback();
-      return;
-    }
+  async _requireAdmin(callback) {
+    if (sessionStorage.getItem('cpas_admin') === '1') { callback(); return; }
     this._adminCallback = callback;
-    g('adminPwdInput').value = '';
-    g('adminPwdError').classList.add('hidden');
+    const hash = DB.getAdminHash();
+    if (!hash) {
+      // Première fois : créer le mot de passe
+      g('adminAuthTitle').textContent   = '🔐 Créer le mot de passe admin';
+      g('adminAuthConfirm').textContent = 'Créer';
+      g('adminLoginSection').classList.add('hidden');
+      g('adminCreateSection').classList.remove('hidden');
+      g('adminNewPwd').value = '';
+      g('adminNewPwdConfirm').value = '';
+      g('adminCreateError').classList.add('hidden');
+      setTimeout(() => g('adminNewPwd').focus(), 80);
+    } else {
+      g('adminAuthTitle').textContent   = '🔐 Accès administrateur';
+      g('adminAuthConfirm').textContent = 'Accéder';
+      g('adminLoginSection').classList.remove('hidden');
+      g('adminCreateSection').classList.add('hidden');
+      g('adminPwdInput').value = '';
+      g('adminPwdError').classList.add('hidden');
+      setTimeout(() => g('adminPwdInput').focus(), 80);
+    }
     g('adminAuthOverlay').classList.remove('hidden');
-    setTimeout(() => g('adminPwdInput').focus(), 80);
   },
 
-  _submitAdminPwd() {
-    if (g('adminPwdInput').value === CONFIG.ADMIN_PASSWORD) {
+  async _submitAdminPwd() {
+    const hash = DB.getAdminHash();
+    if (!hash) {
+      const pwd     = g('adminNewPwd').value;
+      const confirm = g('adminNewPwdConfirm').value;
+      if (!pwd) return;
+      if (pwd !== confirm) { g('adminCreateError').classList.remove('hidden'); return; }
+      await DB.setAdminHash(await sha256(pwd));
       sessionStorage.setItem('cpas_admin', '1');
       g('adminAuthOverlay').classList.add('hidden');
       if (this._adminCallback) { this._adminCallback(); this._adminCallback = null; }
     } else {
-      g('adminPwdError').classList.remove('hidden');
-      g('adminPwdInput').value = '';
-      g('adminPwdInput').focus();
+      const input = g('adminPwdInput').value;
+      if (await sha256(input) === hash) {
+        sessionStorage.setItem('cpas_admin', '1');
+        g('adminAuthOverlay').classList.add('hidden');
+        if (this._adminCallback) { this._adminCallback(); this._adminCallback = null; }
+      } else {
+        g('adminPwdError').classList.remove('hidden');
+        g('adminPwdInput').value = '';
+        g('adminPwdInput').focus();
+      }
     }
   },
 
@@ -301,6 +328,18 @@ const MODAL = {
 
     // Bouton paramètres — protégé par mot de passe admin
     g('btnSettings').addEventListener('click', () => this._requireAdmin(() => this.openSettings()));
+
+    // Changer le mot de passe admin depuis les paramètres
+    g('stAdminPwdSave').addEventListener('click', async () => {
+      const pwd     = g('stAdminPwdNew').value;
+      const confirm = g('stAdminPwdConfirm').value;
+      if (!pwd) return alert('Veuillez saisir un nouveau mot de passe.');
+      if (pwd !== confirm) return alert('Les mots de passe ne correspondent pas.');
+      await DB.setAdminHash(await sha256(pwd));
+      g('stAdminPwdNew').value = '';
+      g('stAdminPwdConfirm').value = '';
+      showToast('Mot de passe admin mis à jour ✓');
+    });
 
     // Modal auth admin
     g('adminAuthConfirm').addEventListener('click', () => this._submitAdminPwd());
@@ -896,6 +935,11 @@ function showToast(msg = 'Modification enregistrée') {
 function cls(id, hidden) {
   const e = g(id);
   if (e) e.classList.toggle('hidden', hidden);
+}
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function fmtDT(d) {

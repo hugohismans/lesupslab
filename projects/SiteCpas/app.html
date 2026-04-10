@@ -278,6 +278,16 @@
       </div>
 
     </div>
+      <h3 class="st-title" style="margin-top:1.25rem">Mot de passe administrateur</h3>
+      <div class="field">
+        <input type="password" id="stAdminPwdNew" placeholder="Nouveau mot de passe...">
+      </div>
+      <div class="field">
+        <input type="password" id="stAdminPwdConfirm" placeholder="Confirmer le mot de passe...">
+      </div>
+      <button class="btn-primary" id="stAdminPwdSave" style="width:100%">Changer le mot de passe</button>
+
+    </div>
     <div class="modal-ft">
       <button class="btn-primary" data-close="settingsOverlay">Fermer</button>
     </div>
@@ -311,13 +321,29 @@
 <div class="overlay hidden" id="adminAuthOverlay">
   <div class="modal modal-xs">
     <div class="modal-hd">
-      <h2>🔐 Accès administrateur</h2>
+      <h2 id="adminAuthTitle">🔐 Accès administrateur</h2>
     </div>
     <div class="modal-bd">
-      <div class="field">
-        <label>Mot de passe</label>
-        <input type="password" id="adminPwdInput" placeholder="Mot de passe admin...">
-        <small id="adminPwdError" class="hidden" style="color:#dc2626;margin-top:.25rem">Mot de passe incorrect.</small>
+      <!-- Mode connexion -->
+      <div id="adminLoginSection">
+        <div class="field">
+          <label>Mot de passe</label>
+          <input type="password" id="adminPwdInput" placeholder="Mot de passe admin...">
+          <small id="adminPwdError" class="hidden" style="color:#dc2626;margin-top:.25rem">Mot de passe incorrect.</small>
+        </div>
+      </div>
+      <!-- Mode création (première fois) -->
+      <div id="adminCreateSection" class="hidden">
+        <p style="margin-bottom:.75rem;color:#475569;font-size:.85rem">Aucun mot de passe admin n'est défini. Créez-en un maintenant.</p>
+        <div class="field">
+          <label>Nouveau mot de passe</label>
+          <input type="password" id="adminNewPwd" placeholder="Choisir un mot de passe...">
+        </div>
+        <div class="field">
+          <label>Confirmer</label>
+          <input type="password" id="adminNewPwdConfirm" placeholder="Confirmer...">
+          <small id="adminCreateError" class="hidden" style="color:#dc2626;margin-top:.25rem">Les mots de passe ne correspondent pas.</small>
+        </div>
       </div>
     </div>
     <div class="modal-ft">
