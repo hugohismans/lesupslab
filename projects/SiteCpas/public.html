@@ -200,13 +200,9 @@ function render() {
       </div>`;
     }
 
-    const nextStr = next
-      ? next._start.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' })
-      : '';
-    return `<div class="pub-card pub-free">
+    return `<div class="pub-card pub-closed">
       <div class="pub-card-label">${label}</div>
-      <div class="pub-card-status">🟢 Disponible</div>
-      ${nextStr ? `<div class="pub-card-next">Prochain rendez-vous : ${nextStr}</div>` : '<div class="pub-card-next">Libre toute la journée</div>'}
+      <div class="pub-card-status">⚫ Fermé</div>
     </div>`;
   }).join('');
 

@@ -12,9 +12,6 @@
   --text:     #1e293b;
   --muted:    #64748b;
   --accent:   #1d4ed8;
-  --free:     #14532d;
-  --free-bg:  #f0fdf4;
-  --free-bd:  #bbf7d0;
   --busy-bg:  #fef2f2;
   --busy-bd:  #fecaca;
   --perm-bg:  #f8fafc;
@@ -138,10 +135,10 @@ body {
 
 .pub-card:hover { transform: translateY(-2px); }
 
-.pub-free {
-  background: var(--free-bg);
-  border-color: var(--free-bd);
-  border-top-color: #22c55e;
+.pub-closed {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  border-top-color: #94a3b8;
 }
 
 .pub-busy {
@@ -169,9 +166,9 @@ body {
   margin: .25rem 0;
 }
 
-.pub-free  .pub-card-status { color: #15803d; }
-.pub-busy  .pub-card-status { color: #dc2626; }
-.pub-perm  .pub-card-status { color: #64748b; }
+.pub-closed .pub-card-status { color: #64748b; }
+.pub-busy   .pub-card-status { color: #dc2626; }
+.pub-perm   .pub-card-status { color: #64748b; }
 
 .pub-card-svc {
   font-size: 1rem;
@@ -192,10 +189,6 @@ body {
   margin-top: .25rem;
 }
 
-.pub-free .pub-card-next {
-  color: #16a34a;
-  font-weight: 500;
-}
 
 /* ── Jour férié ────────────────────────────────────────────────── */
 .pub-holiday {
