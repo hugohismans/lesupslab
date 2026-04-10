@@ -856,14 +856,100 @@ body {
 }
 
 @media print {
-  body { background: #fff !important; font-size: 11px; }
+  /* ── Page ─────────────────────────────────────────────────────── */
+  @page { size: A4 landscape; margin: 1cm 1.2cm; }
+
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  body {
+    background: #fff !important;
+    font-size: 10px;
+    display: block !important;  /* neutralise le flex body */
+  }
+
+  /* ── Masquer tout sauf le calendrier ─────────────────────────── */
   .hd, .lieu-bar, .sb, .legend, .msg-bubble, .live-overlay,
   .overlay, #btnNew, #btnLive, #btnSettings, #btnLogout,
-  .btn-nav, .btn-today { display: none !important; }
-  .cal { padding: 0; box-shadow: none; }
-  .cv-day-table, .cv-week, .cv-month { font-size: 10px; }
-  .cv-cell.is-free { background: #f8fafc !important; }
-  @page { margin: 1.5cm; }
+  .btn-nav, .btn-today, .btn-pub, .now-line { display: none !important; }
+
+  /* ── En-tête d'impression généré en CSS ──────────────────────── */
+  .cal::before {
+    content: 'CPAS de Quaregnon — Réservation des locaux';
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+    color: #1e3a5f;
+    text-align: center;
+    padding-bottom: .5rem;
+    border-bottom: 2px solid #1d4ed8;
+    margin-bottom: .6rem;
+  }
+
+  /* ── Calendrier : désactiver overflow + sticky ───────────────── */
+  .cal {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  /* ── Vue jour : table pleine largeur ─────────────────────────── */
+  .cv-day-datebar, .cv-period-bar {
+    position: static !important;
+    height: auto !important;
+    padding: .2rem .4rem;
+    font-size: 11px;
+    box-shadow: none;
+    border-bottom: 1.5px solid #1d4ed8;
+    margin-bottom: .3rem;
+  }
+
+  .cv-day-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed;
+    font-size: 9px;
+    border-collapse: collapse;
+  }
+
+  .cv-day-table thead th {
+    position: static !important;
+    background: #eef4fb !important;
+    font-size: 8px;
+    padding: .25rem .2rem;
+    border: 1px solid #c9d4e0;
+    word-break: break-word;
+  }
+
+  .cv-row td, .cv-row th {
+    border: 1px solid #e2e8f0;
+    padding: .15rem .2rem;
+    overflow: hidden;
+  }
+
+  .tc { font-size: 7.5px; color: #94a3b8; white-space: nowrap; }
+
+  .cv-cell.is-free    { background: #f8fafc !important; }
+  .cv-cell.is-booked  { background: #dbeafe !important; border-left: 3px solid #2a6496 !important; }
+  .cv-cell.is-rec     { background: #e0f2fe !important; }
+  .cv-cell.is-perm    { background: #ede9fe !important; border-left: 3px solid #7c3aed !important; }
+
+  .ct-svc   { font-size: 8px; font-weight: 700; }
+  .ct-agent { font-size: 7.5px; }
+  .ct-time  { font-size: 7px; }
+  .ct-comment { display: none; }   /* trop verbeux en impression */
+
+  /* ── Vue semaine ─────────────────────────────────────────────── */
+  .cv-week { overflow: visible !important; min-width: 0 !important; }
+  .cv-week-hd { position: static !important; font-size: 8px; }
+  .cv-week .cv-row { min-height: 20px; font-size: 8px; }
+  .lp-svc, .lp-agent, .lp-detail { font-size: 7px; }
+
+  /* ── Vue mois ─────────────────────────────────────────────────── */
+  .cv-month { padding: 0; }
+  .mo-cell  { min-height: 40px; font-size: 8px; }
+  .mo-num   { font-size: 9px; }
 }
 
 @media (max-width: 480px) {
