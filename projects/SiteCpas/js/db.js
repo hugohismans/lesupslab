@@ -151,6 +151,10 @@ const DB = {
     this._configCbs.forEach(fn => fn());
   },
 
+  async renameLieu(lieuId, name) {
+    await this._db.ref(`appConfig/lieux/${lieuId}/name`).set(name);
+  },
+
   async addLieu(name) {
     const maxOrder = Object.values(this._lieux).reduce((m, l) => Math.max(m, l.order ?? 0), -1);
     const ref = await this._db.ref('appConfig/lieux').push({ name, order: maxOrder + 1, localIds: {} });

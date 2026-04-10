@@ -106,12 +106,15 @@ const MODAL = {
     const lieuEntries   = Object.entries(lieux);
     g('stLieuList').innerHTML = lieuEntries.length
       ? lieuEntries.map(([id, lieu], idx) => `
-          <div class="st-item">
+          <div class="st-local-row">
             <div class="st-lieu-arrows">
               <button class="st-lieu-up"   data-lieu-id="${id}" title="Monter"  ${idx === 0 ? 'disabled' : ''}>▲</button>
               <button class="st-lieu-down" data-lieu-id="${id}" title="Descendre" ${idx === lieuEntries.length - 1 ? 'disabled' : ''}>▼</button>
             </div>
-            <span class="st-name">${escapeHtml(lieu.name)}${id === currentLieuId ? ' <em style="color:#64748b;font-size:.8em">(actif)</em>' : ''}</span>
+            <input class="st-local-input st-lieu-name-input" type="text" data-lieu-id="${id}"
+                   value="${escapeHtml(lieu.name)}" placeholder="Nom du lieu">
+            ${id === currentLieuId ? '<em class="st-lieu-active">(actif)</em>' : ''}
+            <button class="st-local-save st-lieu-save" data-lieu-id="${id}" title="Renommer">✓</button>
             <button class="st-lieu-del" data-lieu-id="${id}" data-name="${escapeHtml(lieu.name)}" title="Supprimer">✕</button>
           </div>`).join('')
       : '<p class="st-empty">Aucun lieu configuré.</p>';
@@ -123,6 +126,24 @@ const MODAL = {
         btn.disabled = true;
         await DB.moveLieu(id, dir);
       }));
+    });
+    g('settingsOverlay').querySelectorAll('.st-lieu-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id    = btn.dataset.lieuId;
+        const row   = btn.closest('.st-local-row');
+        const input = row?.querySelector('.st-lieu-name-input');
+        const name  = input?.value.trim();
+        if (!name) return;
+        btn.disabled = true;
+        await DB.renameLieu(id, name);
+        showToast('Lieu renommé ✓');
+        btn.disabled = false;
+      }));
+    });
+    g('settingsOverlay').querySelectorAll('.st-lieu-name-input').forEach(input => {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') g('settingsOverlay').querySelector(`.st-lieu-save[data-lieu-id="${input.dataset.lieuId}"]`)?.click();
+      });
     });
     g('settingsOverlay').querySelectorAll('.st-lieu-del').forEach(btn => {
       btn.addEventListener('click', () => this._requireAdmin(async () => {
