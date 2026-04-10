@@ -381,7 +381,7 @@ const LIVE = {
     const q = this._agentQuery.toLowerCase().trim();
 
     if (q) {
-      this._renderAgentMode(now, occs, q);
+      this._renderSearchMode(now, occs, q);
     } else {
       this._renderGridMode(now, occs);
     }
@@ -437,25 +437,34 @@ const LIVE = {
     }).join('');
   },
 
-  _renderAgentMode(now, occs, q) {
+  _renderSearchMode(now, occs, q) {
     g('liveGrid').classList.add('hidden');
     g('liveAgentResult').classList.remove('hidden');
 
-    // Filtrer les occurrences qui correspondent à la recherche
     const localsSet = new Set(CONFIG.LOCALS.map(Number));
-    const match = r => {
-      const agt = (r.agent === 'Autre' ? r.agentCustom : r.agent) || '';
-      return agt.toLowerCase().includes(q) && localsSet.has(parseInt(r.localId));
-    };
+    const ql = q.toLowerCase();
 
-    const now_occs   = occs.filter(r => match(r) && !r.isPermanent && r._start <= now && r._end > now);
+    const getAgt = r => (r.agent   === 'Autre' ? r.agentCustom   : r.agent)   || '';
+    const getSvc = r => (r.service === 'Autre' ? r.serviceCustom : r.service)  || '';
+
+    // Détecter si la query correspond à un agent ou un service
+    const matchesAgent   = r => getAgt(r).toLowerCase().includes(ql);
+    const matchesService = r => getSvc(r).toLowerCase().includes(ql);
+    const match = r => (matchesAgent(r) || matchesService(r)) && localsSet.has(parseInt(r.localId));
+
+    const now_occs    = occs.filter(r => match(r) && !r.isPermanent && r._start <= now && r._end > now);
     const future_occs = occs.filter(r => match(r) && !r.isPermanent && r._start > now)
                             .sort((a, b) => a._start - b._start);
     const perm_occs   = occs.filter(r => match(r) && r.isPermanent);
+    const all = [...now_occs, ...perm_occs, ...future_occs];
+
+    // Titre : est-ce qu'on cherche un agent ou un service ?
+    const isAgentSearch = DB.getAgents().some(a => a !== 'Autre' && a.toLowerCase().includes(ql));
+    const isSvcSearch   = !isAgentSearch || DB.getServices().some(s => s !== 'Autre' && s.toLowerCase().includes(ql));
 
     const fmt = r => {
-      const agt  = r.agent === 'Autre' ? r.agentCustom : r.agent;
-      const svc  = r.service === 'Autre' ? r.serviceCustom : r.service;
+      const agt  = getAgt(r);
+      const svc  = getSvc(r);
       const loc  = DB.getLocalLabel(parseInt(r.localId));
       const color = DB.getAgentColor(agt);
       if (r.isPermanent) {
@@ -464,7 +473,8 @@ const LIVE = {
           <div class="lv-ar-info">
             <div class="lv-ar-loc">${loc}</div>
             <div class="lv-ar-svc">${svc}</div>
-            <div class="lv-ar-time">Réservation permanente</div>
+            <div class="lv-ar-agt" style="${color ? `color:${color}` : ''}">${fmtAgent(agt)}</div>
+            <div class="lv-ar-time">Permanent</div>
           </div>
         </div>`;
       }
@@ -476,33 +486,40 @@ const LIVE = {
         <div class="lv-ar-info">
           <div class="lv-ar-loc">${loc}</div>
           <div class="lv-ar-svc">${svc}</div>
+          <div class="lv-ar-agt" style="${color ? `color:${color}` : ''}">${fmtAgent(agt)}</div>
           <div class="lv-ar-time">${startH} – ${endH}</div>
         </div>
       </div>`;
     };
 
-    const all = [...now_occs, ...perm_occs, ...future_occs];
-
     if (!all.length) {
       g('liveAgentResult').innerHTML = `
         <div class="lv-agent-empty">
           <div class="lv-ae-icon">🔍</div>
-          <div class="lv-ae-msg">Aucune présence trouvée pour <strong>"${q}"</strong> aujourd'hui.</div>
+          <div class="lv-ae-msg">Rien trouvé pour <strong>"${q}"</strong> aujourd'hui.</div>
         </div>`;
       return;
     }
 
-    // Titre : nom de l'agent trouvé + statut actuel
-    const firstAgt = all[0].agent === 'Autre' ? all[0].agentCustom : all[0].agent;
-    const color     = DB.getAgentColor(firstAgt);
     const isPresent = now_occs.length > 0 || perm_occs.length > 0;
     const statusBadge = isPresent
-      ? `<span class="lv-badge lv-badge-present">✅ Présent maintenant</span>`
-      : `<span class="lv-badge lv-badge-later">🕐 Arrivée prévue</span>`;
+      ? `<span class="lv-badge lv-badge-present">✅ Présent aujourd'hui</span>`
+      : `<span class="lv-badge lv-badge-later">🕐 Prévu plus tard</span>`;
+
+    // Titre adapté selon le type de recherche
+    let titleHtml;
+    if (isAgentSearch && all.length) {
+      const firstAgt = getAgt(all[0]);
+      const color    = DB.getAgentColor(firstAgt);
+      titleHtml = `<div class="lv-agent-name" style="${color ? `color:${color}` : ''}">${fmtAgent(firstAgt)}</div>`;
+    } else {
+      const firstSvc = getSvc(all[0]);
+      titleHtml = `<div class="lv-agent-name lv-svc-title">🗂 ${firstSvc}</div>`;
+    }
 
     g('liveAgentResult').innerHTML = `
       <div class="lv-agent-header">
-        <div class="lv-agent-name" style="${color ? `color:${color}` : ''}">${fmtAgent(firstAgt)}</div>
+        ${titleHtml}
         ${statusBadge}
       </div>
       <div class="lv-agent-rows">${all.map(fmt).join('')}</div>`;
@@ -511,16 +528,33 @@ const LIVE = {
   _renderAgentSuggestions(q) {
     const box = g('liveAgentSuggestions');
     if (!q) { box.innerHTML = ''; return; }
-    const agents = DB.getAgents().filter(a => a !== 'Autre' && a.toLowerCase().includes(q.toLowerCase()));
-    box.innerHTML = agents.slice(0, 6).map(a => {
-      const color = DB.getAgentColor(a);
-      return `<button class="lv-suggestion" style="${color ? `color:${color}` : ''}">${fmtAgent(a)}</button>`;
-    }).join('');
+    const ql = q.toLowerCase();
+
+    const agentMatches = DB.getAgents()
+      .filter(a => a !== 'Autre' && a.toLowerCase().includes(ql))
+      .slice(0, 4)
+      .map(a => {
+        const color = DB.getAgentColor(a);
+        return `<button class="lv-suggestion" data-val="${a}">
+          <span class="lv-sug-tag lv-sug-agent">Agent</span>
+          <span style="${color ? `color:${color}` : ''}">${fmtAgent(a)}</span>
+        </button>`;
+      });
+
+    const svcMatches = DB.getServices()
+      .filter(s => s !== 'Autre' && s.toLowerCase().includes(ql))
+      .slice(0, 4)
+      .map(s => `<button class="lv-suggestion" data-val="${s}">
+        <span class="lv-sug-tag lv-sug-service">Service</span>
+        <span>${s}</span>
+      </button>`);
+
+    box.innerHTML = [...agentMatches, ...svcMatches].slice(0, 6).join('');
     box.querySelectorAll('.lv-suggestion').forEach(btn => {
       btn.addEventListener('click', () => {
-        const name = DB.getAgents().find(a => fmtAgent(a) === btn.textContent) || btn.textContent;
-        g('liveAgentSearch').value = name;
-        this._agentQuery = name;
+        const val = btn.dataset.val;
+        g('liveAgentSearch').value = val;
+        this._agentQuery = val;
         box.innerHTML = '';
         this.render();
       });

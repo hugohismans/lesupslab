@@ -899,11 +899,18 @@ body {
   overflow: hidden;
 }
 .lv-suggestion {
-  display: block; width: 100%; padding: .5rem 1rem; text-align: left;
+  display: flex; align-items: center; gap: .6rem;
+  width: 100%; padding: .5rem 1rem; text-align: left;
   background: none; border: none; color: #f1f5f9; font-size: .9rem;
   cursor: pointer; transition: background .1s;
 }
 .lv-suggestion:hover { background: #334155; }
+.lv-sug-tag {
+  font-size: .65rem; font-weight: 700; padding: .1rem .4rem;
+  border-radius: 4px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .04em;
+}
+.lv-sug-agent   { background: #1e3a5f; color: #93c5fd; }
+.lv-sug-service { background: #1a2e1a; color: #86efac; }
 
 .live-grid {
   flex: 1; display: grid; padding: 1.5rem; gap: 1.25rem; overflow-y: auto;
@@ -982,7 +989,9 @@ body {
 .lv-ar-info { display: flex; flex-direction: column; gap: .2rem; }
 .lv-ar-loc  { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
 .lv-ar-svc  { font-size: .85rem; color: #94a3b8; }
+.lv-ar-agt  { font-size: .85rem; font-weight: 600; color: #a5b4fc; }
 .lv-ar-time { font-size: .85rem; color: #64748b; }
+.lv-svc-title { color: #86efac; }
 
 .lv-agent-empty {
   display: flex; flex-direction: column; align-items: center; gap: 1rem;
