@@ -120,8 +120,10 @@ const CAL = {
           h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}" rowspan="${span}"
             data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"
             data-slot="${i}" data-local="${l}" data-span="${span}" data-occ-date="${isoDate(res._start)}"
-            draggable="true"${colorStyle}>
-            <span class="ct">
+            ${colorStyle}>
+            <span class="ct ct-drag" draggable="true"
+              data-id="${res.id}" data-slot="${i}" data-local="${l}" data-span="${span}"
+              data-occ-date="${isoDate(res._start)}" data-is-rec="${isRec ? '1' : '0'}">
               <b>${svc}</b><br>
               <small>${agtFmt}</small><br>
               <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
@@ -342,24 +344,25 @@ const CAL = {
     if (!table) return;
 
     // ── dragstart — délégué sur la table ────────────────────────────
+    // draggable="true" est sur le <span class="ct-drag"> (Chrome ignore draggable sur <td>)
     table.addEventListener('dragstart', e => {
-      const card = e.target.closest('.cv-cell.is-booked');
-      if (!card) { e.preventDefault(); return; }
-      const res = DB.getById(card.dataset.id);
-      if (!res)  { e.preventDefault(); return; }
-      const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
-      const span  = parseInt(card.dataset.span) || 1;
+      const handle = e.target.closest('.ct-drag');
+      if (!handle) { e.preventDefault(); return; }
+      const span  = parseInt(handle.dataset.span) || 1;
+      const isRec = handle.dataset.isRec === '1';
       self._dnd = {
-        resId:       card.dataset.id,
+        resId:       handle.dataset.id,
         isRec,
         span,
         durMs:       span * CONFIG.SLOT_MIN * 60000,
-        occDate:     card.dataset.occDate,
-        origLocalId: parseInt(card.dataset.local),
+        occDate:     handle.dataset.occDate,
+        origLocalId: parseInt(handle.dataset.local),
       };
-      card.classList.add('dnd-dragging');
+      // Marquer la cellule parente
+      const card = handle.closest('.cv-cell.is-booked');
+      if (card) card.classList.add('dnd-dragging');
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', card.dataset.id);
+      e.dataTransfer.setData('text/plain', handle.dataset.id);
     });
 
     // ── dragover — toujours appelé sur la table entière ─────────────
@@ -386,7 +389,7 @@ const CAL = {
 
     // ── dragend — nettoyage ─────────────────────────────────────────
     table.addEventListener('dragend', e => {
-      const card = e.target.closest('.cv-cell.is-booked');
+      const card = e.target.closest('.cv-cell.is-booked') || e.target.closest('.ct-drag')?.closest('.cv-cell');
       if (card) card.classList.remove('dnd-dragging');
       table.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
       self._justDragged = true;

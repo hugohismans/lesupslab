@@ -419,9 +419,9 @@ body {
 .cv-cell.is-free:hover    { background: #e8f4fd; filter: none; }
 
 /* ── Drag & Drop ───────────────────────────────────────────────── */
-.cv-cell.is-booked[draggable="true"] { cursor: grab; }
-.cv-cell.is-booked[draggable="true"]:active { cursor: grabbing; }
-.cv-cell.dnd-dragging  { opacity: .35; cursor: grabbing; }
+.ct-drag               { cursor: grab; display: block; user-select: none; }
+.ct-drag:active        { cursor: grabbing; }
+.cv-cell.dnd-dragging  { opacity: .35; }
 .cv-cell.dnd-over      { background: #bfdbfe !important; outline: 2px dashed #2563eb; outline-offset: -2px; }
 .cv-cell.is-booked        { background: #dbeafe; border-left: 3px solid #2a6496; }
 .cv-cell.is-booked.is-rec { background: #e0f2fe; border-left-color: #0284c7; }
