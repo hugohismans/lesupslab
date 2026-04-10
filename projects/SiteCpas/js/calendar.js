@@ -337,105 +337,105 @@ const CAL = {
 
   _bindDnd(el, d) {
     const self  = this;
-    const slots = getSlots();
     const pad   = n => String(n).padStart(2, '0');
+    const table = el.querySelector('.cv-day-table');
+    if (!table) return;
 
-    // ── Drag start (cellules réservées) ─────────────────────────────
-    el.querySelectorAll('.cv-cell.is-booked').forEach(card => {
-      card.addEventListener('dragstart', e => {
-        const res = DB.getById(card.dataset.id);
-        if (!res) { e.preventDefault(); return; }
-        const isRec  = res.recurrence?.type && res.recurrence.type !== 'none';
-        const span   = parseInt(card.dataset.span) || 1;
-        self._dnd = {
-          resId:       card.dataset.id,
-          isRec,
-          span,
-          durMs:       span * CONFIG.SLOT_MIN * 60000,
-          occDate:     card.dataset.occDate,
-          origLocalId: parseInt(card.dataset.local),
-        };
-        card.classList.add('dnd-dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', card.dataset.id);
-      });
-
-      card.addEventListener('dragend', () => {
-        card.classList.remove('dnd-dragging');
-        el.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
-        self._justDragged = true;
-        self._dnd = null;
-      });
+    // ── dragstart — délégué sur la table ────────────────────────────
+    table.addEventListener('dragstart', e => {
+      const card = e.target.closest('.cv-cell.is-booked');
+      if (!card) { e.preventDefault(); return; }
+      const res = DB.getById(card.dataset.id);
+      if (!res)  { e.preventDefault(); return; }
+      const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
+      const span  = parseInt(card.dataset.span) || 1;
+      self._dnd = {
+        resId:       card.dataset.id,
+        isRec,
+        span,
+        durMs:       span * CONFIG.SLOT_MIN * 60000,
+        occDate:     card.dataset.occDate,
+        origLocalId: parseInt(card.dataset.local),
+      };
+      card.classList.add('dnd-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.id);
     });
 
-    // ── Drag over / leave / drop (cellules libres) ───────────────────
-    el.querySelectorAll('.cv-cell.is-free').forEach(target => {
-      target.addEventListener('dragover', e => {
-        if (!self._dnd) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        el.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+    // ── dragover — toujours appelé sur la table entière ─────────────
+    // e.preventDefault() DOIT être appelé pour autoriser le drop
+    table.addEventListener('dragover', e => {
+      if (!self._dnd) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
 
-        // Surligner toutes les cellules de la colonne pour la durée
-        const targetSlot  = parseInt(target.dataset.slot);
-        const targetLocal = parseInt(target.dataset.local);
-        for (let s = targetSlot; s < targetSlot + self._dnd.span; s++) {
-          const row = el.querySelector(`tr[data-slot="${s}"]`);
-          if (!row) continue;
-          // Chercher la cellule libre de ce local dans cette ligne
-          const cell = row.querySelector(`.cv-cell[data-local="${targetLocal}"]`);
-          if (cell && cell.classList.contains('is-free')) cell.classList.add('dnd-over');
-          else if (!cell) {
-            // Cellule couverte par un rowspan amont = libre (continuité)
-            target.classList.add('dnd-over');
-          }
+      table.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+      const target = e.target.closest('.cv-cell.is-free');
+      if (!target) return;
+
+      // Surligner les slots de la durée dans la colonne cible
+      const startSlot  = parseInt(target.dataset.slot);
+      const targetLocal = target.dataset.local;
+      for (let s = startSlot; s < startSlot + self._dnd.span; s++) {
+        const row  = table.querySelector(`tr[data-slot="${s}"]`);
+        const cell = row?.querySelector(`.cv-cell.is-free[data-local="${targetLocal}"]`);
+        if (cell) cell.classList.add('dnd-over');
+        else if (s === startSlot) target.classList.add('dnd-over'); // fallback
+      }
+    });
+
+    // ── dragend — nettoyage ─────────────────────────────────────────
+    table.addEventListener('dragend', e => {
+      const card = e.target.closest('.cv-cell.is-booked');
+      if (card) card.classList.remove('dnd-dragging');
+      table.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+      self._justDragged = true;
+      self._dnd = null;
+    });
+
+    // ── drop ────────────────────────────────────────────────────────
+    table.addEventListener('drop', async e => {
+      e.preventDefault();
+      table.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
+      const dnd = self._dnd;
+      if (!dnd) return;
+
+      const target = e.target.closest('.cv-cell.is-free');
+      if (!target) return; // drop sur une cellule non libre → annulé
+
+      const newLocalId  = parseInt(target.dataset.local);
+      const newDate     = target.dataset.date;
+      const newTime     = target.dataset.time;
+      const [hh, mm]    = newTime.split(':').map(Number);
+      const newStart    = new Date(`${newDate}T${pad(hh)}:${pad(mm)}:00`);
+      const newEnd      = new Date(newStart.getTime() + dnd.durMs);
+      const newStartISO = `${newDate}T${pad(hh)}:${pad(mm)}`;
+      const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
+
+      // Vérification des conflits
+      const conflicts = DB.getInRange(newStart, newEnd)
+        .filter(r => parseInt(r.localId) === newLocalId && r.id !== dnd.resId);
+      if (conflicts.length) {
+        showToast('⚠ Conflit : créneau déjà occupé pour ce local.');
+        return;
+      }
+
+      try {
+        if (dnd.isRec) {
+          const fromDate = new Date(dnd.occDate + 'T00:00:00')
+            .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const ok = confirm(
+            `Réservation récurrente.\n\nOK = déplacer seulement l'occurrence du ${fromDate}\nAnnuler = ne rien faire`
+          );
+          if (!ok) return;
+          await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO);
+        } else {
+          await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO);
         }
-        if (!target.classList.contains('dnd-over')) target.classList.add('dnd-over');
-      });
-
-      target.addEventListener('dragleave', () => target.classList.remove('dnd-over'));
-
-      target.addEventListener('drop', async e => {
-        e.preventDefault();
-        el.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
-        const dnd = self._dnd;
-        if (!dnd) return;
-
-        const newLocalId = parseInt(target.dataset.local);
-        const newDate    = target.dataset.date;
-        const newTime    = target.dataset.time;           // "09:30"
-        const [hh, mm]   = newTime.split(':').map(Number);
-        const newStart   = new Date(`${newDate}T${pad(hh)}:${pad(mm)}:00`);
-        const newEnd     = new Date(newStart.getTime() + dnd.durMs);
-        const newStartISO = `${newDate}T${pad(hh)}:${pad(mm)}`;
-        const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
-
-        // Vérification des conflits via DB
-        const conflicts = DB.getInRange(newStart, newEnd).filter(r =>
-          parseInt(r.localId) === newLocalId && r.id !== dnd.resId
-        );
-        if (conflicts.length > 0) {
-          showToast('⚠ Conflit : créneau déjà occupé pour ce local.');
-          return;
-        }
-
-        try {
-          if (dnd.isRec) {
-            const fromDate = new Date(dnd.occDate + 'T00:00:00')
-              .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const ok = confirm(
-              `Réservation récurrente.\n\nOK = déplacer seulement l'occurrence du ${fromDate}\nAnnuler = ne rien faire`
-            );
-            if (!ok) return;
-            await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO);
-          } else {
-            await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO);
-          }
-          showToast('Réservation déplacée ✓');
-        } catch (err) {
-          showToast('Erreur : ' + err.message);
-        }
-      });
+        showToast('Réservation déplacée ✓');
+      } catch (err) {
+        showToast('Erreur : ' + err.message);
+      }
     });
   },
 
