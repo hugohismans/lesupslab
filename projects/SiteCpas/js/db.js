@@ -36,6 +36,7 @@ const DB = {
         agentColors:       d.agentColors  || {},
         agentEmojis:       d.agentEmojis  || {},
         features:          d.features     || {},
+        messageJour:       d.messageJour  || '',
         adminPasswordHash: d.adminPasswordHash || null,
         appPasswordHash:   d.appPasswordHash   || null
       };
@@ -117,6 +118,49 @@ const DB = {
 
   getFeature(name)           { return !!this._config.features[name]; },
   async setFeature(name, val) { await this._db.ref(`appConfig/features/${name}`).set(val || null); },
+
+  getMessageJour()          { return this._config.messageJour || ''; },
+  async setMessageJour(txt) { await this._db.ref('appConfig/messageJour').set(txt || null); },
+
+  // ── Statut présence agents ────────────────────────────────────
+  _statusCbs: [],
+  _agentStatus: {},
+  initAgentStatus() {
+    const today = isoDate(new Date());
+    this._db.ref(`agentStatus/${today}`).on('value', snap => {
+      this._agentStatus = snap.val() || {};
+      this._statusCbs.forEach(fn => fn());
+    });
+  },
+  onAgentStatusChange(fn) { this._statusCbs.push(fn); },
+  getAgentStatus(agentKey)  { return this._agentStatus[agentKey] || null; },
+  async setAgentStatus(agentKey, status, arrivalTime) {
+    const today = isoDate(new Date());
+    if (!status) {
+      await this._db.ref(`agentStatus/${today}/${agentKey}`).remove();
+    } else {
+      await this._db.ref(`agentStatus/${today}/${agentKey}`).set(
+        status === 'late' ? { status, arrivalTime: arrivalTime || '' } : { status }
+      );
+    }
+  },
+
+  // ── File d'attente ────────────────────────────────────────────
+  _queueCbs: [],
+  _queueData: {},
+  initQueue() {
+    const today = isoDate(new Date());
+    this._db.ref(`queues/${today}`).on('value', snap => {
+      this._queueData = snap.val() || {};
+      this._queueCbs.forEach(fn => fn());
+    });
+  },
+  onQueueChange(fn) { this._queueCbs.push(fn); },
+  getQueue(localId)  { return this._queueData[localId] || 0; },
+  async setQueue(localId, n) {
+    const today = isoDate(new Date());
+    await this._db.ref(`queues/${today}/${localId}`).set(Math.max(0, n) || null);
+  },
 
   async addAgent(name) {
     await this._db.ref('appConfig/agents').push(name);
@@ -410,6 +454,8 @@ function fmtAgent(name) {
   const emoji = DB.getAgentEmoji(name) || '🧑‍💼';
   return `${emoji} ${name}`;
 }
+
+function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function isoDate(d)    {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;

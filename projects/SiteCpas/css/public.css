@@ -1,0 +1,237 @@
+/* ═══════════════════════════════════════════════════════════════════
+   public.css — Vue affichage public CPAS
+   Police sobre, grands contrastes, lisible à distance
+═══════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #f0f4f8;
+  --surface:  #ffffff;
+  --border:   #e2e8f0;
+  --text:     #1e293b;
+  --muted:    #64748b;
+  --accent:   #1d4ed8;
+  --free:     #14532d;
+  --free-bg:  #f0fdf4;
+  --free-bd:  #bbf7d0;
+  --busy-bg:  #fef2f2;
+  --busy-bd:  #fecaca;
+  --perm-bg:  #f8fafc;
+  --perm-bd:  #cbd5e1;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.hidden { display: none !important; }
+
+/* ── Header ────────────────────────────────────────────────────── */
+.pub-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%);
+  color: #fff;
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,.18);
+}
+
+.pub-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pub-logo {
+  height: 56px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 4px;
+}
+
+.pub-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.pub-subtitle {
+  font-size: .9rem;
+  opacity: .75;
+  margin-top: .1rem;
+}
+
+.pub-clock-wrap {
+  text-align: right;
+}
+
+.pub-date {
+  font-size: .85rem;
+  opacity: .75;
+  text-transform: capitalize;
+}
+
+.pub-clock {
+  font-size: 2.5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+  line-height: 1;
+}
+
+/* ── Message du jour ───────────────────────────────────────────── */
+.pub-message {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .85rem 2rem;
+  background: #fefce8;
+  border-bottom: 2px solid #fde047;
+  font-size: 1rem;
+  color: #713f12;
+  font-weight: 500;
+}
+
+.pub-msg-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+/* ── Main grid ─────────────────────────────────────────────────── */
+.pub-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+  padding: 2rem;
+  align-content: start;
+}
+
+.pub-loading {
+  grid-column: 1/-1;
+  text-align: center;
+  color: var(--muted);
+  padding: 4rem;
+  font-size: 1.1rem;
+}
+
+/* ── Cartes locaux ─────────────────────────────────────────────── */
+.pub-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 1.75rem 1.5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,.06);
+  border: 1.5px solid var(--border);
+  border-top: 6px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  transition: transform .15s;
+}
+
+.pub-card:hover { transform: translateY(-2px); }
+
+.pub-free {
+  background: var(--free-bg);
+  border-color: var(--free-bd);
+  border-top-color: #22c55e;
+}
+
+.pub-busy {
+  background: var(--busy-bg);
+  border-color: var(--busy-bd);
+}
+
+.pub-perm {
+  background: var(--perm-bg);
+  border-color: var(--perm-bd);
+  border-top-color: #94a3b8;
+}
+
+.pub-card-label {
+  font-size: .8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+}
+
+.pub-card-status {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: .25rem 0;
+}
+
+.pub-free  .pub-card-status { color: #15803d; }
+.pub-busy  .pub-card-status { color: #dc2626; }
+.pub-perm  .pub-card-status { color: #64748b; }
+
+.pub-card-svc {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pub-card-agt {
+  font-size: .95rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.pub-card-until,
+.pub-card-next {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-top: .25rem;
+}
+
+.pub-free .pub-card-next {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+/* ── Jour férié ────────────────────────────────────────────────── */
+.pub-holiday {
+  grid-column: 1/-1;
+  text-align: center;
+  padding: 5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pub-holiday-flag { font-size: 5rem; }
+.pub-holiday-name { font-size: 2.5rem; font-weight: 800; color: var(--text); }
+.pub-holiday-sub  { font-size: 1.1rem; color: var(--muted); }
+
+/* ── Footer ────────────────────────────────────────────────────── */
+.pub-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: .75rem 2rem;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: .78rem;
+  color: var(--muted);
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .pub-header    { padding: .85rem 1rem; }
+  .pub-title     { font-size: 1.1rem; }
+  .pub-clock     { font-size: 1.8rem; }
+  .pub-main      { padding: 1rem; gap: .85rem; }
+  .pub-card      { padding: 1.25rem 1rem; }
+}
+
+/* ── Mode kiosque (plein écran) ────────────────────────────────── */
+@media (display-mode: fullscreen) {
+  .pub-main { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .pub-card-status { font-size: 1.8rem; }
+}

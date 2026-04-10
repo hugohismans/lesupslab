@@ -58,7 +58,11 @@ const CAL = {
     const dateLabel = d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const isToday   = sameDay(d, new Date());
 
-    let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">${dateLabel}</div>`;
+    const holidayName = isBelgianHoliday(isoDate(d)) ? getHolidayName(isoDate(d)) : '';
+    let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">
+      ${dateLabel}
+      ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
+    </div>`;
     h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     CONFIG.LOCALS.forEach(l => h += `<th class="loc-hd">${DB.getLocalLabel(l)}</th>`);
@@ -112,12 +116,14 @@ const CAL = {
           const endH   = res._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
           const agentColor = DB.getAgentColor(agt);
           const colorStyle = agentColor ? ` style="background:${agentColor}20;border-left:3px solid ${agentColor}"` : '';
+          const comment = res.comment ? res.comment.trim() : '';
           h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}" rowspan="${span}"
             data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"${colorStyle}>
             <span class="ct">
               <b>${svc}</b><br>
               <small>${agtFmt}</small><br>
               <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
+              ${comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
             </span>
           </td>`;
 
@@ -254,9 +260,10 @@ const CAL = {
 
         const color = inMonth ? availColor(free, CONFIG.LOCALS.length) : 'transparent';
 
-        h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}"
-          data-date="${isoDate(cursor)}" data-act="go-day">
-          <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}</div>
+        const isHoliday = inMonth && isBelgianHoliday(isoDate(cursor));
+        h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}${isHoliday ? ' is-holiday' : ''}"
+          data-date="${isoDate(cursor)}" data-act="go-day" ${isHoliday ? `title="${getHolidayName(isoDate(cursor))}"` : ''}>
+          <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}${isHoliday ? ' 🇧🇪' : ''}</div>
           ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/${CONFIG.LOCALS.length}</div>` : ''}
         </div>`;
 
@@ -378,6 +385,25 @@ const LIVE = {
     const lieuId = DB.getCurrentLieuId();
     g('liveLieuName').textContent = lieux[lieuId]?.name || '';
 
+    // Barre de présence — agents avec statut non-présent uniquement
+    const presenceItems = DB.getAgentsWithKeys()
+      .map(({key, name}) => ({ key, name, st: DB.getAgentStatus(key) }))
+      .filter(a => a.st);
+    const presBar = g('livePresenceBar');
+    if (presenceItems.length) {
+      presBar.innerHTML = presenceItems.map(({ name, st }) => {
+        const color = DB.getAgentColor(name);
+        if (st.status === 'absent') {
+          return `<span class="lv-pres-badge lv-pres-absent" style="${color ? `border-color:${color}` : ''}">❌ ${fmtAgent(name)} — Absent</span>`;
+        }
+        return `<span class="lv-pres-badge lv-pres-late" style="${color ? `border-color:${color}` : ''}">🕐 ${fmtAgent(name)}${st.arrivalTime ? ` — arrivée ${st.arrivalTime}` : ' — En retard'}</span>`;
+      }).join('');
+      presBar.style.display = '';
+    } else {
+      presBar.innerHTML = '';
+      presBar.style.display = 'none';
+    }
+
     const q = this._agentQuery.toLowerCase().trim();
 
     if (q) {
@@ -402,6 +428,12 @@ const LIVE = {
         : null;
 
       const label = DB.getLocalLabel(l);
+      const queue = DB.getQueue(l);
+      const queueHtml = `<div class="lv-queue">
+        <button class="lv-q-btn" data-local="${l}" data-delta="-1">−</button>
+        <span class="lv-q-count${queue > 0 ? ' lv-q-active' : ''}">${queue > 0 ? `${queue} en attente` : 'File vide'}</span>
+        <button class="lv-q-btn" data-local="${l}" data-delta="1">+</button>
+      </div>`;
 
       if (perm) {
         const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
@@ -411,6 +443,7 @@ const LIVE = {
           <div class="lv-status">🔒 Permanent</div>
           <div class="lv-svc">${svc}</div>
           <div class="lv-agt" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${fmtAgent(agt)}</div>
+          ${queueHtml}
         </div>`;
       }
       if (res) {
@@ -424,6 +457,7 @@ const LIVE = {
           <div class="lv-svc">${svc}</div>
           <div class="lv-agt" style="${agentColor ? `color:${agentColor}` : ''}">${fmtAgent(agt)}</div>
           <div class="lv-until">Jusqu'à ${endH}</div>
+          ${queueHtml}
         </div>`;
       }
       const nextStr = next
@@ -433,8 +467,19 @@ const LIVE = {
         <div class="lv-num">${label}</div>
         <div class="lv-status">🟢 Libre</div>
         ${nextStr ? `<div class="lv-next">${nextStr}</div>` : ''}
+        ${queueHtml}
       </div>`;
     }).join('');
+
+    // Binder les boutons file d'attente
+    g('liveGrid').querySelectorAll('.lv-q-btn').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId = parseInt(btn.dataset.local);
+        const delta   = parseInt(btn.dataset.delta);
+        await DB.setQueue(localId, DB.getQueue(localId) + delta);
+      });
+    });
   },
 
   _renderSearchMode(now, occs, q) {

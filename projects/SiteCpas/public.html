@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="refresh" content="120"> <!-- rafraîchissement auto toutes les 2 min -->
+  <title>CPAS de Quaregnon — État des locaux</title>
+  <link rel="stylesheet" href="css/public.css">
+</head>
+<body>
+
+<header class="pub-header">
+  <div class="pub-brand">
+    <img src="assets/logo.jpg" alt="CPAS de Quaregnon" class="pub-logo">
+    <div>
+      <div class="pub-title">CPAS de Quaregnon</div>
+      <div class="pub-subtitle">Disponibilité des locaux</div>
+    </div>
+  </div>
+  <div class="pub-clock-wrap">
+    <div class="pub-date" id="pubDate"></div>
+    <div class="pub-clock" id="pubClock"></div>
+  </div>
+</header>
+
+<div class="pub-message hidden" id="pubMessage">
+  <span class="pub-msg-icon">📌</span>
+  <span id="pubMsgText"></span>
+</div>
+
+<main class="pub-main" id="pubMain">
+  <div class="pub-loading">Connexion en cours…</div>
+</main>
+
+<footer class="pub-footer">
+  <span>Mise à jour automatique toutes les 2 minutes</span>
+  <span id="pubLastUpdate"></span>
+</footer>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script src="js/holidays.js"></script>
+<script>
+
+// ── Helpers ───────────────────────────────────────────────────────
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isoDateStr(d) { return isoDate(d); }
+
+// ── Firebase ──────────────────────────────────────────────────────
+firebase.initializeApp(CONFIG.FIREBASE);
+const db = firebase.database();
+
+let _reservations = {};
+let _config = { agents: [], localLabels: {}, agentColors: {}, agentEmojis: {}, features: {}, messageJour: '', lieux: {} };
+let _agentStatus = {};
+let _currentLieuId = null;
+let _locals = CONFIG.LOCALS;
+
+function getLocalLabel(id) { return _config.localLabels[id] || `Local ${id}`; }
+function getAgentColor(name) {
+  const agent = _config.agents.find(a => a.name === name);
+  if (!agent?.key) return null;
+  return _config.agentColors[agent.key] || null;
+}
+function fmtAgent(name) {
+  if (!_config.features.agentEmoji) return name;
+  const agent = _config.agents.find(a => a.name === name);
+  const emoji = (agent?.key && _config.agentEmojis[agent.key]) || '🧑‍💼';
+  return `${emoji} ${name}`;
+}
+
+function expandRec(id, res, viewStart, viewEnd) {
+  if (res.isPermanent) return [{ id, ...res, _start: new Date(res.startDateTime), _end: null }];
+  const origStart = new Date(res.startDateTime);
+  const origEnd   = new Date(res.endDateTime);
+  const dur = origEnd - origStart;
+  if (!res.recurrence || res.recurrence.type === 'none') {
+    if (origStart < viewEnd && origEnd > viewStart) return [{ id, ...res, _start: origStart, _end: origEnd }];
+    return [];
+  }
+  const type = res.recurrence.type, interval = parseInt(res.recurrence.interval) || 1;
+  const recEnd = res.recurrence.endDate ? new Date(res.recurrence.endDate + 'T23:59:59') : null;
+  const exceptions = res.exceptions || {};
+  const results = [];
+  let cur = new Date(origStart);
+  let guard = 0;
+  while (cur < viewEnd && guard++ < 700) {
+    if (recEnd && cur > recEnd) break;
+    const end = new Date(cur.getTime() + dur);
+    const occDate = isoDate(cur);
+    const dow = cur.getDay();
+    if (end > viewStart && !exceptions[occDate] && dow !== 0 && dow !== 6) {
+      results.push({ id, ...res, _start: new Date(cur), _end: end });
+    }
+    if (type === 'daily')   cur.setDate(cur.getDate() + interval);
+    else if (type === 'weekly')  cur.setDate(cur.getDate() + 7 * interval);
+    else if (type === 'monthly') cur.setMonth(cur.getMonth() + interval);
+  }
+  return results;
+}
+
+function getOccs(now) {
+  const dayS = new Date(now); dayS.setHours(0,0,0,0);
+  const dayE = new Date(now); dayE.setHours(23,59,59,999);
+  const result = [];
+  Object.entries(_reservations).forEach(([id, res]) => {
+    expandRec(id, res, dayS, dayE).forEach(o => result.push(o));
+  });
+  return result.filter(r => _locals.includes(parseInt(r.localId)));
+}
+
+// ── Horloge ───────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('pubClock').textContent = `${hh}:${mm}:${ss}`;
+  const dateStr = now.toLocaleDateString('fr-BE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('pubDate').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  const h = isBelgianHoliday(isoDate(now));
+  document.body.classList.toggle('is-holiday', h);
+}
+
+// ── Rendu ─────────────────────────────────────────────────────────
+function render() {
+  const now  = new Date();
+  const occs = getOccs(now);
+
+  // Message du jour
+  const msg = _config.messageJour;
+  const msgEl = document.getElementById('pubMessage');
+  if (msg) {
+    document.getElementById('pubMsgText').textContent = msg;
+    msgEl.classList.remove('hidden');
+  } else {
+    msgEl.classList.add('hidden');
+  }
+
+  const main = document.getElementById('pubMain');
+  const holidayName = isBelgianHoliday(isoDate(now)) ? getHolidayName(isoDate(now)) : '';
+
+  if (holidayName) {
+    main.innerHTML = `<div class="pub-holiday">
+      <div class="pub-holiday-flag">🇧🇪</div>
+      <div class="pub-holiday-name">${holidayName}</div>
+      <div class="pub-holiday-sub">Le CPAS est fermé aujourd'hui</div>
+    </div>`;
+    return;
+  }
+
+  main.innerHTML = _locals.map(l => {
+    const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
+    const res  = occs.find(r => parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now);
+    const next = !perm && !res
+      ? occs.filter(r => parseInt(r.localId) === l && !r.isPermanent && r._start > now)
+             .sort((a,b) => a._start - b._start)[0]
+      : null;
+    const label = getLocalLabel(l);
+
+    if (perm) {
+      const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
+      const agt = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
+      return `<div class="pub-card pub-perm">
+        <div class="pub-card-label">${label}</div>
+        <div class="pub-card-status">🔒 Permanent</div>
+        <div class="pub-card-svc">${svc}</div>
+        <div class="pub-card-agt" style="${getAgentColor(agt) ? `color:${getAgentColor(agt)}` : ''}">${fmtAgent(agt)}</div>
+      </div>`;
+    }
+
+    if (res) {
+      const svc  = res.service === 'Autre' ? res.serviceCustom : res.service;
+      const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+      const endH = res._end.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' });
+      const color = getAgentColor(agt);
+      return `<div class="pub-card pub-busy" style="${color ? `border-top:6px solid ${color}` : ''}">
+        <div class="pub-card-label">${label}</div>
+        <div class="pub-card-status">🔴 Occupé</div>
+        <div class="pub-card-svc">${svc}</div>
+        <div class="pub-card-agt" style="${color ? `color:${color}` : ''}">${fmtAgent(agt)}</div>
+        <div class="pub-card-until">Disponible à ${endH}</div>
+      </div>`;
+    }
+
+    const nextStr = next
+      ? next._start.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' })
+      : '';
+    return `<div class="pub-card pub-free">
+      <div class="pub-card-label">${label}</div>
+      <div class="pub-card-status">🟢 Disponible</div>
+      ${nextStr ? `<div class="pub-card-next">Prochain rendez-vous : ${nextStr}</div>` : '<div class="pub-card-next">Libre toute la journée</div>'}
+    </div>`;
+  }).join('');
+
+  document.getElementById('pubLastUpdate').textContent =
+    `Dernière mise à jour : ${now.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' })}`;
+}
+
+// ── Init Firebase listeners ───────────────────────────────────────
+db.ref('reservations').on('value', snap => {
+  _reservations = snap.val() || {};
+  render();
+});
+
+db.ref('appConfig').on('value', snap => {
+  const d = snap.val() || {};
+  _config.agents      = d.agents   ? Object.entries(d.agents).map(([k,v]) => ({key:k, name:v})) : [];
+  _config.localLabels = d.localLabels || {};
+  _config.agentColors = d.agentColors || {};
+  _config.agentEmojis = d.agentEmojis || {};
+  _config.features    = d.features    || {};
+  _config.messageJour = d.messageJour || '';
+
+  // Lieu — prendre le premier ou celui sauvegardé
+  if (d.lieux) {
+    const sorted = Object.entries(d.lieux)
+      .map(([id, l]) => ({ id, name: l.name, order: l.order ?? 999, localIds: l.localIds ? Object.keys(l.localIds).map(Number) : [] }))
+      .sort((a,b) => a.order - b.order);
+    const saved = localStorage.getItem('cpas_currentLieu');
+    const found = saved && sorted.find(l => l.id === saved);
+    const active = found || sorted[0];
+    if (active) { _currentLieuId = active.id; _locals = active.localIds; }
+  }
+  render();
+});
+
+db.ref(`agentStatus/${isoDate(new Date())}`).on('value', snap => {
+  _agentStatus = snap.val() || {};
+  render();
+});
+
+// Horloge chaque seconde
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+</body>
+</html>

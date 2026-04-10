@@ -35,6 +35,38 @@
 </header>
 
 <!-- ═══════════════════════════════════════════════════════════
+     MESSAGE DU JOUR — bulle flottante
+═══════════════════════════════════════════════════════════ -->
+<div class="msg-bubble hidden" id="msgBubble">
+  <div class="msg-bubble-inner">
+    <span class="msg-icon">📌</span>
+    <span class="msg-text" id="msgText"></span>
+    <button class="msg-edit hidden" id="msgEdit" title="Modifier le message">✏️</button>
+    <button class="msg-close" id="msgClose" title="Fermer">✕</button>
+  </div>
+</div>
+
+<!-- Modal édition message du jour -->
+<div class="overlay hidden" id="msgEditOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>📌 Message du jour</h2>
+      <button class="modal-x" data-close="msgEditOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="field">
+        <label>Message affiché à tous</label>
+        <textarea id="msgEditInput" rows="3" placeholder="Ex : Réunion d'équipe à 14h — Local 3 réservé" style="width:100%;resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="msgEditClear">Effacer</button>
+      <button class="btn-primary" id="msgEditSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      BARRE DE NAVIGATION — Lieux
 ═══════════════════════════════════════════════════════════ -->
 <div class="lieu-bar" id="lieuBar"></div>
@@ -328,6 +360,12 @@
           <input type="password" id="stAdminPwdConfirm" placeholder="Confirmer le mot de passe...">
         </div>
         <button class="btn-primary" id="stAdminPwdSave" style="width:100%">Changer le mot de passe admin</button>
+
+        <h3 class="st-title" style="margin-top:1.25rem">Données</h3>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn-primary" id="stExportJson" style="flex:1">⬇ Exporter JSON</button>
+          <button class="btn-primary" id="stExportPdf"  style="flex:1">🖨 Imprimer planning</button>
+        </div>
       </div>
 
     </div>
@@ -431,10 +469,44 @@
       <div id="liveAgentSuggestions" class="lv-suggestions"></div>
     </div>
     <div class="live-clock" id="liveClock"></div>
+    <button class="live-presence-btn" id="btnPresence">👤 Mon statut</button>
     <button class="live-close" id="btnLiveClose">✕ Fermer</button>
   </div>
+  <div class="live-presence-bar" id="livePresenceBar"></div>
   <div class="live-grid" id="liveGrid"></div>
   <div class="live-agent-result hidden" id="liveAgentResult"></div>
+</div>
+
+<!-- Modal statut présence -->
+<div class="overlay hidden" id="presenceOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>Mon statut aujourd'hui</h2>
+      <button class="modal-x" data-close="presenceOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="field">
+        <label>Agent</label>
+        <select id="presenceAgent"></select>
+      </div>
+      <div class="field">
+        <label>Statut</label>
+        <select id="presenceStatus">
+          <option value="">✅ Présent</option>
+          <option value="late">🕐 En retard</option>
+          <option value="absent">❌ Absent</option>
+        </select>
+      </div>
+      <div class="field" id="presenceTimeWrap" style="display:none">
+        <label>Heure d'arrivée prévue</label>
+        <input type="time" id="presenceTime" step="300">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" data-close="presenceOverlay">Annuler</button>
+      <button class="btn-primary" id="presenceSave">Enregistrer</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -463,6 +535,7 @@
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
+<script src="js/holidays.js"></script>
 <script src="js/calendar.js"></script>
 <script src="js/emoji-picker.js"></script>
 <script src="js/modal.js"></script>

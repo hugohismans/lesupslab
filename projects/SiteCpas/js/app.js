@@ -10,11 +10,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Config dynamique (agents / services / lieux) — écoute Firebase
   DB.initConfig();
+  DB.initQueue();
+  DB.initAgentStatus();
   DB.onConfigChange(() => {
     updateLieuTabs();
     MODAL.refreshSelects();
     CAL.render();
     updateStatusBar();
+    updateMessageBubble();
   });
 
   // Charger la config par défaut si Firebase est vide (premier lancement)
@@ -31,6 +34,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     updateStatusBar();
     LIVE.render();
   });
+  DB.onQueueChange(() => LIVE.render());
+  DB.onAgentStatusChange(() => LIVE.render());
 
   // Initialiser la status bar à l'heure actuelle
   const now = new Date();
@@ -45,6 +50,45 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Rendu initial du calendrier
   CAL.render();
+
+  // ─── Message du jour ───────────────────────────────────────────
+  function updateMessageBubble() {
+    const msg = DB.getMessageJour();
+    const bubble = document.getElementById('msgBubble');
+    const isAdmin = sessionStorage.getItem('cpas_admin') === '1';
+    if (msg) {
+      document.getElementById('msgText').textContent = msg;
+      bubble.classList.remove('hidden');
+    } else if (isAdmin) {
+      document.getElementById('msgText').textContent = 'Aucun message — cliquez ✏️ pour en ajouter un';
+      bubble.classList.remove('hidden');
+    } else {
+      bubble.classList.add('hidden');
+    }
+    document.getElementById('msgEdit').classList.toggle('hidden', !isAdmin);
+  }
+
+  document.getElementById('msgClose').addEventListener('click', () => {
+    document.getElementById('msgBubble').classList.add('hidden');
+  });
+  document.getElementById('msgEdit').addEventListener('click', () => {
+    document.getElementById('msgEditInput').value = DB.getMessageJour();
+    document.getElementById('msgEditOverlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('msgEditInput').focus(), 80);
+  });
+  document.getElementById('msgEditSave').addEventListener('click', async () => {
+    const txt = document.getElementById('msgEditInput').value.trim();
+    await DB.setMessageJour(txt);
+    document.getElementById('msgEditOverlay').classList.add('hidden');
+  });
+  document.getElementById('msgEditClear').addEventListener('click', async () => {
+    if (!confirm('Effacer le message du jour ?')) return;
+    await DB.setMessageJour('');
+    document.getElementById('msgEditOverlay').classList.add('hidden');
+  });
+  document.getElementById('msgEditOverlay').addEventListener('click', e => {
+    if (e.target.id === 'msgEditOverlay') document.getElementById('msgEditOverlay').classList.add('hidden');
+  });
 
   // ─── Onglets de lieux ──────────────────────────────────────────
   function updateLieuTabs() {
@@ -86,6 +130,29 @@ document.addEventListener('DOMContentLoaded', async function () {
   // ─── Vue Live ──────────────────────────────────────────────────
   document.getElementById('btnLive').addEventListener('click', () => LIVE.open());
   document.getElementById('btnLiveClose').addEventListener('click', () => LIVE.close());
+
+  // ─── Statut présence ───────────────────────────────────────────
+  document.getElementById('btnPresence').addEventListener('click', () => {
+    const sel = document.getElementById('presenceAgent');
+    sel.innerHTML = DB.getAgentsWithKeys().map(({key, name}) =>
+      `<option value="${key}">${name}</option>`).join('');
+    document.getElementById('presenceStatus').value = '';
+    document.getElementById('presenceTimeWrap').style.display = 'none';
+    document.getElementById('presenceOverlay').classList.remove('hidden');
+  });
+  document.getElementById('presenceStatus').addEventListener('change', function () {
+    document.getElementById('presenceTimeWrap').style.display = this.value === 'late' ? '' : 'none';
+  });
+  document.getElementById('presenceSave').addEventListener('click', async () => {
+    const key    = document.getElementById('presenceAgent').value;
+    const status = document.getElementById('presenceStatus').value;
+    const time   = document.getElementById('presenceTime').value;
+    await DB.setAgentStatus(key, status, time);
+    document.getElementById('presenceOverlay').classList.add('hidden');
+  });
+  document.getElementById('presenceOverlay').addEventListener('click', e => {
+    if (e.target.id === 'presenceOverlay') document.getElementById('presenceOverlay').classList.add('hidden');
+  });
   document.getElementById('liveAgentSearch').addEventListener('input', function () {
     LIVE._agentQuery = this.value.trim();
     LIVE._renderAgentSuggestions(this.value.trim());

@@ -419,6 +419,26 @@ const MODAL = {
       showToast('Mot de passe admin mis à jour ✓');
     }));
 
+    // Export JSON (admin)
+    g('stExportJson').addEventListener('click', () => this._requireAdmin(async () => {
+      const snap = await DB._db.ref('/').once('value');
+      const data = snap.val();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = `cpas-backup-${isoDate(new Date())}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Export JSON téléchargé ✓');
+    }));
+
+    // Export PDF (admin) — ouvre la vue semaine en mode impression
+    g('stExportPdf').addEventListener('click', () => this._requireAdmin(() => {
+      g('settingsOverlay').classList.add('hidden');
+      window.print();
+    }));
+
     // Feature toggle : emojis agents (admin)
     g('featureAgentEmoji').addEventListener('change', () => this._requireAdmin(async () => {
       await DB.setFeature('agentEmoji', g('featureAgentEmoji').checked || null);
@@ -572,6 +592,22 @@ const MODAL = {
         if (weekendDates.length) {
           const confirmed = await this._showWeekendWarning(weekendDates);
           if (!confirmed) return;
+        }
+
+        // Avertir si des occurrences tombent un jour férié belge
+        const holidayOccs = [];
+        let hCur = new Date(startDT);
+        let hGuard = 0;
+        while (hCur <= checkEnd && hGuard++ < 700) {
+          const ds = isoDate(hCur);
+          if (isBelgianHoliday(ds)) holidayOccs.push({ date: ds, name: getHolidayName(ds) });
+          hCur = advDate(hCur, recType2, interval2);
+        }
+        if (holidayOccs.length) {
+          const list = holidayOccs.slice(0, 5).map(h => `• ${h.date} — ${h.name}`).join('\n');
+          const extra = holidayOccs.length > 5 ? `\n… et ${holidayOccs.length - 5} autre(s)` : '';
+          const ok = confirm(`⚠️ Certaines occurrences tombent un jour férié belge :\n\n${list}${extra}\n\nCes dates seront quand même créées. Continuer ?`);
+          if (!ok) return;
         }
       }
 
