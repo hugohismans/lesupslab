@@ -348,10 +348,14 @@ const CAL = {
 // ───────────────────────────────────────────────────────────────────
 
 const LIVE = {
-  _timer: null,
+  _timer:       null,
+  _agentQuery:  '',
 
   open() {
     g('liveOverlay').classList.remove('hidden');
+    g('liveAgentSearch').value = '';
+    this._agentQuery = '';
+    this._renderAgentSuggestions('');
     this._tick();
   },
 
@@ -360,16 +364,32 @@ const LIVE = {
     if (this._timer) { clearInterval(this._timer); this._timer = null; }
   },
 
-  render() {
-    if (g('liveOverlay').classList.contains('hidden')) return;
+  _getOccs() {
     const now  = new Date();
     const dayS = new Date(now); dayS.setHours(0, 0, 0, 0);
     const dayE = new Date(now); dayE.setHours(23, 59, 59, 999);
-    const occs = DB.getInRange(dayS, dayE);
+    return { now, occs: DB.getInRange(dayS, dayE) };
+  },
 
+  render() {
+    if (g('liveOverlay').classList.contains('hidden')) return;
+    const { now, occs } = this._getOccs();
     const lieux  = DB.getLieux();
     const lieuId = DB.getCurrentLieuId();
     g('liveLieuName').textContent = lieux[lieuId]?.name || '';
+
+    const q = this._agentQuery.toLowerCase().trim();
+
+    if (q) {
+      this._renderAgentMode(now, occs, q);
+    } else {
+      this._renderGridMode(now, occs);
+    }
+  },
+
+  _renderGridMode(now, occs) {
+    g('liveAgentResult').classList.add('hidden');
+    g('liveGrid').classList.remove('hidden');
 
     g('liveGrid').innerHTML = CONFIG.LOCALS.map(l => {
       const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
@@ -393,14 +413,12 @@ const LIVE = {
           <div class="lv-agt" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${fmtAgent(agt)}</div>
         </div>`;
       }
-
       if (res) {
         const svc  = res.service === 'Autre' ? res.serviceCustom : res.service;
         const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
         const endH = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         const agentColor = DB.getAgentColor(agt);
-        const borderStyle = agentColor ? `border-top: 6px solid ${agentColor}` : '';
-        return `<div class="lv-card lv-busy" style="${borderStyle}">
+        return `<div class="lv-card lv-busy" style="${agentColor ? `border-top:6px solid ${agentColor}` : ''}">
           <div class="lv-num">${label}</div>
           <div class="lv-status">🔴 Occupé</div>
           <div class="lv-svc">${svc}</div>
@@ -408,7 +426,6 @@ const LIVE = {
           <div class="lv-until">Jusqu'à ${endH}</div>
         </div>`;
       }
-
       const nextStr = next
         ? `Prochain : ${next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}`
         : '';
@@ -418,6 +435,96 @@ const LIVE = {
         ${nextStr ? `<div class="lv-next">${nextStr}</div>` : ''}
       </div>`;
     }).join('');
+  },
+
+  _renderAgentMode(now, occs, q) {
+    g('liveGrid').classList.add('hidden');
+    g('liveAgentResult').classList.remove('hidden');
+
+    // Filtrer les occurrences qui correspondent à la recherche
+    const localsSet = new Set(CONFIG.LOCALS.map(Number));
+    const match = r => {
+      const agt = (r.agent === 'Autre' ? r.agentCustom : r.agent) || '';
+      return agt.toLowerCase().includes(q) && localsSet.has(parseInt(r.localId));
+    };
+
+    const now_occs   = occs.filter(r => match(r) && !r.isPermanent && r._start <= now && r._end > now);
+    const future_occs = occs.filter(r => match(r) && !r.isPermanent && r._start > now)
+                            .sort((a, b) => a._start - b._start);
+    const perm_occs   = occs.filter(r => match(r) && r.isPermanent);
+
+    const fmt = r => {
+      const agt  = r.agent === 'Autre' ? r.agentCustom : r.agent;
+      const svc  = r.service === 'Autre' ? r.serviceCustom : r.service;
+      const loc  = DB.getLocalLabel(parseInt(r.localId));
+      const color = DB.getAgentColor(agt);
+      if (r.isPermanent) {
+        return `<div class="lv-agent-row lv-ar-perm">
+          <div class="lv-ar-dot">🔒</div>
+          <div class="lv-ar-info">
+            <div class="lv-ar-loc">${loc}</div>
+            <div class="lv-ar-svc">${svc}</div>
+            <div class="lv-ar-time">Réservation permanente</div>
+          </div>
+        </div>`;
+      }
+      const startH = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      const endH   = r._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+      const isCurrent = r._start <= now && r._end > now;
+      return `<div class="lv-agent-row ${isCurrent ? 'lv-ar-now' : 'lv-ar-future'}" style="${color ? `border-left:4px solid ${color}` : ''}">
+        <div class="lv-ar-dot">${isCurrent ? '🔴' : '🕐'}</div>
+        <div class="lv-ar-info">
+          <div class="lv-ar-loc">${loc}</div>
+          <div class="lv-ar-svc">${svc}</div>
+          <div class="lv-ar-time">${startH} – ${endH}</div>
+        </div>
+      </div>`;
+    };
+
+    const all = [...now_occs, ...perm_occs, ...future_occs];
+
+    if (!all.length) {
+      g('liveAgentResult').innerHTML = `
+        <div class="lv-agent-empty">
+          <div class="lv-ae-icon">🔍</div>
+          <div class="lv-ae-msg">Aucune présence trouvée pour <strong>"${q}"</strong> aujourd'hui.</div>
+        </div>`;
+      return;
+    }
+
+    // Titre : nom de l'agent trouvé + statut actuel
+    const firstAgt = all[0].agent === 'Autre' ? all[0].agentCustom : all[0].agent;
+    const color     = DB.getAgentColor(firstAgt);
+    const isPresent = now_occs.length > 0 || perm_occs.length > 0;
+    const statusBadge = isPresent
+      ? `<span class="lv-badge lv-badge-present">✅ Présent maintenant</span>`
+      : `<span class="lv-badge lv-badge-later">🕐 Arrivée prévue</span>`;
+
+    g('liveAgentResult').innerHTML = `
+      <div class="lv-agent-header">
+        <div class="lv-agent-name" style="${color ? `color:${color}` : ''}">${fmtAgent(firstAgt)}</div>
+        ${statusBadge}
+      </div>
+      <div class="lv-agent-rows">${all.map(fmt).join('')}</div>`;
+  },
+
+  _renderAgentSuggestions(q) {
+    const box = g('liveAgentSuggestions');
+    if (!q) { box.innerHTML = ''; return; }
+    const agents = DB.getAgents().filter(a => a !== 'Autre' && a.toLowerCase().includes(q.toLowerCase()));
+    box.innerHTML = agents.slice(0, 6).map(a => {
+      const color = DB.getAgentColor(a);
+      return `<button class="lv-suggestion" style="${color ? `color:${color}` : ''}">${fmtAgent(a)}</button>`;
+    }).join('');
+    box.querySelectorAll('.lv-suggestion').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = DB.getAgents().find(a => fmtAgent(a) === btn.textContent) || btn.textContent;
+        g('liveAgentSearch').value = name;
+        this._agentQuery = name;
+        box.innerHTML = '';
+        this.render();
+      });
+    });
   },
 
   _tick() {

@@ -86,6 +86,19 @@ document.addEventListener('DOMContentLoaded', async function () {
   // ─── Vue Live ──────────────────────────────────────────────────
   document.getElementById('btnLive').addEventListener('click', () => LIVE.open());
   document.getElementById('btnLiveClose').addEventListener('click', () => LIVE.close());
+  document.getElementById('liveAgentSearch').addEventListener('input', function () {
+    LIVE._agentQuery = this.value.trim();
+    LIVE._renderAgentSuggestions(this.value.trim());
+    LIVE.render();
+  });
+  document.getElementById('liveAgentSearch').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      this.value = '';
+      LIVE._agentQuery = '';
+      g('liveAgentSuggestions').innerHTML = '';
+      LIVE.render();
+    }
+  });
 
   // ─── Nouvelle réservation ──────────────────────────────────────
   document.getElementById('btnNew').addEventListener('click', () => {

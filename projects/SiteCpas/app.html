@@ -426,10 +426,15 @@
       <span class="live-dot"></span>
       <span class="live-title">État des locaux — <span id="liveLieuName"></span></span>
     </div>
+    <div class="live-search-wrap">
+      <input type="text" id="liveAgentSearch" class="live-search" placeholder="🔍 Rechercher un agent...">
+      <div id="liveAgentSuggestions" class="lv-suggestions"></div>
+    </div>
     <div class="live-clock" id="liveClock"></div>
     <button class="live-close" id="btnLiveClose">✕ Fermer</button>
   </div>
   <div class="live-grid" id="liveGrid"></div>
+  <div class="live-agent-result hidden" id="liveAgentResult"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
