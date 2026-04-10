@@ -36,7 +36,8 @@ const DB = {
         agentColors:       d.agentColors  || {},
         agentEmojis:       d.agentEmojis  || {},
         features:          d.features     || {},
-        messageJour:       d.messageJour  || '',
+        messageJour:       d.messageJour   || '',
+        messageJourAt:     d.messageJourAt || null,
         adminPasswordHash: d.adminPasswordHash || null,
         appPasswordHash:   d.appPasswordHash   || null
       };
@@ -119,8 +120,14 @@ const DB = {
   getFeature(name)           { return !!this._config.features[name]; },
   async setFeature(name, val) { await this._db.ref(`appConfig/features/${name}`).set(val || null); },
 
-  getMessageJour()          { return this._config.messageJour || ''; },
-  async setMessageJour(txt) { await this._db.ref('appConfig/messageJour').set(txt || null); },
+  getMessageJour()           { return this._config.messageJour   || ''; },
+  getMessageJourAt()         { return this._config.messageJourAt || null; },
+  async setMessageJour(txt) {
+    await this._db.ref('appConfig').update({
+      messageJour:   txt || null,
+      messageJourAt: txt ? new Date().toISOString() : null
+    });
+  },
 
   // ── Statut présence agents ────────────────────────────────────
   _statusCbs: [],

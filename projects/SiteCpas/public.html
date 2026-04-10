@@ -25,7 +25,10 @@
 
 <div class="pub-message hidden" id="pubMessage">
   <span class="pub-msg-icon">📌</span>
-  <span id="pubMsgText"></span>
+  <div class="pub-msg-body">
+    <span id="pubMsgText"></span>
+    <span class="pub-msg-meta" id="pubMsgMeta"></span>
+  </div>
 </div>
 
 <main class="pub-main" id="pubMain">
@@ -55,7 +58,7 @@ firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
 let _reservations = {};
-let _config = { agents: [], localLabels: {}, agentColors: {}, agentEmojis: {}, features: {}, messageJour: '', lieux: {} };
+let _config = { agents: [], localLabels: {}, agentColors: {}, agentEmojis: {}, features: {}, messageJour: '', messageJourAt: null, lieux: {} };
 let _agentStatus = {};
 let _currentLieuId = null;
 let _locals = CONFIG.LOCALS;
@@ -136,6 +139,16 @@ function render() {
   const msgEl = document.getElementById('pubMessage');
   if (msg) {
     document.getElementById('pubMsgText').textContent = msg;
+    const metaEl = document.getElementById('pubMsgMeta');
+    const at = _config.messageJourAt;
+    if (at) {
+      const d = new Date(at);
+      const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      metaEl.textContent = `Mis à jour le ${dateStr} à ${timeStr}`;
+    } else {
+      metaEl.textContent = '';
+    }
     msgEl.classList.remove('hidden');
   } else {
     msgEl.classList.add('hidden');
@@ -214,7 +227,8 @@ db.ref('appConfig').on('value', snap => {
   _config.agentColors = d.agentColors || {};
   _config.agentEmojis = d.agentEmojis || {};
   _config.features    = d.features    || {};
-  _config.messageJour = d.messageJour || '';
+  _config.messageJour   = d.messageJour   || '';
+  _config.messageJourAt = d.messageJourAt || null;
 
   // Lieu — prendre le premier ou celui sauvegardé
   if (d.lieux) {

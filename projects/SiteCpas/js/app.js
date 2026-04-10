@@ -53,14 +53,25 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // ─── Message du jour ───────────────────────────────────────────
   function updateMessageBubble() {
-    const msg = DB.getMessageJour();
-    const bubble = document.getElementById('msgBubble');
+    const msg     = DB.getMessageJour();
+    const at      = DB.getMessageJourAt();
+    const bubble  = document.getElementById('msgBubble');
     const isAdmin = sessionStorage.getItem('cpas_admin') === '1';
     if (msg) {
       document.getElementById('msgText').textContent = msg;
+      const metaEl = document.getElementById('msgMeta');
+      if (at) {
+        const d = new Date(at);
+        const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        metaEl.textContent = `Mis à jour le ${dateStr} à ${timeStr}`;
+      } else {
+        metaEl.textContent = '';
+      }
       bubble.classList.remove('hidden');
     } else if (isAdmin) {
       document.getElementById('msgText').textContent = 'Aucun message — cliquez ✏️ pour en ajouter un';
+      document.getElementById('msgMeta').textContent = '';
       bubble.classList.remove('hidden');
     } else {
       bubble.classList.add('hidden');
