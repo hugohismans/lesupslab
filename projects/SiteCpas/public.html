@@ -135,13 +135,13 @@ function render() {
   const now  = new Date();
   const occs = getOccs(now);
 
-  // Message du jour
-  const msg = _config.messageJour;
+  // Message du jour public
+  const msg = _config.messageJourPublic;
   const msgEl = document.getElementById('pubMessage');
   if (msg) {
     document.getElementById('pubMsgText').textContent = msg;
     const metaEl = document.getElementById('pubMsgMeta');
-    const at = _config.messageJourAt;
+    const at = _config.messageJourPublicAt;
     if (at) {
       const d = new Date(at);
       const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -224,8 +224,10 @@ db.ref('appConfig').on('value', snap => {
   _config.agentColors = d.agentColors || {};
   _config.agentEmojis = d.agentEmojis || {};
   _config.features    = d.features    || {};
-  _config.messageJour   = d.messageJour   || '';
-  _config.messageJourAt = d.messageJourAt || null;
+  _config.messageJour           = d.messageJour           || '';
+  _config.messageJourAt         = d.messageJourAt         || null;
+  _config.messageJourPublic     = d.messageJourPublic     || '';
+  _config.messageJourPublicAt   = d.messageJourPublicAt   || null;
   _config.publicLabels  = d.publicLabels  || {};
 
   // Lieu — prendre le premier ou celui sauvegardé

@@ -54,17 +54,21 @@
 <div class="overlay hidden" id="msgEditOverlay">
   <div class="modal modal-xs">
     <div class="modal-hd">
-      <h2>📌 Message du jour</h2>
+      <h2>📌 Messages du jour</h2>
       <button class="modal-x" data-close="msgEditOverlay">✕</button>
     </div>
     <div class="modal-bd">
       <div class="field">
-        <label>Message affiché à tous</label>
+        <label>📋 Message interne (personnel uniquement)</label>
         <textarea id="msgEditInput" rows="3" placeholder="Ex : Réunion d'équipe à 14h — Local 3 réservé" style="width:100%;resize:vertical"></textarea>
+      </div>
+      <div class="field" style="margin-top:.75rem">
+        <label>🖥 Message public (affiché en salle d'attente)</label>
+        <textarea id="msgEditPublicInput" rows="3" placeholder="Ex : Fermeture exceptionnelle ce vendredi" style="width:100%;resize:vertical"></textarea>
       </div>
     </div>
     <div class="modal-ft">
-      <button class="btn-cancel" id="msgEditClear">Effacer</button>
+      <button class="btn-cancel" id="msgEditClear">Effacer tout</button>
       <button class="btn-primary" id="msgEditSave">Enregistrer</button>
     </div>
   </div>

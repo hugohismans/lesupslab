@@ -84,17 +84,19 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
   document.getElementById('msgEdit').addEventListener('click', () => {
     document.getElementById('msgEditInput').value = DB.getMessageJour();
+    document.getElementById('msgEditPublicInput').value = DB.getMessageJourPublic();
     document.getElementById('msgEditOverlay').classList.remove('hidden');
     setTimeout(() => document.getElementById('msgEditInput').focus(), 80);
   });
   document.getElementById('msgEditSave').addEventListener('click', async () => {
-    const txt = document.getElementById('msgEditInput').value.trim();
-    await DB.setMessageJour(txt);
+    const txt    = document.getElementById('msgEditInput').value.trim();
+    const pubTxt = document.getElementById('msgEditPublicInput').value.trim();
+    await Promise.all([DB.setMessageJour(txt), DB.setMessageJourPublic(pubTxt)]);
     document.getElementById('msgEditOverlay').classList.add('hidden');
   });
   document.getElementById('msgEditClear').addEventListener('click', async () => {
-    if (!confirm('Effacer le message du jour ?')) return;
-    await DB.setMessageJour('');
+    if (!confirm('Effacer les deux messages du jour ?')) return;
+    await Promise.all([DB.setMessageJour(''), DB.setMessageJourPublic('')]);
     document.getElementById('msgEditOverlay').classList.add('hidden');
   });
   document.getElementById('msgEditOverlay').addEventListener('click', e => {
