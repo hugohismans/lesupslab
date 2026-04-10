@@ -33,7 +33,8 @@ const DB = {
           ? (d.services ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v})) : [])
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels:       d.localLabels || {},
-        adminPasswordHash: d.adminPasswordHash || null
+        adminPasswordHash: d.adminPasswordHash || null,
+        appPasswordHash:   d.appPasswordHash   || null
       };
 
       // Charger les lieux triés par order
@@ -76,10 +77,10 @@ const DB = {
   getAgentsWithKeys()     { return this._config.agents; },
   getServicesWithKeys()   { return this._config.services; },
   getLocalLabel(id)       { return this._config.localLabels[id] || `Local ${id}`; },
-  getAdminHash()          { return this._config.adminPasswordHash || null; },
-  async setAdminHash(hash) {
-    await this._db.ref('appConfig/adminPasswordHash').set(hash);
-  },
+  getAdminHash()           { return this._config.adminPasswordHash || null; },
+  async setAdminHash(hash) { await this._db.ref('appConfig/adminPasswordHash').set(hash); },
+  getAppHash()             { return this._config.appPasswordHash   || null; },
+  async setAppHash(hash)   { await this._db.ref('appConfig/appPasswordHash').set(hash); },
 
   async setLocalLabel(id, label) {
     const val = label.trim() || null;

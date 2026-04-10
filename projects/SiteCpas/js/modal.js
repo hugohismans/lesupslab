@@ -329,6 +329,18 @@ const MODAL = {
     // Bouton paramètres — protégé par mot de passe admin
     g('btnSettings').addEventListener('click', () => this._requireAdmin(() => this.openSettings()));
 
+    // Changer le mot de passe application depuis les paramètres
+    g('stAppPwdSave').addEventListener('click', async () => {
+      const pwd     = g('stAppPwdNew').value;
+      const confirm = g('stAppPwdConfirm').value;
+      if (!pwd) return alert('Veuillez saisir un nouveau mot de passe.');
+      if (pwd !== confirm) return alert('Les mots de passe ne correspondent pas.');
+      await DB.setAppHash(await sha256(pwd));
+      g('stAppPwdNew').value = '';
+      g('stAppPwdConfirm').value = '';
+      showToast('Mot de passe application mis à jour ✓');
+    });
+
     // Changer le mot de passe admin depuis les paramètres
     g('stAdminPwdSave').addEventListener('click', async () => {
       const pwd     = g('stAdminPwdNew').value;

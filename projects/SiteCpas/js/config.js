@@ -4,10 +4,6 @@
 
 const CONFIG = {
 
-  // ── MOT DE PASSE PARTAGÉ ─────────────────────────────────────────
-  // IMPORTANT : remplacer avant mise en production
-  APP_PASSWORD: 'cpas2024',
-
   // ── FIREBASE ─────────────────────────────────────────────────────
   // Remplacer avec les identifiants de votre projet Firebase
   FIREBASE: {

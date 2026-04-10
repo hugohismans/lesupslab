@@ -23,6 +23,23 @@
       <div class="login-footer">Développé par Hugo Hismans</div>
     </div>
   </div>
+  <!-- Formulaire de création de mot de passe (premier lancement) -->
+  <div id="createPwdWrap" class="hidden" style="margin-top:1rem">
+    <p style="color:#64748b;font-size:.83rem;margin-bottom:.75rem">Aucun mot de passe n'est configuré.<br>Créez-en un pour sécuriser l'accès.</p>
+    <div class="field">
+      <label for="newPwd">Nouveau mot de passe</label>
+      <input type="password" id="newPwd" placeholder="Choisir un mot de passe...">
+    </div>
+    <div class="field">
+      <label for="newPwdConfirm">Confirmer</label>
+      <input type="password" id="newPwdConfirm" placeholder="Confirmer...">
+    </div>
+    <p id="createPwdErr" class="err-msg hidden">Les mots de passe ne correspondent pas.</p>
+    <button type="button" id="createPwdBtn" class="btn-primary full">Créer le mot de passe</button>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
 </body>
