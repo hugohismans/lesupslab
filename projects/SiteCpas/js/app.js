@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.onChange(() => {
     CAL.render();
     updateStatusBar();
+    LIVE.render();
   });
 
   // Initialiser la status bar à l'heure actuelle
@@ -81,6 +82,10 @@ document.addEventListener('DOMContentLoaded', async function () {
       `${String(n.getHours()).padStart(2,'0')}:${String(rm).padStart(2,'0')}`;
     updateStatusBar();
   });
+
+  // ─── Vue Live ──────────────────────────────────────────────────
+  document.getElementById('btnLive').addEventListener('click', () => LIVE.open());
+  document.getElementById('btnLiveClose').addEventListener('click', () => LIVE.close());
 
   // ─── Nouvelle réservation ──────────────────────────────────────
   document.getElementById('btnNew').addEventListener('click', () => {

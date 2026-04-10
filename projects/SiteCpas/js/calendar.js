@@ -344,6 +344,102 @@ const CAL = {
 };
 
 // ───────────────────────────────────────────────────────────────────
+// Vue LIVE — Dispatch en direct
+// ───────────────────────────────────────────────────────────────────
+
+const LIVE = {
+  _timer: null,
+
+  open() {
+    g('liveOverlay').classList.remove('hidden');
+    this._tick();
+  },
+
+  close() {
+    g('liveOverlay').classList.add('hidden');
+    if (this._timer) { clearInterval(this._timer); this._timer = null; }
+  },
+
+  render() {
+    if (g('liveOverlay').classList.contains('hidden')) return;
+    const now  = new Date();
+    const dayS = new Date(now); dayS.setHours(0, 0, 0, 0);
+    const dayE = new Date(now); dayE.setHours(23, 59, 59, 999);
+    const occs = DB.getInRange(dayS, dayE);
+
+    const lieux  = DB.getLieux();
+    const lieuId = DB.getCurrentLieuId();
+    g('liveLieuName').textContent = lieux[lieuId]?.name || '';
+
+    g('liveGrid').innerHTML = CONFIG.LOCALS.map(l => {
+      const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
+      const res  = occs.find(r =>
+        parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now
+      );
+      const next = !perm && !res
+        ? occs.filter(r => parseInt(r.localId) === l && !r.isPermanent && r._start > now)
+               .sort((a, b) => a._start - b._start)[0]
+        : null;
+
+      const label = DB.getLocalLabel(l);
+
+      if (perm) {
+        const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
+        const agt = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
+        return `<div class="lv-card lv-perm">
+          <div class="lv-num">${label}</div>
+          <div class="lv-status">🔒 Permanent</div>
+          <div class="lv-svc">${svc}</div>
+          <div class="lv-agt" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${fmtAgent(agt)}</div>
+        </div>`;
+      }
+
+      if (res) {
+        const svc  = res.service === 'Autre' ? res.serviceCustom : res.service;
+        const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+        const endH = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        const agentColor = DB.getAgentColor(agt);
+        const borderStyle = agentColor ? `border-top: 6px solid ${agentColor}` : '';
+        return `<div class="lv-card lv-busy" style="${borderStyle}">
+          <div class="lv-num">${label}</div>
+          <div class="lv-status">🔴 Occupé</div>
+          <div class="lv-svc">${svc}</div>
+          <div class="lv-agt" style="${agentColor ? `color:${agentColor}` : ''}">${fmtAgent(agt)}</div>
+          <div class="lv-until">Jusqu'à ${endH}</div>
+        </div>`;
+      }
+
+      const nextStr = next
+        ? `Prochain : ${next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}`
+        : '';
+      return `<div class="lv-card lv-free">
+        <div class="lv-num">${label}</div>
+        <div class="lv-status">🟢 Libre</div>
+        ${nextStr ? `<div class="lv-next">${nextStr}</div>` : ''}
+      </div>`;
+    }).join('');
+  },
+
+  _tick() {
+    if (this._timer) clearInterval(this._timer);
+    const update = () => {
+      if (g('liveOverlay').classList.contains('hidden')) {
+        clearInterval(this._timer); this._timer = null; return;
+      }
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const el = g('liveClock');
+      if (el) el.textContent = `${hh}:${mm}:${ss}`;
+      this.render();
+    };
+    update();
+    this._timer = setInterval(update, 1000);
+  }
+};
+
+// ───────────────────────────────────────────────────────────────────
 // Status bar — vérificateur de disponibilité (date + heure)
 // ───────────────────────────────────────────────────────────────────
 

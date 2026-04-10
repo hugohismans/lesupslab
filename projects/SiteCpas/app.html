@@ -28,6 +28,7 @@
     <button class="btn-today" id="btnToday">Aujourd'hui</button>
     <button class="btn-nav" id="btnNext" title="Suivant">&#8250;</button>
     <button class="btn-new" id="btnNew">+ Réserver</button>
+    <button class="btn-live" id="btnLive" title="Vue dispatch en direct">📋 Direct</button>
     <button class="btn-settings" id="btnSettings" title="Paramètres">⚙</button>
     <button class="btn-logout" id="btnLogout" title="Se déconnecter">✕</button>
   </div>
@@ -414,6 +415,21 @@
       <button class="btn-primary" id="weekendWarnConfirm">Continuer sans ces dates</button>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     VUE DISPATCH EN DIRECT
+═══════════════════════════════════════════════════════════ -->
+<div class="live-overlay hidden" id="liveOverlay">
+  <div class="live-header">
+    <div class="live-title-wrap">
+      <span class="live-dot"></span>
+      <span class="live-title">État des locaux — <span id="liveLieuName"></span></span>
+    </div>
+    <div class="live-clock" id="liveClock"></div>
+    <button class="live-close" id="btnLiveClose">✕ Fermer</button>
+  </div>
+  <div class="live-grid" id="liveGrid"></div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════

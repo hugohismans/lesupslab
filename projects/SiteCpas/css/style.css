@@ -218,6 +218,13 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 .btn-new:hover { background: #1e8449; }
+.btn-live {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3);
+  color: #fff; padding: .35rem .75rem; border-radius: 6px; cursor: pointer;
+  font-size: .82rem; font-weight: 600; display: flex; align-items: center; gap: .35rem;
+  transition: all .15s;
+}
+.btn-live:hover { background: rgba(255,255,255,.25); }
 .btn-settings {
   background: transparent; border: 1px solid rgba(255,255,255,.25);
   color: rgba(255,255,255,.7); width: 30px; height: 30px;
@@ -831,4 +838,87 @@ body {
   .hd-logo-img { height: 28px; }
   .hd          { padding: 0 .6rem; gap: .3rem; }
   .hd-tabs .tab { padding: .25rem .45rem; font-size: .72rem; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VUE LIVE — Dispatch en direct
+═══════════════════════════════════════════════════════════════════ */
+.live-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: #0f172a;
+  display: flex; flex-direction: column;
+}
+.live-overlay.hidden { display: none; }
+
+.live-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.5rem; background: #1e293b; flex-shrink: 0;
+  border-bottom: 2px solid #334155;
+}
+.live-title-wrap {
+  display: flex; align-items: center; gap: .75rem;
+}
+.live-dot {
+  width: 12px; height: 12px; border-radius: 50%; background: #ef4444;
+  animation: live-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .4; transform: scale(.85); }
+}
+.live-title {
+  font-size: 1.1rem; font-weight: 700; color: #f1f5f9;
+}
+.live-clock {
+  font-size: 2rem; font-weight: 800; color: #f1f5f9;
+  font-variant-numeric: tabular-nums; letter-spacing: .05em;
+}
+.live-close {
+  padding: .5rem 1rem; background: #334155; border: none; color: #94a3b8;
+  border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600;
+  transition: background .12s, color .12s;
+}
+.live-close:hover { background: #475569; color: #f1f5f9; }
+
+.live-grid {
+  flex: 1; display: grid; padding: 1.5rem; gap: 1.25rem; overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  align-content: start;
+}
+
+.lv-card {
+  border-radius: 16px; padding: 1.5rem 1.75rem;
+  display: flex; flex-direction: column; gap: .5rem;
+  border-top: 6px solid transparent;
+  transition: transform .15s;
+}
+.lv-card:hover { transform: translateY(-2px); }
+
+.lv-free { background: #14532d; border-top-color: #22c55e; }
+.lv-busy { background: #1e1b2e; }
+.lv-perm { background: #1c1917; border-top-color: #78716c; }
+
+.lv-num {
+  font-size: 1rem; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.lv-status {
+  font-size: 1.6rem; font-weight: 800; color: #f1f5f9;
+  margin: .25rem 0;
+}
+.lv-free .lv-status { color: #4ade80; }
+.lv-perm .lv-status { color: #a8a29e; }
+.lv-svc {
+  font-size: 1rem; color: #cbd5e1; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lv-agt {
+  font-size: 1.25rem; font-weight: 700; color: #a5b4fc;
+}
+.lv-until {
+  font-size: .9rem; color: #94a3b8; margin-top: .25rem;
+}
+.lv-next {
+  font-size: .9rem; color: #4ade80; margin-top: .5rem;
 }
