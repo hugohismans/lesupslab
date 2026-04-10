@@ -397,8 +397,8 @@ const MODAL = {
 
       const myOccs = expandReservation('__temp__', tempRes, new Date(startDT), checkEnd);
 
-      // Vérifier les occurrences qui tombent un week-end (avant filtrage db.js)
-      if (isRec) {
+      // Vérifier les occurrences qui tombent un week-end (inutile pour quotidien : toujours le cas)
+      if (isRec && recType2 !== 'daily') {
         const weekendDates = [];
         let wkCur = new Date(startDT);
         let wkGuard = 0;
