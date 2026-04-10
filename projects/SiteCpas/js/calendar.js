@@ -109,8 +109,10 @@ const CAL = {
           const recLabel  = isRec ? recLabels[recType] || '' : '';
           const startH = res._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const endH   = res._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+          const agentColor = DB.getAgentColor(agt);
+          const colorStyle = agentColor ? ` style="background:${agentColor}20;border-left:3px solid ${agentColor}"` : '';
           h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}" rowspan="${span}"
-            data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail">
+            data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"${colorStyle}>
             <span class="ct">
               <b>${svc}</b><br>
               <small>${agt}</small><br>

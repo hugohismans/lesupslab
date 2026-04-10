@@ -33,6 +33,7 @@ const DB = {
           ? (d.services ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v})) : [])
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels:       d.localLabels || {},
+        agentColors:       d.agentColors  || {},
         adminPasswordHash: d.adminPasswordHash || null,
         appPasswordHash:   d.appPasswordHash   || null
       };
@@ -85,6 +86,21 @@ const DB = {
   async setLocalLabel(id, label) {
     const val = label.trim() || null;
     await this._db.ref(`appConfig/localLabels/${id}`).set(val);
+  },
+
+  // ── Couleurs agents ──────────────────────────────────────────────
+  getAgentColorByKey(key) {
+    return this._config.agentColors[key] || null;
+  },
+
+  getAgentColor(agentName) {
+    const agent = this._config.agents.find(a => a.name === agentName);
+    if (!agent || !agent.key) return null;
+    return this._config.agentColors[agent.key] || null;
+  },
+
+  async setAgentColor(key, color) {
+    await this._db.ref(`appConfig/agentColors/${key}`).set(color);
   },
 
   async addAgent(name) {

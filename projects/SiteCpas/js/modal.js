@@ -178,18 +178,37 @@ const MODAL = {
       });
     });
 
-    // ── Agents / Services ──────────────────────────────────────────
-    const makeList = (items, type, containerId) => {
-      g(containerId).innerHTML = items.length
-        ? items.map(({key, name}) => `
+    // ── Agents ────────────────────────────────────────────────────
+    const agents = DB.getAgentsWithKeys();
+    g('stAgentList').innerHTML = agents.length
+      ? agents.map(({key, name}) => {
+          const color = DB.getAgentColorByKey(key) || '#a5b4fc';
+          return `
             <div class="st-item">
-              <span class="st-name">${name}</span>
-              <button class="st-del" data-type="${type}" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
+              <input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Couleur de ${escapeHtml(name)}">
+              <span class="st-name">${escapeHtml(name)}</span>
+              <button class="st-del" data-type="agent" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
+            </div>`;
+        }).join('')
+      : '<p class="st-empty">Aucun élément.</p>';
+
+    g('settingsOverlay').querySelectorAll('.st-agent-color').forEach(input => {
+      input.addEventListener('change', async () => {
+        const key   = input.dataset.key;
+        if (!key) return;
+        await DB.setAgentColor(key, input.value);
+        CAL.render();
+      });
+    });
+
+    // ── Services ───────────────────────────────────────────────────
+    g('stSvcList').innerHTML = DB.getServicesWithKeys().length
+      ? DB.getServicesWithKeys().map(({key, name}) => `
+            <div class="st-item">
+              <span class="st-name">${escapeHtml(name)}</span>
+              <button class="st-del" data-type="service" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>
             </div>`).join('')
-        : '<p class="st-empty">Aucun élément.</p>';
-    };
-    makeList(DB.getAgentsWithKeys(),   'agent',   'stAgentList');
-    makeList(DB.getServicesWithKeys(), 'service', 'stSvcList');
+      : '<p class="st-empty">Aucun élément.</p>';
 
     g('settingsOverlay').querySelectorAll('.st-del').forEach(btn => {
       btn.addEventListener('click', async () => {
