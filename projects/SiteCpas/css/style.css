@@ -284,6 +284,7 @@ body {
   font-size: .62rem; color: #64748b; max-width: 90px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.lp-agent  { font-size: .62rem; color: #475569; font-weight: 600; }
 .lp-until  { font-size: .6rem; color: #9ca3af; }
 
 /* ═══════════════════════════════════════════════════════════════════
