@@ -297,11 +297,9 @@ const CAL = {
       // N'afficher que si on est sur le bon jour
       if (!sameDay(now, viewDay)) return;
 
-      const totalMin = (CONFIG.HOURS_END - CONFIG.HOURS_START) * 60;
-      const elapsed  = (now.getHours() - CONFIG.HOURS_START) * 60 + now.getMinutes();
+      const totalMin    = (CONFIG.HOURS_END - CONFIG.HOURS_START) * 60;
+      const elapsed     = (now.getHours() - CONFIG.HOURS_START) * 60 + now.getMinutes();
       if (elapsed < 0 || elapsed > totalMin) return;
-
-      const pct = (elapsed / totalMin) * 100;
 
       // Chercher ou créer la ligne
       let line = el.querySelector('.now-line');
@@ -312,14 +310,21 @@ const CAL = {
         el.appendChild(line);
       }
 
-      // Trouver la hauteur de la zone scrollable (thead exclu)
-      const table  = el.querySelector('.cv-day-table');
-      const thead  = table?.querySelector('thead');
-      const datebar = el.querySelector('.cv-day-datebar');
-      const topOffset = (datebar?.offsetHeight || 0) + (thead?.offsetHeight || 0);
-      const totalH = table ? table.offsetHeight - (thead?.offsetHeight || 0) : 0;
+      // Positionner via la position réelle de la <tr> (exact même sur lignes inégales)
+      const table = el.querySelector('.cv-day-table');
+      if (!table) return;
+      const rows = [...table.querySelectorAll('tr[data-slot]')];
+      if (!rows.length) return;
 
-      line.style.top = (topOffset + (pct / 100) * totalH) + 'px';
+      const slotIdx  = Math.floor(elapsed / CONFIG.SLOT_MIN);
+      const fraction = (elapsed % CONFIG.SLOT_MIN) / CONFIG.SLOT_MIN;
+      const row      = rows[Math.min(slotIdx, rows.length - 1)];
+
+      const containerTop = el.getBoundingClientRect().top;
+      const rowRect      = row.getBoundingClientRect();
+      const top          = rowRect.top - containerTop + el.scrollTop + fraction * rowRect.height;
+
+      line.style.top = top + 'px';
 
       // Heure affichée
       const hh = String(now.getHours()).padStart(2, '0');
@@ -365,6 +370,21 @@ const CAL = {
       e.dataTransfer.setData('text/plain', handle.dataset.id);
     });
 
+    // ── helper — slot + local par position XY (fonctionne sur les rowspan) ──
+    function getDndTarget(e) {
+      // Ligne par position Y (traverse les cellules en rowspan)
+      const rows = [...table.querySelectorAll('tr[data-slot]')];
+      const row = rows.find(r => {
+        const rect = r.getBoundingClientRect();
+        return e.clientY >= rect.top && e.clientY < rect.bottom;
+      });
+      if (!row) return null;
+      // Colonne via la td la plus proche (booked ou free, peu importe)
+      const td = e.target.closest('td[data-local]');
+      if (!td) return null;
+      return { slot: parseInt(row.dataset.slot), local: td.dataset.local };
+    }
+
     // ── dragover — toujours appelé sur la table entière ─────────────
     // e.preventDefault() DOIT être appelé pour autoriser le drop
     table.addEventListener('dragover', e => {
@@ -373,17 +393,14 @@ const CAL = {
       e.dataTransfer.dropEffect = 'move';
 
       table.querySelectorAll('.dnd-over').forEach(c => c.classList.remove('dnd-over'));
-      const target = e.target.closest('.cv-cell.is-free');
-      if (!target) return;
+      const hit = getDndTarget(e);
+      if (!hit) return;
 
       // Surligner les slots de la durée dans la colonne cible
-      const startSlot  = parseInt(target.dataset.slot);
-      const targetLocal = target.dataset.local;
-      for (let s = startSlot; s < startSlot + self._dnd.span; s++) {
+      for (let s = hit.slot; s < hit.slot + self._dnd.span; s++) {
         const row  = table.querySelector(`tr[data-slot="${s}"]`);
-        const cell = row?.querySelector(`.cv-cell.is-free[data-local="${targetLocal}"]`);
+        const cell = row?.querySelector(`.cv-cell.is-free[data-local="${hit.local}"]`);
         if (cell) cell.classList.add('dnd-over');
-        else if (s === startSlot) target.classList.add('dnd-over'); // fallback
       }
     });
 
@@ -403,16 +420,25 @@ const CAL = {
       const dnd = self._dnd;
       if (!dnd) return;
 
-      const target = e.target.closest('.cv-cell.is-free');
-      if (!target) return; // drop sur une cellule non libre → annulé
+      const hit = getDndTarget(e);
+      if (!hit) return;
 
-      const newLocalId  = parseInt(target.dataset.local);
-      const newDate     = target.dataset.date;
-      const newTime     = target.dataset.time;
-      const [hh, mm]    = newTime.split(':').map(Number);
-      const newStart    = new Date(`${newDate}T${pad(hh)}:${pad(mm)}:00`);
+      const allSlots = getSlots();
+      const slotInfo = allSlots[hit.slot];
+      if (!slotInfo) return;
+
+      // Vérifier que le déplacement ne dépasse pas les bornes de la journée
+      if (hit.slot + dnd.span > allSlots.length) {
+        showToast('⚠ Déplacement hors des horaires de la journée.');
+        return;
+      }
+
+      const newLocalId  = parseInt(hit.local);
+      const dateStr     = isoDate(d);
+      const hh = slotInfo.h, mm = slotInfo.m;
+      const newStart    = new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00`);
       const newEnd      = new Date(newStart.getTime() + dnd.durMs);
-      const newStartISO = `${newDate}T${pad(hh)}:${pad(mm)}`;
+      const newStartISO = `${dateStr}T${pad(hh)}:${pad(mm)}`;
       const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
 
       // Vérification des conflits
@@ -472,11 +498,58 @@ const LIVE = {
   _timer:       null,
   _agentQuery:  '',
 
+  // ── Rôle de l'utilisateur ─────────────────────────────────────────
+  getRole() {
+    return localStorage.getItem('cpas_live_role') || 'accueil';
+  },
+  setRole(role) {
+    localStorage.setItem('cpas_live_role', role);
+  },
+
+  _initRoleSelect() {
+    const sel = g('liveRoleSelect');
+    // Peupler avec les locaux du lieu courant
+    CONFIG.LOCALS.forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = `bureau_${l}`;
+      opt.textContent = `🏢 Bureau — ${DB.getLocalLabel(l)}`;
+      sel.appendChild(opt);
+    });
+    // Restaurer la valeur sauvegardée
+    const saved = this.getRole();
+    if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
+    else sel.value = 'accueil';
+
+    sel.addEventListener('change', () => {
+      this.setRole(sel.value);
+      this._applyRoleUI();
+      this.render();
+    });
+    this._applyRoleUI();
+  },
+
+  _applyRoleUI() {
+    const role = this.getRole();
+    const isAccueil = role === 'accueil';
+    // Bouton Files + recherche : accueil seulement
+    g('btnQueueGroups').classList.toggle('hidden', !isAccueil);
+    g('liveAgentSearch').closest('.live-search-wrap').classList.toggle('hidden', !isAccueil);
+    if (!isAccueil) {
+      // Fermer le panneau Files si on bascule
+      g('queueGroupPanel').classList.add('hidden');
+    }
+  },
+
   open() {
     g('liveOverlay').classList.remove('hidden');
     g('liveAgentSearch').value = '';
     this._agentQuery = '';
     this._renderAgentSuggestions('');
+    if (!this._qgroupInited) {
+      this._initQueueGroupPanel();
+      this._initRoleSelect();
+      this._qgroupInited = true;
+    }
     this._tick();
   },
 
@@ -531,7 +604,41 @@ const LIVE = {
     g('liveAgentResult').classList.add('hidden');
     g('liveGrid').classList.remove('hidden');
 
-    g('liveGrid').innerHTML = CONFIG.LOCALS.map(l => {
+    const role      = this.getRole();
+    const isAccueil = role === 'accueil';
+    const bureauLocal = isAccueil ? null : parseInt(role.replace('bureau_', ''));
+
+    // ── Cartes de groupe (accueil uniquement) ─────────────────────
+    const groups = DB.getQueueGroups();
+    const groupCards = Object.entries(groups).map(([grpId, grp]) => {
+      const lids     = (grp.localIds || []).map(Number);
+      const occupied = lids.filter(l => DB.getQueue(l) >= 1).length;
+      const overflow = DB.getGroupOverflowQueue(grpId);
+      const total    = lids.length;
+      const allFull  = occupied >= total;
+      const statusTxt = occupied === 0
+        ? '🟢 Disponible'
+        : allFull
+          ? `🔴 Complet (${occupied}/${total})`
+          : `🟡 En cours (${occupied}/${total})`;
+      const overflowTxt = overflow > 0
+        ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente</div>` : '';
+      return `<div class="lv-card lv-grp-card">
+        <div class="lv-grp-title">🔗 ${grp.name}</div>
+        <div class="lv-grp-status">${statusTxt}</div>
+        ${overflowTxt}
+        <div class="lv-grp-locals">${lids.map(l => {
+          const busy = DB.getQueue(l) >= 1;
+          return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
+        }).join('')}</div>
+        <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
+      </div>`;
+    }).join('');
+
+    // Locaux à afficher selon le rôle
+    const visibleLocals = isAccueil ? [] : (bureauLocal ? [bureauLocal] : CONFIG.LOCALS);
+
+    g('liveGrid').innerHTML = (isAccueil ? groupCards : '') + visibleLocals.map(l => {
       const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
       const res  = occs.find(r =>
         parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now
@@ -541,19 +648,41 @@ const LIVE = {
                .sort((a, b) => a._start - b._start)[0]
         : null;
 
-      const label = DB.getLocalLabel(l);
+      const label    = DB.getLocalLabel(l);
+      const pubLabel = DB.getPublicLocalLabel(l);
+      const grp      = DB.getLocalGroup(l);
+      const labelHtml = (pubLabel !== label ? `${label}<span class="lv-pub-label">${pubLabel}</span>` : label)
+        + (grp ? `<span class="lv-qg-badge">🔗 ${grp.name}</span>` : '');
+
+      // File individuelle de ce local
       const queue = DB.getQueue(l);
-      const queueHtml = `<div class="lv-queue">
-        <button class="lv-q-btn" data-local="${l}" data-delta="-1">−</button>
-        <span class="lv-q-count${queue > 0 ? ' lv-q-active' : ''}">${queue > 0 ? `${queue} en attente` : 'File vide'}</span>
-        <button class="lv-q-btn" data-local="${l}" data-delta="1">+</button>
-      </div>`;
+      const isBusyLocal = queue >= 1;
+
+      // Label et boutons de file — différents selon groupe ou non
+      let queueHtml;
+      if (grp) {
+        // Locaux du groupe : bouton − uniquement (agent libère son bureau)
+        queueHtml = queue > 0 ? `<div class="lv-queue lv-queue-agent">
+          <button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>
+        </div>` : '';
+      } else {
+        const waiting = Math.max(0, queue - 1);
+        const queueLabel = queue === 0 ? 'Disponible'
+          : queue === 1 ? 'Permanence en cours'
+          : `Permanence en cours, ${waiting} personne${waiting > 1 ? 's' : ''} en attente`;
+        queueHtml = `<div class="lv-queue">
+          ${queue > 0 ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : '<span class="lv-q-spacer"></span>'}
+          <span class="lv-q-count${queue > 0 ? ' lv-q-active' : ''}">${queueLabel}</span>
+          <button class="lv-q-btn" data-local="${l}" data-delta="1">+</button>
+          ${queue > 0 ? `<button class="lv-q-clear" data-local="${l}" title="Vider la file">✕</button>` : ''}
+        </div>`;
+      }
 
       if (perm) {
         const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
         const agt = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
         return `<div class="lv-card lv-perm">
-          <div class="lv-num">${label}</div>
+          <div class="lv-num">${labelHtml}</div>
           <div class="lv-status">🔒 Permanent</div>
           <div class="lv-svc">${svc}</div>
           <div class="lv-agt" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${fmtAgent(agt)}</div>
@@ -561,13 +690,15 @@ const LIVE = {
         </div>`;
       }
       if (res) {
-        const svc  = res.service === 'Autre' ? res.serviceCustom : res.service;
-        const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
-        const endH = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        const svc        = res.service === 'Autre' ? res.serviceCustom : res.service;
+        const agt        = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+        const endH       = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         const agentColor = DB.getAgentColor(agt);
-        return `<div class="lv-card lv-busy" style="${agentColor ? `border-top:6px solid ${agentColor}` : ''}">
-          <div class="lv-num">${label}</div>
-          <div class="lv-status">🔴 Occupé</div>
+        const cardCls    = isBusyLocal ? 'lv-busy' : 'lv-free';
+        const statusTxt  = isBusyLocal ? '🔴 Occupé' : '🟢 Disponible';
+        return `<div class="lv-card ${cardCls}" style="${agentColor ? `border-top:6px solid ${agentColor}` : ''}">
+          <div class="lv-num">${labelHtml}</div>
+          <div class="lv-status">${statusTxt}</div>
           <div class="lv-svc">${svc}</div>
           <div class="lv-agt" style="${agentColor ? `color:${agentColor}` : ''}">${fmtAgent(agt)}</div>
           <div class="lv-until">Jusqu'à ${endH}</div>
@@ -577,21 +708,72 @@ const LIVE = {
       const nextStr = next
         ? `Prochain : ${next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })}`
         : '';
-      return `<div class="lv-card lv-free">
-        <div class="lv-num">${label}</div>
-        <div class="lv-status">🟢 Libre</div>
+      if (!isBusyLocal) {
+        return `<div class="lv-card lv-closed">
+          <div class="lv-num">${labelHtml}</div>
+          <div class="lv-status">⚫ Fermé</div>
+          ${nextStr ? `<div class="lv-next">${nextStr}</div>` : ''}
+          ${queueHtml}
+        </div>`;
+      }
+      return `<div class="lv-card lv-walkin">
+        <div class="lv-num">${labelHtml}</div>
+        <div class="lv-status">🟡 Permanence en cours</div>
         ${nextStr ? `<div class="lv-next">${nextStr}</div>` : ''}
         ${queueHtml}
       </div>`;
     }).join('');
 
+    // Binder les boutons des cartes de groupe (dispatcher)
+    g('liveGrid').querySelectorAll('.lv-grp-add').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const grpId = btn.dataset.grp;
+        const routed = await DB.routeGroupQueue(grpId);
+        if (routed) {
+          showRoutingToast(routed.label);
+        } else {
+          await DB.incrementGroupOverflow(grpId);
+          const overflow = DB.getGroupOverflowQueue(grpId);
+          showToast(`⏳ Tous les bureaux occupés — ${overflow} en attente`);
+        }
+      });
+    });
+
     // Binder les boutons file d'attente
-    g('liveGrid').querySelectorAll('.lv-q-btn').forEach(btn => {
+    g('liveGrid').querySelectorAll('.lv-q-btn, .lv-q-avail').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         const localId = parseInt(btn.dataset.local);
         const delta   = parseInt(btn.dataset.delta);
-        await DB.setQueue(localId, DB.getQueue(localId) + delta);
+        const grp     = DB.getLocalGroup(localId);
+
+        if (delta === -1 && grp) {
+          // Agent libère son bureau : absorber l'overflow ou vraiment libérer
+          const absorbed = await DB.absorbGroupOverflow(grp.id);
+          if (!absorbed) {
+            await DB.setQueue(localId, 0);
+          } else {
+            showAgentCallNotif(DB.getLocalLabel(localId));
+            const _now = new Date();
+            const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
+            const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
+            const _occ = DB.getInRange(_dayS, _dayE).find(o =>
+              Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
+            );
+            const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
+            await DB.writeLastCall(localId, _pubAgent, grp?.name || null);
+          }
+        } else {
+          await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) + delta));
+        }
+      });
+    });
+    g('liveGrid').querySelectorAll('.lv-q-clear').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId = parseInt(btn.dataset.local);
+        await DB.setQueue(localId, 0);
       });
     });
   },
@@ -720,6 +902,63 @@ const LIVE = {
     });
   },
 
+  // ── Panneau files partagées ─────────────────────────────────────
+  _renderQueueGroupPanel() {
+    const groups    = DB.getQueueGroups();
+    const allLocals = CONFIG.LOCALS;
+
+    // Liste des groupes existants
+    const listEl = g('queueGroupList');
+    if (!Object.keys(groups).length) {
+      listEl.innerHTML = '<div class="lv-qg-empty">Aucun groupe configuré.</div>';
+    } else {
+      listEl.innerHTML = Object.entries(groups).map(([id, grp]) => {
+        const locNames = (grp.localIds || []).map(l => DB.getLocalLabel(l)).join(', ');
+        return `<div class="lv-qg-item">
+          <div class="lv-qg-info">
+            <strong>${grp.name}</strong>
+            <span class="lv-qg-locals">${locNames}</span>
+          </div>
+          <button class="lv-qg-del" data-id="${id}" title="Supprimer">✕</button>
+        </div>`;
+      }).join('');
+      listEl.querySelectorAll('.lv-qg-del').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await DB.deleteQueueGroup(btn.dataset.id);
+          this._renderQueueGroupPanel();
+        });
+      });
+    }
+
+    // Cases à cocher pour nouveau groupe
+    const localsEl = g('qgroupLocals');
+    localsEl.innerHTML = allLocals.map(l =>
+      `<label class="lv-qg-check">
+        <input type="checkbox" value="${l}"> ${DB.getLocalLabel(l)}
+      </label>`
+    ).join('');
+  },
+
+  _initQueueGroupPanel() {
+    g('btnQueueGroups').addEventListener('click', () => {
+      const panel = g('queueGroupPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) this._renderQueueGroupPanel();
+    });
+
+    g('btnQgroupAdd').addEventListener('click', async () => {
+      const name = g('qgroupName').value.trim();
+      if (!name) return;
+      const checked = [...g('qgroupLocals').querySelectorAll('input:checked')].map(i => parseInt(i.value));
+      if (checked.length < 1) { showToast('⚠ Sélectionnez au moins 1 local.'); return; }
+      const id = 'qg_' + Date.now();
+      await DB.saveQueueGroup(id, name, checked);
+      g('qgroupName').value = '';
+      g('qgroupLocals').querySelectorAll('input').forEach(i => i.checked = false);
+      this._renderQueueGroupPanel();
+    });
+  },
+
   _tick() {
     if (this._timer) clearInterval(this._timer);
     const update = () => {
@@ -729,13 +968,12 @@ const LIVE = {
       const now = new Date();
       const hh = String(now.getHours()).padStart(2, '0');
       const mm = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
       const el = g('liveClock');
-      if (el) el.textContent = `${hh}:${mm}:${ss}`;
+      if (el) el.textContent = `${hh}:${mm}`;
       this.render();
     };
     update();
-    this._timer = setInterval(update, 1000);
+    this._timer = setInterval(update, 60000);
   }
 };
 

@@ -152,6 +152,12 @@ body {
   border-top-color: #94a3b8;
 }
 
+.pub-free {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.pub-free .pub-card-status { color: #16a34a; }
+
 .pub-card-label {
   font-size: .8rem;
   font-weight: 700;
@@ -189,6 +195,40 @@ body {
   margin-top: .25rem;
 }
 
+
+/* ── Cartes file de groupe ─────────────────────────────────────── */
+.pub-grp-card {
+  background: #1e293b;
+  border-radius: 20px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  border: 2px solid #334155;
+  border-top: 6px solid #334155;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.pub-grp-card.pub-grp-free   { border-top-color: #22c55e; }
+.pub-grp-card.pub-grp-active { border-top-color: #f59e0b; }
+.pub-grp-card.pub-grp-busy   { border-top-color: #ef4444; }
+
+.pub-grp-name {
+  font-size: .8rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: #94a3b8;
+}
+.pub-grp-status {
+  font-size: 1.6rem; font-weight: 900; line-height: 1.1;
+}
+.pub-grp-status.grp-free   { color: #4ade80; }
+.pub-grp-status.grp-active { color: #fbbf24; }
+.pub-grp-status.grp-busy   { color: #f87171; }
+
+.pub-grp-dots { display: flex; gap: .45rem; }
+.pub-grp-dot {
+  width: 16px; height: 16px; border-radius: 50%; background: #22c55e;
+}
+.pub-grp-dot.busy { background: #ef4444; }
+
+.pub-grp-cap { font-size: .82rem; color: #64748b; }
 
 /* ── Jour férié ────────────────────────────────────────────────── */
 .pub-holiday {
@@ -255,8 +295,10 @@ body {
 }
 
 .next-call-label  { font-size: 1.5rem; font-weight: 700; color: var(--muted); margin: .75rem 0 .25rem; text-transform: uppercase; letter-spacing: .08em; }
-.next-call-bureau { font-size: 3rem; font-weight: 900; color: #1d4ed8; line-height: 1.1; margin: .25rem 0 .75rem; }
+.next-call-group  { font-size: 2.2rem; font-weight: 900; color: var(--text); line-height: 1.1; margin: .1rem 0 0; }
+.next-call-bureau { font-size: 2rem; font-weight: 800; color: #1d4ed8; line-height: 1.2; margin: .15rem 0 .75rem; }
 .next-call-hint   { font-size: 1rem; color: var(--muted); }
+.next-call-queue  { margin-top: .75rem; font-size: .9rem; font-weight: 600; color: #fff; background: #64748b; border-radius: 999px; padding: .3rem 1rem; display: inline-block; }
 
 /* ── Banner déverrouillage son ─────────────────────────────────── */
 .sound-unlock {

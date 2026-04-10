@@ -34,15 +34,17 @@ const DB = {
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels:       d.localLabels  || {},
         publicLabels:      d.publicLabels || {},
-        agentColors:       d.agentColors  || {},
-        agentEmojis:       d.agentEmojis  || {},
+        agentColors:       d.agentColors      || {},
+        agentEmojis:       d.agentEmojis      || {},
+        agentPublicNames:  d.agentPublicNames || {},
         features:          d.features     || {},
         messageJour:           d.messageJour           || '',
         messageJourAt:         d.messageJourAt         || null,
         messageJourPublic:     d.messageJourPublic     || '',
         messageJourPublicAt:   d.messageJourPublicAt   || null,
         adminPasswordHash: d.adminPasswordHash || null,
-        appPasswordHash:   d.appPasswordHash   || null
+        appPasswordHash:   d.appPasswordHash   || null,
+        queueGroups:       d.queueGroups       || {},
       };
 
       // Charger les lieux triés par order
@@ -150,6 +152,15 @@ const DB = {
     await this._db.ref(`appConfig/agentEmojis/${key}`).set(emoji || null);
   },
 
+  getAgentPublicName(agentName) {
+    const agent = this._config.agents.find(a => a.name === agentName);
+    if (!agent?.key) return agentName;
+    return this._config.agentPublicNames[agent.key] || agentName;
+  },
+  async setAgentPublicName(key, name) {
+    await this._db.ref(`appConfig/agentPublicNames/${key}`).set(name.trim() || null);
+  },
+
   getFeature(name)           { return !!this._config.features[name]; },
   async setFeature(name, val) { await this._db.ref(`appConfig/features/${name}`).set(val || null); },
 
@@ -204,10 +215,78 @@ const DB = {
     });
   },
   onQueueChange(fn) { this._queueCbs.push(fn); },
-  getQueue(localId)  { return this._queueData[localId] || 0; },
+
+  // Retourne le groupe auquel appartient un local, ou null
+  getLocalGroup(localId) {
+    const lid = parseInt(localId);
+    const groups = this._config.queueGroups || {};
+    for (const [id, g] of Object.entries(groups)) {
+      if ((g.localIds || []).map(Number).includes(lid)) return { id, ...g };
+    }
+    return null;
+  },
+
+  getQueueGroups() { return this._config.queueGroups || {}; },
+
+  // File individuelle du local (pas de logique groupe ici)
+  getQueue(localId) {
+    return this._queueData[String(localId)] || 0;
+  },
+
   async setQueue(localId, n) {
     const today = isoDate(new Date());
     await this._db.ref(`queues/${today}/${localId}`).set(Math.max(0, n) || null);
+  },
+
+  // Routage de groupe : trouve le prochain local libre et l'incrémente
+  // Retourne { localId, label } ou null si tous occupés
+  async routeGroupQueue(groupId) {
+    const grp = (this._config.queueGroups || {})[groupId];
+    if (!grp) return null;
+    const localIds = (grp.localIds || []).map(Number);
+    const freeLocal = localIds.find(l => this.getQueue(l) === 0);
+    if (freeLocal == null) return null; // tous occupés
+    await this.setQueue(freeLocal, 1);
+    return { localId: freeLocal, label: this.getPublicLocalLabel(freeLocal) };
+  },
+
+  // File d'attente en débordement (tous les locaux du groupe sont occupés)
+  getGroupOverflowQueue(groupId) {
+    return this._queueData[`wait_${groupId}`] || 0;
+  },
+
+  async incrementGroupOverflow(groupId) {
+    const today = isoDate(new Date());
+    const n = this.getGroupOverflowQueue(groupId) + 1;
+    await this._db.ref(`queues/${today}/wait_${groupId}`).set(n);
+  },
+
+  async absorbGroupOverflow(groupId) {
+    // Un local vient de se libérer et il y a des gens en attente →
+    // on réaffecte directement ce local (queue reste à 1) et on décrémente l'overflow
+    const today = isoDate(new Date());
+    const n = this.getGroupOverflowQueue(groupId);
+    if (n <= 0) return false;
+    await this._db.ref(`queues/${today}/wait_${groupId}`).set(n - 1 || null);
+    // Le local reste à 1 (déjà occupé par le nouveau bénéficiaire)
+    return true;
+  },
+
+  async writeLastCall(localId, agentName, groupName) {
+    await this._db.ref('appState/lastCall').set({
+      localId: Number(localId),
+      agentName: agentName || null,
+      groupName: groupName || null,
+      ts: Date.now()
+    });
+  },
+
+  async saveQueueGroup(id, name, localIds) {
+    await this._db.ref(`appConfig/queueGroups/${id}`).set({ name, localIds: localIds.map(Number) });
+  },
+
+  async deleteQueueGroup(id) {
+    await this._db.ref(`appConfig/queueGroups/${id}`).remove();
   },
 
   async addAgent(name) {

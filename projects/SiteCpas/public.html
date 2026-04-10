@@ -42,10 +42,12 @@
 <!-- Popup appel bénéficiaire -->
 <div class="next-call-overlay hidden" id="nextCallOverlay">
   <div class="next-call-box">
-    <div class="next-call-bell">🔔</div>
-    <div class="next-call-label">Bénéficiaire suivant</div>
+    <div class="next-call-bell" id="nextCallBell">🔔</div>
+    <div class="next-call-label" id="nextCallLabel">Bénéficiaire suivant</div>
+    <div class="next-call-group hidden" id="nextCallGroup"></div>
     <div class="next-call-bureau" id="nextCallBureau"></div>
-    <div class="next-call-hint">Veuillez vous présenter au bureau</div>
+    <div class="next-call-hint" id="nextCallHint">Veuillez vous présenter au bureau</div>
+    <div class="next-call-queue hidden" id="nextCallQueue"></div>
   </div>
 </div>
 
@@ -72,7 +74,7 @@ firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
 let _reservations = {};
-let _config = { agents: [], localLabels: {}, publicLabels: {}, agentColors: {}, agentEmojis: {}, features: {}, messageJour: '', messageJourAt: null, lieux: {} };
+let _config = { agents: [], localLabels: {}, publicLabels: {}, agentColors: {}, agentEmojis: {}, agentPublicNames: {}, queueGroups: {}, features: {}, messageJour: '', messageJourAt: null, lieux: {} };
 let _agentStatus = {};
 let _currentLieuId = null;
 let _locals = CONFIG.LOCALS;
@@ -84,11 +86,17 @@ function getAgentColor(name) {
   if (!agent?.key) return null;
   return _config.agentColors[agent.key] || null;
 }
-function fmtAgent(name) {
-  if (!_config.features.agentEmoji) return name;
+function getQueueForLocal(localId) {
+  return _prevQueue[localId] ?? _prevQueue[String(localId)] ?? 0;
+}
+function isLocalBusy(localId) {
+  return getQueueForLocal(localId) >= 1;
+}
+
+function getAgentPublicName(name) {
   const agent = _config.agents.find(a => a.name === name);
-  const emoji = (agent?.key && _config.agentEmojis[agent.key]) || '🧑‍💼';
-  return `${emoji} ${name}`;
+  if (!agent?.key) return name;
+  return _config.agentPublicNames[agent.key] || name;
 }
 
 function expandRec(id, res, viewStart, viewEnd) {
@@ -181,6 +189,40 @@ function render() {
     return;
   }
 
+  // ── Cartes de file de groupe ────────────────────────────────────
+  const groupCards = Object.entries(_config.queueGroups || {}).map(([grpId, grp]) => {
+    const lids     = (grp.localIds || []).map(Number).filter(l => _locals.includes(l));
+    if (!lids.length) return '';
+    const occupied = lids.filter(l => getQueueForLocal(l) >= 1).length;
+    const overflow = _prevQueue[`wait_${grpId}`] ?? 0;
+    const total    = lids.length;
+    const waiting  = overflow; // personnes en attente au-delà de la capacité
+
+    let statusHtml, cardClass;
+    if (occupied === 0) {
+      cardClass  = 'pub-grp-free';
+      statusHtml = `<div class="pub-grp-status grp-free">Aucune attente</div>`;
+    } else if (waiting > 0) {
+      cardClass  = 'pub-grp-busy';
+      statusHtml = `<div class="pub-grp-status grp-busy">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>`;
+    } else {
+      cardClass  = 'pub-grp-active';
+      statusHtml = `<div class="pub-grp-status grp-active">${occupied} bureau${occupied > 1 ? 'x' : ''} en service</div>`;
+    }
+
+    const dots = lids.map(l => {
+      const busy = getQueueForLocal(l) >= 1;
+      return `<span class="pub-grp-dot${busy ? ' busy' : ''}"></span>`;
+    }).join('');
+
+    return `<div class="pub-grp-card ${cardClass}">
+      <div class="pub-grp-name">🔗 ${grp.name}</div>
+      ${statusHtml}
+      <div class="pub-grp-dots">${dots}</div>
+      <div class="pub-grp-cap">${occupied}/${total} bureaux</div>
+    </div>`;
+  }).join('');
+
   main.innerHTML = _locals.map(l => {
     const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
     const res  = occs.find(r => parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now);
@@ -197,21 +239,26 @@ function render() {
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">🔒 Permanent</div>
         <div class="pub-card-svc">${svc}</div>
-        <div class="pub-card-agt" style="${getAgentColor(agt) ? `color:${getAgentColor(agt)}` : ''}">${fmtAgent(agt)}</div>
+        <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
       </div>`;
     }
 
     if (res) {
-      const svc  = res.service === 'Autre' ? res.serviceCustom : res.service;
-      const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
-      const endH = res._end.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' });
+      const svc   = res.service === 'Autre' ? res.serviceCustom : res.service;
+      const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+      const endH  = res._end.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' });
       const color = getAgentColor(agt);
-      return `<div class="pub-card pub-busy" style="${color ? `border-top:6px solid ${color}` : ''}">
+      const queue   = getQueueForLocal(l);
+      const busy    = isLocalBusy(l);
+      const waiting = Math.max(0, queue - 1);
+      const cardClass  = busy ? 'pub-busy' : 'pub-free';
+      const statusIcon = busy ? '🔴 Occupé' : '🟢 Disponible';
+      return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
         <div class="pub-card-label">${label}</div>
-        <div class="pub-card-status">🔴 Occupé</div>
+        <div class="pub-card-status">${statusIcon}</div>
         <div class="pub-card-svc">${svc}</div>
-        <div class="pub-card-agt" style="${color ? `color:${color}` : ''}">${fmtAgent(agt)}</div>
-        <div class="pub-card-until">Disponible à ${endH}</div>
+        <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
+        ${waiting > 0 ? `<div class="pub-card-until">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>` : ''}
       </div>`;
     }
 
@@ -220,6 +267,9 @@ function render() {
       <div class="pub-card-status">⚫ Fermé</div>
     </div>`;
   }).join('');
+
+  // Injecter les cartes groupes en tête (si au moins un groupe actif)
+  if (groupCards) main.innerHTML = groupCards + main.innerHTML;
 
   document.getElementById('pubLastUpdate').textContent =
     `Dernière mise à jour : ${now.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' })}`;
@@ -242,7 +292,9 @@ db.ref('appConfig').on('value', snap => {
   _config.messageJourAt         = d.messageJourAt         || null;
   _config.messageJourPublic     = d.messageJourPublic     || '';
   _config.messageJourPublicAt   = d.messageJourPublicAt   || null;
-  _config.publicLabels  = d.publicLabels  || {};
+  _config.publicLabels      = d.publicLabels      || {};
+  _config.agentPublicNames  = d.agentPublicNames  || {};
+  _config.queueGroups       = d.queueGroups       || {};
 
   // Lieu — prendre le premier ou celui sauvegardé
   if (d.lieux) {
@@ -314,13 +366,28 @@ let _prevQueue = {};
 let _queueReady = false;
 let _callDismissTimer = null;
 
-function showNextCall(localId) {
+function showNextCall(localId, agentName, groupName) {
+  const bureauLabel = getPublicLocalLabel(localId);
   playChime();
-  document.getElementById('nextCallBureau').textContent = getPublicLocalLabel(localId);
+  document.getElementById('nextCallBell').textContent   = '🔔';
+  document.getElementById('nextCallLabel').textContent  = 'Bénéficiaire suivant';
+  const grpEl = document.getElementById('nextCallGroup');
+  if (groupName) {
+    grpEl.textContent = groupName;
+    grpEl.classList.remove('hidden');
+  } else {
+    grpEl.classList.add('hidden');
+  }
+  document.getElementById('nextCallBureau').textContent = bureauLabel;
+  const hint = agentName
+    ? `Veuillez vous présenter au bureau — vous serez reçu(e) par ${agentName}`
+    : 'Veuillez vous présenter au bureau';
+  document.getElementById('nextCallHint').textContent = hint;
+  document.getElementById('nextCallQueue').classList.add('hidden');
   const overlay = document.getElementById('nextCallOverlay');
   overlay.classList.remove('hidden');
   if (_callDismissTimer) clearTimeout(_callDismissTimer);
-  _callDismissTimer = setTimeout(() => overlay.classList.add('hidden'), 7000);
+  _callDismissTimer = setTimeout(() => overlay.classList.add('hidden'), 10000);
 }
 
 document.getElementById('nextCallOverlay').addEventListener('click', () => {
@@ -328,20 +395,24 @@ document.getElementById('nextCallOverlay').addEventListener('click', () => {
   if (_callDismissTimer) clearTimeout(_callDismissTimer);
 });
 
-// Écoute Firebase — file d'attente
+// Écoute Firebase — file d'attente (rendu uniquement, pas de popup)
 db.ref(`queues/${isoDate(new Date())}`).on('value', snap => {
-  const newQueue = snap.val() || {};
-  if (_queueReady) {
-    // Détecter une diminution sur n'importe quel local
-    Object.entries(_prevQueue).forEach(([localId, prev]) => {
-      const next = newQueue[localId] ?? 0;
-      if (next < prev && prev > 0 && _locals.includes(parseInt(localId))) {
-        showNextCall(parseInt(localId));
-      }
-    });
-  }
-  _prevQueue  = { ...newQueue };
+  _prevQueue  = snap.val() || {};
   _queueReady = true;
+  render();
+});
+
+// Écoute Firebase — appel bénéficiaire (écrit par l'agent via "Je suis disponible")
+let _lastCallTs = null;
+db.ref('appState/lastCall').on('value', snap => {
+  const d = snap.val();
+  if (!d || !d.ts) return;
+  if (_lastCallTs === null) { _lastCallTs = d.ts; return; } // ignorer valeur initiale
+  if (d.ts === _lastCallTs) return;
+  _lastCallTs = d.ts;
+  if (_locals.includes(Number(d.localId))) {
+    showNextCall(Number(d.localId), d.agentName || null, d.groupName || null);
+  }
 });
 
 // Horloge chaque seconde

@@ -220,13 +220,19 @@ const MODAL = {
     const emojiEnabled = DB.getFeature('agentEmoji');
     g('stAgentList').innerHTML = agents.length
       ? agents.map(({key, name}) => {
-          const color = DB.getAgentColorByKey(key) || '#a5b4fc';
-          const emoji = DB.getAgentEmojiByKey(key) || '';
+          const color      = DB.getAgentColorByKey(key) || '#a5b4fc';
+          const emoji      = DB.getAgentEmojiByKey(key) || '';
+          const pubName    = key ? (DB._config.agentPublicNames[key] || '') : '';
           return `
-            <div class="st-item">
+            <div class="st-item st-agent-item">
               <input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Couleur de ${escapeHtml(name)}">
               ${emojiEnabled ? `<button class="st-agent-emoji-btn" data-key="${key || ''}" title="Choisir un emoji">${emoji || '🧑‍💼'}</button>` : ''}
-              <span class="st-name">${escapeHtml(name)}</span>
+              <div class="st-agent-names">
+                <span class="st-name">${escapeHtml(name)}</span>
+                ${isAdmin ? `<input class="st-agent-pub-input" type="text" data-key="${key || ''}"
+                  value="${escapeHtml(pubName)}" placeholder="Nom public (facultatif)">` : ''}
+              </div>
+              ${isAdmin ? `<button class="st-agent-pub-save" data-key="${key || ''}" title="Enregistrer nom public">✓</button>` : ''}
               ${isAdmin ? `<button class="st-del" data-type="agent" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>` : ''}
             </div>`;
         }).join('')
@@ -249,6 +255,20 @@ const MODAL = {
           await DB.setAgentEmoji(key, emoji);
           CAL.render();
         });
+      });
+    });
+    g('settingsOverlay').querySelectorAll('.st-agent-pub-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const key   = btn.dataset.key;
+        const input = btn.closest('.st-agent-item')?.querySelector('.st-agent-pub-input');
+        if (!key || !input) return;
+        await DB.setAgentPublicName(key, input.value);
+        showToast('Nom public enregistré ✓');
+      }));
+    });
+    g('settingsOverlay').querySelectorAll('.st-agent-pub-input').forEach(input => {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') input.closest('.st-agent-item')?.querySelector('.st-agent-pub-save')?.click();
       });
     });
 
@@ -1059,6 +1079,28 @@ function showToast(msg = 'Modification enregistrée') {
     t.classList.remove('toast-in');
     t.addEventListener('transitionend', () => t.remove());
   }, 2200);
+}
+
+let _routingTimer = null;
+function showRoutingToast(bureauLabel) {
+  const banner = document.getElementById('routingBanner');
+  const bureauEl = document.getElementById('routingBureau');
+  if (!banner || !bureauEl) return;
+  bureauEl.textContent = bureauLabel;
+  banner.classList.remove('hidden');
+  if (_routingTimer) clearTimeout(_routingTimer);
+  _routingTimer = setTimeout(() => banner.classList.add('hidden'), 6000);
+  banner.onclick = () => { banner.classList.add('hidden'); clearTimeout(_routingTimer); };
+}
+
+let _agentCallTimer = null;
+function showAgentCallNotif(bureauLabel) {
+  const banner = document.getElementById('agentCallBanner');
+  if (!banner) return;
+  banner.classList.remove('hidden');
+  if (_agentCallTimer) clearTimeout(_agentCallTimer);
+  _agentCallTimer = setTimeout(() => banner.classList.add('hidden'), 7000);
+  banner.onclick = () => { banner.classList.add('hidden'); clearTimeout(_agentCallTimer); };
 }
 
 // cls(id, hidden) — cache ou affiche via la classe CSS 'hidden'

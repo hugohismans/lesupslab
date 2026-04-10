@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     updateLieuTabs();
     MODAL.refreshSelects();
     CAL.render();
+    LIVE.render();
     updateStatusBar();
     updateMessageBubble();
   });
@@ -153,7 +154,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('presenceTimeWrap').style.display = 'none';
     document.getElementById('presenceOverlay').classList.remove('hidden');
   }
-  document.getElementById('btnPresence').addEventListener('click', openPresenceOverlay);
   document.getElementById('btnPresenceHd').addEventListener('click', openPresenceOverlay);
   document.getElementById('presenceStatus').addEventListener('change', function () {
     document.getElementById('presenceTimeWrap').style.display = this.value === 'late' ? '' : 'none';

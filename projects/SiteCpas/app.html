@@ -473,13 +473,36 @@
       <span class="live-dot"></span>
       <span class="live-title">État des locaux — <span id="liveLieuName"></span></span>
     </div>
+    <select class="lv-role-select" id="liveRoleSelect">
+      <option value="accueil">👤 Agent d'accueil</option>
+    </select>
     <div class="live-search-wrap">
       <input type="text" id="liveAgentSearch" class="live-search" placeholder="🔍 Agent ou service...">
       <div id="liveAgentSuggestions" class="lv-suggestions"></div>
     </div>
     <div class="live-clock" id="liveClock"></div>
-    <button class="live-presence-btn" id="btnPresence">👤 Mon statut</button>
+    <button class="live-qgroup-btn" id="btnQueueGroups" title="Gérer les files partagées">🔗 Files</button>
     <button class="live-close" id="btnLiveClose">✕ Fermer</button>
+  </div>
+  <!-- Panneau files partagées -->
+  <div class="lv-qgroup-panel hidden" id="queueGroupPanel">
+    <div class="lv-qgroup-list" id="queueGroupList"></div>
+    <div class="lv-qgroup-new">
+      <input type="text" id="qgroupName" class="lv-qgroup-input" placeholder="Nom du groupe…">
+      <div class="lv-qgroup-locals" id="qgroupLocals"></div>
+      <button class="lv-qgroup-add" id="btnQgroupAdd">+ Créer</button>
+    </div>
+  </div>
+  <!-- Notification routage dispatcheur -->
+  <div class="lv-routing-banner hidden" id="routingBanner">
+    <span class="lv-routing-arrow">→</span>
+    <span class="lv-routing-text">Envoyez le bénéficiaire au</span>
+    <span class="lv-routing-bureau" id="routingBureau"></span>
+  </div>
+  <!-- Notification agent : bénéficiaire entrant -->
+  <div class="lv-agent-call-banner hidden" id="agentCallBanner">
+    <span class="lv-agent-call-icon">🚶</span>
+    <span class="lv-agent-call-text">Un bénéficiaire arrive</span>
   </div>
   <div class="live-presence-bar" id="livePresenceBar"></div>
   <div class="live-grid" id="liveGrid"></div>
