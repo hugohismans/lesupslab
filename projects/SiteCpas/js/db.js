@@ -34,6 +34,8 @@ const DB = {
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels:       d.localLabels || {},
         agentColors:       d.agentColors  || {},
+        agentEmojis:       d.agentEmojis  || {},
+        features:          d.features     || {},
         adminPasswordHash: d.adminPasswordHash || null,
         appPasswordHash:   d.appPasswordHash   || null
       };
@@ -102,6 +104,19 @@ const DB = {
   async setAgentColor(key, color) {
     await this._db.ref(`appConfig/agentColors/${key}`).set(color);
   },
+
+  getAgentEmojiByKey(key) { return this._config.agentEmojis[key] || ''; },
+  getAgentEmoji(agentName) {
+    const agent = this._config.agents.find(a => a.name === agentName);
+    if (!agent || !agent.key) return '';
+    return this._config.agentEmojis[agent.key] || '';
+  },
+  async setAgentEmoji(key, emoji) {
+    await this._db.ref(`appConfig/agentEmojis/${key}`).set(emoji || null);
+  },
+
+  getFeature(name)           { return !!this._config.features[name]; },
+  async setFeature(name, val) { await this._db.ref(`appConfig/features/${name}`).set(val || null); },
 
   async addAgent(name) {
     await this._db.ref('appConfig/agents').push(name);
@@ -384,6 +399,13 @@ function approxIntervalMs(type, n) {
 // ───────────────────────────────────────────────────────────────────
 // Helpers partagés (utilisés par calendar.js, modal.js, app.js)
 // ───────────────────────────────────────────────────────────────────
+
+// Formate le nom d'un agent avec son emoji si la feature est activée
+function fmtAgent(name) {
+  if (!DB.getFeature('agentEmoji')) return name;
+  const emoji = DB.getAgentEmoji(name) || '🧑‍💼';
+  return `${emoji} ${name}`;
+}
 
 function isoDate(d)    {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;

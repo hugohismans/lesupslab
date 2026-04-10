@@ -103,6 +103,7 @@ const CAL = {
 
           const svc   = res.service === 'Autre' ? res.serviceCustom : res.service;
           const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+          const agtFmt = fmtAgent(agt);
           const recType = res.recurrence?.type;
           const isRec   = recType && recType !== 'none';
           const recLabels = { daily: 'Quotidien', weekly: 'Hebdomadaire', monthly: 'Mensuel' };
@@ -115,7 +116,7 @@ const CAL = {
             data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"${colorStyle}>
             <span class="ct">
               <b>${svc}</b><br>
-              <small>${agt}</small><br>
+              <small>${agtFmt}</small><br>
               <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
             </span>
           </td>`;
@@ -371,6 +372,7 @@ function updateStatusBar() {
     if (res) {
       const svc = res.service === 'Autre' ? res.serviceCustom : res.service;
       const agt = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+      const agtFmt = fmtAgent(agt);
       const endH = res._end
         ? res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
         : '';
@@ -378,7 +380,7 @@ function updateStatusBar() {
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">🔴 Réservé</div>
         <div class="lp-detail">${svc}</div>
-        <div class="lp-agent" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${agt}</div>
+        <div class="lp-agent" style="${DB.getAgentColor(agt) ? `color:${DB.getAgentColor(agt)}` : ''}">${agtFmt}</div>
         ${endH ? `<div class="lp-until">jusqu'à ${endH}</div>` : ''}
       </div>`;
     }

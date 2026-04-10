@@ -93,6 +93,7 @@ const MODAL = {
     g('settingsOverlay').querySelectorAll('.st-admin-section').forEach(el => {
       el.style.display = isAdmin ? '' : 'none';
     });
+    g('featureAgentEmoji').checked = DB.getFeature('agentEmoji');
     this._renderSettingsList();
     g('settingsModeOverlay').classList.add('hidden');
     g('settingsOverlay').classList.remove('hidden');
@@ -189,12 +190,15 @@ const MODAL = {
     // ── Agents ────────────────────────────────────────────────────
     const agents = DB.getAgentsWithKeys();
     const isAdmin = this._settingsMode === 'admin';
+    const emojiEnabled = DB.getFeature('agentEmoji');
     g('stAgentList').innerHTML = agents.length
       ? agents.map(({key, name}) => {
           const color = DB.getAgentColorByKey(key) || '#a5b4fc';
+          const emoji = DB.getAgentEmojiByKey(key) || '';
           return `
             <div class="st-item">
               <input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Couleur de ${escapeHtml(name)}">
+              ${emojiEnabled ? `<input type="text" class="st-agent-emoji" data-key="${key || ''}" value="${escapeHtml(emoji)}" placeholder="🧑‍💼" maxlength="4" title="Emoji de ${escapeHtml(name)}">` : ''}
               <span class="st-name">${escapeHtml(name)}</span>
               ${isAdmin ? `<button class="st-del" data-type="agent" data-key="${key || ''}" data-name="${escapeHtml(name)}" title="Supprimer">✕</button>` : ''}
             </div>`;
@@ -203,9 +207,20 @@ const MODAL = {
 
     g('settingsOverlay').querySelectorAll('.st-agent-color').forEach(input => {
       input.addEventListener('change', async () => {
-        const key   = input.dataset.key;
+        const key = input.dataset.key;
         if (!key) return;
         await DB.setAgentColor(key, input.value);
+        CAL.render();
+      });
+    });
+    g('settingsOverlay').querySelectorAll('.st-agent-emoji').forEach(input => {
+      input.addEventListener('change', async () => {
+        const key = input.dataset.key;
+        if (!key) return;
+        // Garder uniquement le premier caractère emoji
+        const val = [...input.value.trim()].slice(0, 2).join('');
+        input.value = val;
+        await DB.setAgentEmoji(key, val);
         CAL.render();
       });
     });
@@ -383,6 +398,13 @@ const MODAL = {
       showToast('Mot de passe admin mis à jour ✓');
     }));
 
+    // Feature toggle : emojis agents (admin)
+    g('featureAgentEmoji').addEventListener('change', () => this._requireAdmin(async () => {
+      await DB.setFeature('agentEmoji', g('featureAgentEmoji').checked || null);
+      this._renderSettingsList();
+      CAL.render();
+    }));
+
     // Modal auth admin
     g('adminAuthConfirm').addEventListener('click', () => this._submitAdminPwd());
     g('adminPwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') this._submitAdminPwd(); });
@@ -440,7 +462,7 @@ const MODAL = {
     let html = `
       <div class="det-row"><span class="det-l">Local</span>   <span class="det-v">${DB.getLocalLabel(res.localId)}</span></div>
       <div class="det-row"><span class="det-l">Service</span> <span class="det-v">${svc}</span></div>
-      <div class="det-row"><span class="det-l">Agent</span>   <span class="det-v">${agt}</span></div>`;
+      <div class="det-row"><span class="det-l">Agent</span>   <span class="det-v">${fmtAgent(agt)}</span></div>`;
 
     if (res.isPermanent) {
       html += `<div class="det-row"><span class="det-l">Type</span>
