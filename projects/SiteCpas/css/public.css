@@ -119,6 +119,24 @@ body {
   font-size: 1.1rem;
 }
 
+/* ── Séparateurs de sections ───────────────────────────────────── */
+.pub-section-header {
+  grid-column: 1 / -1;
+  font-size: .75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--muted);
+  padding: .25rem .25rem .1rem;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: -.25rem;
+}
+
+.pub-section-divider {
+  grid-column: 1 / -1;
+  height: 1.5rem;
+}
+
 /* ── Cartes locaux ─────────────────────────────────────────────── */
 .pub-card {
   background: var(--surface);
@@ -212,11 +230,11 @@ body {
 .pub-grp-card.pub-grp-busy   { border-top-color: #ef4444; }
 
 .pub-grp-name {
-  font-size: .8rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .1em; color: #94a3b8;
+  font-size: 1.5rem; font-weight: 900; color: #f1f5f9;
+  line-height: 1.15; letter-spacing: -.01em;
 }
 .pub-grp-status {
-  font-size: 1.6rem; font-weight: 900; line-height: 1.1;
+  font-size: 1rem; font-weight: 600; line-height: 1.2;
 }
 .pub-grp-status.grp-free   { color: #4ade80; }
 .pub-grp-status.grp-active { color: #fbbf24; }
@@ -224,11 +242,11 @@ body {
 
 .pub-grp-dots { display: flex; gap: .45rem; }
 .pub-grp-dot {
-  width: 16px; height: 16px; border-radius: 50%; background: #22c55e;
+  width: 14px; height: 14px; border-radius: 50%; background: #22c55e;
 }
 .pub-grp-dot.busy { background: #ef4444; }
 
-.pub-grp-cap { font-size: .82rem; color: #64748b; }
+.pub-grp-cap { font-size: .78rem; color: #64748b; }
 
 /* ── Jour férié ────────────────────────────────────────────────── */
 .pub-holiday {

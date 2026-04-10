@@ -522,22 +522,40 @@ const LIVE = {
 
     sel.addEventListener('change', () => {
       this.setRole(sel.value);
+      this._showAllBureaux = false;
       this._applyRoleUI();
       this.render();
     });
+
+    g('btnToggleBureaux').addEventListener('click', () => {
+      this._showAllBureaux = !this._showAllBureaux;
+      this._updateToggleBtn();
+      this.render();
+    });
+
     this._applyRoleUI();
   },
+
+  _showAllBureaux: false,
 
   _applyRoleUI() {
     const role = this.getRole();
     const isAccueil = role === 'accueil';
-    // Bouton Files + recherche : accueil seulement
     g('btnQueueGroups').classList.toggle('hidden', !isAccueil);
+    g('btnToggleBureaux').classList.toggle('hidden', !isAccueil);
     g('liveAgentSearch').closest('.live-search-wrap').classList.toggle('hidden', !isAccueil);
     if (!isAccueil) {
-      // Fermer le panneau Files si on bascule
       g('queueGroupPanel').classList.add('hidden');
+      this._showAllBureaux = false;
     }
+    this._updateToggleBtn();
+  },
+
+  _updateToggleBtn() {
+    const btn = g('btnToggleBureaux');
+    if (!btn) return;
+    btn.textContent = this._showAllBureaux ? '🏢 Masquer les bureaux' : '🏢 Voir tous les bureaux';
+    btn.classList.toggle('lv-toggle-active', this._showAllBureaux);
   },
 
   open() {
@@ -636,7 +654,9 @@ const LIVE = {
     }).join('');
 
     // Locaux à afficher selon le rôle
-    const visibleLocals = isAccueil ? [] : (bureauLocal ? [bureauLocal] : CONFIG.LOCALS);
+    const visibleLocals = isAccueil
+      ? (this._showAllBureaux ? CONFIG.LOCALS : [])
+      : (bureauLocal ? [bureauLocal] : CONFIG.LOCALS);
 
     g('liveGrid').innerHTML = (isAccueil ? groupCards : '') + visibleLocals.map(l => {
       const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
@@ -735,7 +755,7 @@ const LIVE = {
         } else {
           await DB.incrementGroupOverflow(grpId);
           const overflow = DB.getGroupOverflowQueue(grpId);
-          showToast(`⏳ Tous les bureaux occupés — ${overflow} en attente`);
+          showWaitBanner(overflow);
         }
       });
     });
@@ -937,6 +957,18 @@ const LIVE = {
         <input type="checkbox" value="${l}"> ${DB.getLocalLabel(l)}
       </label>`
     ).join('');
+
+    // Menu déroulant des services
+    const sel = g('qgroupNameSelect');
+    const services = DB.getServices().filter(s => s !== 'Autre');
+    sel.innerHTML = services.map(s => `<option value="${s}">${s}</option>`).join('')
+      + `<option value="__autre__">Autre…</option>`;
+    // Afficher/cacher le champ custom
+    const customInput = g('qgroupNameCustom');
+    sel.onchange = () => {
+      customInput.classList.toggle('hidden', sel.value !== '__autre__');
+    };
+    customInput.classList.add('hidden');
   },
 
   _initQueueGroupPanel() {
@@ -947,13 +979,16 @@ const LIVE = {
     });
 
     g('btnQgroupAdd').addEventListener('click', async () => {
-      const name = g('qgroupName').value.trim();
+      const sel = g('qgroupNameSelect');
+      const name = sel.value === '__autre__'
+        ? g('qgroupNameCustom').value.trim()
+        : sel.value;
       if (!name) return;
       const checked = [...g('qgroupLocals').querySelectorAll('input:checked')].map(i => parseInt(i.value));
       if (checked.length < 1) { showToast('⚠ Sélectionnez au moins 1 local.'); return; }
       const id = 'qg_' + Date.now();
       await DB.saveQueueGroup(id, name, checked);
-      g('qgroupName').value = '';
+      g('qgroupNameCustom').value = '';
       g('qgroupLocals').querySelectorAll('input').forEach(i => i.checked = false);
       this._renderQueueGroupPanel();
     });

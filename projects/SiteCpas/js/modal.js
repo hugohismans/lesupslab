@@ -1093,6 +1093,20 @@ function showRoutingToast(bureauLabel) {
   banner.onclick = () => { banner.classList.add('hidden'); clearTimeout(_routingTimer); };
 }
 
+let _waitBannerTimer = null;
+function showWaitBanner(queueCount) {
+  const banner = document.getElementById('waitBanner');
+  const sub    = document.getElementById('waitBannerSub');
+  if (!banner) return;
+  sub.textContent = queueCount > 0
+    ? `${queueCount} personne${queueCount > 1 ? 's' : ''} en attente`
+    : '';
+  banner.classList.remove('hidden');
+  if (_waitBannerTimer) clearTimeout(_waitBannerTimer);
+  _waitBannerTimer = setTimeout(() => banner.classList.add('hidden'), 7000);
+  banner.onclick = () => { banner.classList.add('hidden'); clearTimeout(_waitBannerTimer); };
+}
+
 let _agentCallTimer = null;
 function showAgentCallNotif(bureauLabel) {
   const banner = document.getElementById('agentCallBanner');

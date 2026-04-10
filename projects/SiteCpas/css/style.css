@@ -1019,6 +1019,16 @@ body {
   font-size: 2rem; font-weight: 800; color: #f1f5f9;
   font-variant-numeric: tabular-nums; letter-spacing: .05em;
 }
+.lv-toggle-bureaux {
+  padding: .45rem .9rem; background: #1e293b; border: 1.5px solid #475569;
+  color: #94a3b8; border-radius: 8px; font-size: .85rem; font-weight: 600;
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+}
+.lv-toggle-bureaux:hover   { background: #334155; color: #e2e8f0; }
+.lv-toggle-bureaux.lv-toggle-active {
+  background: #1e3a5f; border-color: #3b82f6; color: #93c5fd;
+}
+
 .lv-role-select {
   padding: .45rem .8rem; background: #1e293b; border: 1.5px solid #475569;
   color: #e2e8f0; border-radius: 8px; font-size: .85rem; font-weight: 600;
@@ -1058,6 +1068,18 @@ body {
   background: #166534; border-radius: 12px; padding: .2rem 1rem;
 }
 .lv-q-spacer { width: 32px; }
+
+/* Bannière "Invitez à patienter" (accueil, tous bureaux occupés) */
+.lv-wait-banner {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 2rem; background: #431407; border-bottom: 2px solid #f97316;
+  cursor: pointer; animation: routing-pop .3s ease;
+}
+.lv-wait-banner.hidden { display: none; }
+.lv-wait-icon { font-size: 2rem; }
+.lv-wait-body { display: flex; flex-direction: column; gap: .1rem; }
+.lv-wait-text { font-size: 1.3rem; font-weight: 800; color: #fed7aa; }
+.lv-wait-sub  { font-size: .9rem; color: #fb923c; font-weight: 600; }
 
 /* Bannière notification agent (bénéficiaire entrant) */
 .lv-agent-call-banner {

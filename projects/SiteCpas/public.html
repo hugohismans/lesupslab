@@ -198,16 +198,17 @@ function render() {
     const total    = lids.length;
     const waiting  = overflow; // personnes en attente au-delà de la capacité
 
+    const free = total - occupied;
     let statusHtml, cardClass;
-    if (occupied === 0) {
-      cardClass  = 'pub-grp-free';
-      statusHtml = `<div class="pub-grp-status grp-free">Aucune attente</div>`;
-    } else if (waiting > 0) {
+    if (waiting > 0) {
       cardClass  = 'pub-grp-busy';
       statusHtml = `<div class="pub-grp-status grp-busy">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>`;
+    } else if (free === 0) {
+      cardClass  = 'pub-grp-busy';
+      statusHtml = `<div class="pub-grp-status grp-busy">Aucun bureau disponible</div>`;
     } else {
-      cardClass  = 'pub-grp-active';
-      statusHtml = `<div class="pub-grp-status grp-active">${occupied} bureau${occupied > 1 ? 'x' : ''} en service</div>`;
+      cardClass  = free === total ? 'pub-grp-free' : 'pub-grp-active';
+      statusHtml = `<div class="pub-grp-status ${free === total ? 'grp-free' : 'grp-active'}">${free} bureau${free > 1 ? 'x' : ''} disponible${free > 1 ? 's' : ''}</div>`;
     }
 
     const dots = lids.map(l => {
@@ -216,14 +217,14 @@ function render() {
     }).join('');
 
     return `<div class="pub-grp-card ${cardClass}">
-      <div class="pub-grp-name">🔗 ${grp.name}</div>
+      <div class="pub-grp-name">${grp.name}</div>
       ${statusHtml}
       <div class="pub-grp-dots">${dots}</div>
       <div class="pub-grp-cap">${occupied}/${total} bureaux</div>
     </div>`;
   }).join('');
 
-  main.innerHTML = _locals.map(l => {
+  const bureauCards = _locals.map(l => {
     const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
     const res  = occs.find(r => parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now);
     const next = !perm && !res
@@ -268,8 +269,13 @@ function render() {
     </div>`;
   }).join('');
 
-  // Injecter les cartes groupes en tête (si au moins un groupe actif)
-  if (groupCards) main.innerHTML = groupCards + main.innerHTML;
+  // Assembler les deux sections
+  const grpSection = groupCards
+    ? `<div class="pub-section-header">Services disponibles</div>${groupCards}
+       <div class="pub-section-divider"></div>`
+    : '';
+  const bureauSection = `<div class="pub-section-header">🏢 Bureaux</div>${bureauCards}`;
+  main.innerHTML = grpSection + bureauSection;
 
   document.getElementById('pubLastUpdate').textContent =
     `Dernière mise à jour : ${now.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' })}`;

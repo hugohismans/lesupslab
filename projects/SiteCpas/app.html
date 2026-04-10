@@ -481,6 +481,7 @@
       <div id="liveAgentSuggestions" class="lv-suggestions"></div>
     </div>
     <div class="live-clock" id="liveClock"></div>
+    <button class="lv-toggle-bureaux hidden" id="btnToggleBureaux" title="Voir tous les bureaux">🏢 Voir tous les bureaux</button>
     <button class="live-qgroup-btn" id="btnQueueGroups" title="Gérer les files partagées">🔗 Files</button>
     <button class="live-close" id="btnLiveClose">✕ Fermer</button>
   </div>
@@ -488,7 +489,8 @@
   <div class="lv-qgroup-panel hidden" id="queueGroupPanel">
     <div class="lv-qgroup-list" id="queueGroupList"></div>
     <div class="lv-qgroup-new">
-      <input type="text" id="qgroupName" class="lv-qgroup-input" placeholder="Nom du groupe…">
+      <select id="qgroupNameSelect" class="lv-qgroup-input"></select>
+      <input type="text" id="qgroupNameCustom" class="lv-qgroup-input hidden" placeholder="Nom personnalisé…">
       <div class="lv-qgroup-locals" id="qgroupLocals"></div>
       <button class="lv-qgroup-add" id="btnQgroupAdd">+ Créer</button>
     </div>
@@ -498,6 +500,14 @@
     <span class="lv-routing-arrow">→</span>
     <span class="lv-routing-text">Envoyez le bénéficiaire au</span>
     <span class="lv-routing-bureau" id="routingBureau"></span>
+  </div>
+  <!-- Notification accueil : inviter à patienter -->
+  <div class="lv-wait-banner hidden" id="waitBanner">
+    <span class="lv-wait-icon">⏳</span>
+    <div class="lv-wait-body">
+      <span class="lv-wait-text">Invitez le bénéficiaire à patienter</span>
+      <span class="lv-wait-sub" id="waitBannerSub"></span>
+    </div>
   </div>
   <!-- Notification agent : bénéficiaire entrant -->
   <div class="lv-agent-call-banner hidden" id="agentCallBanner">
