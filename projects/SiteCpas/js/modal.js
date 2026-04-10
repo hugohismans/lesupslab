@@ -391,7 +391,9 @@ const MODAL = {
       };
       const checkEnd = recEnd2
         ? new Date(recEnd2 + 'T23:59:59')
-        : advDate(new Date(startDT), isRec ? recType2 : 'daily', isRec ? 365 : 0);
+        : isRec
+          ? advDate(new Date(startDT), recType2, 365)
+          : new Date(endDT);
 
       const myOccs = expandReservation('__temp__', tempRes, new Date(startDT), checkEnd);
 
@@ -760,7 +762,9 @@ const MODAL = {
     };
     const checkEnd = recEnd2
       ? new Date(recEnd2 + 'T23:59:59')
-      : advDate(s, isRec ? recType2 : 'daily', isRec ? 365 : 0);
+      : isRec
+        ? advDate(s, recType2, 365)
+        : e;
     const myOccs = expandReservation('__hint__', tempRes, s, checkEnd);
 
     // Locaux occupés sur au moins une occurrence
