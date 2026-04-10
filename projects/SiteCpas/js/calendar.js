@@ -103,7 +103,10 @@ const CAL = {
 
           const svc   = res.service === 'Autre' ? res.serviceCustom : res.service;
           const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
-          const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
+          const recType = res.recurrence?.type;
+          const isRec   = recType && recType !== 'none';
+          const recLabels = { daily: 'Quotidien', weekly: 'Hebdomadaire', monthly: 'Mensuel' };
+          const recLabel  = isRec ? recLabels[recType] || '' : '';
           const startH = res._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const endH   = res._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
           h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}" rowspan="${span}"
@@ -111,7 +114,7 @@ const CAL = {
             <span class="ct">
               <b>${svc}</b><br>
               <small>${agt}</small><br>
-              <small class="ct-time">${startH} – ${endH}${isRec ? ' ↻' : ''}</small>
+              <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
             </span>
           </td>`;
 

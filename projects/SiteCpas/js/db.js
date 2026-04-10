@@ -3,11 +3,13 @@
 // ═══════════════════════════════════════════════════════════════════
 
 const DB = {
-  _db:        null,
-  _data:      {},
-  _cbs:       [],
-  _config:    { agents: [], services: [], localLabels: {} },
-  _configCbs: [],
+  _db:           null,
+  _data:         {},
+  _cbs:          [],
+  _config:       { agents: [], services: [], localLabels: {} },
+  _configCbs:    [],
+  _lieux:        {},
+  _currentLieuId: null,
 
   init() {
     if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
@@ -21,9 +23,8 @@ const DB = {
   // ── Config dynamique (agents / services) ─────────────────────────
   initConfig() {
     this._db.ref('appConfig').on('value', snap => {
-      const hasConfig = snap.val() !== null; // false = jamais configuré → on utilise les défauts
+      const hasConfig = snap.val() !== null;
       const d = snap.val() || {};
-      // Stocker {key, name} pour pouvoir supprimer directement par clé Firebase
       this._config = {
         agents:   hasConfig
           ? (d.agents   ? Object.entries(d.agents).map(([k,v])  => ({key: k, name: v})) : [])
@@ -33,6 +34,37 @@ const DB = {
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
         localLabels: d.localLabels || {}
       };
+
+      // Charger les lieux triés par order
+      this._lieux = {};
+      if (d.lieux) {
+        Object.entries(d.lieux)
+          .map(([id, lieu]) => ({
+            id,
+            name:     lieu.name || 'Sans nom',
+            order:    lieu.order ?? 999,
+            localIds: lieu.localIds
+              ? Object.keys(lieu.localIds).map(Number).sort((a, b) => a - b)
+              : []
+          }))
+          .sort((a, b) => a.order - b.order)
+          .forEach(({ id, name, order, localIds }) => {
+            this._lieux[id] = { name, order, localIds };
+          });
+      }
+
+      // Restaurer le lieu depuis localStorage, sinon prendre le premier
+      const saved = localStorage.getItem('cpas_currentLieu');
+      if (saved && this._lieux[saved]) {
+        this._currentLieuId = saved;
+      } else if (!this._currentLieuId || !this._lieux[this._currentLieuId]) {
+        const ids = Object.keys(this._lieux);
+        this._currentLieuId = ids.length ? ids[0] : null;
+      }
+      if (this._currentLieuId && this._lieux[this._currentLieuId]) {
+        CONFIG.LOCALS = [...this._lieux[this._currentLieuId].localIds];
+      }
+
       this._configCbs.forEach(fn => fn());
     });
   },
@@ -62,17 +94,100 @@ const DB = {
     await this._db.ref(`appConfig/services/${key}`).remove();
   },
 
-  async seedConfigIfEmpty() {
-    const snap = await this._db.ref('appConfig').once('value');
-    if (snap.val() !== null) return;
+  // ── Lieux ────────────────────────────────────────────────────────
+  getCurrentLieuId() { return this._currentLieuId; },
+
+  getLieux() {
+    // Retourne un objet dont les clés sont dans l'ordre du champ order
+    const sorted = Object.entries(this._lieux)
+      .sort(([, a], [, b]) => (a.order ?? 999) - (b.order ?? 999));
+    const result = {};
+    sorted.forEach(([id, lieu]) => { result[id] = lieu; });
+    return result;
+  },
+
+  setCurrentLieu(lieuId) {
+    this._currentLieuId = lieuId;
+    localStorage.setItem('cpas_currentLieu', lieuId);
+    const lieu = this._lieux[lieuId];
+    if (lieu) CONFIG.LOCALS = [...lieu.localIds];
+    this._configCbs.forEach(fn => fn());
+  },
+
+  async addLieu(name) {
+    const maxOrder = Object.values(this._lieux).reduce((m, l) => Math.max(m, l.order ?? 0), -1);
+    const ref = await this._db.ref('appConfig/lieux').push({ name, order: maxOrder + 1, localIds: {} });
+    return ref.key;
+  },
+
+  async moveLieu(lieuId, dir) {
+    const entries = Object.entries(this._lieux)
+      .sort(([, a], [, b]) => (a.order ?? 999) - (b.order ?? 999));
+    const idx     = entries.findIndex(([id]) => id === lieuId);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= entries.length) return;
+    // Réécrire tous les ordres par position pour garantir l'unicité
     const updates = {};
-    CONFIG.AGENTS.filter(a => a !== 'Autre').forEach(a => {
-      updates[`appConfig/agents/${genId()}`] = a;
-    });
-    CONFIG.SERVICES.filter(s => s !== 'Autre').forEach(s => {
-      updates[`appConfig/services/${genId()}`] = s;
+    entries.forEach(([id], i) => {
+      let pos = i;
+      if (i === idx)     pos = swapIdx;
+      if (i === swapIdx) pos = idx;
+      updates[`appConfig/lieux/${id}/order`] = pos;
     });
     await this._db.ref().update(updates);
+  },
+
+  async removeLieu(lieuId) {
+    const lieu = this._lieux[lieuId];
+    const updates = { [`appConfig/lieux/${lieuId}`]: null };
+    if (lieu?.localIds) {
+      lieu.localIds.forEach(id => { updates[`appConfig/localLabels/${id}`] = null; });
+    }
+    await this._db.ref().update(updates);
+  },
+
+  async addLocalToLieu(lieuId, label) {
+    const allIds = Object.values(this._lieux).flatMap(l => l.localIds);
+    const newId  = allIds.length ? Math.max(...allIds) + 1 : 1;
+    const updates = {
+      [`appConfig/localLabels/${newId}`]:              label || `Local ${newId}`,
+      [`appConfig/lieux/${lieuId}/localIds/${newId}`]: true
+    };
+    await this._db.ref().update(updates);
+    return newId;
+  },
+
+  async removeLocal(lieuId, localId) {
+    await this._db.ref().update({
+      [`appConfig/lieux/${lieuId}/localIds/${localId}`]: null,
+      [`appConfig/localLabels/${localId}`]:              null
+    });
+  },
+
+  async seedConfigIfEmpty() {
+    const snap = await this._db.ref('appConfig').once('value');
+    const d    = snap.val() || {};
+    const updates = {};
+
+    if (!d.agents) {
+      CONFIG.AGENTS.filter(a => a !== 'Autre').forEach(a => {
+        updates[`appConfig/agents/${genId()}`] = a;
+      });
+    }
+    if (!d.services) {
+      CONFIG.SERVICES.filter(s => s !== 'Autre').forEach(s => {
+        updates[`appConfig/services/${genId()}`] = s;
+      });
+    }
+    // Créer le lieu "CPAS" par défaut avec les locaux 1-7 si aucun lieu n'existe
+    if (!d.lieux) {
+      const lieuId   = genId();
+      const localIds = {};
+      [1, 2, 3, 4, 5, 6, 7].forEach(id => { localIds[id] = true; });
+      updates[`appConfig/lieux/${lieuId}`] = { name: 'CPAS', order: 0, localIds };
+    }
+
+    if (Object.keys(updates).length) await this._db.ref().update(updates);
   },
 
   onChange(fn) { this._cbs.push(fn); },

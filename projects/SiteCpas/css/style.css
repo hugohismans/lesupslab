@@ -163,6 +163,39 @@ body {
 .tab.active { background: #fff; color: #1a3a5c; }
 .tab:hover:not(.active) { background: rgba(255,255,255,.18); color: #fff; }
 
+/* ── Barre de lieux ───────────────────────────────────────────── */
+.lieu-bar {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .4rem 1rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.lieu-tab {
+  padding: .3rem .9rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  background: #fff;
+  color: #475569;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.lieu-tab.active {
+  background: #1a3a5c;
+  border-color: #1a3a5c;
+  color: #fff;
+}
+.lieu-tab:hover:not(.active) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
 .hd-nav { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
 .btn-nav {
   background: transparent; border: 1.5px solid rgba(255,255,255,.35);
@@ -608,6 +641,24 @@ body {
   flex-shrink: 0; transition: background .12s;
 }
 .st-local-save:hover { background: #dcfce7; }
+.st-local-del {
+  background: #fff5f5; border: 1.5px solid #fca5a5; color: #dc2626;
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+  font-size: .8rem; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .12s;
+}
+.st-local-del:hover { background: #fee2e2; }
+.st-lieu-arrows { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.st-lieu-up, .st-lieu-down {
+  background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
+  width: 22px; height: 14px; border-radius: 3px; cursor: pointer;
+  font-size: .55rem; line-height: 1; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s;
+}
+.st-lieu-up:hover:not(:disabled), .st-lieu-down:hover:not(:disabled) { background: #e2e8f0; }
+.st-lieu-up:disabled, .st-lieu-down:disabled { opacity: .3; cursor: default; }
 
 /* ═══════════════════════════════════════════════════════════════════
    MODAL CONFLITS

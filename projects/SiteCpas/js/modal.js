@@ -37,10 +37,94 @@ const MODAL = {
   },
 
   _renderSettingsList() {
-    const agents   = DB.getAgents().filter(a => a !== 'Autre');
-    const services = DB.getServices().filter(s => s !== 'Autre');
+    // ── Lieux ──────────────────────────────────────────────────────
+    const lieux = DB.getLieux();
+    const currentLieuId = DB.getCurrentLieuId();
+    const lieuEntries   = Object.entries(lieux);
+    g('stLieuList').innerHTML = lieuEntries.length
+      ? lieuEntries.map(([id, lieu], idx) => `
+          <div class="st-item">
+            <div class="st-lieu-arrows">
+              <button class="st-lieu-up"   data-lieu-id="${id}" title="Monter"  ${idx === 0 ? 'disabled' : ''}>▲</button>
+              <button class="st-lieu-down" data-lieu-id="${id}" title="Descendre" ${idx === lieuEntries.length - 1 ? 'disabled' : ''}>▼</button>
+            </div>
+            <span class="st-name">${escapeHtml(lieu.name)}${id === currentLieuId ? ' <em style="color:#64748b;font-size:.8em">(actif)</em>' : ''}</span>
+            <button class="st-lieu-del" data-lieu-id="${id}" data-name="${escapeHtml(lieu.name)}" title="Supprimer">✕</button>
+          </div>`).join('')
+      : '<p class="st-empty">Aucun lieu configuré.</p>';
 
-    // Listes agents / services — on stocke la clé Firebase dans data-key
+    g('settingsOverlay').querySelectorAll('.st-lieu-up, .st-lieu-down').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id  = btn.dataset.lieuId;
+        const dir = btn.classList.contains('st-lieu-up') ? -1 : 1;
+        btn.disabled = true;
+        await DB.moveLieu(id, dir);
+      });
+    });
+    g('settingsOverlay').querySelectorAll('.st-lieu-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id   = btn.dataset.lieuId;
+        const name = btn.dataset.name;
+        if (lieuEntries.length <= 1) return alert('Impossible de supprimer le dernier lieu.');
+        if (!confirm(`Supprimer le lieu "${name}" et tous ses locaux ?`)) return;
+        btn.disabled = true;
+        await DB.removeLieu(id);
+        showToast('Lieu supprimé ✓');
+      });
+    });
+
+    // ── Locaux du lieu courant ─────────────────────────────────────
+    const currentLieu = lieux[currentLieuId];
+    g('stLieuName').textContent = currentLieu?.name || '...';
+    const localIds = currentLieu?.localIds || [];
+
+    g('stLocalList').innerHTML = localIds.length
+      ? localIds.map(id => `
+          <div class="st-local-row">
+            <input class="st-local-input" type="text" data-localid="${id}"
+                   value="${escapeHtml(DB.getLocalLabel(id))}" placeholder="Local ${id}">
+            <button class="st-local-save" data-localid="${id}" title="Enregistrer">✓</button>
+            <button class="st-local-del" data-localid="${id}" data-lieu="${currentLieuId}" title="Supprimer">✕</button>
+          </div>`).join('')
+      : '<p class="st-empty">Aucun local dans ce lieu.</p>';
+
+    g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id    = btn.dataset.localid;
+        const row   = btn.closest('.st-local-row');
+        const input = row?.querySelector('input');
+        if (!input) return;
+        const val = input.value;
+        btn.disabled = true;
+        try {
+          await DB.setLocalLabel(id, val);
+          showToast('Libellé enregistré ✓');
+          this.refreshSelects();
+        } catch (e) {
+          alert('Erreur : ' + e.message);
+          btn.disabled = false;
+        }
+      });
+    });
+    g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          g('settingsOverlay').querySelector(`.st-local-save[data-localid="${input.dataset.localid}"]`)?.click();
+        }
+      });
+    });
+    g('settingsOverlay').querySelectorAll('.st-local-del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const localId = parseInt(btn.dataset.localid);
+        const lieuId  = btn.dataset.lieu;
+        if (!confirm(`Supprimer ce local ? Les réservations existantes ne seront pas supprimées.`)) return;
+        btn.disabled = true;
+        await DB.removeLocal(lieuId, localId);
+        showToast('Local supprimé ✓');
+      });
+    });
+
+    // ── Agents / Services ──────────────────────────────────────────
     const makeList = (items, type, containerId) => {
       g(containerId).innerHTML = items.length
         ? items.map(({key, name}) => `
@@ -53,16 +137,6 @@ const MODAL = {
     makeList(DB.getAgentsWithKeys(),   'agent',   'stAgentList');
     makeList(DB.getServicesWithKeys(), 'service', 'stSvcList');
 
-    // Liste locaux avec libellés éditables
-    g('stLocalList').innerHTML = CONFIG.LOCALS.map(id => `
-      <div class="st-local-row">
-        <span class="st-local-num">Local ${id}</span>
-        <input class="st-local-input" type="text" data-localid="${id}"
-               value="${escapeHtml(DB.getLocalLabel(id))}" placeholder="Local ${id}">
-        <button class="st-local-save" data-localid="${id}" title="Sauvegarder">✓</button>
-      </div>`).join('');
-
-    // Bind suppression agents/services — suppression directe par clé Firebase
     g('settingsOverlay').querySelectorAll('.st-del').forEach(btn => {
       btn.addEventListener('click', async () => {
         const { type, key, name } = btn.dataset;
@@ -71,37 +145,7 @@ const MODAL = {
         btn.disabled = true;
         if (type === 'agent') await DB.removeAgentByKey(key);
         else                  await DB.removeServiceByKey(key);
-        this.refreshSelects();
         showToast('Supprimé ✓');
-      });
-    });
-
-    // Bind sauvegarde libellés locaux
-    g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id    = btn.dataset.localid;
-        const row   = btn.closest('.st-local-row');
-        const input = row ? row.querySelector('input') : null;
-        if (!input) return;
-        const val = input.value;  // capturer avant tout await
-        btn.disabled = true;
-        try {
-          await DB.setLocalLabel(id, val);
-          showToast('Libellé enregistré ✓');
-          this.refreshSelects();  // mise à jour immédiate sans attendre Firebase
-        } catch (e) {
-          alert('Erreur : ' + e.message);
-          btn.disabled = false;
-        }
-      });
-    });
-    g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
-      input.addEventListener('keydown', e => {
-        if (e.key === 'Enter') {
-          const id  = input.dataset.localid;
-          const btn = g('settingsOverlay').querySelector(`.st-local-save[data-localid="${id}"]`);
-          btn?.click();
-        }
       });
     });
   },
@@ -200,6 +244,33 @@ const MODAL = {
       showToast('Service ajouté ✓');
     });
     g('stSvcInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stSvcAdd').click(); });
+
+    // Paramètres — ajouter lieu
+    g('stLieuAdd').addEventListener('click', async () => {
+      const name = g('stLieuInput').value.trim();
+      if (!name) return;
+      g('stLieuAdd').disabled = true;
+      await DB.addLieu(name);
+      g('stLieuInput').value = '';
+      g('stLieuAdd').disabled = false;
+      this._renderSettingsList();
+      showToast('Lieu ajouté ✓');
+    });
+    g('stLieuInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLieuAdd').click(); });
+
+    // Paramètres — ajouter local au lieu courant
+    g('stLocalAdd').addEventListener('click', async () => {
+      const label   = g('stLocalInput').value.trim();
+      const lieuId  = DB.getCurrentLieuId();
+      if (!lieuId) return alert('Aucun lieu actif.');
+      g('stLocalAdd').disabled = true;
+      await DB.addLocalToLieu(lieuId, label);
+      g('stLocalInput').value = '';
+      g('stLocalAdd').disabled = false;
+      this._renderSettingsList();
+      showToast('Local ajouté ✓');
+    });
+    g('stLocalInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLocalAdd').click(); });
 
     // Bouton paramètres dans le header
     g('btnSettings').addEventListener('click', () => this.openSettings());

@@ -8,9 +8,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.init();
   MODAL.init();
 
-  // Config dynamique (agents / services) — écoute Firebase
+  // Config dynamique (agents / services / lieux) — écoute Firebase
   DB.initConfig();
   DB.onConfigChange(() => {
+    updateLieuTabs();
     MODAL.refreshSelects();
     CAL.render();
     updateStatusBar();
@@ -43,6 +44,20 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Rendu initial du calendrier
   CAL.render();
+
+  // ─── Onglets de lieux ──────────────────────────────────────────
+  function updateLieuTabs() {
+    const lieux     = DB.getLieux();
+    const currentId = DB.getCurrentLieuId();
+    const bar       = document.getElementById('lieuBar');
+    bar.innerHTML   = Object.entries(lieux).map(([id, lieu]) => `
+      <button class="lieu-tab${id === currentId ? ' active' : ''}" data-lieu="${id}">
+        ${lieu.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+      </button>`).join('');
+    bar.querySelectorAll('.lieu-tab').forEach(btn => {
+      btn.addEventListener('click', () => DB.setCurrentLieu(btn.dataset.lieu));
+    });
+  }
 
   // ─── Onglets de vue ────────────────────────────────────────────
   document.querySelectorAll('.tab').forEach(tab => {
