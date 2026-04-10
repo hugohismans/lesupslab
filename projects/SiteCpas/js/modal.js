@@ -108,15 +108,15 @@ const MODAL = {
       : '<p class="st-empty">Aucun lieu configuré.</p>';
 
     g('settingsOverlay').querySelectorAll('.st-lieu-up, .st-lieu-down').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
         const id  = btn.dataset.lieuId;
         const dir = btn.classList.contains('st-lieu-up') ? -1 : 1;
         btn.disabled = true;
         await DB.moveLieu(id, dir);
-      });
+      }));
     });
     g('settingsOverlay').querySelectorAll('.st-lieu-del').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
         const id   = btn.dataset.lieuId;
         const name = btn.dataset.name;
         if (lieuEntries.length <= 1) return alert('Impossible de supprimer le dernier lieu.');
@@ -124,7 +124,7 @@ const MODAL = {
         btn.disabled = true;
         await DB.removeLieu(id);
         showToast('Lieu supprimé ✓');
-      });
+      }));
     });
 
     // ── Locaux du lieu courant ─────────────────────────────────────
@@ -143,7 +143,7 @@ const MODAL = {
       : '<p class="st-empty">Aucun local dans ce lieu.</p>';
 
     g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
         const id    = btn.dataset.localid;
         const row   = btn.closest('.st-local-row');
         const input = row?.querySelector('input');
@@ -158,7 +158,7 @@ const MODAL = {
           alert('Erreur : ' + e.message);
           btn.disabled = false;
         }
-      });
+      }));
     });
     g('settingsOverlay').querySelectorAll('.st-local-input').forEach(input => {
       input.addEventListener('keydown', e => {
@@ -168,14 +168,14 @@ const MODAL = {
       });
     });
     g('settingsOverlay').querySelectorAll('.st-local-del').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
         const localId = parseInt(btn.dataset.localid);
         const lieuId  = btn.dataset.lieu;
         if (!confirm(`Supprimer ce local ? Les réservations existantes ne seront pas supprimées.`)) return;
         btn.disabled = true;
         await DB.removeLocal(lieuId, localId);
         showToast('Local supprimé ✓');
-      });
+      }));
     });
 
     // ── Agents ────────────────────────────────────────────────────
@@ -211,7 +211,7 @@ const MODAL = {
       : '<p class="st-empty">Aucun élément.</p>';
 
     g('settingsOverlay').querySelectorAll('.st-del').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
         const { type, key, name } = btn.dataset;
         if (!key) return alert('Clé Firebase manquante, rechargez la page.');
         if (!confirm(`Supprimer "${name}" ?`)) return;
@@ -219,7 +219,7 @@ const MODAL = {
         if (type === 'agent') await DB.removeAgentByKey(key);
         else                  await DB.removeServiceByKey(key);
         showToast('Supprimé ✓');
-      });
+      }));
     });
   },
 
@@ -290,8 +290,8 @@ const MODAL = {
       g(id).addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
     });
 
-    // Paramètres — ajouter agent
-    g('stAgentAdd').addEventListener('click', async () => {
+    // Paramètres — ajouter agent (admin)
+    g('stAgentAdd').addEventListener('click', () => this._requireAdmin(async () => {
       const name = g('stAgentInput').value.trim();
       if (!name) return;
       if (DB.getAgents().includes(name)) return alert('Cet agent existe déjà.');
@@ -301,11 +301,11 @@ const MODAL = {
       g('stAgentAdd').disabled = false;
       this.refreshSelects();
       showToast('Agent ajouté ✓');
-    });
+    }));
     g('stAgentInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stAgentAdd').click(); });
 
-    // Paramètres — ajouter service
-    g('stSvcAdd').addEventListener('click', async () => {
+    // Paramètres — ajouter service (admin)
+    g('stSvcAdd').addEventListener('click', () => this._requireAdmin(async () => {
       const name = g('stSvcInput').value.trim();
       if (!name) return;
       if (DB.getServices().includes(name)) return alert('Ce service existe déjà.');
@@ -315,11 +315,11 @@ const MODAL = {
       g('stSvcAdd').disabled = false;
       this.refreshSelects();
       showToast('Service ajouté ✓');
-    });
+    }));
     g('stSvcInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stSvcAdd').click(); });
 
-    // Paramètres — ajouter lieu
-    g('stLieuAdd').addEventListener('click', async () => {
+    // Paramètres — ajouter lieu (admin)
+    g('stLieuAdd').addEventListener('click', () => this._requireAdmin(async () => {
       const name = g('stLieuInput').value.trim();
       if (!name) return;
       g('stLieuAdd').disabled = true;
@@ -328,11 +328,11 @@ const MODAL = {
       g('stLieuAdd').disabled = false;
       this._renderSettingsList();
       showToast('Lieu ajouté ✓');
-    });
+    }));
     g('stLieuInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLieuAdd').click(); });
 
-    // Paramètres — ajouter local au lieu courant
-    g('stLocalAdd').addEventListener('click', async () => {
+    // Paramètres — ajouter local au lieu courant (admin)
+    g('stLocalAdd').addEventListener('click', () => this._requireAdmin(async () => {
       const label   = g('stLocalInput').value.trim();
       const lieuId  = DB.getCurrentLieuId();
       if (!lieuId) return alert('Aucun lieu actif.');
@@ -342,14 +342,14 @@ const MODAL = {
       g('stLocalAdd').disabled = false;
       this._renderSettingsList();
       showToast('Local ajouté ✓');
-    });
+    }));
     g('stLocalInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLocalAdd').click(); });
 
-    // Bouton paramètres — protégé par mot de passe admin
-    g('btnSettings').addEventListener('click', () => this._requireAdmin(() => this.openSettings()));
+    // Bouton paramètres — ouvert à tous (les actions sensibles demandent le mdp admin)
+    g('btnSettings').addEventListener('click', () => this.openSettings());
 
-    // Changer le mot de passe application depuis les paramètres
-    g('stAppPwdSave').addEventListener('click', async () => {
+    // Changer le mot de passe application depuis les paramètres (admin)
+    g('stAppPwdSave').addEventListener('click', () => this._requireAdmin(async () => {
       const pwd     = g('stAppPwdNew').value;
       const confirm = g('stAppPwdConfirm').value;
       if (!pwd) return alert('Veuillez saisir un nouveau mot de passe.');
@@ -358,10 +358,10 @@ const MODAL = {
       g('stAppPwdNew').value = '';
       g('stAppPwdConfirm').value = '';
       showToast('Mot de passe application mis à jour ✓');
-    });
+    }));
 
-    // Changer le mot de passe admin depuis les paramètres
-    g('stAdminPwdSave').addEventListener('click', async () => {
+    // Changer le mot de passe admin depuis les paramètres (admin)
+    g('stAdminPwdSave').addEventListener('click', () => this._requireAdmin(async () => {
       const pwd     = g('stAdminPwdNew').value;
       const confirm = g('stAdminPwdConfirm').value;
       if (!pwd) return alert('Veuillez saisir un nouveau mot de passe.');
@@ -370,7 +370,7 @@ const MODAL = {
       g('stAdminPwdNew').value = '';
       g('stAdminPwdConfirm').value = '';
       showToast('Mot de passe admin mis à jour ✓');
-    });
+    }));
 
     // Modal auth admin
     g('adminAuthConfirm').addEventListener('click', () => this._submitAdminPwd());
