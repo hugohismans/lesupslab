@@ -30,6 +30,33 @@ const MODAL = {
     }
   },
 
+  // ─── Authentification admin ────────────────────────────────────
+  _adminCallback: null,
+
+  _requireAdmin(callback) {
+    if (sessionStorage.getItem('cpas_admin') === '1') {
+      callback();
+      return;
+    }
+    this._adminCallback = callback;
+    g('adminPwdInput').value = '';
+    g('adminPwdError').classList.add('hidden');
+    g('adminAuthOverlay').classList.remove('hidden');
+    setTimeout(() => g('adminPwdInput').focus(), 80);
+  },
+
+  _submitAdminPwd() {
+    if (g('adminPwdInput').value === CONFIG.ADMIN_PASSWORD) {
+      sessionStorage.setItem('cpas_admin', '1');
+      g('adminAuthOverlay').classList.add('hidden');
+      if (this._adminCallback) { this._adminCallback(); this._adminCallback = null; }
+    } else {
+      g('adminPwdError').classList.remove('hidden');
+      g('adminPwdInput').value = '';
+      g('adminPwdInput').focus();
+    }
+  },
+
   // Ouvrir le panneau paramètres
   openSettings() {
     this._renderSettingsList();
@@ -213,7 +240,7 @@ const MODAL = {
     });
 
     // Fermer sur clic sur l'overlay
-    ['resOverlay','detOverlay','confOverlay','settingsOverlay','weekendWarnOverlay'].forEach(id => {
+    ['resOverlay','detOverlay','confOverlay','settingsOverlay','weekendWarnOverlay','adminAuthOverlay'].forEach(id => {
       g(id).addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
     });
 
@@ -272,8 +299,16 @@ const MODAL = {
     });
     g('stLocalInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLocalAdd').click(); });
 
-    // Bouton paramètres dans le header
-    g('btnSettings').addEventListener('click', () => this.openSettings());
+    // Bouton paramètres — protégé par mot de passe admin
+    g('btnSettings').addEventListener('click', () => this._requireAdmin(() => this.openSettings()));
+
+    // Modal auth admin
+    g('adminAuthConfirm').addEventListener('click', () => this._submitAdminPwd());
+    g('adminPwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') this._submitAdminPwd(); });
+    g('adminAuthCancel').addEventListener('click', () => {
+      g('adminAuthOverlay').classList.add('hidden');
+      this._adminCallback = null;
+    });
 
     // Enregistrer
     g('resSave').addEventListener('click', () => this.save());

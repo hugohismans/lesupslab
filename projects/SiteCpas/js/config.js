@@ -8,6 +8,9 @@ const CONFIG = {
   // IMPORTANT : remplacer avant mise en production
   APP_PASSWORD: 'cpas2024',
 
+  // ── MOT DE PASSE ADMIN (accès aux paramètres) ────────────────────
+  ADMIN_PASSWORD: 'Quaregnon@26',
+
   // ── FIREBASE ─────────────────────────────────────────────────────
   // Remplacer avec les identifiants de votre projet Firebase
   FIREBASE: {

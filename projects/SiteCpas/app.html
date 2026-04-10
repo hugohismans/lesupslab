@@ -306,6 +306,28 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
+     MODAL — Authentification admin
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="adminAuthOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>🔐 Accès administrateur</h2>
+    </div>
+    <div class="modal-bd">
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="adminPwdInput" placeholder="Mot de passe admin...">
+        <small id="adminPwdError" class="hidden" style="color:#dc2626;margin-top:.25rem">Mot de passe incorrect.</small>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="adminAuthCancel">Annuler</button>
+      <button class="btn-primary" id="adminAuthConfirm">Accéder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      MODAL — Avertissement occurrences week-end
 ═══════════════════════════════════════════════════════════ -->
 <div class="overlay hidden" id="weekendWarnOverlay">
