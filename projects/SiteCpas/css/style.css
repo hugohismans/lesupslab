@@ -4251,7 +4251,7 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   border: none; cursor: pointer;
   box-shadow: 0 4px 18px rgba(220,38,38,.55), 0 0 0 0 rgba(220,38,38,.4);
   animation: panic-pulse 2s infinite;
-  z-index: 900; display: flex; align-items: center; justify-content: center;
+  z-index: 2600; display: flex; align-items: center; justify-content: center;
   transition: transform .12s, box-shadow .12s;
 }
 .panic-float:hover {
