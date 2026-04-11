@@ -769,7 +769,9 @@ const LIVE = {
       if (!lids.length) return ''; // groupe sans locaux → masqué
       const activeLids = lids.filter(l => DB.isBureauOpen(l));
       const hasOpen    = activeLids.length > 0;
-      const occupied   = activeLids.filter(l => DB.getQueue(l) >= 1).length;
+      const occupied   = activeLids.filter(l =>
+        DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l)
+      ).length;
       const overflow   = DB.getGroupOverflowQueue(grpId);
       const total      = activeLids.length;
       const allFull    = hasOpen && occupied >= total;
@@ -784,7 +786,7 @@ const LIVE = {
         ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente</div>` : '';
       const dotsHtml = hasOpen
         ? `<div class="lv-grp-locals">${activeLids.map(l => {
-            const busy = DB.getQueue(l) >= 1;
+            const busy = DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l);
             return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
           }).join('')}</div>` : '';
       const lastEmitted  = this._lastEmittedByGrp[grpId];
@@ -903,7 +905,7 @@ const LIVE = {
       if (grp) {
         const overflow    = DB.getGroupOverflowQueue(grp.id);
         const optedOut    = DB.getBureauOptedOut(l);
-        const callNextBtn = queue === 0 && overflow > 0
+        const callNextBtn = queue === 0 && overflow > 0 && !pendingPref
           ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${grp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
