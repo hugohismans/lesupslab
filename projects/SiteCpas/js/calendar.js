@@ -911,12 +911,7 @@ const LIVE = {
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
         // Fermer/Se retirer bloqués pendant permanence en cours (sauf accueil)
         const fermerBtn   = (!isAccueil && isBusyLocal) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
-        // Bouton "Se retirer / Rejoindre" : visible uniquement pour les agents bureau (pas accueil), bloqué pendant permanence
-        const leaveBtn = !isAccueil && !isBusyLocal
-          ? `<button class="lv-q-leave${optedOut ? ' lv-q-rejoindre' : ''}" data-local="${l}" data-opted="${optedOut ? '1' : '0'}" title="${optedOut ? 'Rejoindre la file partagée' : 'Ne plus recevoir de tickets de la file partagée'}">
-               ${optedOut ? '🔄 Rejoindre' : '🚪 Se retirer'}
-             </button>`
-          : '';
+        const leaveBtn = '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
         // "En cours" : seulement pendant busyWithPref (quelqu'un est physiquement dans le bureau)
         // queue >= 1 seul ne suffit pas — c'est juste "quelqu'un attend", pas "quelqu'un est là"
