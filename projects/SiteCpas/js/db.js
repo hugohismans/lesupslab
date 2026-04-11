@@ -781,7 +781,7 @@ const DB = {
       respondedAt:     null,
       nameDeleteAt:    null,
     });
-    return ref.key;
+    return { requestId: ref.key };
   },
 
   async respondToPreferredRequest(requestId, response, etaMin, comment, localId, agentPublicName, displayName) {
