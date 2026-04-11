@@ -286,7 +286,7 @@ const DB = {
   },
 
   getFeature(name)           { return !!this._config.features[name]; },
-  async setFeature(name, val) { await this._ref(`appConfig/features/${name}`).set(val || null); },
+  async setFeature(name, val) { await this._ref(`appConfig/features/${name}`).set(val ? true : false); },
 
   getMascotId()              { return this._config.mascotId || 'poulpe'; },
   async setMascotId(id)      { await this._ref('appConfig/mascotId').set(id); },
@@ -1538,7 +1538,7 @@ const DB = {
       ['enablePublicView', true],
       ['enablePresence',   true],
     ].forEach(([key, val]) => {
-      if (!d.features || d.features[key] === undefined || d.features[key] === null) {
+      if (!d.features || d.features[key] === undefined) {
         updates[`appConfig/features/${key}`] = val;
       }
     });
