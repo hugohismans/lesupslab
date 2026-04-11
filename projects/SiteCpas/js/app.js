@@ -2326,9 +2326,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (!benefName) { showToast('Veuillez saisir le nom du bénéficiaire.'); return; }
     if (!agentKey)  { showToast('Veuillez sélectionner un agent.'); return; }
 
-    // Vérifier si cible est chef_service / direction → confirmer d'abord (Modal D)
-    const targetRole = DB.getAgentPermRole(agentKey);
-    if (targetRole === '__chef_service__' || targetRole === '__direction__') {
+    // Vérifier si cible est admin / chef_service / direction → confirmer d'abord (Modal D)
+    const targetRole    = DB.getAgentPermRole(agentKey);
+    const needsConfirm  = ['__admin__', '__chef_service__', '__direction__'].includes(targetRole);
+    if (needsConfirm) {
       _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName);
       overlay.classList.add('hidden');
       return;
@@ -2353,7 +2354,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const overlay = document.getElementById('preferredDirectionConfirmOverlay');
     if (!overlay) return;
     const agentName = DB.getAgentsWithKeys().find(a => a.key === agentKey)?.name || agentKey;
-    const roleMap   = { '__chef_service__': 'Chef de service', '__direction__': 'Direction' };
+    const roleMap   = { '__admin__': 'Administrateur', '__chef_service__': 'Chef de service', '__direction__': 'Direction' };
     document.getElementById('prefDirAgentLabel').textContent = agentName;
     document.getElementById('prefDirRoleLabel').textContent  = roleMap[DB.getAgentPermRole(agentKey)] || '';
     _prefDirPending = { benefName, agentKey, placeId, placeName };
