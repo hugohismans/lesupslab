@@ -2313,36 +2313,8 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Nettoyer les données sensibles expirées au démarrage
   DB.cleanExpiredPreferredData?.();
 
-  // ── Modal A : Accueil — créer une demande préférentielle ────────
-  window._openPreferredRequestModal = (grpId) => {
-    const overlay  = document.getElementById('preferredRequestOverlay');
-    const agentSel = document.getElementById('prefAgentSelect');
-    const placeSel = document.getElementById('prefPublicPlaceSelect');
-    const benefIn  = document.getElementById('prefBenefName');
-    if (!overlay || !agentSel || !placeSel) return;
-
-    // Peupler agents connectés aujourd'hui (hors accueil)
-    const myKey   = sessionStorage.getItem('cpas_current_agent_key');
-    const agents  = DB.getConnectedTodayAgents().filter(k => k !== myKey);
-    agentSel.innerHTML = '<option value="">— Choisir un agent —</option>' +
-      agents.map(k => {
-        const info = DB.getAgentsWithKeys().find(a => a.key === k);
-        return `<option value="${escapeHtml(k)}">${escapeHtml(info?.name || k)}</option>`;
-      }).join('');
-
-    // Peupler lieux publics
-    const places = DB.getPublicPlaces();
-    placeSel.innerHTML = '<option value="">— Aucun lieu précis —</option>' +
-      places.map(p =>
-        `<option value="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}${p.description ? ' — ' + p.description : ''}</option>`
-      ).join('');
-
-    if (benefIn) benefIn.value = '';
-    overlay.dataset.grp = grpId || '';
-    overlay.classList.remove('hidden');
-    setTimeout(() => benefIn?.focus(), 80);
-  };
-
+  // ── Modal A : ouverture gérée directement dans calendar.js ─────
+  // Le submit reste ici
   document.getElementById('prefRequestConfirm')?.addEventListener('click', async () => {
     const overlay   = document.getElementById('preferredRequestOverlay');
     const benefName = (document.getElementById('prefBenefName')?.value || '').trim();
