@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue — moncompagnon</title>
+  <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+    transition: background 1s ease;
+  }
+
+  /* ── Starfield ─────────────────────────────────────────────── */
+  #wlStars { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .wl-star {
+    position: absolute; border-radius: 50%; background: white;
+    animation: wl-twinkle var(--d) var(--dl) ease-in-out infinite alternate;
+  }
+  @keyframes wl-twinkle {
+    from { opacity: .05; transform: scale(.7); }
+    to   { opacity: .75; transform: scale(1.3); }
+  }
+
+  /* ── Main wrap ─────────────────────────────────────────────── */
+  .wl-wrap {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    align-items: center;
+    width: 100%; max-width: 460px;
+    padding: 1.5rem 1.5rem 2rem;
+    gap: 1rem;
+    min-height: 100dvh;
+    justify-content: center;
+  }
+
+  /* ── Mascot ────────────────────────────────────────────────── */
+  .wl-mascot-glow {
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 0 28px rgba(167,139,250,.55));
+    animation: wl-float 4.2s ease-in-out infinite;
+  }
+  @keyframes wl-float {
+    0%, 100% { transform: translateY(0) rotate(-.5deg); }
+    50%       { transform: translateY(-14px) rotate(.5deg); }
+  }
+  .wl-mascot { width: 115px; height: auto; display: block; }
+
+  /* ── Speech bubble ─────────────────────────────────────────── */
+  .wl-bubble {
+    background: #fff;
+    border-radius: 1.3rem;
+    padding: .9rem 1.15rem;
+    font-size: .875rem;
+    color: #1e293b;
+    max-width: 340px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 6px 24px rgba(0,0,0,.28);
+    line-height: 1.6;
+    white-space: pre-line;
+    min-height: 64px;
+  }
+  .wl-bubble::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #fff;
+  }
+  .wl-cursor {
+    display: inline-block;
+    width: 2px; height: 1em;
+    background: #7c3aed;
+    margin-left: 1px;
+    vertical-align: middle;
+    animation: wl-blink .55s step-end infinite;
+  }
+  @keyframes wl-blink { 50% { opacity: 0; } }
+
+  /* ── Feature card ──────────────────────────────────────────── */
+  .wl-card {
+    background: rgba(255,255,255,.09);
+    border: 1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 1.4rem;
+    padding: 1.5rem 1.5rem 1.25rem;
+    text-align: center;
+    color: white;
+    width: 100%;
+    min-height: 148px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: .45rem;
+    animation: wl-card-in .45s cubic-bezier(.22,.68,0,1.2) both;
+  }
+  @keyframes wl-card-in {
+    from { opacity: 0; transform: translateY(26px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .wl-card-icon { font-size: 2.6rem; line-height: 1; margin-bottom: .1rem; }
+  .wl-card-title { font-size: 1.1rem; font-weight: 800; letter-spacing: .01em; }
+  .wl-card-desc {
+    font-size: .82rem; color: rgba(255,255,255,.75);
+    line-height: 1.55; max-width: 290px;
+  }
+
+  /* ── Progress dots ─────────────────────────────────────────── */
+  .wl-dots { display: flex; gap: .5rem; align-items: center; }
+  .wl-dot {
+    border-radius: 50%;
+    background: rgba(255,255,255,.22);
+    transition: background .3s, transform .3s, width .3s;
+    width: 8px; height: 8px;
+  }
+  .wl-dot.active {
+    background: #a78bfa;
+    transform: scale(1.3);
+    width: 22px; border-radius: 4px;
+  }
+  .wl-dot.done { background: rgba(167,139,250,.45); }
+
+  /* ── Next button ───────────────────────────────────────────── */
+  .wl-btn {
+    background: linear-gradient(135deg, #7c3aed, #2563eb);
+    border: none; border-radius: 3rem;
+    color: white; font-size: 1rem; font-weight: 700;
+    font-family: inherit;
+    padding: .9rem 2.5rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(124,58,237,.42);
+    transition: transform .15s, box-shadow .15s, background .6s;
+    letter-spacing: .025em;
+    min-width: 180px;
+  }
+  .wl-btn:hover  { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(124,58,237,.55); }
+  .wl-btn:active { transform: translateY(0); }
+  .wl-btn.final  {
+    font-size: .9rem; padding: .7rem 1.8rem;
+    background: rgba(255,255,255,.12);
+    box-shadow: none;
+    border: 1.5px solid rgba(255,255,255,.25);
+    color: rgba(255,255,255,.7);
+    animation: none;
+    min-width: 0;
+  }
+  .wl-btn.final:hover { background: rgba(255,255,255,.2); box-shadow: none; }
+  .wl-btn.final:disabled {
+    opacity: .4; cursor: not-allowed; transform: none;
+  }
+  /* Bouton doc — mis en avant sur la dernière étape */
+  #wlDocsLink {
+    background: linear-gradient(135deg, #7c3aed, #2563eb) !important;
+    border: none !important;
+    box-shadow: 0 6px 20px rgba(124,58,237,.5);
+    font-size: 1.05rem !important;
+    padding: 1rem 2.2rem !important;
+    border-radius: 3rem !important;
+    animation: wl-pulse-btn 2.2s ease-in-out infinite;
+    transition: transform .15s, box-shadow .15s !important;
+  }
+  #wlDocsLink:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(124,58,237,.7) !important; }
+  @keyframes wl-pulse-btn {
+    0%, 100% { box-shadow: 0 6px 20px rgba(124,58,237,.5); }
+    50%       { box-shadow: 0 10px 35px rgba(124,58,237,.8); }
+  }
+
+  /* ── Test badge ────────────────────────────────────────────── */
+  .wl-test-badge {
+    position: fixed; top: .85rem; right: .85rem; z-index: 50;
+    background: rgba(251,191,36,.15);
+    border: 1px solid rgba(251,191,36,.4);
+    color: #fbbf24; font-size: .72rem; font-weight: 700;
+    border-radius: 2rem; padding: .3rem .75rem;
+    letter-spacing: .06em; text-transform: uppercase;
+    backdrop-filter: blur(6px);
+  }
+
+  /* ── Role picker ──────────────────────────────────────────── */
+  .wl-role-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: .65rem; width: 100%;
+  }
+  .wl-role-btn {
+    background: rgba(255,255,255,.09);
+    border: 1.5px solid rgba(255,255,255,.2);
+    border-radius: 14px;
+    padding: .95rem .75rem;
+    color: white; font-family: inherit; font-size: .875rem; font-weight: 600;
+    cursor: pointer; text-align: center;
+    transition: background .15s, border-color .15s, transform .12s;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .wl-role-btn .rb-icon { font-size: 1.7rem; display: block; margin-bottom: .35rem; }
+  .wl-role-btn:hover  { background: rgba(255,255,255,.2); border-color: rgba(167,139,250,.7); transform: translateY(-2px); }
+  .wl-role-btn:active { transform: scale(.95); }
+  .wl-role-btn.selected { background: rgba(124,58,237,.55); border-color: #a78bfa; }
+
+  /* ── Skip link ─────────────────────────────────────────────── */
+  .wl-skip {
+    position: fixed; bottom: 1.25rem; right: 1.25rem;
+    z-index: 10;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    color: rgba(255,255,255,.55);
+    font-size: .74rem; font-family: inherit;
+    border-radius: 2rem; padding: .35rem .85rem;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: color .2s, background .2s;
+  }
+  .wl-skip:hover { color: white; background: rgba(255,255,255,.18); }
+
+  /* ── Confetti ──────────────────────────────────────────────── */
+  #wlConfetti { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+  .wl-conf {
+    position: absolute; top: -20px;
+    opacity: 0;
+    animation: wl-fall var(--dur) var(--dl) ease-in both;
+  }
+  @keyframes wl-fall {
+    0%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    100% { opacity: 0; transform: translateY(110vh) rotate(720deg) scale(.5); }
+  }
+
+  /* ── Page transitions ──────────────────────────────────────── */
+  body { animation: wl-page-in .5s ease both; }
+  @keyframes wl-page-in { from { opacity: 0; } to { opacity: 1; } }
+  body.wl-out { animation: wl-page-out .45s ease forwards; }
+  @keyframes wl-page-out { to { opacity: 0; transform: scale(1.03); } }
+  </style>
+</head>
+<body>
+  <div id="wlStars" aria-hidden="true"></div>
+  <div id="wlConfetti" aria-hidden="true"></div>
+
+  <div class="wl-wrap">
+    <!-- Mascot -->
+    <div class="wl-mascot-glow">
+      <svg class="wl-mascot" id="wlMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+        <!-- filled by JS -->
+      </svg>
+    </div>
+
+    <!-- Bubble -->
+    <div class="wl-bubble">
+      <span id="wlBubbleText"></span><span class="wl-cursor" id="wlCursor"></span>
+    </div>
+
+    <!-- Feature card -->
+    <div class="wl-card" id="wlCard">
+      <div class="wl-card-icon" id="wlCardIcon">✨</div>
+      <h2 class="wl-card-title" id="wlCardTitle">Bienvenue !</h2>
+      <p class="wl-card-desc" id="wlCardDesc">Chargement de ton profil…</p>
+    </div>
+
+    <!-- Role picker (affiché si aucun rôle n'est défini par l'admin) -->
+    <div id="wlRolePicker" style="display:none;width:100%">
+      <div class="wl-role-grid" id="wlRoleGrid"></div>
+    </div>
+
+    <!-- Progress -->
+    <div class="wl-dots" id="wlDots"></div>
+
+    <!-- Nav -->
+    <button class="wl-btn" id="wlBtn">Suivant →</button>
+
+    <!-- Bouton documentation (visible uniquement sur la dernière étape) -->
+    <a id="wlDocsLink" href="docs.html" target="_blank" style="display:none;margin-top:.35rem;
+      background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);
+      color:#fff;font-family:inherit;font-size:.9rem;font-weight:600;
+      padding:.65rem 1.5rem;border-radius:2rem;text-decoration:none;
+      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+      cursor:pointer;transition:background .15s,border-color .15s;
+      letter-spacing:.01em;text-align:center;">
+      📖 Voir le guide de mon poste
+    </a>
+  </div>
+
+  <!-- Skip -->
+  <button class="wl-skip" id="wlSkip">Passer l'intro →</button>
+
+  <!-- Test mode badge (injecté par JS si nécessaire) -->
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/gender.js"></script>
+  <script src="js/mascots.js"></script>
+  <script>
+  (function () {
+    const AUTH_KEY  = 'cpas_auth_v1';
+    const AGENT_KEY = 'cpas_current_agent_key';
+    const orgParam  = ORG_ID !== 'cpas-quaregnon' ? `?org=${ORG_ID}` : '';
+
+    // ── Mode test (superadmin) ───────────────────────────────────
+    const _testIntroType = localStorage.getItem('mc_welcome_test_intro');
+    if (_testIntroType) localStorage.removeItem('mc_welcome_test_intro');
+
+    // ── Auth guard (ignoré en mode test) ─────────────────────────
+    if (!_testIntroType) {
+      if (sessionStorage.getItem(AUTH_KEY) !== '1') { location.href = `index.html${orgParam}`; return; }
+      const _agentKeyCheck = sessionStorage.getItem(AGENT_KEY);
+      if (!_agentKeyCheck) { location.href = `index.html${orgParam}`; return; }
+      if (localStorage.getItem(`mc_welcomed_${_agentKeyCheck}`)) {
+        location.href = `app.html${orgParam}`; return;
+      }
+    }
+    const agentKey = sessionStorage.getItem(AGENT_KEY) || '__test__';
+
+    // ── Test badge ───────────────────────────────────────────────
+    if (_testIntroType) {
+      const badge = document.createElement('div');
+      badge.className = 'wl-test-badge';
+      badge.textContent = '⚡ Mode test';
+      document.body.appendChild(badge);
+    }
+
+    // ── Starfield ────────────────────────────────────────────────
+    const starsEl = document.getElementById('wlStars');
+    for (let i = 0; i < 90; i++) {
+      const s = document.createElement('div');
+      s.className = 'wl-star';
+      const sz = Math.random() * 3 + 1;
+      s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;--d:${2+Math.random()*4}s;--dl:${Math.random()*5}s`;
+      starsEl.appendChild(s);
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // Role intro content — adapté à chaque poste CPAS
+    // ════════════════════════════════════════════════════════════
+    function getIntroContent(introType, name, mascotName) {
+      const n = name || 'vous';
+      const m = mascotName || 'moncompagnon';
+
+      const all = {
+
+        // ── Directeur / Directrice ───────────────────────────────
+        __direction__: {
+          gradient: 'linear-gradient(135deg, #0c1a2e 0%, #0f2744 50%, #0369a1 100%)',
+          glowColor: 'rgba(56,189,248,.55)',
+          steps: [
+            {
+              bubble: `Enchanté·e, ${n} ! 🎩\nJe suis ${m}, votre assistant numérique personnel. Vous pouvez ranger vos classeurs — je vais m'occuper de tout en coulisses !`,
+              icon: '✨', title: `Bienvenue, Directeur·ice !`,
+              desc: `${m} vous offre une vision complète de votre service en temps réel, depuis n'importe quel écran. Simple, efficace, et toujours disponible.`,
+            },
+            {
+              bubble: `Vos équipes sous les yeux, à tout moment — sans réunion de coordination inutile 👀\nVous supervisez, je m'occupe de l'information.`,
+              icon: '👥', title: `L'équipe en temps réel`,
+              desc: `Qui est au bureau, en rendez-vous, absent — une vue d'ensemble permanente de la disponibilité de chacun dans votre service.`,
+            },
+            {
+              bubble: `Fini les tableurs qui datent d'avant-hier ! 📅\nL'agenda de toute l'équipe, centralisé et toujours à jour.`,
+              icon: '📅', title: `Agenda centralisé`,
+              desc: `Les rendez-vous de toute l'équipe en un seul endroit. Consultable, modifiable, partagé en temps réel — sans email de rappel.`,
+            },
+            {
+              bubble: `La file d'attente se gère toute seule ☕\nVos agents s'en occupent, vous supervisez avec sérénité — et votre café reste chaud.`,
+              icon: '🎫', title: `File d'attente supervisée`,
+              desc: `Suivez en direct le flux de bénéficiaires bureau par bureau. Votre service tourne, et vous le voyez sans effort.`,
+            },
+            {
+              bubble: `Un dernier point avant de vous lancer : le matériel ! 🖨️\nUne imprimante Epson pour les tickets, des écrans en salle d'attente, un kiosque tactile si besoin — discutez-en avec votre intégrateur. Tout est détaillé dans le guide.`,
+              icon: '🖨️', title: `Matériel recommandé`,
+              desc: `Imprimante tickets Epson, écrans publics, kiosque tactile optionnel, ordinateurs ou téléphones pour les agents — votre intégrateur vous guidera. Retrouvez la liste complète dans la documentation.`,
+            },
+            {
+              bubble: `Le tour du propriétaire est terminé, ${n} ! 👑\nTout est prêt pour que vous régniez avec élégance sur votre service. Bonne journée, Directeur·ice !`,
+              icon: '👑', title: `Aux commandes !`,
+              desc: `${m} sera là chaque matin pour vous accueillir et vous tenir informé·e. Bienvenue à bord — et merci de nous faire confiance.`,
+              isFinal: true, cta: `Prendre les commandes 👑`,
+            },
+          ],
+        },
+
+        // ── Administrateur ───────────────────────────────────────
+        __admin__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1d4ed8 100%)',
+          glowColor: 'rgba(167,139,250,.55)',
+          steps: [
+            {
+              bubble: `Bienvenue dans les coulisses, ${n} ! 🎯\nJe suis ${m} — tu es l'admin ici. C'est toi qui tiens les rênes, et on va tout configurer ensemble !`,
+              icon: '⚙️', title: `Tu es l'administrateur·ice`,
+              desc: `Tu as accès à tous les paramètres de l'application — agents, rôles, services, horaires, modules. Tout se configure depuis les Paramètres.`,
+            },
+            {
+              bubble: `Tu peux ajouter les agents, leur attribuer un rôle, personnaliser leurs couleurs et emoji 🎨\nChaque profil, c'est toi qui le crées.`,
+              icon: '👥', title: `Gestion des agents`,
+              desc: `Crée les profils de tes collègues, attribue les rôles (agent, accueil, direction...) et gère les droits d'accès de chacun.`,
+            },
+            {
+              bubble: `Un agenda partagé pour toute l'équipe 📅\nQui fait quoi, quand, où — et toi tu as la vue complète.`,
+              icon: '📅', title: `Calendrier & rendez-vous`,
+              desc: `Visualise et gère les rendez-vous de toute l'équipe. Chaque agent voit son agenda personnel, tu as la vue d'ensemble.`,
+            },
+            {
+              bubble: `La file d'attente en direct 🎫\nTes agents la gèrent au quotidien — toi tu supervises, ajustes les services et configures les bureaux.`,
+              icon: '🎫', title: `File d'attente`,
+              desc: `Suis le flux de bénéficiaires en temps réel. Configure les bureaux, les services disponibles, les groupes de tickets.`,
+            },
+            {
+              bubble: `T'es prêt·e ? 💪\nL'équipe compte sur toi — et ${m} sera là pour t'aider au quotidien. Commence par les Paramètres !`,
+              icon: '🚀', title: `L'aventure commence !`,
+              desc: `Explore les Paramètres pour ajouter les agents et configurer les services. Chaque réglage profite à toute l'équipe !`,
+              isFinal: true, cta: `C'est parti, chef·fe ! ⚙️`,
+            },
+          ],
+        },
+
+        // ── Chef de service ──────────────────────────────────────
+        __chef_service__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #134e4a 50%, #0f766e 100%)',
+          glowColor: 'rgba(52,211,153,.5)',
+          steps: [
+            {
+              bubble: `Chef·fe de service, ${n} — exactement la personne qu'il me fallait ! 💼\nJe suis ${m}. Mon job : faire tourner l'information pour que ton équipe soit toujours bien coordonnée.`,
+              icon: '💼', title: `Bienvenue, Chef·fe de service !`,
+              desc: `${m} te donne une vue en temps réel de ton équipe, de son agenda et de son activité. La coordination n'a jamais été aussi simple.`,
+            },
+            {
+              bubble: `Tu vois en temps réel qui est disponible, en rendez-vous ou absent 👥\nSans courir dans les couloirs pour le vérifier — promis !`,
+              icon: '👥', title: `Ta vue sur l'équipe`,
+              desc: `Chaque membre de ton équipe indique sa disponibilité. Tu sais en permanence qui peut prendre en charge une situation.`,
+            },
+            {
+              bubble: `Tout le planning de l'équipe en un seul endroit 📅\nClair, net, toujours à jour — fini les mails "qui est là lundi ?"`,
+              icon: '📅', title: `Planning & coordination`,
+              desc: `Gère les rendez-vous et les disponibilités de ton équipe depuis un seul calendrier partagé. Modifiable en temps réel.`,
+            },
+            {
+              bubble: `Suis l'activité de ton service au quotidien 📊\nCombien de bénéficiaires reçus, quelle est la charge — tu as les données pour décider.`,
+              icon: '🎫', title: `Suivi de l'activité`,
+              desc: `File d'attente, taux d'occupation, présence des agents. Tu as toujours une vue claire de ce qui se passe dans ton service.`,
+            },
+            {
+              bubble: `Voilà, ${n} ! Tu as tout pour coordonner ton équipe efficacement 💪\n${m} est là si tu as besoin. Bonne journée !`,
+              icon: '🌟', title: `Coordiné·e et prêt·e !`,
+              desc: `${m} sera là chaque matin. N'hésite pas à cliquer sur moi dans l'application si tu as une question !`,
+              isFinal: true, cta: `Allons coordonner ! 💼`,
+            },
+          ],
+        },
+
+        // ── Assistant social ─────────────────────────────────────
+        __as__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1d4ed8 100%)',
+          glowColor: 'rgba(96,165,250,.52)',
+          steps: [
+            {
+              bubble: `Bienvenue, ${n} ! 💙\nJe suis ${m}. Je sais que ton travail est précieux — et parfois intense. Je suis là pour alléger ton quotidien administratif.`,
+              icon: '💙', title: `Bienvenue, Assistant·e Social·e !`,
+              desc: `${m} prend en charge l'organisation pour que tu puisses te concentrer sur ce qui compte vraiment : les personnes que tu accompagnes.`,
+            },
+            {
+              bubble: `Tous tes rendez-vous en un seul endroit 📅\nOrganisés, rappelés automatiquement — plus de double-réservation, plus de surprise.`,
+              icon: '📅', title: `Ton agenda rendez-vous`,
+              desc: `Retrouve tes rendez-vous du jour et de la semaine en un coup d'œil. Reçois des rappels automatiques avant chaque entretien.`,
+            },
+            {
+              bubble: `Quand tu reçois en file libre, tu vois en direct combien de personnes t'attendent 🎫\nEt tu appelles le suivant d'un simple clic, depuis ton bureau.`,
+              icon: '🎫', title: `File libre & accueil`,
+              desc: `Gère ta file d'attente depuis l'application. Appelle le prochain, vois l'avancement, ferme ta file quand tu pars — tout en un clic.`,
+            },
+            {
+              bubble: `Tu n'es jamais seul·e 👥\nTes collègues sont là — tu sais qui est disponible pour faire suivre un dossier ou coordonner une situation urgente.`,
+              icon: '👥', title: `L'équipe avec toi`,
+              desc: `Vois en temps réel la disponibilité de tes collègues. Idéal pour coordonner rapidement ou orienter un bénéficiaire vers la bonne personne.`,
+            },
+            {
+              bubble: `Prêt·e à te lancer, ${n} ? 💙\nJe serai là chaque matin pour t'accueillir. Bon courage, et merci pour ce que tu fais au quotidien.`,
+              icon: '🤝', title: `Ensemble, on y arrive !`,
+              desc: `Ton travail fait une vraie différence. ${m} est là pour faciliter l'organisation — à toi de te concentrer sur l'humain.`,
+              isFinal: true, cta: `Commencer la journée ! 💙`,
+            },
+          ],
+        },
+
+        // ── Agent d'accueil ──────────────────────────────────────
+        __accueil__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #064e3b 50%, #0891b2 100%)',
+          glowColor: 'rgba(52,211,153,.5)',
+          steps: [
+            {
+              bubble: `Salut ${n} ! Tu es en première ligne — et c'est LE poste le plus important du CPAS 😊\nJe suis ${m}, ton copilote pour un accueil sans accroc !`,
+              icon: '🌟', title: `L'accueil, c'est toi !`,
+              desc: `Tu es le premier visage que les bénéficiaires voient. Avec moncompagnon, tu peux les orienter efficacement et voir l'état de chaque bureau en direct.`,
+            },
+            {
+              bubble: `Tu vois en temps réel combien de personnes attendent dans chaque bureau 🎫\nEt tu peux orienter instantanément — sans coup de fil à tes collègues.`,
+              icon: '🎫', title: `File d'attente en direct`,
+              desc: `D'un coup d'œil : chaque bureau, son état (libre, occupé, en attente), le nombre de personnes. Tu orientes chacun au bon endroit.`,
+            },
+            {
+              bubble: `Tu sais toujours qui est disponible parmi tes collègues 👥\nFini les coups de fil dans le couloir et les "il est là ?" à la cantonade !`,
+              icon: '👥', title: `Statuts de l'équipe`,
+              desc: `Chaque collègue indique sa disponibilité. Tu vois instantanément qui peut prendre en charge un bénéficiaire — ou qui est absent aujourd'hui.`,
+            },
+            {
+              bubble: `Je te préviens quand c'est important 💬\nRappels de rendez-vous, alertes de file, messages urgents — je veille au grain pour toi.`,
+              icon: '💬', title: `Alertes & notifications`,
+              desc: `Rappels automatiques, alertes de file d'attente, messages de l'équipe. Tu es toujours au courant, sans rien avoir à chercher.`,
+            },
+            {
+              bubble: `Tu as tout ce qu'il faut pour un accueil 5 étoiles ! 💙\nJe serai là chaque matin pour démarrer la journée avec toi. Go !`,
+              icon: '💙', title: `Prêt·e à accueillir ?`,
+              desc: `Bonne journée, ${n} ! Les bénéficiaires sont entre de bonnes mains. N'hésite pas à cliquer sur moi si tu as besoin d'aide.`,
+              isFinal: true, cta: `Allons accueillir ! 💙`,
+            },
+          ],
+        },
+
+        // ── Agent (general) ──────────────────────────────────────
+        __agent__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #5b21b6 100%)',
+          glowColor: 'rgba(167,139,250,.55)',
+          steps: [
+            {
+              bubble: `Hey ${n} ! On va faire une super équipe 🤜🤛\nJe suis ${m}, ton assistant du quotidien — simple, rapide, toujours là pour toi !`,
+              icon: '🎉', title: `Bienvenue dans l'équipe !`,
+              desc: `moncompagnon te donne tout ce qu'il faut pour bien travailler — agenda, file d'attente, présence des collègues. Simple et efficace.`,
+            },
+            {
+              bubble: `Tes rendez-vous du jour et de la semaine, toujours sous les yeux 📅\nPlus jamais de mauvaise surprise — ni de "j'avais oublié !".`,
+              icon: '📅', title: `Ton agenda personnel`,
+              desc: `Retrouve tes rendez-vous du jour en un coup d'œil. Tu peux voir la semaine et recevoir des rappels automatiques avant chaque entretien.`,
+            },
+            {
+              bubble: `Gère ta file d'attente en direct depuis ton bureau 🎫\nAppelle le suivant en un clic — sans bouger de ta chaise.`,
+              icon: '🎫', title: `Ta file d'attente`,
+              desc: `Depuis ton bureau, tu appelles le prochain bénéficiaire, suis l'avancement de ta file, et la fermes quand tu pars. Tout en un clic.`,
+            },
+            {
+              bubble: `Et tu vois en temps réel où en sont tes collègues 👥\nPratique pour se coordonner — ou juste savoir qui est là ce matin !`,
+              icon: '👥', title: `L'équipe en direct`,
+              desc: `Sais instantanément si tes collègues sont disponibles, en rendez-vous ou absents. La coordination n'a jamais été aussi simple.`,
+            },
+            {
+              bubble: `C'est tout ! Simple, non ? 😄\nJe serai là chaque matin pour te dire bonjour et t'aider à passer une excellente journée !`,
+              icon: '🚀', title: `Tu es paré·e !`,
+              desc: `Bienvenue dans l'équipe, ${n}. N'hésite pas à cliquer sur moi dans l'application — j'ai toujours quelque chose à te dire 😊`,
+              isFinal: true, cta: `C'est parti ! 🚀`,
+            },
+          ],
+        },
+
+        // ── Technicien ───────────────────────────────────────────
+        __technicien__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #1c2535 50%, #1e3a5f 100%)',
+          glowColor: 'rgba(96,165,250,.5)',
+          steps: [
+            {
+              bubble: `Tiens, un·e technicien·ne ! 😄\nJe suis ${m} — et tu ne savais pas que tu allais avoir un assistant numérique aujourd'hui. Surprise, ${n} !`,
+              icon: '🔧', title: `Bienvenue, Technicien·ne !`,
+              desc: `moncompagnon, c'est simple : un outil web, pas d'installation, pas de mise à jour à gérer. Juste ouvrir le navigateur et c'est parti.`,
+            },
+            {
+              bubble: `Tu vois en temps réel qui est connecté et présent dans l'organisation 👥\nUtile pour savoir qui contacter en cas d'urgence ou de demande technique.`,
+              icon: '👥', title: `Vue de l'organisation`,
+              desc: `Agents connectés, présences, statuts. Tu sais toujours qui est là et où — sans avoir à faire le tour des bureaux.`,
+            },
+            {
+              bubble: `Ton agenda et les interventions planifiées, tout au même endroit 📅\nFini les post-it et les mails perdus dans la boîte.`,
+              icon: '📅', title: `Ton planning`,
+              desc: `Retrouve tes interventions et réunions dans un calendrier partagé. Tu peux noter tes disponibilités et gérer tes créneaux.`,
+            },
+            {
+              bubble: `Des notifications quand quelque chose nécessite ton attention 💬\nMême si tu es dans un autre bureau — je te préviens.`,
+              icon: '💬', title: `Alertes & messages`,
+              desc: `Reçois des notifications en temps réel pour les messages importants ou les demandes urgentes — directement dans l'application.`,
+            },
+            {
+              bubble: `Et si ça bug… c'est toi le pro ! 😄\nBlague à part, ${m} est stable et fonctionne sur tout navigateur. Et je suis là si tu as une question !`,
+              icon: '🔧', title: `Prêt·e à dépanner !`,
+              desc: `L'application tourne sur Firebase — zéro maintenance serveur de ton côté. Si tu as besoin de détails techniques, parle à l'admin.`,
+              isFinal: true, cta: `C'est parti ! 🔧`,
+            },
+          ],
+        },
+
+        // ── Agent d'entretien ────────────────────────────────────
+        __entretien__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #1c1f26 50%, #1a3a2f 100%)',
+          glowColor: 'rgba(134,239,172,.45)',
+          steps: [
+            {
+              bubble: `Salut ${n} ! Je suis ${m} — et je veux que tu saches que cet outil est là pour toi aussi 😊\nSimple à utiliser, je te promets qu'on va s'en sortir !`,
+              icon: '✨', title: `Bienvenue, ${n} !`,
+              desc: `moncompagnon, c'est simple : tu vois tes informations du jour, tu sais qui est là — et tu n'as pas besoin d'être expert·e en informatique.`,
+            },
+            {
+              bubble: `Ton planning du jour, toujours accessible en un coup d'œil 📅\nQui, où, quand — clairement affiché, rien à retenir par cœur.`,
+              icon: '📅', title: `Ton planning`,
+              desc: `Tes horaires et interventions du jour, visibles immédiatement. Pas besoin de chercher dans des emails ou papiers.`,
+            },
+            {
+              bubble: `Tu sais qui est là aujourd'hui dans l'équipe 👥\nPratique pour se coordonner — ou juste dire bonjour à la bonne personne !`,
+              icon: '👥', title: `L'équipe du jour`,
+              desc: `Vois en temps réel qui est présent parmi tes collègues. Utile pour savoir à qui s'adresser en cas de question ou de besoin.`,
+            },
+            {
+              bubble: `L'équipe peut te laisser des messages importants directement ici 💬\nPlus besoin de courir après quelqu'un pour avoir une info.`,
+              icon: '💬', title: `Messages & informations`,
+              desc: `Reçois les informations importantes de l'équipe directement dans l'application. Simple, direct, efficace.`,
+            },
+            {
+              bubble: `C'est tout, ${n} ! Je t'avais dit que c'était simple 😊\nBonne journée — et merci pour tout ce que tu fais pour que les bureaux restent accueillants !`,
+              icon: '🌿', title: `Prêt·e pour la journée !`,
+              desc: `${m} est là si tu as une question. Et l'admin peut t'aider si quelque chose ne fonctionne pas. Bonne journée !`,
+              isFinal: true, cta: `C'est noté, merci ! 😊`,
+            },
+          ],
+        },
+
+        // ── Juriste / Conseiller juridique ───────────────────────
+        __juriste__: {
+          gradient: 'linear-gradient(135deg, #0f172a 0%, #1a1f2e 50%, #312e81 100%)',
+          glowColor: 'rgba(165,180,252,.5)',
+          steps: [
+            {
+              bubble: `Bienvenue, ${n} ! Juriste au CPAS — un poste de confiance 🏛️\nJe suis ${m}, et je vais vous montrer comment l'outil peut vous aider au quotidien.`,
+              icon: '⚖️', title: `Bienvenue, ${n} !`,
+              desc: `moncompagnon vous aide à organiser votre agenda, à voir la disponibilité de vos collègues et à rester informé·e des activités du service.`,
+            },
+            {
+              bubble: `Vos rendez-vous et consultations juridiques, centralisés et rappelés automatiquement 📅`,
+              icon: '📅', title: `Votre agenda`,
+              desc: `Retrouvez vos rendez-vous du jour et de la semaine. Rappels automatiques, vue claire, zéro oubli.`,
+            },
+            {
+              bubble: `Vous savez toujours qui est disponible dans l'équipe 👥\nUtile pour coordonner avec les assistants sociaux sur un dossier commun.`,
+              icon: '👥', title: `Coordination équipe`,
+              desc: `Vos collègues affichent leur disponibilité en temps réel. Idéal pour les collaborations inter-services.`,
+            },
+            {
+              bubble: `Des alertes pour ne rien rater 💬\nMoi je veille, vous vous concentrez sur vos dossiers.`,
+              icon: '💬', title: `Alertes & notifications`,
+              desc: `Rappels de rendez-vous, messages de l'équipe. Je vous préviens quand c'est important — sans vous déranger pour le reste.`,
+              isFinal: true, cta: `Parfait, allons-y ! ⚖️`,
+            },
+          ],
+        },
+
+      }; // end all
+
+      return all[introType] || all.__agent__;
+    }
+
+    // ── Typewriter ───────────────────────────────────────────────
+    let _typeTimer = null;
+    function typewrite(text, onDone) {
+      const elTxt = document.getElementById('wlBubbleText');
+      const elCur = document.getElementById('wlCursor');
+      clearTimeout(_typeTimer);
+      elTxt.textContent = '';
+      elCur.style.display = 'inline-block';
+      const chars = [...text];
+      let i = 0;
+      function tick() {
+        if (i < chars.length) {
+          elTxt.textContent += chars[i];
+          const delay = chars[i] === '\n' ? 90 : chars[i] === '.' || chars[i] === '!' || chars[i] === '?' ? 55 : 20;
+          i++;
+          _typeTimer = setTimeout(tick, delay);
+        } else {
+          elCur.style.display = 'none';
+          if (onDone) onDone();
+        }
+      }
+      tick();
+    }
+
+    // ── Confetti ─────────────────────────────────────────────────
+    function launchConfetti() {
+      const ct = document.getElementById('wlConfetti');
+      const cols = ['#7c3aed','#2563eb','#059669','#f59e0b','#ec4899','#a78bfa','#34d399','#60a5fa','#fb7185','#fbbf24'];
+      for (let i = 0; i < 90; i++) {
+        const d = document.createElement('div');
+        d.className = 'wl-conf';
+        const sz = 7 + Math.random() * 9;
+        const isCircle = Math.random() > .45;
+        d.style.cssText = `left:${Math.random()*100}%;width:${sz}px;height:${sz}px;background:${cols[i%cols.length]};border-radius:${isCircle?'50%':'3px'};--dur:${1.4+Math.random()*1.8}s;--dl:${Math.random()*.9}s`;
+        ct.appendChild(d);
+      }
+      setTimeout(() => { ct.innerHTML = ''; }, 4500);
+    }
+
+    // ── Card animation ───────────────────────────────────────────
+    function setCard(step) {
+      const card = document.getElementById('wlCard');
+      card.style.animation = 'none';
+      void card.offsetWidth;
+      card.style.animation = '';
+      document.getElementById('wlCardIcon').textContent  = step.icon;
+      document.getElementById('wlCardTitle').textContent = step.title;
+      document.getElementById('wlCardDesc').textContent  = step.desc;
+    }
+
+    // ── Progress dots ────────────────────────────────────────────
+    function setDots(current, total) {
+      const el = document.getElementById('wlDots');
+      el.innerHTML = '';
+      for (let i = 0; i < total; i++) {
+        const d = document.createElement('div');
+        d.className = 'wl-dot' + (i === current ? ' active' : i < current ? ' done' : '');
+        el.appendChild(d);
+      }
+    }
+
+    // ── Finish ───────────────────────────────────────────────────
+    function finish() {
+      if (_testIntroType) {
+        // Mode test : fermer l'onglet (ou revenir à app si pas d'onglet parent)
+        document.body.classList.add('wl-out');
+        setTimeout(() => { try { window.close(); } catch(_) {} location.href = `app.html${orgParam}`; }, 480);
+        return;
+      }
+      localStorage.setItem(`mc_welcomed_${agentKey}`, '1');
+      // Marquer "bonjour dit aujourd'hui" pour que la mascotte ne re-demande pas dans app.html
+      const _todayUTC = new Date().toISOString().slice(0, 10);
+      localStorage.setItem(`mc_bonjour_${agentKey}_${_todayUTC}`, '1');
+      document.body.classList.add('wl-out');
+      setTimeout(() => { location.href = `app.html${orgParam}`; }, 480);
+    }
+
+    // ── Firebase load (ignoré en mode test) ──────────────────────
+    function _launch(agentName, introType, mascotId) {
+      const mascot     = typeof MASCOTS !== 'undefined' ? MASCOTS[mascotId || 'poulpe'] : null;
+      const mascotName = mascot?.name || 'moncompagnon';
+
+      // Appliquer la mascotte
+      const svgEl = document.getElementById('wlMascotSvg');
+      if (mascot) {
+        svgEl.innerHTML = mascot.svg;
+        svgEl.setAttribute('viewBox', mascot.viewBox);
+      }
+
+      const content = getIntroContent(introType, agentName, mascotName);
+
+      // Appliquer le gradient + glow selon le rôle
+      if (content.gradient) document.body.style.background = content.gradient;
+      if (content.glowColor) {
+        document.querySelector('.wl-mascot-glow').style.filter = `drop-shadow(0 0 28px ${content.glowColor})`;
+      }
+
+      const steps = content.steps;
+      let cur = 0;
+      const btn = document.getElementById('wlBtn');
+
+      // Mapping introType → ancre documentation
+      const DOC_ANCHORS = {
+        __accueil__:     'role-accueil',
+        __as__:          'role-as',
+        __technicien__:  'role-technicien',
+        __entretien__:   'role-entretien',
+        __chef_service__:'role-chef',
+        __direction__:   'role-direction',
+        __admin__:       'role-admin',
+        __juriste__:     'role-as',
+        __agent__:       'general',
+      };
+      const docAnchor = DOC_ANCHORS[introType] || 'general';
+      const docsLink  = document.getElementById('wlDocsLink');
+      if (docsLink) docsLink.href = `docs.html#${docAnchor}`;
+
+      function showStep(idx) {
+        const step = steps[idx];
+        setCard(step);
+        setDots(idx, steps.length);
+        if (step.isFinal) {
+          const ctaLabel = genf(step.cta || 'C\'est parti ! 🚀');
+          btn.classList.add('final');
+          launchConfetti();
+          if (docsLink) docsLink.style.display = 'inline-block';
+
+          // Bloquer le bouton principal pendant 7 s avec countdown
+          const LOCK_SEC = 7;
+          btn.disabled = true;
+          let remaining = LOCK_SEC;
+          btn.textContent = `Passer (${remaining}s)`;
+          const _countdownId = setInterval(() => {
+            remaining--;
+            if (remaining > 0) {
+              btn.textContent = `Passer (${remaining}s)`;
+            } else {
+              clearInterval(_countdownId);
+              btn.disabled = false;
+              btn.textContent = ctaLabel;
+            }
+          }, 1000);
+
+          // Mascotte : message principal, puis recommandation de lire le guide
+          typewrite(genf(step.bubble), () => {
+            setTimeout(() => {
+              typewrite(genf(`Avant de te lancer, je te conseille de jeter un œil à ton guide 📖 — tu trouveras tout ce qu'il faut pour démarrer du bon pied !`));
+            }, 900);
+          });
+        } else {
+          btn.textContent = 'Suivant →';
+          btn.classList.remove('final');
+          if (docsLink) docsLink.style.display = 'none';
+          typewrite(genf(step.bubble));
+        }
+      }
+
+      btn.addEventListener('click', () => {
+        if (cur < steps.length - 1) { cur++; showStep(cur); }
+        else finish();
+      });
+      document.getElementById('wlSkip').addEventListener('click', finish);
+
+      showStep(0);
+    }
+
+    // ── Sélecteur de rôle (si aucun rôle défini par l'admin) ────
+    const ROLE_CHOICES = [
+      { id: '__accueil__',     icon: '🌟', label: 'Agent·e d\'accueil' },
+      { id: '__as__',          icon: '🤝', label: 'Assistant·e Social·e' },
+      { id: '__technicien__',  icon: '🔧', label: 'Technicien·ne' },
+      { id: '__entretien__',   icon: '🧹', label: 'Agent·e d\'entretien' },
+      { id: '__chef_service__',icon: '💼', label: 'Chef·fe de service' },
+      { id: '__direction__',   icon: '🏛️', label: 'Direction' },
+      { id: '__juriste__',     icon: '⚖️', label: 'Juriste' },
+    ];
+    const BUILTINS = new Set(['__direction__','__admin__','__chef_service__','__as__','__accueil__','__agent__','__technicien__','__entretien__','__juriste__']);
+
+    function _resolveIntroType(roleId, customRoles) {
+      return BUILTINS.has(roleId) ? roleId : (customRoles[roleId]?.introType || '__agent__');
+    }
+
+    function _showRolePicker(agentName, mascotId, customRoles, db) {
+      const n = agentName.split(' ')[0] || 'toi';
+      const m = (typeof MASCOTS !== 'undefined' ? MASCOTS[mascotId] : null)?.name || 'moncompagnon';
+
+      // Appliquer la mascotte
+      const svgEl = document.getElementById('wlMascotSvg');
+      const mascot = typeof MASCOTS !== 'undefined' ? MASCOTS[mascotId || 'poulpe'] : null;
+      if (mascot && svgEl) {
+        svgEl.innerHTML = mascot.svg;
+        svgEl.setAttribute('viewBox', mascot.viewBox);
+        document.querySelector('.wl-mascot-glow').style.filter = `drop-shadow(0 0 28px rgba(167,139,250,.6))`;
+      }
+
+      // Cacher la card normale et le bouton
+      document.getElementById('wlCard').style.display  = 'none';
+      document.getElementById('wlBtn').style.display   = 'none';
+      document.getElementById('wlDots').style.display  = 'none';
+
+      // Afficher le sélecteur
+      const picker = document.getElementById('wlRolePicker');
+      picker.style.display = 'block';
+
+      // Message mascotte
+      typewrite(genf(`Bienvenu·e, ${n} ! 👋\nJe vois que ton poste n'a pas encore été défini. Pour te montrer les bons outils, dis-moi : quel est ton rôle au CPAS ?`));
+
+      // Construire la grille
+      const grid = document.getElementById('wlRoleGrid');
+      grid.innerHTML = '';
+
+      // Rôles built-in
+      const choices = [...ROLE_CHOICES];
+      // Ajouter les rôles personnalisés qui ont un introType
+      Object.entries(customRoles).forEach(([id, role]) => {
+        if (role?.name && role?.introType && !BUILTINS.has(id)) {
+          choices.push({ id, icon: '👤', label: role.name });
+        }
+      });
+
+      choices.forEach(({ id, icon, label }) => {
+        const btn = document.createElement('button');
+        btn.className = 'wl-role-btn';
+        btn.innerHTML = `<span class="rb-icon">${icon}</span>${label}`;
+        btn.addEventListener('click', async () => {
+          // Désactiver tous les boutons pour éviter un double-clic
+          grid.querySelectorAll('.wl-role-btn').forEach(b => { b.disabled = true; b.classList.remove('selected'); });
+          btn.classList.add('selected');
+
+          // Sauvegarder le rôle dans Firebase (en parallèle de la mascotte)
+          db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).set(id)
+            .catch(e => console.warn('[WELCOME] Impossible de sauvegarder le rôle:', e));
+
+          // Message mascotte — attendre la fin du typewriter, puis pause de 900 ms
+          typewrite(genf(`${icon} ${label} ! Parfait·e — je te prépare le guide de ton poste… ✨`), () => {
+            setTimeout(() => {
+              picker.style.display = 'none';
+              document.getElementById('wlCard').style.display  = '';
+              document.getElementById('wlBtn').style.display   = '';
+              document.getElementById('wlDots').style.display  = '';
+              const introType = _resolveIntroType(id, customRoles);
+              try { _launch(agentName, introType, mascotId); } catch(e) { finish(); }
+            }, 900);
+          });
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    // ── Lancement ────────────────────────────────────────────────
+    if (_testIntroType) {
+      // Mode test : pas de Firebase, données fictives
+      _launch('Prénom', _testIntroType, 'poulpe');
+    } else {
+      // Timeout de sécurité : si Firebase ne répond pas en 8s → skip vers app.html
+      const _safetyTimer = setTimeout(() => {
+        console.warn('[WELCOME] Timeout Firebase — redirection directe');
+        finish();
+      }, 8000);
+
+      function _handleFirebaseData(nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap, db) {
+        const agentName   = nameSnap.val() || '';
+        const rawRole     = roleSnap.val(); // null = pas de rôle assigné par l'admin
+        const mascotId    = mascotSnap.val() || 'poulpe';
+        const customRoles = customRolesSnap.val() || {};
+
+        // Charger le genre sauvegardé en sessionStorage pour les genf() à venir
+        const savedGender = genderSnap.val();
+        if (savedGender && typeof setGender === 'function') setGender(savedGender);
+
+        if (rawRole === null) {
+          // Aucun rôle défini → afficher le sélecteur
+          _showRolePicker(agentName, mascotId, customRoles, db);
+        } else {
+          const introType = _resolveIntroType(rawRole, customRoles);
+          try { _launch(agentName, introType, mascotId); } catch(e) { finish(); }
+        }
+      }
+
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
+        const db = firebase.database();
+        Promise.all([
+          db.ref(`orgs/${ORG_ID}/appConfig/agents/${agentKey}`).once('value'),
+          db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).once('value'),
+          db.ref(`orgs/${ORG_ID}/appConfig/mascotId`).once('value'),
+          db.ref(`orgs/${ORG_ID}/appConfig/permRoles`).once('value'),
+          db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${agentKey}`).once('value'),
+        ]).then(([nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap]) => {
+          clearTimeout(_safetyTimer);
+          _handleFirebaseData(nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap, db);
+        }).catch(err => {
+          clearTimeout(_safetyTimer);
+          console.warn('[WELCOME] Firebase error:', err);
+          finish();
+        });
+      } catch (initErr) {
+        clearTimeout(_safetyTimer);
+        console.warn('[WELCOME] Firebase init error:', initErr);
+        // Firebase déjà initialisé — récupérer l'instance existante
+        try {
+          const db = firebase.app().database();
+          Promise.all([
+            db.ref(`orgs/${ORG_ID}/appConfig/agents/${agentKey}`).once('value'),
+            db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).once('value'),
+            db.ref(`orgs/${ORG_ID}/appConfig/mascotId`).once('value'),
+            db.ref(`orgs/${ORG_ID}/appConfig/permRoles`).once('value'),
+            db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${agentKey}`).once('value'),
+          ]).then(([nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap]) => {
+            _handleFirebaseData(nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap, db);
+          }).catch(() => finish());
+        } catch(e2) { finish(); }
+      }
+    }
+
+  })();
+  </script>
+</body>
+</html>

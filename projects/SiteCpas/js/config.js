@@ -2,6 +2,19 @@
 // config.js — Configuration de l'application
 // ═══════════════════════════════════════════════════════════════════
 
+// Extraire l'orgId depuis l'URL : /cpas-quaregnon/app.html → "cpas-quaregnon"
+// En dev local (chemin ne correspondant pas à un orgId), fallback sur 'cpas-quaregnon'
+const ORG_ID = (() => {
+  // Priorité 1 : paramètre ?org= (dev/test uniquement)
+  const param = new URLSearchParams(window.location.search).get('org');
+  if (param) return param;
+  // Priorité 2 : premier segment de l'URL (prod)
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const skip  = ['projects', 'SiteCpas', 'app.html', 'public.html', 'index.html', 'migrate.html', 'welcome.html', 'superadmin.html'];
+  const first = parts[0];
+  return (first && !skip.includes(first)) ? first : 'cpas-quaregnon';
+})();
+
 const CONFIG = {
 
   // ── FIREBASE ─────────────────────────────────────────────────────
@@ -18,8 +31,8 @@ const CONFIG = {
 
   // ── HORAIRES D'OUVERTURE ─────────────────────────────────────────
   // [FAKE — À CONFIRMER AVEC LE CLIENT]
-  HOURS_START: 8,   // 8h00
-  HOURS_END:   22,  // 22h00
+  HOURS_START: 0,   // 0h00 (TEST — remettre 8 en prod)
+  HOURS_END:   24,  // 24h00 (TEST — remettre 22 en prod)
   SLOT_MIN:    30,  // tranches de 30 minutes
 
   // ── LOCAUX ───────────────────────────────────────────────────────
@@ -41,6 +54,11 @@ const CONFIG = {
     'Accueil / Desk d\'accueil',
     'Autre'
   ],
+
+  // ── PUSH PWA (Couche D.2) ────────────────────────────────────────
+  // Clé VAPID : Firebase Console → Paramètres → Cloud Messaging → Certificats Web Push
+  // Laisser vide pour désactiver le Push PWA côté client.
+  VAPID_KEY: '',
 
   // ── AGENTS ───────────────────────────────────────────────────────
   // À remplacer par la liste réelle des travailleurs

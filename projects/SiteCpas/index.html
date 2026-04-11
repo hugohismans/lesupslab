@@ -3,44 +3,279 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CPAS de Quaregnon — Réservation</title>
+  <title>moncompagnon — Connexion</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="login-page">
   <div class="login-wrap">
+
+    <!-- Mascotte moncompagnon -->
+    <div class="mascot-wrap" aria-hidden="true">
+      <svg class="mascot-svg" id="loginMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg" style="cursor:default">
+        <!-- filled by _applyMascot() on config load -->
+        <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+        <ellipse cx="37" cy="20" rx="13" ry="8" fill="#a78bfa" opacity=".35" transform="rotate(-18 37 20)"/>
+        <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+        <ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+        <circle cx="37" cy="38" r="10.5" fill="white"/>
+        <circle cx="63" cy="38" r="10.5" fill="white"/>
+        <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="41" cy="37" r="2.5" fill="white"/>
+        <circle cx="67" cy="37" r="2.5" fill="white"/>
+        <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+
+    <!-- Bulle de la mascotte -->
+    <div id="loginMascotBubble" class="lm-bubble hidden" aria-live="polite">
+      <p id="loginMascotText"></p>
+    </div>
+
     <div class="login-card">
-      <img src="assets/logo.jpg" alt="Logo CPAS" class="login-logo">
-      <h1>CPAS de Quaregnon</h1>
-      <p class="login-sub">Réservation des locaux · Accès réservé au personnel</p>
-      <form id="loginForm">
-        <div class="field">
-          <label for="password">Mot de passe</label>
-          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      <img src="assets/logo.jpg" alt="Logo CPAS" class="login-logo" id="loginLogo"
+           onerror="this.style.display='none'">
+      <h1 id="loginTitle">Chargement…</h1>
+      <p class="login-sub">Accès réservé au personnel</p>
+
+      <!-- Étape 1 : choisir son agent -->
+      <div id="stepAgent">
+        <p class="login-step-label">Qui êtes-vous ?</p>
+        <div class="agent-search-wrap">
+          <input type="text" id="agentSearch" class="agent-search-input"
+                 placeholder="Rechercher mon nom…" autocomplete="off" autocorrect="off" spellcheck="false">
+          <span class="agent-search-icon">🔍</span>
         </div>
-        <p id="loginErr" class="err-msg hidden">Mot de passe incorrect.</p>
-        <button type="submit" class="btn-primary full">Se connecter</button>
-      </form>
-      <div class="login-footer">Développé par Hugo Hismans</div>
+        <div id="agentList" class="agent-list"></div>
+      </div>
+
+      <!-- Étape 2 : saisir / créer le mot de passe -->
+      <div id="stepPassword" class="hidden">
+        <button type="button" id="btnBackAgent" class="login-back-btn">← Changer d'agent</button>
+        <div id="selectedAgentBadge" class="selected-agent-badge"></div>
+
+        <!-- Connexion normale -->
+        <form id="loginForm" class="hidden">
+          <div class="field">
+            <label for="password">Mot de passe</label>
+            <input type="password" id="password" placeholder="••••••••"
+                   autocomplete="current-password">
+          </div>
+          <p id="loginErr" class="err-msg hidden">Mot de passe incorrect.</p>
+          <button type="submit" class="btn-primary full">Se connecter</button>
+          <div style="text-align:center;margin-top:.85rem">
+            <button type="button" id="btnForgotPwd" class="login-forgot-link">
+              Mot de passe oublié ?
+            </button>
+          </div>
+        </form>
+
+        <!-- Création de mot de passe (première connexion) -->
+        <div id="createPwdWrap" class="hidden">
+          <p class="login-create-info" id="createPwdInfo">
+            Première connexion — choisissez votre mot de passe personnel.
+          </p>
+          <div class="field">
+            <label for="newPwd">Nouveau mot de passe</label>
+            <input type="password" id="newPwd" placeholder="Choisir un mot de passe..."
+                   autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label for="newPwdConfirm">Confirmer</label>
+            <input type="password" id="newPwdConfirm" placeholder="Confirmer le mot de passe..."
+                   autocomplete="new-password">
+          </div>
+          <p id="createPwdErr" class="err-msg hidden">Les mots de passe ne correspondent pas.</p>
+          <button type="button" id="createPwdBtn" class="btn-primary full">
+            Créer mon mot de passe
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal mot de passe oublié -->
+      <div id="forgotPwdModal" class="login-forgot-modal hidden">
+        <div class="login-forgot-box">
+          <p class="login-forgot-icon">🔑</p>
+          <p class="login-forgot-title">Mot de passe oublié</p>
+          <p class="login-forgot-body">
+            Votre administrateur peut réinitialiser votre mot de passe.
+          </p>
+          <button type="button" id="btnContactAdmin" class="lm-contact-btn full">
+            📨 Prévenir l'administrateur
+          </button>
+          <button type="button" id="btnForgotClose" class="btn-primary full"
+                  style="margin-top:.5rem">Fermer</button>
+        </div>
+      </div>
+
+      <div class="login-footer">
+        <span class="lf-brand">moncompagnon.be</span>
+        <span>par Hugo Hismans</span>
+      </div>
     </div>
   </div>
-  <!-- Formulaire de création de mot de passe (premier lancement) -->
-  <div id="createPwdWrap" class="hidden" style="margin-top:1rem">
-    <p style="color:#64748b;font-size:.83rem;margin-bottom:.75rem">Aucun mot de passe n'est configuré.<br>Créez-en un pour sécuriser l'accès.</p>
-    <div class="field">
-      <label for="newPwd">Nouveau mot de passe</label>
-      <input type="password" id="newPwd" placeholder="Choisir un mot de passe...">
+
+  <!-- Bouton "autre organisation" -->
+  <button id="btnOtherOrg" type="button" aria-label="Changer d'organisation" title="Je suis d'une autre organisation">
+    🏢 Autre organisation
+  </button>
+
+  <!-- Panneau sélection d'organisation -->
+  <div id="orgPickerOverlay" class="org-picker-overlay hidden" role="dialog" aria-modal="true" aria-label="Choisir une organisation">
+    <div class="org-picker-box">
+      <button class="org-picker-close" id="orgPickerClose" aria-label="Fermer">✕</button>
+      <div class="org-picker-header">
+        <div class="org-picker-icon">🏢</div>
+        <h2>Choisir une organisation</h2>
+        <p>Entrez l'identifiant de votre organisation pour accéder à son espace.</p>
+      </div>
+      <div class="org-picker-field">
+        <input type="text" id="orgPickerInput" placeholder="ex: cpas-mons, cpas-liege…"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <p class="org-picker-hint" id="orgPickerHint"></p>
+      <button type="button" class="btn-primary full" id="orgPickerGo">Accéder →</button>
+      <div class="org-picker-recent hidden" id="orgPickerRecent">
+        <p class="org-picker-recent-label">Récemment visités</p>
+        <div id="orgPickerRecentList"></div>
+      </div>
     </div>
-    <div class="field">
-      <label for="newPwdConfirm">Confirmer</label>
-      <input type="password" id="newPwdConfirm" placeholder="Confirmer...">
+  </div>
+
+  <!-- Modal onboarding première connexion -->
+  <div id="onboardingModal" class="lm-onboarding hidden">
+    <div class="lm-onboarding-box">
+      <div class="lm-onboarding-mascot">
+        <svg class="lm-ob-mascot-svg" id="obMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+          <!-- filled by JS -->
+        </svg>
+        <div class="lm-ob-bubble" id="obBubble">
+          <p id="obBubbleText">Choisis ta couleur et un emoji qui te ressemble !</p>
+        </div>
+      </div>
+      <h2 class="lm-ob-title">Personnalise ton profil</h2>
+
+      <!-- Sélecteur de genre -->
+      <p class="lm-ob-label">Comment veux-tu qu'on s'adresse à toi ?</p>
+      <div class="lm-ob-gender" id="obGender">
+        <button class="lm-ob-gender-btn" data-gender="m" type="button">
+          <span class="lm-ob-gender-icon">👨</span>
+          <span>Masculin</span>
+        </button>
+        <button class="lm-ob-gender-btn" data-gender="f" type="button">
+          <span class="lm-ob-gender-icon">👩</span>
+          <span>Féminin</span>
+        </button>
+        <button class="lm-ob-gender-btn" data-gender="n" type="button">
+          <span class="lm-ob-gender-icon">🧑</span>
+          <span>Non-binaire</span>
+        </button>
+        <button class="lm-ob-gender-btn lm-ob-gender-skip" data-gender="n" type="button">
+          <span class="lm-ob-gender-icon">🤐</span>
+          <span>Ne pas répondre</span>
+        </button>
+      </div>
+
+      <!-- Sélecteur de couleur -->
+      <p class="lm-ob-label">Ta couleur</p>
+      <div class="lm-ob-colors" id="obColors"></div>
+
+      <!-- Sélecteur d'emoji -->
+      <p class="lm-ob-label">Ton emoji</p>
+      <div class="lm-ob-emojis" id="obEmojis"></div>
+
+      <button type="button" id="btnObConfirm" class="btn-primary full lm-ob-confirm" disabled>
+        Confirmer mon profil
+      </button>
     </div>
-    <p id="createPwdErr" class="err-msg hidden">Les mots de passe ne correspondent pas.</p>
-    <button type="button" id="createPwdBtn" class="btn-primary full">Créer le mot de passe</button>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/gender.js"></script>
+  <script src="js/mascots.js"></script>
   <script src="js/auth.js"></script>
+
+  <script>
+  // ── Sélecteur d'organisation ───────────────────────────────────
+  (function () {
+    const RECENT_KEY = 'mc_recent_orgs';
+    const MAX_RECENT = 5;
+
+    const overlay   = document.getElementById('orgPickerOverlay');
+    const input     = document.getElementById('orgPickerInput');
+    const hint      = document.getElementById('orgPickerHint');
+    const btnGo     = document.getElementById('orgPickerGo');
+    const btnOpen   = document.getElementById('btnOtherOrg');
+    const btnClose  = document.getElementById('orgPickerClose');
+    const recentWrap = document.getElementById('orgPickerRecent');
+    const recentList = document.getElementById('orgPickerRecentList');
+
+    // ── Historique récent (localStorage) ───────────────────────
+    function getRecent() {
+      try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+    }
+    function saveRecent(orgId) {
+      const list = [orgId, ...getRecent().filter(o => o !== orgId)].slice(0, MAX_RECENT);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+    }
+    function renderRecent() {
+      const list = getRecent();
+      if (!list.length) { recentWrap.classList.add('hidden'); return; }
+      recentWrap.classList.remove('hidden');
+      recentList.innerHTML = list.map(org => `
+        <div class="org-picker-recent-item" data-org="${org}">
+          <span>🏢 ${org}</span>
+          <span class="org-recent-arrow">›</span>
+        </div>`).join('');
+      recentList.querySelectorAll('.org-picker-recent-item').forEach(el => {
+        el.addEventListener('click', () => goTo(el.dataset.org));
+      });
+    }
+
+    // ── Navigation vers une org ────────────────────────────────
+    function goTo(orgId) {
+      orgId = orgId.trim().toLowerCase().replace(/\s+/g, '-');
+      if (!orgId) { hint.textContent = 'Veuillez entrer un identifiant.'; return; }
+      saveRecent(orgId);
+      // Construire l'URL : même base, paramètre ?org=
+      const base = window.location.href.split('?')[0];
+      window.location.href = `${base}?org=${encodeURIComponent(orgId)}`;
+    }
+
+    // ── Ouvrir / fermer ────────────────────────────────────────
+    function open() {
+      overlay.classList.remove('hidden');
+      input.value = '';
+      hint.textContent = '';
+      renderRecent();
+      setTimeout(() => input.focus(), 80);
+    }
+    function close() { overlay.classList.add('hidden'); }
+
+    btnOpen.addEventListener('click', open);
+    btnClose.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    // ── Validation & navigation ────────────────────────────────
+    btnGo.addEventListener('click', () => goTo(input.value));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') goTo(input.value);
+      hint.textContent = '';
+    });
+
+    // ── Pré-remplir si org actuelle connue ────────────────────
+    if (typeof ORG_ID !== 'undefined' && ORG_ID !== 'cpas-quaregnon') {
+      saveRecent(ORG_ID);
+    }
+  })();
+  </script>
 </body>
 </html>

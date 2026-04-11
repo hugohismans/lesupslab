@@ -213,6 +213,33 @@ body {
   margin-top: .25rem;
 }
 
+/* ── Carte En pause ────────────────────────────────────────────── */
+.pub-pause {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-top-color: #f59e0b;
+}
+.pub-pause .pub-card-status { color: #d97706; }
+.pub-card-pause-timer {
+  display: inline-block;
+  font-size: .85rem; font-weight: 700; color: #92400e;
+  background: #fef3c7; border: 1.5px solid #fde68a;
+  border-radius: 8px; padding: .2rem .65rem;
+  margin-top: .15rem;
+}
+.pub-card-pause-comment {
+  font-size: .95rem; color: #b45309; font-style: italic;
+  margin-top: .15rem;
+}
+
+/* ── Description accès bureau ──────────────────────────────────── */
+.pub-card-desc {
+  font-size: .82rem; color: #475569;
+  border-top: 1px solid var(--border);
+  padding-top: .55rem; margin-top: .35rem;
+  line-height: 1.4;
+}
+
 
 /* ── Cartes file de groupe ─────────────────────────────────────── */
 .pub-grp-card {
@@ -247,6 +274,18 @@ body {
 .pub-grp-dot.busy { background: #ef4444; }
 
 .pub-grp-cap { font-size: .78rem; color: #64748b; }
+
+.pub-grp-tickets { margin-top: .6rem; display: flex; flex-direction: column; gap: .35rem; }
+.pub-grp-tickets-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #475569; }
+.pub-grp-ticket-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+.pub-grp-ticket {
+  font-size: 1rem; font-weight: 900; letter-spacing: .05em;
+  background: #1e293b; color: #e2e8f0;
+  border: 1.5px solid #334155; border-radius: 8px;
+  padding: .2rem .55rem;
+}
+.pub-grp-card.pub-grp-busy .pub-grp-ticket  { border-color: #ef4444; color: #fca5a5; }
+.pub-grp-card.pub-grp-active .pub-grp-ticket { border-color: #f59e0b; color: #fde68a; }
 
 /* ── Jour férié ────────────────────────────────────────────────── */
 .pub-holiday {
@@ -313,6 +352,13 @@ body {
 }
 
 .next-call-label  { font-size: 1.5rem; font-weight: 700; color: var(--muted); margin: .75rem 0 .25rem; text-transform: uppercase; letter-spacing: .08em; }
+.next-call-ticket {
+  font-size: 4rem; font-weight: 900; color: #1d4ed8;
+  background: #eff6ff; border: 3px solid #bfdbfe;
+  border-radius: 16px; padding: .1rem 1.5rem;
+  letter-spacing: .08em; margin: .25rem 0;
+  display: inline-block;
+}
 .next-call-group  { font-size: 2.2rem; font-weight: 900; color: var(--text); line-height: 1.1; margin: .1rem 0 0; }
 .next-call-bureau { font-size: 2rem; font-weight: 800; color: #1d4ed8; line-height: 1.2; margin: .15rem 0 .75rem; }
 .next-call-hint   { font-size: 1rem; color: var(--muted); }

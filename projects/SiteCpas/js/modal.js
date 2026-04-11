@@ -3,8 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 const MODAL = {
-  _editId:       null,
-  _settingsMode: 'agent', // 'agent' | 'admin'
+  _editId: null,
 
   // Recharge les listes locaux/agents/services depuis Firebase
   refreshSelects() {
@@ -23,6 +22,20 @@ const MODAL = {
     if (curService) g('fService').value = curService;
     if (curAgent)   g('fAgent').value   = curAgent;
 
+    // Mettre à jour la liste d'agents dans le select d'invitation
+    const invSel = g('fInviteSelect');
+    if (invSel) {
+      const chips  = [...g('fInviteChips').querySelectorAll('.invite-chip')].map(c => c.dataset.key);
+      invSel.innerHTML = '<option value="">+ Ajouter un agent...</option>' +
+        DB.getAgentsWithKeys()
+          .filter(a => a.key && !chips.includes(a.key))
+          .map(a => `<option value="${a.key}" data-name="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`)
+          .join('');
+    }
+
+    // Mettre à jour les créneaux horaires selon les horaires du lieu actif
+    this._refreshTimeOpts();
+
     // Re-rendre la liste paramètres uniquement si aucun input n'est en cours d'édition
     const overlay = g('settingsOverlay');
     if (!overlay.classList.contains('hidden')) {
@@ -31,79 +44,36 @@ const MODAL = {
     }
   },
 
-  // ─── Authentification admin ────────────────────────────────────
-  _adminCallback: null,
-
-  async _requireAdmin(callback) {
-    if (sessionStorage.getItem('cpas_admin') === '1') { callback(); return; }
-    this._adminCallback = callback;
-    const hash = DB.getAdminHash();
-    if (!hash) {
-      // Première fois : créer le mot de passe
-      g('adminAuthTitle').textContent   = '🔐 Créer le mot de passe admin';
-      g('adminAuthConfirm').textContent = 'Créer';
-      g('adminLoginSection').classList.add('hidden');
-      g('adminCreateSection').classList.remove('hidden');
-      g('adminNewPwd').value = '';
-      g('adminNewPwdConfirm').value = '';
-      g('adminCreateError').classList.add('hidden');
-      setTimeout(() => g('adminNewPwd').focus(), 80);
-    } else {
-      g('adminAuthTitle').textContent   = '🔐 Accès administrateur';
-      g('adminAuthConfirm').textContent = 'Accéder';
-      g('adminLoginSection').classList.remove('hidden');
-      g('adminCreateSection').classList.add('hidden');
-      g('adminPwdInput').value = '';
-      g('adminPwdError').classList.add('hidden');
-      setTimeout(() => g('adminPwdInput').focus(), 80);
-    }
-    g('adminAuthOverlay').classList.remove('hidden');
+  // ─── Vérification de permission ───────────────────────────────
+  // Remplace l'ancienne authentification admin par mot de passe.
+  // Vérifie simplement que l'agent connecté a la permission requise.
+  _requirePermission(perm, callback) {
+    if (DB.hasPermission(perm)) { callback(); return; }
+    showToast('Droits insuffisants — contactez votre administrateur.', 'warn');
   },
 
-  async _submitAdminPwd() {
-    const hash = DB.getAdminHash();
-    if (!hash) {
-      const pwd     = g('adminNewPwd').value;
-      const confirm = g('adminNewPwdConfirm').value;
-      if (!pwd) return;
-      if (pwd !== confirm) { g('adminCreateError').classList.remove('hidden'); return; }
-      await DB.setAdminHash(await sha256(pwd));
-      sessionStorage.setItem('cpas_admin', '1');
-      g('adminAuthOverlay').classList.add('hidden');
-      if (this._adminCallback) { this._adminCallback(); this._adminCallback = null; }
-    } else {
-      const input = g('adminPwdInput').value;
-      if (await sha256(input) === hash) {
-        sessionStorage.setItem('cpas_admin', '1');
-        g('adminAuthOverlay').classList.add('hidden');
-        if (this._adminCallback) { this._adminCallback(); this._adminCallback = null; }
-      } else {
-        g('adminPwdError').classList.remove('hidden');
-        g('adminPwdInput').value = '';
-        g('adminPwdInput').focus();
-      }
-    }
-  },
+  // Raccourci pour la permission la plus utilisée
+  _requireAdmin(callback) { this._requirePermission('editSettings', callback); },
 
-  // Ouvrir le panneau paramètres dans un mode donné
-  openSettings(mode) {
-    this._settingsMode = mode;
-    const isAdmin = mode === 'admin';
-    g('settingsTitle').textContent = isAdmin ? '🔐 Paramètres Admin' : '🎨 Réglages Agent';
+  // Ouvrir le panneau paramètres
+  openSettings() {
+    const isAdmin = DB.hasPermission('editSettings');
+    g('settingsTitle').textContent = isAdmin ? '⚙ Paramètres' : '🎨 Mes réglages';
     g('settingsOverlay').querySelectorAll('.st-admin-section').forEach(el => {
       el.style.display = isAdmin ? '' : 'none';
     });
-    g('featureAgentEmoji').checked = DB.getFeature('agentEmoji');
     this._renderSettingsList();
-    g('settingsModeOverlay').classList.add('hidden');
     g('settingsOverlay').classList.remove('hidden');
   },
 
   _renderSettingsList() {
+    const isAdmin = DB.hasPermission('editSettings');
+
     // ── Lieux ──────────────────────────────────────────────────────
     const lieux = DB.getLieux();
     const currentLieuId = DB.getCurrentLieuId();
     const lieuEntries   = Object.entries(lieux);
+    const backofficeEnabled = DB.getFeature('enableBackoffice');
     g('stLieuList').innerHTML = lieuEntries.length
       ? lieuEntries.map(([id, lieu], idx) => `
           <div class="st-local-row">
@@ -114,6 +84,10 @@ const MODAL = {
             <input class="st-local-input st-lieu-name-input" type="text" data-lieu-id="${id}"
                    value="${escapeHtml(lieu.name)}" placeholder="Nom du lieu">
             ${id === currentLieuId ? '<em class="st-lieu-active">(actif)</em>' : ''}
+            ${backofficeEnabled ? `<label class="st-lieu-bo-label" title="Ce lieu est un backoffice (non public, présence sans réservation)">
+              <input type="checkbox" class="st-lieu-bo-toggle" data-lieu-id="${id}" ${lieu.isBackoffice ? 'checked' : ''}>
+              <span>🏢 BackOffice</span>
+            </label>` : ''}
             <button class="st-local-save st-lieu-save" data-lieu-id="${id}" title="Renommer">✓</button>
             <button class="st-lieu-del" data-lieu-id="${id}" data-name="${escapeHtml(lieu.name)}" title="Supprimer">✕</button>
           </div>`).join('')
@@ -157,9 +131,70 @@ const MODAL = {
       }));
     });
 
+    g('settingsOverlay').querySelectorAll('.st-lieu-bo-toggle').forEach(chk => {
+      chk.addEventListener('change', () => this._requireAdmin(async () => {
+        await DB.setLieuBackoffice(chk.dataset.lieuId, chk.checked || null);
+        showToast(chk.checked ? 'Lieu marqué BackOffice ✓' : 'BackOffice désactivé ✓');
+      }));
+    });
+
+    // ── Horaires du lieu courant ───────────────────────────────────
+    if (currentLieuId) {
+      const lieuCfg = DB.getLieuConfig(currentLieuId);
+      const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+      const hoursHtml = `
+        <div class="st-hours-row">
+          <label>Ouverture
+            <input type="number" id="stOpenHour" class="st-hour-input" min="0" max="23"
+                   value="${lieuCfg.openHour}">h
+          </label>
+          <label>Fermeture
+            <input type="number" id="stCloseHour" class="st-hour-input" min="1" max="24"
+                   value="${lieuCfg.closeHour}">h
+          </label>
+          <label>Créneau
+            <select id="stSlotMin" class="st-slot-select">
+              ${[15,30,60].map(v => `<option value="${v}"${lieuCfg.slotMin===v?' selected':''}>${v} min</option>`).join('')}
+            </select>
+          </label>
+        </div>
+        <div class="st-days-row">
+          ${[1,2,3,4,5,6,0].map(dow => `
+            <label class="st-day-label">
+              <input type="checkbox" class="st-day-check" data-dow="${dow}"
+                     ${lieuCfg.activeDays[dow] ? 'checked' : ''}>
+              ${dayNames[dow]}
+            </label>`).join('')}
+        </div>
+        <button id="stSaveHours" class="btn-sm btn-primary" style="margin-top:.5rem">
+          Enregistrer les horaires
+        </button>`;
+      g('stLieuHours').innerHTML = hoursHtml;
+
+      g('stSaveHours').addEventListener('click', () => this._requireAdmin(async () => {
+        const openHour  = parseInt(g('stOpenHour').value);
+        const closeHour = parseInt(g('stCloseHour').value);
+        const slotMin   = parseInt(g('stSlotMin').value);
+        if (isNaN(openHour) || isNaN(closeHour) || openHour >= closeHour) {
+          return alert('Horaires invalides — l\'heure de fermeture doit être supérieure à l\'heure d\'ouverture.');
+        }
+        const activeDays = {};
+        g('stLieuHours').querySelectorAll('.st-day-check').forEach(cb => {
+          if (cb.checked) activeDays[cb.dataset.dow] = true;
+        });
+        await DB.setLieuHours(currentLieuId, openHour, closeHour, slotMin,
+          Object.keys(activeDays).length ? activeDays : null);
+        showToast('Horaires enregistrés ✓');
+      }));
+    } else {
+      g('stLieuHours').innerHTML = '';
+    }
+
     // ── Locaux du lieu courant ─────────────────────────────────────
     const currentLieu = lieux[currentLieuId];
-    g('stLieuName').textContent = currentLieu?.name || '...';
+    const lieuDisplayName = currentLieu?.name || '...';
+    g('stLieuName').textContent     = lieuDisplayName;
+    if (g('stLieuNameHours')) g('stLieuNameHours').textContent = lieuDisplayName;
     const localIds = currentLieu?.localIds || [];
 
     g('stLocalList').innerHTML = localIds.length
@@ -171,6 +206,9 @@ const MODAL = {
               <input class="st-local-pub-input" type="text" data-localid="${id}"
                      value="${escapeHtml(DB.getPublicLocalLabel(id) === DB.getLocalLabel(id) ? '' : DB.getPublicLocalLabel(id))}"
                      placeholder="Nom public (facultatif)">
+              <input class="st-local-desc-input" type="text" data-localid="${id}"
+                     value="${escapeHtml(DB.getLocalDescription(id))}"
+                     placeholder="ℹ️ Accès / info pour les bénéficiaires (vue écran)">
             </div>
             <button class="st-local-save" data-localid="${id}" title="Enregistrer">✓</button>
             <button class="st-local-del" data-localid="${id}" data-lieu="${currentLieuId}" title="Supprimer">✕</button>
@@ -183,11 +221,13 @@ const MODAL = {
         const row      = btn.closest('.st-local-row');
         const input    = row?.querySelector('.st-local-input');
         const pubInput = row?.querySelector('.st-local-pub-input');
+        const descInput = row?.querySelector('.st-local-desc-input');
         if (!input) return;
         btn.disabled = true;
         try {
           await DB.setLocalLabel(id, input.value);
           await DB.setPublicLocalLabel(id, pubInput?.value || '');
+          await DB.setLocalDescription(id, descInput?.value || '');
           showToast('Libellé enregistré ✓');
           this.refreshSelects();
         } catch (e) {
@@ -196,7 +236,7 @@ const MODAL = {
         }
       }));
     });
-    g('settingsOverlay').querySelectorAll('.st-local-input, .st-local-pub-input').forEach(input => {
+    g('settingsOverlay').querySelectorAll('.st-local-input, .st-local-pub-input, .st-local-desc-input').forEach(input => {
       input.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           g('settingsOverlay').querySelector(`.st-local-save[data-localid="${input.dataset.localid}"]`)?.click();
@@ -216,17 +256,24 @@ const MODAL = {
 
     // ── Agents ────────────────────────────────────────────────────
     const agents = DB.getAgentsWithKeys();
-    const isAdmin = this._settingsMode === 'admin';
-    const emojiEnabled = DB.getFeature('agentEmoji');
+    const emojiEnabled    = DB.getFeature('agentEmoji');
+    const currentAgentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
     g('stAgentList').innerHTML = agents.length
       ? agents.map(({key, name}) => {
           const color      = DB.getAgentColorByKey(key) || '#a5b4fc';
           const emoji      = DB.getAgentEmojiByKey(key) || '';
           const pubName    = key ? (DB._config.agentPublicNames[key] || '') : '';
+          const canEdit    = isAdmin || key === currentAgentKey;
           return `
             <div class="st-item st-agent-item">
-              <input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Couleur de ${escapeHtml(name)}">
-              ${emojiEnabled ? `<button class="st-agent-emoji-btn" data-key="${key || ''}" title="Choisir un emoji">${emoji || '🧑‍💼'}</button>` : ''}
+              ${canEdit
+                ? `<input type="color" class="st-agent-color" data-key="${key || ''}" value="${color}" title="Ma couleur">`
+                : `<span class="st-agent-color-dot" style="background:${color}"></span>`}
+              ${emojiEnabled
+                ? (canEdit
+                    ? `<button class="st-agent-emoji-btn" data-key="${key || ''}" title="Choisir un emoji">${emoji || '🧑‍💼'}</button>`
+                    : `<span class="st-agent-emoji-static">${emoji || '🧑‍💼'}</span>`)
+                : ''}
               <div class="st-agent-names">
                 <span class="st-name">${escapeHtml(name)}</span>
                 ${isAdmin ? `<input class="st-agent-pub-input" type="text" data-key="${key || ''}"
@@ -242,6 +289,7 @@ const MODAL = {
       input.addEventListener('change', async () => {
         const key = input.dataset.key;
         if (!key) return;
+        if (!DB.hasPermission('editSettings') && key !== (sessionStorage.getItem('cpas_current_agent_key') || null)) return;
         await DB.setAgentColor(key, input.value);
         CAL.render();
       });
@@ -250,6 +298,7 @@ const MODAL = {
       btn.addEventListener('click', () => {
         const key = btn.dataset.key;
         if (!key) return;
+        if (!DB.hasPermission('editSettings') && key !== (sessionStorage.getItem('cpas_current_agent_key') || null)) return;
         EMOJI_PICKER.open(async emoji => {
           btn.textContent = emoji;
           await DB.setAgentEmoji(key, emoji);
@@ -292,14 +341,461 @@ const MODAL = {
         showToast('Supprimé ✓');
       }));
     });
+
+    // ── Modules (feature flags) ────────────────────────────────────
+    // Modules essentiels (visibles directement)
+    const MODULE_SIMPLE = [
+      { key: 'enableTickets',    label: 'Files d\'attente (tickets)', desc: 'Bouton Direct + gestion des queues' },
+      { key: 'enablePublicView', label: 'Vue publique',               desc: 'Lien vers l\'écran salle d\'attente' },
+      { key: 'enablePresence',   label: 'Statuts présence agents',    desc: 'Bouton Mon statut (retard / absence)' },
+      { key: 'enableNotif',      label: 'Centre de notifications',    desc: 'Cloche dans le header — panneau de notifications in-app' },
+      { key: 'agentEmoji',       label: 'Emojis des agents',          desc: 'Afficher les emojis dans le calendrier' },
+      { key: 'enableBackoffice', label: 'BackOffice',                 desc: 'Lieux internes non publics — présence des agents sans réservation ni queue' },
+    ];
+
+    // Modules avancés (dans le bloc <details>)
+    const MODULE_ADV_GROUPS = [
+      {
+        group: '📋 Fonctionnalités',
+        items: [
+          { key: 'confirmPublicMessage', label: 'Confirmer les messages publics', desc: 'Demande une confirmation avant tout message visible par les bénéficiaires' },
+          { key: 'enableInviteAgents',   label: 'Agents invités sur RDV',         desc: 'Permet d\'associer plusieurs agents à une réservation' },
+          { key: 'enableNamedTickets',   label: 'Tickets nominatifs',             desc: 'Remplacer le numéro de ticket par le nom du bénéficiaire (accueil saisit le nom à l\'émission)' },
+          { key: 'enableTicketPrint',    label: 'Impression de ticket',           desc: 'Bouton imprimer le numéro de ticket dans la vue Direct' },
+          { key: 'enableCalendarSync',   label: 'Export iCal (Google/Apple)',     desc: 'Lien .ics pour importer les RDV dans un agenda externe' },
+        ]
+      },
+      {
+        group: '🔔 Notifications avancées',
+        items: [
+          { key: 'enableNotifReminder',         label: 'Rappel 5 min avant RDV',       desc: 'Alerte automatique avant chaque réservation concernant l\'agent connecté' },
+          { key: 'enableNotifAuto',             label: 'Notifications automatiques',    desc: 'Retard agent, message du jour mis à jour, file d\'attente longue…' },
+          { key: 'enableNotifAdmin',            label: 'Envoi manuel (admin → agents)', desc: 'Permet à l\'admin d\'envoyer une notification ciblée depuis les paramètres' },
+          { key: 'enableNotifBrowser',          label: 'Notif navigateur (PC)',         desc: 'Toast système Windows / macOS / Android (onglet ouvert)' },
+          { key: 'enableNotifBrowserUrgentOnly',label: 'PC — urgences uniquement',      desc: 'Les notifications PC ne s\'affichent que si la notif est 🚨 Urgence' },
+          { key: 'enableNotifPush',             label: 'Push mobile (PWA)',             desc: 'Notifications push même navigateur fermé — nécessite l\'installation PWA', soon: true },
+          { key: 'enableNotifPushUrgentOnly',   label: 'Mobile — urgences uniquement',  desc: 'Les push mobiles ne sont envoyés que pour les notifs 🚨 Urgence', soon: true },
+          { key: 'enableNotifReadBy',           label: 'Accusé de lecture (admin)',     desc: 'Voir qui a lu chaque notification critique', soon: true },
+        ]
+      },
+      {
+        group: '📊 Modules supplémentaires',
+        items: [
+          { key: 'enableWeather',   label: 'Point météo',           desc: 'Bouton météo sur l\'accueil + phrases météo dans l\'assistant (nécessite une localisation configurée)' },
+          { key: 'enableAnalytics', label: 'Analytics',             desc: 'Dashboard statistiques' },
+          { key: 'enablePlanning',  label: 'Planning entretien/technique', desc: 'Outil de planning hebdomadaire pour les agents d\'entretien et techniciens' },
+          { key: 'enableKiosk',     label: 'Borne kiosk',           desc: 'Écran tactile pour les bénéficiaires', soon: true },
+          { key: 'rdvMode',         label: 'Mode RDV nominatifs',   desc: 'Passe en mode rendez-vous individuels', soon: true },
+        ]
+      },
+      {
+        group: '🏢 Identité organisation',
+        items: [
+          { key: 'isCpas', label: 'Mode CPAS', desc: 'Active les messages et conseils spécifiques aux CPAS (service social, bénéficiaires…)' },
+        ]
+      },
+    ];
+
+    const renderToggle = (m) => `
+      <label class="st-toggle-row${m.soon ? ' st-toggle-soon' : ''}" title="${m.desc}">
+        <input type="checkbox" class="st-feat-toggle" data-feat="${m.key}"
+               ${DB.getFeature(m.key) ? 'checked' : ''}
+               ${m.soon ? 'disabled' : ''}>
+        <span>${m.label}${m.soon ? ' <em class="st-soon-badge">bientôt</em>' : ''}</span>
+      </label>`;
+
+    g('stModulesList').innerHTML = MODULE_SIMPLE.map(renderToggle).join('');
+
+    const advListEl = g('stModulesAdvList');
+    if (advListEl) {
+      advListEl.innerHTML = MODULE_ADV_GROUPS.map(grp => `
+        <div class="st-module-group">
+          <div class="st-module-group-label">${grp.group}</div>
+          ${grp.items.map(renderToggle).join('')}
+        </div>`).join('');
+    }
+
+    g('settingsOverlay').querySelectorAll('.st-feat-toggle:not([disabled])').forEach(cb => {
+      cb.addEventListener('change', () => this._requireAdmin(async () => {
+        await DB.setFeature(cb.dataset.feat, cb.checked || null);
+        applyFeatureFlags();
+        CAL.render();
+        LIVE.render();
+      }));
+    });
+
+    // ── Absences (admin) ──────────────────────────────────────────
+    const absBtn = g('btnManageAbsences');
+    if (absBtn) absBtn.classList.toggle('hidden', !isAdmin);
+
+    // ── Localisation (météo) ──────────────────────────────────────
+    const locSel   = g('stCitySelect');
+    const locHint  = g('stLocationHint');
+    const locManual = g('stLocationManual');
+    if (locSel && isAdmin) {
+      const { lat, lon } = DB.getOrgCoords();
+      if (lat && lon) {
+        const matchVal = `${lat},${lon}`;
+        let found = false;
+        for (const opt of locSel.options) {
+          if (opt.value === matchVal) { opt.selected = true; found = true; break; }
+        }
+        if (!found) {
+          locSel.value = 'custom';
+          if (locManual) locManual.classList.remove('hidden');
+          if (g('stLatInput')) g('stLatInput').value = lat;
+          if (g('stLonInput')) g('stLonInput').value = lon;
+        } else {
+          if (locManual) locManual.classList.add('hidden');
+        }
+        if (locHint) locHint.textContent = `Météo active — ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+      } else {
+        if (locHint) locHint.textContent = 'Aucune localisation configurée — météo désactivée';
+      }
+      locSel.addEventListener('change', () => {
+        if (locManual) locManual.classList.toggle('hidden', locSel.value !== 'custom');
+      });
+      g('stLocationSave')?.addEventListener('click', () => this._requireAdmin(async () => {
+        let lat, lon;
+        if (locSel.value === 'custom') {
+          lat = parseFloat(g('stLatInput')?.value);
+          lon = parseFloat(g('stLonInput')?.value);
+        } else if (locSel.value) {
+          [lat, lon] = locSel.value.split(',').map(Number);
+        }
+        if (!lat || !lon || isNaN(lat) || isNaN(lon)) { showToast('Coordonnées invalides'); return; }
+        await DB.setOrgCoords(lat, lon);
+        if (typeof WEATHER !== 'undefined') WEATHER.fetch(lat, lon);
+        if (locHint) locHint.textContent = `Météo active — ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+        showToast('Localisation enregistrée ✓');
+      }));
+    }
+
+    // ── Heure de fin de journée ───────────────────────────────────
+    const eodInput = g('stEndOfDayHour');
+    const eodSave  = g('stEndOfDayHourSave');
+    if (eodInput && isAdmin) {
+      eodInput.value = DB.getEndOfDayHour();
+      eodSave?.addEventListener('click', () => this._requireAdmin(async () => {
+        const h = parseInt(eodInput.value);
+        if (isNaN(h) || h < 0 || h > 23) { showToast('Heure invalide'); return; }
+        await DB.setEndOfDayHour(h);
+        showToast(`Alerte fin de journée configurée à ${h}h ✓`);
+      }));
+    }
+
+    // ── Mascotte ──────────────────────────────────────────────────
+    const mascotGrid = g('stMascotGrid');
+    if (mascotGrid) {
+      const currentMascot = DB.getMascotId();
+      mascotGrid.innerHTML = Object.entries(MASCOTS).map(([id, m]) => `
+        <button class="st-mascot-btn${id === currentMascot ? ' st-mascot-active' : ''}" data-mascot-id="${id}" title="${m.label}">
+          <svg class="st-mascot-preview" viewBox="${m.viewBox}" xmlns="http://www.w3.org/2000/svg">${m.svg}</svg>
+          <span>${m.label}</span>
+        </button>`).join('');
+      mascotGrid.querySelectorAll('.st-mascot-btn').forEach(btn => {
+        btn.addEventListener('click', () => this._requireAdmin(async () => {
+          await DB.setMascotId(btn.dataset.mascotId);
+          _applyMascot(btn.dataset.mascotId);
+          mascotGrid.querySelectorAll('.st-mascot-btn').forEach(b => b.classList.toggle('st-mascot-active', b.dataset.mascotId === btn.dataset.mascotId));
+          showToast('Mascotte mise à jour ✓');
+        }));
+      });
+    }
+
+    // ── Écrans publics ─────────────────────────────────────────────
+    // Tous les locaux disponibles (toutes lieux confondus)
+    const allLieux   = DB.getLieux();
+    const allLocals  = Object.values(allLieux).flatMap(l => l.localIds);
+    const screens    = DB.getScreens();
+    const orgParam   = ORG_ID !== 'cpas-quaregnon' ? `?org=${ORG_ID}` : '';
+
+    g('stScreenList').innerHTML = screens.length
+      ? screens.map(s => {
+          const localChecks = allLocals.map(lid => `
+            <label class="st-screen-local-cb">
+              <input type="checkbox" class="st-scr-local" data-screen="${s.id}" data-lid="${lid}"
+                     ${s.localIds.includes(lid) ? 'checked' : ''}>
+              ${escapeHtml(DB.getLocalLabel(lid))}
+            </label>`).join('');
+          const url = `public.html?screen=${s.id}${orgParam ? '&' + orgParam.slice(1) : ''}`;
+          return `
+            <div class="st-screen-card" data-screen-id="${s.id}">
+              <div class="st-screen-row">
+                <input class="st-local-input st-screen-name" type="text" data-screen-id="${s.id}"
+                       value="${escapeHtml(s.name)}" placeholder="Nom de l'écran">
+                <a class="st-screen-link" href="${url}" target="_blank" title="Ouvrir cet écran">🖥</a>
+                <button class="st-local-save st-screen-save" data-screen-id="${s.id}" title="Renommer">✓</button>
+                <button class="st-screen-del" data-screen-id="${s.id}" data-name="${escapeHtml(s.name)}" title="Supprimer">✕</button>
+              </div>
+              <div class="st-screen-locals">${localChecks}</div>
+            </div>`;
+        }).join('')
+      : '<p class="st-empty">Aucun écran configuré. Créez-en un ci-dessous.</p>';
+
+    // Sauvegarder le nom d'un écran
+    g('settingsOverlay').querySelectorAll('.st-screen-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id   = btn.dataset.screenId;
+        const card = btn.closest('.st-screen-card');
+        const name = card?.querySelector('.st-screen-name')?.value.trim();
+        if (!name) return;
+        btn.disabled = true;
+        await DB.renameScreen(id, name);
+        showToast('Écran renommé ✓');
+        btn.disabled = false;
+      }));
+    });
+
+    // Sauvegarder les locaux d'un écran quand une checkbox change
+    g('settingsOverlay').querySelectorAll('.st-scr-local').forEach(cb => {
+      cb.addEventListener('change', () => this._requireAdmin(async () => {
+        const id   = cb.dataset.screen;
+        const card = g('settingsOverlay').querySelector(`.st-screen-card[data-screen-id="${id}"]`);
+        const localIds = {};
+        card?.querySelectorAll('.st-scr-local:checked').forEach(c => {
+          localIds[c.dataset.lid] = true;
+        });
+        await DB.setScreenLocals(id, Object.keys(localIds).length ? localIds : null);
+        showToast('Écran mis à jour ✓');
+      }));
+    });
+
+    // Supprimer un écran
+    g('settingsOverlay').querySelectorAll('.st-screen-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        if (!confirm(`Supprimer l'écran "${btn.dataset.name}" ?`)) return;
+        btn.disabled = true;
+        await DB.removeScreen(btn.dataset.screenId);
+        showToast('Écran supprimé ✓');
+      }));
+    });
+
+    // ── Bureau d'accueil (local caché) ────────────────────────────
+    if (isAdmin) {
+      const deskSel  = g('stAccueilDeskSelect');
+      const deskHint = g('stAccueilDeskHint');
+      if (deskSel) {
+        const currentDesk = DB.getAccueilDeskLocalId();
+        // Remplir avec tous les locaux de tous les lieux (y compris cachés)
+        const allLocals = Object.values(DB.getLieux()).flatMap(l => l.localIds);
+        deskSel.innerHTML = '<option value="">— Aucun —</option>' +
+          allLocals.map(id =>
+            `<option value="${id}"${id === currentDesk ? ' selected' : ''}>${escapeHtml(DB.getLocalLabel(id))}</option>`
+          ).join('');
+        if (deskHint) deskHint.textContent = currentDesk
+          ? `Actuel : ${DB.getLocalLabel(currentDesk)} (Local ${currentDesk})`
+          : 'Aucun bureau d\'accueil défini.';
+      }
+      g('stAccueilDeskSave')?.addEventListener('click', () => this._requireAdmin(async () => {
+        const val = parseInt(g('stAccueilDeskSelect')?.value) || null;
+        await DB.setAccueilDeskLocalId(val);
+        showToast(val ? `Bureau d'accueil défini : ${DB.getLocalLabel(val)} ✓` : 'Bureau d\'accueil retiré ✓');
+      }));
+    }
+
+    // ── Rôles & Permissions ────────────────────────────────────────
+    if (isAdmin) this._renderPermRoles();
+
+    // ── Réinitialisation des mots de passe ─────────────────────────
+    const pwdList = g('stAgentPasswordList');
+    if (isAdmin && pwdList) {
+      pwdList.innerHTML = agents.map(({key, name}) => `
+        <div class="perm-agent-row">
+          <span class="perm-agent-name">${escapeHtml(name)}</span>
+          <button class="btn-sm btn-danger st-pwd-reset" data-key="${key}" data-name="${escapeHtml(name)}">
+            Réinitialiser
+          </button>
+        </div>`).join('') || '<p class="st-empty">Aucun agent.</p>';
+      pwdList.querySelectorAll('.st-pwd-reset').forEach(btn => {
+        btn.addEventListener('click', () => this._requireAdmin(async () => {
+          const name = btn.dataset.name;
+          if (!confirm(`Réinitialiser le mot de passe de ${name} ? Ils devront en créer un nouveau à la prochaine connexion.`)) return;
+          await DB.resetAgentPassword(btn.dataset.key);
+          // Notif à l'admin (couche B.meta)
+          const myKey = sessionStorage.getItem('cpas_current_agent_key');
+          await DB.sendNotif(`Mot de passe réinitialisé pour ${name}.`, 'warn', myKey);
+          showToast(`Mot de passe de ${name} réinitialisé ✓`);
+        }));
+      });
+    }
+
+    // ── Populate target du send-notif ──────────────────────────────
+    const notifTarget = g('stNotifTarget');
+    if (notifTarget) {
+      notifTarget.innerHTML = '<option value="">— Tous les agents —</option>' +
+        agents.map(a => `<option value="${a.key}">${escapeHtml(a.name)}</option>`).join('');
+    }
+  },
+
+  _renderPermRoles() {
+    const container = g('stPermRolesList');
+    if (!container) return;
+    const roles   = DB.getPermRoles();
+    const agents  = DB.getAgentsWithKeys();
+    const PERMS   = DB.PERM_KEYS;
+
+    container.innerHTML = Object.entries(roles).map(([roleId, role]) => {
+      const permChecks = PERMS.map(p => `
+        <label class="perm-check-label">
+          <input type="checkbox" class="perm-check" data-role="${roleId}" data-perm="${p.key}"
+                 ${role.perms?.[p.key] ? 'checked' : ''}
+                 ${role.isBuiltin ? 'disabled' : ''}>
+          <span>${p.label}</span>
+        </label>`).join('');
+
+      const agentOpts = agents.map(a => {
+        const aRole = DB.getAgentPermRole(a.key);
+        return `<option value="${a.key}" ${aRole === roleId ? 'selected' : ''}>${escapeHtml(a.name)}</option>`;
+      }).join('');
+
+      return `
+        <div class="perm-role-card" data-role-id="${roleId}">
+          <div class="perm-role-hd">
+            <span class="perm-role-dot" style="background:${escapeHtml(role.color || '#6b7280')}"></span>
+            <input class="perm-role-name" type="text" data-role="${roleId}"
+                   value="${escapeHtml(role.name)}" placeholder="Nom du rôle"
+                   ${role.isBuiltin ? 'readonly' : ''}>
+            <input type="color" class="perm-role-color" data-role="${roleId}"
+                   value="${escapeHtml(role.color || '#6b7280')}"
+                   ${role.isBuiltin ? 'disabled' : ''} title="Couleur">
+            ${role.isBuiltin
+              ? `<span class="perm-builtin-badge">intégré</span>`
+              : `<button class="perm-role-save" data-role="${roleId}" title="Enregistrer">✓</button>
+                 <button class="perm-role-del" data-role="${roleId}" data-name="${escapeHtml(role.name)}" title="Supprimer">✕</button>`
+            }
+          </div>
+          <div class="perm-checks-grid">${permChecks}</div>
+          <div class="perm-agents-row">
+            <label class="perm-agents-label">Agents avec ce rôle :</label>
+            <div class="perm-agents-list">
+              ${agents.filter(a => DB.getAgentPermRole(a.key) === roleId).map(a =>
+                `<span class="perm-agent-chip" style="border-color:${escapeHtml(role.color || '#6b7280')}">${escapeHtml(a.name)}</span>`
+              ).join('') || '<span class="perm-no-agent">Aucun agent</span>'}
+            </div>
+          </div>
+        </div>`;
+    }).join('') || '<p class="st-empty">Aucun rôle défini.</p>';
+
+    // Sauvegarder nom + couleur d'un rôle custom
+    container.querySelectorAll('.perm-role-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const roleId = btn.dataset.role;
+        const card   = btn.closest('.perm-role-card');
+        const name   = card?.querySelector('.perm-role-name')?.value.trim();
+        const color  = card?.querySelector('.perm-role-color')?.value;
+        if (!name) return;
+        await DB.updatePermRole(roleId, { name, color });
+        showToast('Rôle enregistré ✓');
+        this._renderPermRoles();
+      }));
+    });
+
+    // Mise à jour couleur en live (point coloré dans le header)
+    container.querySelectorAll('.perm-role-color').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const dot = inp.closest('.perm-role-hd')?.querySelector('.perm-role-dot');
+        if (dot) dot.style.background = inp.value;
+      });
+    });
+
+    // Supprimer un rôle custom
+    container.querySelectorAll('.perm-role-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        if (!confirm(`Supprimer le rôle "${btn.dataset.name}" ? Les agents qui l'ont seront sans rôle.`)) return;
+        btn.disabled = true;
+        await DB.deletePermRole(btn.dataset.role);
+        showToast('Rôle supprimé ✓');
+        this._renderPermRoles();
+      }));
+    });
+
+    // Toggle d'une permission (rôles custom seulement)
+    container.querySelectorAll('.perm-check:not([disabled])').forEach(cb => {
+      cb.addEventListener('change', () => this._requireAdmin(async () => {
+        const roleId = cb.dataset.role;
+        const permKey = cb.dataset.perm;
+        const role = DB.getPermRoles()[roleId];
+        if (!role) return;
+        const newPerms = { ...(role.perms || {}) };
+        newPerms[permKey] = cb.checked;
+        await DB.updatePermRole(roleId, { perms: newPerms });
+        showToast('Permission mise à jour ✓');
+      }));
+    });
+
+    // Render la section d'assignation des rôles aux agents
+    const assignContainer = g('stPermAgentsList');
+    if (!assignContainer) return;
+    const rolesEntries = Object.entries(DB.getPermRoles());
+    assignContainer.innerHTML = agents.map(({ key, name }) => {
+      const currentRoleId = DB.getAgentPermRole(key) || '';
+      return `
+        <div class="perm-agent-row">
+          <span class="perm-agent-name">${escapeHtml(name)}</span>
+          <select class="perm-agent-role-sel" data-agent-key="${key}">
+            <option value="">— Aucun rôle —</option>
+            ${rolesEntries.map(([rid, r]) =>
+              `<option value="${rid}" ${currentRoleId === rid ? 'selected' : ''}>${escapeHtml(r.name)}</option>`
+            ).join('')}
+          </select>
+        </div>`;
+    }).join('') || '<p class="st-empty">Aucun agent configuré.</p>';
+
+    assignContainer.querySelectorAll('.perm-agent-role-sel').forEach(sel => {
+      sel.addEventListener('change', () => this._requireAdmin(async () => {
+        const key    = sel.dataset.agentKey;
+        const roleId = sel.value || null;
+        await DB.setAgentPermRole(key, roleId);
+        showToast('Rôle assigné ✓');
+        this._renderPermRoles(); // Rafraîchir les chips "Agents avec ce rôle"
+      }));
+    });
+
+    // Ajouter un nouveau rôle custom
+    const addBtn = g('stPermRoleAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const nameInput      = g('stPermRoleInput');
+        const introTypeSel   = g('stPermRoleIntroType');
+        const name           = nameInput?.value.trim();
+        if (!name) return;
+        addBtn.disabled = true;
+        const introType = introTypeSel?.value || '__agent__';
+        await DB.addPermRole(name, '#6b7280', introType);
+        if (nameInput) nameInput.value = '';
+        addBtn.disabled = false;
+        showToast('Rôle créé ✓');
+        this._renderPermRoles();
+      });
+    }
+  },
+
+  // ─── Régénérer les selects d'heure selon les horaires du lieu actif ──
+  _refreshTimeOpts() {
+    const { openHour, closeHour, slotMin } = DB.getLieuConfig();
+    const saved = [g('fTimeStart').value, g('fTimeEnd').value];
+    const timeOpts = [];
+    for (let h = openHour; h <= closeHour; h++) {
+      for (let m = 0; m < 60; m += slotMin) {
+        if (h === closeHour && m > 0) break;
+        const label = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        timeOpts.push(`<option value="${label}">${label}</option>`);
+      }
+    }
+    g('fTimeStart').innerHTML = timeOpts.join('');
+    g('fTimeEnd').innerHTML   = timeOpts.join('');
+    // Restaurer la valeur si elle existe encore dans la liste
+    if (saved[0]) g('fTimeStart').value = saved[0];
+    if (saved[1]) g('fTimeEnd').value   = saved[1];
   },
 
   init() {
-    // Peupler les selects d'heure (créneaux de 30 min)
+    // Peupler les selects d'heure — plage 0h-24h par défaut (sera rafraîchie par onConfigChange)
     const timeOpts = [];
-    for (let h = CONFIG.HOURS_START; h <= CONFIG.HOURS_END; h++) {
-      for (let m = 0; m < 60; m += CONFIG.SLOT_MIN) {
-        if (h === CONFIG.HOURS_END && m > 0) break;
+    for (let h = 0; h <= 24; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        if (h === 24 && m > 0) break;
         const label = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
         timeOpts.push(`<option value="${label}">${label}</option>`);
       }
@@ -357,8 +853,8 @@ const MODAL = {
     });
 
     // Fermer sur clic sur l'overlay
-    ['resOverlay','detOverlay','confOverlay','settingsModeOverlay','settingsOverlay','weekendWarnOverlay','adminAuthOverlay'].forEach(id => {
-      g(id).addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
+    ['resOverlay','detOverlay','confOverlay','settingsOverlay','weekendWarnOverlay','presenceConfirmOverlay'].forEach(id => {
+      g(id)?.addEventListener('click', e => { if (e.target.id === id) g(id).classList.add('hidden'); });
     });
 
     // Paramètres — ajouter agent (admin)
@@ -374,6 +870,37 @@ const MODAL = {
       showToast('Agent ajouté ✓');
     }));
     g('stAgentInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stAgentAdd').click(); });
+
+    // Paramètres — import CSV agents (admin)
+    g('stAgentImport').addEventListener('click', () => this._requireAdmin(() => {
+      g('stAgentCsvFile').click();
+    }));
+    g('stAgentCsvFile').addEventListener('change', function () {
+      const file = this.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const lines = evt.target.result.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const existing = new Set(DB.getAgents());
+        let added = 0, skipped = 0;
+        const btn = g('stAgentImport');
+        btn.disabled = true; btn.textContent = 'Import en cours…';
+        for (const line of lines) {
+          const parts = line.split(';').map(p => p.trim());
+          const privateName = parts[0];
+          const publicName  = parts[1] || privateName;
+          if (!privateName) { skipped++; continue; }
+          if (existing.has(privateName)) { skipped++; continue; }
+          existing.add(privateName);
+          await DB.addAgent(privateName, publicName);
+          added++;
+        }
+        btn.disabled = false; btn.textContent = '📋 Importer une liste (CSV)';
+        this.value = ''; // reset file input
+        showToast(`Import terminé : ${added} agent${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}${skipped ? `, ${skipped} ignoré${skipped > 1 ? 's' : ''}` : ''} ✓`);
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
 
     // Paramètres — ajouter service (admin)
     g('stSvcAdd').addEventListener('click', () => this._requireAdmin(async () => {
@@ -416,33 +943,35 @@ const MODAL = {
     }));
     g('stLocalInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLocalAdd').click(); });
 
-    // Bouton paramètres — affiche le choix de mode
-    g('btnSettings').addEventListener('click', () => g('settingsModeOverlay').classList.remove('hidden'));
-    g('btnModeAgent').addEventListener('click', () => this.openSettings('agent'));
-    g('btnModeAdmin').addEventListener('click', () => this._requireAdmin(() => this.openSettings('admin')));
-
-    // Changer le mot de passe application depuis les paramètres (admin)
-    g('stAppPwdSave').addEventListener('click', () => this._requireAdmin(async () => {
-      const pwd     = g('stAppPwdNew').value;
-      const confirm = g('stAppPwdConfirm').value;
-      if (!pwd) return alert('Veuillez saisir un nouveau mot de passe.');
-      if (pwd !== confirm) return alert('Les mots de passe ne correspondent pas.');
-      await DB.setAppHash(await sha256(pwd));
-      g('stAppPwdNew').value = '';
-      g('stAppPwdConfirm').value = '';
-      showToast('Mot de passe application mis à jour ✓');
+    // Paramètres — ajouter un écran public (admin)
+    g('stScreenAdd').addEventListener('click', () => this._requireAdmin(async () => {
+      const name = g('stScreenInput').value.trim();
+      if (!name) return;
+      g('stScreenAdd').disabled = true;
+      await DB.addScreen(name);
+      g('stScreenInput').value = '';
+      g('stScreenAdd').disabled = false;
+      this._renderSettingsList();
+      showToast('Écran ajouté ✓');
     }));
+    g('stScreenInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stScreenAdd').click(); });
 
-    // Changer le mot de passe admin depuis les paramètres (admin)
-    g('stAdminPwdSave').addEventListener('click', () => this._requireAdmin(async () => {
-      const pwd     = g('stAdminPwdNew').value;
-      const confirm = g('stAdminPwdConfirm').value;
-      if (!pwd) return alert('Veuillez saisir un nouveau mot de passe.');
-      if (pwd !== confirm) return alert('Les mots de passe ne correspondent pas.');
-      await DB.setAdminHash(await sha256(pwd));
-      g('stAdminPwdNew').value = '';
-      g('stAdminPwdConfirm').value = '';
-      showToast('Mot de passe admin mis à jour ✓');
+    // Bouton paramètres — ouvre directement (les sections admin/agent sont filtrées par permission)
+    g('btnSettings').addEventListener('click', () => this.openSettings());
+
+    // Test intro mascotte (superadmin)
+    g('stTestIntroBtn')?.addEventListener('click', () => {
+      const type = g('stTestIntroSelect')?.value;
+      if (!type) return;
+      localStorage.setItem('mc_welcome_test_intro', type);
+      window.open('welcome.html', '_blank');
+    });
+
+    // Vider tous les locaux (fin de journée)
+    g('btnClearAllLocals')?.addEventListener('click', () => this._requirePermission('editSettings', async () => {
+      if (!confirm('Cela fermera tous les bureaux ouverts et retirera toutes les présences.\nContinuer ?')) return;
+      await DB.clearAllLocals();
+      showToast('Tous les locaux ont été vidés ✓');
     }));
 
     // Export JSON (admin)
@@ -465,23 +994,25 @@ const MODAL = {
       window.print();
     }));
 
-    // Feature toggle : emojis agents (admin)
-    g('featureAgentEmoji').addEventListener('change', () => this._requireAdmin(async () => {
-      await DB.setFeature('agentEmoji', g('featureAgentEmoji').checked || null);
-      this._renderSettingsList();
-      CAL.render();
+
+    // Envoyer une notification (admin — couche C)
+    g('stNotifSend')?.addEventListener('click', () => this._requirePermission('sendNotif', async () => {
+      const msg       = g('stNotifMessage')?.value.trim();
+      const type      = g('stNotifType')?.value || 'info';
+      const targetKey = g('stNotifTarget')?.value || null;
+      const urgent    = g('stNotifUrgent')?.checked || false;
+      if (!msg) return alert('Veuillez saisir un message.');
+      if (urgent && !DB.hasPermission('sendUrgentNotif')) {
+        return alert('Vous n\'avez pas la permission d\'envoyer des notifications urgentes.');
+      }
+      await DB.sendNotif(msg, type, targetKey, urgent ? { urgent: true } : {});
+      if (g('stNotifMessage')) g('stNotifMessage').value = '';
+      if (g('stNotifUrgent'))  g('stNotifUrgent').checked = false;
+      showToast('Notification envoyée ✓');
     }));
 
     // Emoji picker
     EMOJI_PICKER.init();
-
-    // Modal auth admin
-    g('adminAuthConfirm').addEventListener('click', () => this._submitAdminPwd());
-    g('adminPwdInput').addEventListener('keydown', e => { if (e.key === 'Enter') this._submitAdminPwd(); });
-    g('adminAuthCancel').addEventListener('click', () => {
-      g('adminAuthOverlay').classList.add('hidden');
-      this._adminCallback = null;
-    });
 
     // Enregistrer
     g('resSave').addEventListener('click', () => this.save());
@@ -495,10 +1026,71 @@ const MODAL = {
   },
 
   // ─── Ouvrir modal nouvelle réservation ─────────────────────────
+  // ─── Initialiser le champ agents invités ──────────────────────
+  _initInviteField(existingInvited) {
+    const canInvite = DB.hasPermission('inviteAgents') && DB.getFeature('enableInviteAgents');
+    cls('fInviteWrap', !canInvite);
+    if (!canInvite) return;
+
+    const chips  = g('fInviteChips');
+    const sel    = g('fInviteSelect');
+
+    // Charger les agents invités existants (mode édition)
+    if (existingInvited) {
+      Object.keys(existingInvited).forEach(key => {
+        const agent = DB.getAgentsWithKeys().find(a => a.key === key);
+        if (agent) this._addInviteChip(agent.key, agent.name);
+      });
+    }
+
+    // Rafraîchir la liste du select (exclure déjà invités)
+    this._refreshInviteSelect();
+
+    // Listener select
+    const newSel = sel.cloneNode(true);
+    sel.parentNode.replaceChild(newSel, sel);
+    newSel.addEventListener('change', () => {
+      const key  = newSel.value;
+      const name = newSel.options[newSel.selectedIndex]?.dataset?.name || key;
+      if (!key) return;
+      this._addInviteChip(key, name);
+      this._refreshInviteSelect();
+      newSel.value = '';
+    });
+  },
+
+  _addInviteChip(key, name) {
+    const chips = g('fInviteChips');
+    if (!chips || chips.querySelector(`.invite-chip[data-key="${key}"]`)) return;
+    const chip = document.createElement('span');
+    chip.className = 'invite-chip';
+    chip.dataset.key = key;
+    const color = DB.getAgentRoleColor(name);
+    chip.innerHTML = `<span class="invite-chip-dot" style="background:${color}"></span>${escapeHtml(name)}<button class="invite-chip-del" type="button">✕</button>`;
+    chip.querySelector('.invite-chip-del').addEventListener('click', () => {
+      chip.remove();
+      this._refreshInviteSelect();
+    });
+    chips.appendChild(chip);
+  },
+
+  _refreshInviteSelect() {
+    const sel   = g('fInviteSelect');
+    if (!sel) return;
+    const taken = [...g('fInviteChips').querySelectorAll('.invite-chip')].map(c => c.dataset.key);
+    const curAgent = g('fAgent').value;
+    sel.innerHTML = '<option value="">+ Ajouter un agent...</option>' +
+      DB.getAgentsWithKeys()
+        .filter(a => a.key && !taken.includes(a.key))
+        .map(a => `<option value="${a.key}" data-name="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`)
+        .join('');
+  },
+
   openNew(opts = {}) {
     this._editId = null;
     this._reset();
     g('resTitle').textContent = 'Nouvelle réservation';
+    this._initInviteField(null);
 
     if (opts.local) g('fLocal').value = opts.local;
 
@@ -509,7 +1101,8 @@ const MODAL = {
     if (opts.time) {
       g('fTimeStart').value = opts.time;
       const [h, m] = opts.time.split(':').map(Number);
-      const eh = (h + 1 < CONFIG.HOURS_END) ? h + 1 : CONFIG.HOURS_END - 1;
+      const closeH = DB.getLieuConfig().closeHour;
+      const eh = (h + 1 < closeH) ? h + 1 : closeH - 1;
       g('fTimeEnd').value = `${String(eh).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
     }
 
@@ -605,14 +1198,13 @@ const MODAL = {
 
       const myOccs = expandReservation('__temp__', tempRes, new Date(startDT), checkEnd);
 
-      // Vérifier les occurrences qui tombent un week-end (inutile pour quotidien : toujours le cas)
+      // Vérifier les occurrences qui tombent un jour inactif (inutile pour quotidien : toujours le cas)
       if (isRec && recType2 !== 'daily') {
         const weekendDates = [];
         let wkCur = new Date(startDT);
         let wkGuard = 0;
         while (wkCur <= checkEnd && wkGuard++ < 700) {
-          const d = wkCur.getDay();
-          if (d === 0 || d === 6) weekendDates.push(new Date(wkCur));
+          if (!DB.isDayActive(wkCur)) weekendDates.push(new Date(wkCur));
           wkCur = advDate(wkCur, recType2, interval2);
         }
         if (weekendDates.length) {
@@ -691,7 +1283,7 @@ const MODAL = {
     } else {
       // Réservation permanente — vérifier les réservations existantes sur ce local
       const ds = g('fDateStart').value || isoDate(new Date());
-      startDT = `${ds}T${String(CONFIG.HOURS_START).padStart(2,'0')}:00`;
+      startDT = `${ds}T${String(DB.getLieuConfig().openHour).padStart(2,'0')}:00`;
 
       // Utiliser getInRange sur 5 ans pour avoir TOUTES les occurrences expandées
       const permStart = new Date(startDT);
@@ -736,6 +1328,13 @@ const MODAL = {
     }
 
     const recType = g('fRecType').value;
+
+    // Agents invités
+    const invitedAgents = {};
+    g('fInviteChips')?.querySelectorAll('.invite-chip').forEach(chip => {
+      if (chip.dataset.key) invitedAgents[chip.dataset.key] = true;
+    });
+
     const data = {
       localId,
       service,    serviceCustom: g('fServiceCustom').value.trim(),
@@ -744,6 +1343,7 @@ const MODAL = {
       isPermanent: isPerm,
       startDateTime: startDT,
       endDateTime:   isPerm ? null : endDT,
+      invitedAgents: Object.keys(invitedAgents).length ? invitedAgents : null,
       recurrence: {
         type:     isPerm ? 'none' : recType,
         interval: parseInt(g('fInterval').value) || 1,
@@ -936,6 +1536,7 @@ const MODAL = {
         }
       }
     }
+    this._initInviteField(res.invitedAgents || null);
     g('resOverlay').classList.remove('hidden');
     this._updateHint();
   },
@@ -957,6 +1558,9 @@ const MODAL = {
     cls('fRecOptions',        true);
     cls('fRecEndDateWrap',    true);
     g('localHint').textContent = '';
+    // Vider les chips d'invitation
+    if (g('fInviteChips')) g('fInviteChips').innerHTML = '';
+    if (g('fInviteSelect')) g('fInviteSelect').value = '';
   },
 
   _updateHint() {
@@ -1081,12 +1685,53 @@ function showToast(msg = 'Modification enregistrée') {
   }, 2200);
 }
 
+// ── Modal confirmation ouverture/fermeture bureau ────────────────
+function showBureauConfirm({ icon, title, info, okLabel, okClass, onOk }) {
+  const overlay = g('bureauConfirmOverlay');
+  g('bureauConfirmIcon').textContent  = icon;
+  g('bureauConfirmTitle').textContent = title;
+  g('bureauConfirmInfo').innerHTML    = info || '';
+  const okBtn = g('bureauConfirmOk');
+  if (okLabel) {
+    okBtn.textContent = okLabel;
+    okBtn.className   = `lv-bureau-modal-ok${okClass ? ' ' + okClass : ''}`;
+    okBtn.style.display = '';
+  } else {
+    okBtn.style.display = 'none';
+  }
+  overlay.classList.remove('hidden');
+
+  const close = () => overlay.classList.add('hidden');
+  okBtn.onclick = () => { close(); if (onOk) onOk(); };
+  g('bureauConfirmCancel').onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+}
+
+let _upcomingTimer = null;
+function showUpcomingAlert(bureauLabel, agentName, service, minutesLeft) {
+  const banner = document.getElementById('upcomingBanner');
+  if (!banner) return;
+  banner.querySelector('.lv-upcoming-bureau').textContent  = bureauLabel;
+  banner.querySelector('.lv-upcoming-agent').textContent   = agentName || '';
+  banner.querySelector('.lv-upcoming-service').textContent = service || '';
+  banner.querySelector('.lv-upcoming-min').textContent     = `dans ${minutesLeft} min`;
+  banner.classList.remove('hidden');
+  if (_upcomingTimer) clearTimeout(_upcomingTimer);
+  _upcomingTimer = setTimeout(() => banner.classList.add('hidden'), 10000);
+  banner.onclick = () => { banner.classList.add('hidden'); clearTimeout(_upcomingTimer); };
+}
+
 let _routingTimer = null;
-function showRoutingToast(bureauLabel) {
-  const banner = document.getElementById('routingBanner');
+function showRoutingToast(bureauLabel, ticketNum) {
+  const banner   = document.getElementById('routingBanner');
   const bureauEl = document.getElementById('routingBureau');
+  const ticketEl = document.getElementById('routingTicket');
   if (!banner || !bureauEl) return;
   bureauEl.textContent = bureauLabel;
+  if (ticketEl) {
+    ticketEl.textContent = ticketNum || '';
+    ticketEl.classList.toggle('hidden', !ticketNum);
+  }
   banner.classList.remove('hidden');
   if (_routingTimer) clearTimeout(_routingTimer);
   _routingTimer = setTimeout(() => banner.classList.add('hidden'), 6000);
@@ -1094,10 +1739,15 @@ function showRoutingToast(bureauLabel) {
 }
 
 let _waitBannerTimer = null;
-function showWaitBanner(queueCount) {
-  const banner = document.getElementById('waitBanner');
-  const sub    = document.getElementById('waitBannerSub');
+function showWaitBanner(queueCount, ticketNum) {
+  const banner   = document.getElementById('waitBanner');
+  const sub      = document.getElementById('waitBannerSub');
+  const ticketEl = document.getElementById('waitTicket');
   if (!banner) return;
+  if (ticketEl) {
+    ticketEl.textContent = ticketNum ? `Ticket ${ticketNum}` : '';
+    ticketEl.classList.toggle('hidden', !ticketNum);
+  }
   sub.textContent = queueCount > 0
     ? `${queueCount} personne${queueCount > 1 ? 's' : ''} en attente`
     : '';
@@ -1123,6 +1773,422 @@ function cls(id, hidden) {
   if (e) e.classList.toggle('hidden', hidden);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Gestion des absences
+// ═══════════════════════════════════════════════════════════════
+
+const ABSENCE_MOTIFS = {
+  maladie:   { label: '🤒 Maladie' },
+  conge:     { label: '🏖️ Congé' },
+  mission:   { label: '🚗 Mission extérieure' },
+  formation: { label: '📚 Formation' },
+  autre:     { label: '📝 Autre' },
+};
+
+function fmtAbsenceDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+// ── Modal déclaration ────────────────────────────────────────────
+let _absenceModalForKey = null; // agentKey ciblé (null = agent courant)
+
+function openAbsenceModal(targetAgentKey, targetAgentName) {
+  const agentKey = targetAgentKey || sessionStorage.getItem('cpas_current_agent_key');
+  _absenceModalForKey = agentKey;
+
+  const isAdmin = DB.hasPermission('editSettings');
+  const agentWrap = g('absAgentWrap');
+  if (agentWrap) agentWrap.classList.toggle('hidden', !isAdmin || !!targetAgentKey);
+
+  if (isAdmin && !targetAgentKey) {
+    // Peupler le select agents
+    const sel = g('absAgentSelect');
+    if (sel) {
+      sel.innerHTML = DB.getAgentsWithKeys()
+        .map(a => `<option value="${a.key}">${_esc(a.name)}</option>`).join('');
+    }
+  }
+
+  g('absenceModalTitle').textContent = targetAgentName
+    ? `Absence de ${targetAgentName}`
+    : 'Déclarer une absence';
+
+  // Dates par défaut : aujourd'hui
+  const today = new Date().toISOString().slice(0, 10);
+  g('absStartDate').value = today;
+  g('absEndDate').value   = today;
+  g('absMotif').value     = 'maladie';
+  g('absComment').value   = '';
+  g('absErr').classList.add('hidden');
+
+  g('absenceModal').classList.remove('hidden');
+  g('absStartDate').focus();
+}
+
+function closeAbsenceModal() {
+  g('absenceModal').classList.add('hidden');
+  _absenceModalForKey = null;
+}
+
+function _initAbsenceModal() {
+  g('absenceModalClose')?.addEventListener('click', closeAbsenceModal);
+  g('absenceModal')?.addEventListener('click', e => { if (e.target === g('absenceModal')) closeAbsenceModal(); });
+
+  g('absSubmit')?.addEventListener('click', async () => {
+    const isAdmin  = DB.hasPermission('editSettings');
+    const agentKey = isAdmin && !_absenceModalForKey
+      ? g('absAgentSelect')?.value
+      : _absenceModalForKey || sessionStorage.getItem('cpas_current_agent_key');
+
+    const start   = g('absStartDate').value;
+    const end     = g('absEndDate').value;
+    const motif   = g('absMotif').value;
+    const comment = g('absComment').value.trim();
+    const errEl   = g('absErr');
+
+    if (!start || !end || start > end) {
+      errEl.textContent = 'La date de fin doit être égale ou après la date de début.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    errEl.classList.add('hidden');
+
+    const btn = g('absSubmit');
+    btn.disabled = true; btn.textContent = 'Enregistrement…';
+
+    await DB.addAbsence({
+      agentKey, startDate: start, endDate: end, motif,
+      comment: comment || null,
+      createdBy: sessionStorage.getItem('cpas_current_agent_key'),
+    });
+
+    btn.disabled = false; btn.textContent = "Enregistrer l'absence";
+    closeAbsenceModal();
+    showToast('Absence enregistrée ✓');
+    // Rafraîchir la liste admin si ouverte
+    if (!g('absencesListModal').classList.contains('hidden')) _renderAbsencesList();
+  });
+}
+
+// ── Panel admin : liste des absences ─────────────────────────────
+function openAbsencesList() {
+  _renderAbsencesList();
+  g('absencesListModal').classList.remove('hidden');
+}
+
+function _renderAbsencesList() {
+  const container = g('absencesList');
+  if (!container) return;
+
+  const today     = new Date().toISOString().slice(0, 10);
+  const agents    = DB.getAgentsWithKeys();
+  const absences  = DB.getAbsences();
+
+  // Trier : d'abord courantes (startDate <= today <= endDate), puis futures, puis passées
+  const entries = Object.entries(absences)
+    .map(([id, a]) => ({ id, ...a }))
+    .sort((a, b) => {
+      const aActive  = a.startDate <= today && a.endDate >= today;
+      const bActive  = b.startDate <= today && b.endDate >= today;
+      const aFuture  = a.startDate > today;
+      const bFuture  = b.startDate > today;
+      const aScore   = aActive ? 0 : aFuture ? 1 : 2;
+      const bScore   = bActive ? 0 : bFuture ? 1 : 2;
+      if (aScore !== bScore) return aScore - bScore;
+      return a.startDate.localeCompare(b.startDate);
+    });
+
+  // Garder seulement les absences en cours et futures (+ 30 derniers jours)
+  const limit = new Date(); limit.setDate(limit.getDate() - 30);
+  const limitStr = limit.toISOString().slice(0, 10);
+  const visible = entries.filter(a => a.endDate >= limitStr);
+
+  if (!visible.length) {
+    container.innerHTML = '<div class="abs-empty">Aucune absence enregistrée.</div>';
+    return;
+  }
+
+  container.innerHTML = visible.map(a => {
+    const agentObj  = agents.find(ag => ag.key === a.agentKey);
+    const agentName = agentObj?.name || a.agentKey;
+    const color     = DB.getAgentRoleColor(agentName);
+    const motifInfo = ABSENCE_MOTIFS[a.motif] || ABSENCE_MOTIFS.autre;
+    const isActive  = a.startDate <= today && a.endDate >= today;
+    const isFuture  = a.startDate > today;
+    const statusCls = isActive ? 'abs-item-active' : isFuture ? 'abs-item-future' : 'abs-item-past';
+    const sameDay   = a.startDate === a.endDate;
+    const datesStr  = sameDay
+      ? fmtAbsenceDate(a.startDate)
+      : `${fmtAbsenceDate(a.startDate)} → ${fmtAbsenceDate(a.endDate)}`;
+
+    return `<div class="abs-item ${statusCls}" data-id="${a.id}">
+      <div class="abs-item-left">
+        <span class="abs-item-agent" style="${color ? `color:${color}` : ''}">${_esc(agentName)}</span>
+        <span class="abs-item-motif">${motifInfo.label}</span>
+        ${a.comment ? `<span class="abs-item-comment">${_esc(a.comment)}</span>` : ''}
+      </div>
+      <div class="abs-item-right">
+        <span class="abs-item-dates">${datesStr}</span>
+        <button class="abs-item-del" data-id="${a.id}" title="Supprimer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.abs-item-del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Supprimer cette absence ?')) return;
+      await DB.deleteAbsence(btn.dataset.id);
+      _renderAbsencesList();
+      showToast('Absence supprimée.');
+    });
+  });
+}
+
+function _initAbsencesList() {
+  g('absencesListClose')?.addEventListener('click', () => g('absencesListModal').classList.add('hidden'));
+  g('absencesListModal')?.addEventListener('click', e => {
+    if (e.target === g('absencesListModal')) g('absencesListModal').classList.add('hidden');
+  });
+  g('absAddNew')?.addEventListener('click', () => {
+    g('absencesListModal').classList.add('hidden');
+    openAbsenceModal(null, null);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Requêtes (technique, entretien, autre)
+// ═══════════════════════════════════════════════════════════════
+
+const TECH_ISSUE_TYPES = {
+  technique: { label: '🔧 Problème technique', role: '__technicien__' },
+  entretien: { label: '🧹 Entretien / Nettoyage', role: '__entretien__' },
+  autre:     { label: '📋 Requête',              role: '' },
+};
+
+let _tiCurrentType = 'technique'; // type actif
+
+function openTechIssueModal() {
+  const modal = g('techIssueModal');
+  if (!modal) return;
+
+  _tiCurrentType = 'technique';
+  _tiRefreshTargets();
+
+  // Réinitialiser les champs
+  if (g('techIssueDesc'))   g('techIssueDesc').value  = '';
+  if (g('techIssueLocal'))  g('techIssueLocal').value = '';
+  if (g('techIssueUrgent')) g('techIssueUrgent').checked = false;
+
+  // Auto-remplir le bureau depuis la session
+  const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+  const bureau = myKey ? _getMyCurrentBureau(myKey) : null;
+  if (bureau && g('techIssueLocal')) g('techIssueLocal').value = bureau;
+
+  // Boutons de type
+  g('techIssueTypes')?.querySelectorAll('.ti-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === _tiCurrentType);
+    btn.onclick = () => {
+      _tiCurrentType = btn.dataset.type;
+      g('techIssueTypes').querySelectorAll('.ti-type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _tiRefreshTargets();
+    };
+  });
+
+  modal.classList.remove('hidden');
+}
+
+function _getMyCurrentBureau(agentKey) {
+  // Cherche si l'agent est dans un bureau ouvert
+  const lieux = DB.getLieux?.() || {};
+  const appState = DB.getAppState?.() || {};
+  for (const [lieuId, lieu] of Object.entries(lieux)) {
+    const bureaux = appState?.bureaux || {};
+    for (const [localId, info] of Object.entries(bureaux)) {
+      if (info?.agentKey === agentKey) {
+        return DB.getLocalLabel(localId) || `Bureau ${localId}`;
+      }
+    }
+  }
+  return null;
+}
+
+function _tiRefreshTargets() {
+  const container = g('techIssueTargets');
+  const noTech    = g('techIssueNoTech');
+  if (!container) return;
+
+  const typeConf    = TECH_ISSUE_TYPES[_tiCurrentType] || TECH_ISSUE_TYPES.autre;
+  const defaultRole = typeConf.role; // rôle pré-coché selon le type
+
+  const allRoles       = DB.getPermRoles();       // { roleId: { name, color, ... } }
+  const agentsWithKeys = DB.getAgentsWithKeys();
+
+  // Comptage agents par rôle
+  const roleCount = {};
+  agentsWithKeys.forEach(({ key }) => {
+    const r = DB.getAgentPermRole(key) || '__agent__';
+    roleCount[r] = (roleCount[r] || 0) + 1;
+  });
+
+  // Rôles qui ont au moins 1 agent, triés par nom
+  const rolesWithAgents = Object.entries(allRoles)
+    .filter(([id]) => (roleCount[id] || 0) > 0)
+    .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+
+  container.innerHTML = '';
+
+  if (!rolesWithAgents.length) {
+    if (noTech) noTech.classList.remove('hidden');
+    return;
+  }
+
+  rolesWithAgents.forEach(([id, role]) => {
+    const count   = roleCount[id] || 0;
+    const checked = id === defaultRole;
+    const dot     = role.color ? `<span style="width:.6rem;height:.6rem;border-radius:50%;background:${role.color};flex-shrink:0;display:inline-block"></span>` : '';
+    const row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:.55rem;cursor:pointer;font-size:.88rem;color:#e2e8f0;padding:.3rem .4rem;border-radius:6px;transition:background .12s';
+    row.innerHTML = `<input type="checkbox" class="ti-role-cb" data-role="${id}" ${checked ? 'checked' : ''} style="accent-color:#6366f1;flex-shrink:0"> ${dot} ${escapeHtml(role.name)} <span style="color:#64748b;font-size:.8rem;margin-left:auto">${count} agent${count > 1 ? 's' : ''}</span>`;
+    container.appendChild(row);
+  });
+
+  if (noTech) noTech.classList.add('hidden');
+}
+
+function _initTechIssueModal() {
+  const modal = g('techIssueModal');
+  if (!modal) return;
+
+  const closeModal = () => modal.classList.add('hidden');
+  g('techIssueClose')?.addEventListener('click', closeModal);
+  g('techIssueCancelBtn')?.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  // ── Autocomplete bureau ──────────────────────────────────────
+  const localInput   = g('techIssueLocal');
+  const localSuggest = g('techIssueLocalSuggest');
+  let _localHighlight = -1;
+
+  function _getLocalOptions() {
+    // Construit une liste d'entrées { value, internal, pub } pour chaque local
+    const allLieux = DB.getLieux?.() || {};
+    const seen = new Set();
+    const entries = [];
+    Object.values(allLieux).forEach(lieu => {
+      (lieu.localIds || []).forEach(id => {
+        if (seen.has(id)) return;
+        seen.add(id);
+        const internal = DB.getLocalLabel(id);
+        const pub      = DB.getPublicLocalLabel(id);
+        if (internal) entries.push({ value: internal, internal, pub: pub !== internal ? pub : null });
+      });
+    });
+    return entries.sort((a, b) => a.internal.localeCompare(b.internal));
+  }
+
+  function _renderSuggestions(query) {
+    if (!localSuggest) return;
+    const q = query.toLowerCase().trim();
+    const opts = _getLocalOptions();
+    const matches = q
+      ? opts.filter(e => e.internal.toLowerCase().includes(q) || (e.pub && e.pub.toLowerCase().includes(q)))
+      : opts;
+    _localHighlight = -1;
+    if (!matches.length) {
+      localSuggest.innerHTML = `<div class="ti-local-suggest-empty">Aucun résultat</div>`;
+    } else {
+      localSuggest.innerHTML = matches.map(e => {
+        const pubHtml = e.pub ? ` <span style="color:#64748b;font-size:.8em">— ${e.pub}</span>` : '';
+        return `<div class="ti-local-suggest-item" data-val="${e.value.replace(/"/g,'&quot;')}">${escapeHtml(e.internal)}${pubHtml}</div>`;
+      }).join('');
+      localSuggest.querySelectorAll('.ti-local-suggest-item').forEach(item => {
+        item.addEventListener('mousedown', e => {
+          e.preventDefault();
+          localInput.value = item.dataset.val;
+          localSuggest.classList.add('hidden');
+        });
+      });
+    }
+    localSuggest.classList.remove('hidden');
+  }
+
+  localInput?.addEventListener('focus', () => _renderSuggestions(localInput.value));
+  localInput?.addEventListener('input', () => _renderSuggestions(localInput.value));
+  localInput?.addEventListener('keydown', e => {
+    const items = localSuggest?.querySelectorAll('.ti-local-suggest-item');
+    if (!items?.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _localHighlight = Math.min(_localHighlight + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('active', i === _localHighlight));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _localHighlight = Math.max(_localHighlight - 1, 0);
+      items.forEach((it, i) => it.classList.toggle('active', i === _localHighlight));
+    } else if (e.key === 'Enter' && _localHighlight >= 0) {
+      e.preventDefault();
+      localInput.value = items[_localHighlight].dataset.val;
+      localSuggest.classList.add('hidden');
+    } else if (e.key === 'Escape') {
+      localSuggest.classList.add('hidden');
+    }
+  });
+  localInput?.addEventListener('blur', () => {
+    setTimeout(() => localSuggest?.classList.add('hidden'), 150);
+  });
+
+  g('techIssueSendBtn')?.addEventListener('click', async () => {
+    const desc    = g('techIssueDesc')?.value.trim();
+    const local   = g('techIssueLocal')?.value.trim() || null;
+    const urgent  = g('techIssueUrgent')?.checked || false;
+    if (!desc) { g('techIssueDesc')?.focus(); return; }
+
+    // Résoudre les rôles cochés → clés d'agents
+    const checkedRoles = new Set(
+      [...(g('techIssueTargets')?.querySelectorAll('.ti-role-cb:checked') || [])]
+        .map(cb => cb.dataset.role)
+    );
+    let targetKeys = DB.getAgentsWithKeys()
+      .filter(({ key }) => checkedRoles.has(DB.getAgentPermRole(key) || '__agent__'))
+      .map(a => a.key);
+
+    // Fallback si aucun rôle coché ou aucun agent trouvé
+    if (targetKeys.length === 0) {
+      targetKeys = DB.getAgentsWithKeys()
+        .filter(({ key }) => DB.getAgentPermRole(key) === '__admin__')
+        .map(a => a.key);
+    }
+
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'Un agent';
+
+    // Créer le ticket dans requests/ (vue Interventions)
+    const requestId = await DB.createRequest({
+      type:          _tiCurrentType,
+      description:   desc,
+      local,
+      urgent,
+      fromAgentKey:  myKey,
+      fromAgentName: myName,
+    });
+
+    // Notifier les destinataires via le centre de notifs
+    if (typeof REQUESTS !== 'undefined') {
+      const req = { type: _tiCurrentType, description: desc, local, urgent, fromAgentKey: myKey, fromAgentName: myName };
+      await REQUESTS.notifyTech(requestId, req, targetKeys);
+    }
+
+    closeModal();
+    showToast('Requête envoyée ✓');
+  });
+}
+
+// Bouton "Mes absences" dans le header (visible pour tous)
+// Bouton "Gestion absences" dans settings (admin uniquement)
+
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
@@ -1132,5 +2198,92 @@ function fmtDT(d) {
   return d.toLocaleDateString('fr-BE', {
     weekday: 'short', day: 'numeric', month: 'short',
     year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Diffusion accueil — envoyer une notif à des rôles
+// ═══════════════════════════════════════════════════════════════════
+
+function openBroadcastModal() {
+  const modal = g('broadcastModal');
+  if (!modal) return;
+
+  // Reset
+  if (g('broadcastMsg'))    g('broadcastMsg').value = '';
+  if (g('broadcastUrgent')) g('broadcastUrgent').checked = false;
+
+  // Peupler la liste des rôles
+  const container = g('broadcastTargets');
+  if (container) {
+    const allRoles = DB.getPermRoles();
+    const agentsWithKeys = DB.getAgentsWithKeys();
+    const roleCount = {};
+    agentsWithKeys.forEach(({ key }) => {
+      const r = DB.getAgentPermRole(key) || '__agent__';
+      roleCount[r] = (roleCount[r] || 0) + 1;
+    });
+
+    const rolesWithAgents = Object.entries(allRoles)
+      .filter(([id]) => (roleCount[id] || 0) > 0)
+      .sort(([, a], [, b]) => a.name.localeCompare(b.name));
+
+    container.innerHTML = '';
+    rolesWithAgents.forEach(([id, role]) => {
+      const count = roleCount[id] || 0;
+      const dot   = role.color ? `<span style="width:.6rem;height:.6rem;border-radius:50%;background:${role.color};flex-shrink:0;display:inline-block"></span>` : '';
+      const row   = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:.55rem;cursor:pointer;font-size:.88rem;color:#e2e8f0;padding:.3rem .4rem;border-radius:6px;transition:background .12s';
+      row.innerHTML = `<input type="checkbox" class="bc-role-cb" data-role="${id}" checked style="accent-color:#6366f1;flex-shrink:0"> ${dot} ${escapeHtml(role.name)} <span style="color:#64748b;font-size:.8rem;margin-left:auto">${count} agent${count > 1 ? 's' : ''}</span>`;
+      container.appendChild(row);
+    });
+  }
+
+  modal.classList.remove('hidden');
+  g('broadcastMsg')?.focus();
+}
+
+function _initBroadcastModal() {
+  const modal = g('broadcastModal');
+  if (!modal) return;
+
+  const closeModal = () => modal.classList.add('hidden');
+  g('broadcastClose')?.addEventListener('click', closeModal);
+  g('broadcastCancelBtn')?.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  g('broadcastSendBtn')?.addEventListener('click', async () => {
+    const msg    = g('broadcastMsg')?.value.trim();
+    const urgent = g('broadcastUrgent')?.checked || false;
+    if (!msg) { g('broadcastMsg')?.focus(); return; }
+
+    // Résoudre les rôles cochés → clés d'agents
+    const checkedRoles = new Set(
+      [...(g('broadcastTargets')?.querySelectorAll('.bc-role-cb:checked') || [])]
+        .map(cb => cb.dataset.role)
+    );
+    const targetKeys = DB.getAgentsWithKeys()
+      .filter(({ key }) => checkedRoles.has(DB.getAgentPermRole(key) || '__agent__'))
+      .map(a => a.key);
+
+    if (!targetKeys.length) { showToast('Sélectionne au moins un destinataire.'); return; }
+
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'Accueil';
+
+    const btn = g('broadcastSendBtn');
+    if (btn) btn.disabled = true;
+
+    await Promise.all(targetKeys.map(k =>
+      DB.sendNotif(msg, urgent ? 'alert' : 'info', k, {
+        urgent,
+        fromAgentKey:  myKey,
+        fromAgentName: myName,
+      })
+    ));
+
+    if (btn) btn.disabled = false;
+    closeModal();
+    showToast(`Message envoyé à ${targetKeys.length} agent${targetKeys.length > 1 ? 's' : ''} ✓`);
   });
 }

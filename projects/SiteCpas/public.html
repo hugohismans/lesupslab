@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CPAS de Quaregnon — État des locaux</title>
+  <title>moncompagnon — État des locaux</title>
   <link rel="stylesheet" href="css/public.css">
 </head>
 <body>
 
 <header class="pub-header">
   <div class="pub-brand">
-    <img src="assets/logo.jpg" alt="CPAS de Quaregnon" class="pub-logo">
+    <img src="assets/logo.jpg" alt="Logo" class="pub-logo" id="pubLogo">
     <div>
-      <div class="pub-title">CPAS de Quaregnon</div>
-      <div class="pub-subtitle">Disponibilité des locaux</div>
+      <div class="pub-title" id="pubOrgName">SiteCpas</div>
+      <div class="pub-subtitle" id="pubSubtitle">Disponibilité des locaux</div>
     </div>
   </div>
   <div class="pub-clock-wrap">
@@ -44,6 +44,7 @@
   <div class="next-call-box">
     <div class="next-call-bell" id="nextCallBell">🔔</div>
     <div class="next-call-label" id="nextCallLabel">Bénéficiaire suivant</div>
+    <div class="next-call-ticket hidden" id="nextCallTicket"></div>
     <div class="next-call-group hidden" id="nextCallGroup"></div>
     <div class="next-call-bureau" id="nextCallBureau"></div>
     <div class="next-call-hint" id="nextCallHint">Veuillez vous présenter au bureau</div>
@@ -73,14 +74,20 @@ function isoDateStr(d) { return isoDate(d); }
 firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
+// ── Paramètre écran ───────────────────────────────────────────────
+// ?screen={id} → filtrer uniquement les locaux de cet écran
+const _screenParam = new URLSearchParams(window.location.search).get('screen');
+
 let _reservations = {};
-let _config = { agents: [], localLabels: {}, publicLabels: {}, agentColors: {}, agentEmojis: {}, agentPublicNames: {}, queueGroups: {}, features: {}, messageJour: '', messageJourAt: null, lieux: {} };
+let _config = { agents: [], localLabels: {}, publicLabels: {}, localDescriptions: {}, agentColors: {}, agentEmojis: {}, agentPublicNames: {}, queueGroups: {}, features: {}, screens: {}, messageJour: '', messageJourAt: null, lieux: {} };
 let _agentStatus = {};
 let _currentLieuId = null;
 let _locals = CONFIG.LOCALS;
 
-function getLocalLabel(id)       { return _config.localLabels[id]  || `Local ${id}`; }
-function getPublicLocalLabel(id) { return _config.publicLabels[id] || getLocalLabel(id); }
+function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function getLocalLabel(id)       { return _config.localLabels[id]       || `Local ${id}`; }
+function getPublicLocalLabel(id) { return _config.publicLabels[id]      || getLocalLabel(id); }
+function getLocalDescription(id) { return _config.localDescriptions[id] || ''; }
 function getAgentColor(name) {
   const agent = _config.agents.find(a => a.name === name);
   if (!agent?.key) return null;
@@ -152,6 +159,22 @@ function updateClock() {
   document.body.classList.toggle('is-holiday', h);
 }
 
+// ── Filtre écran ──────────────────────────────────────────────────
+// Si ?screen={id} → restreindre _locals aux locaux de cet écran
+function _applyScreenFilter() {
+  if (!_screenParam) return;
+  const screen = _config.screens[_screenParam];
+  if (!screen) return;
+  const screenLocals = screen.localIds
+    ? Object.keys(screen.localIds).map(Number).sort((a,b) => a-b)
+    : [];
+  if (screenLocals.length) {
+    _locals = screenLocals;
+    const subEl = document.getElementById('pubSubtitle');
+    if (subEl) subEl.textContent = screen.name || 'Écran';
+  }
+}
+
 // ── Rendu ─────────────────────────────────────────────────────────
 function render() {
   const now  = new Date();
@@ -191,7 +214,10 @@ function render() {
 
   // ── Cartes de file de groupe ────────────────────────────────────
   const groupCards = Object.entries(_config.queueGroups || {}).map(([grpId, grp]) => {
-    const lids     = (grp.localIds || []).map(Number).filter(l => _locals.includes(l));
+    const allLids  = (grp.localIds || []).map(Number).filter(l => _locals.includes(l));
+    if (!allLids.length) return '';
+    // Seuls les bureaux explicitement ouverts comptent
+    const lids = allLids.filter(l => _bureauState[String(l)]?.open);
     if (!lids.length) return '';
     const occupied = lids.filter(l => getQueueForLocal(l) >= 1).length;
     const overflow = _prevQueue[`wait_${grpId}`] ?? 0;
@@ -216,11 +242,28 @@ function render() {
       return `<span class="pub-grp-dot${busy ? ' busy' : ''}"></span>`;
     }).join('');
 
+    const tickIssued = _prevQueue[`tick_${grpId}`] || 0;
+    const tickCalled = _prevQueue[`tcall_${grpId}`] || 0;
+    const prefix     = (grp.name || 'T').trim()[0].toUpperCase();
+    const fmt        = n => `${prefix}${String(n).padStart(2, '0')}`;
+    const waitingTickets = [];
+    for (let i = tickCalled + 1; i <= tickIssued; i++) waitingTickets.push(fmt(i));
+
+    const ticketsHtml = waitingTickets.length
+      ? `<div class="pub-grp-tickets">
+          <span class="pub-grp-tickets-label">En attente :</span>
+          <div class="pub-grp-ticket-list">
+            ${waitingTickets.map(t => `<span class="pub-grp-ticket">${t}</span>`).join('')}
+          </div>
+        </div>`
+      : '';
+
     return `<div class="pub-grp-card ${cardClass}">
       <div class="pub-grp-name">${grp.name}</div>
       ${statusHtml}
       <div class="pub-grp-dots">${dots}</div>
       <div class="pub-grp-cap">${occupied}/${total} bureaux</div>
+      ${ticketsHtml}
     </div>`;
   }).join('');
 
@@ -233,6 +276,36 @@ function render() {
       : null;
     const label = getPublicLocalLabel(l);
 
+    const isOpen = !!_bureauState[String(l)]?.open;
+    const desc   = getLocalDescription(l);
+    const descHtml = desc ? `<div class="pub-card-desc">${escapeHtml(desc)}</div>` : '';
+
+    // Bureau non ouvert → toujours Fermé, quelle que soit la réservation
+    if (!isOpen) {
+      return `<div class="pub-card pub-closed">
+        <div class="pub-card-label">${label}</div>
+        <div class="pub-card-status">⚫ Fermé</div>
+        ${descHtml}
+      </div>`;
+    }
+
+    // Bureau en pause
+    const pause = _bureauState[String(l)]?.pause || null;
+    if (pause) {
+      const elapsed   = (Date.now() - pause.startedAt) / 60000;
+      const rem       = pause.estimatedMin
+        ? Math.max(0, Math.round(pause.estimatedMin - elapsed))
+        : null;
+      const timerTxt  = rem !== null ? (rem === 0 ? 'Retour imminent' : `Retour dans ${rem} min`) : '';
+      return `<div class="pub-card pub-pause">
+        <div class="pub-card-label">${label}</div>
+        <div class="pub-card-status">⏸ En pause</div>
+        ${timerTxt ? `<div class="pub-card-pause-timer" data-started="${pause.startedAt}" data-dur="${pause.estimatedMin || 0}">${timerTxt}</div>` : ''}
+        ${pause.comment ? `<div class="pub-card-pause-comment">${escapeHtml(pause.comment)}</div>` : ''}
+        ${descHtml}
+      </div>`;
+    }
+
     if (perm) {
       const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
       const agt = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
@@ -241,6 +314,7 @@ function render() {
         <div class="pub-card-status">🔒 Permanent</div>
         <div class="pub-card-svc">${svc}</div>
         <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
+        ${descHtml}
       </div>`;
     }
 
@@ -260,12 +334,17 @@ function render() {
         <div class="pub-card-svc">${svc}</div>
         <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
         ${waiting > 0 ? `<div class="pub-card-until">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>` : ''}
+        ${descHtml}
       </div>`;
     }
 
-    return `<div class="pub-card pub-closed">
+    // Bureau ouvert mais sans réservation active
+    const declSvc = _bureauState[String(l)]?.declaredService || null;
+    return `<div class="pub-card pub-free">
       <div class="pub-card-label">${label}</div>
-      <div class="pub-card-status">⚫ Fermé</div>
+      <div class="pub-card-status">🟢 Disponible</div>
+      ${declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : ''}
+      ${descHtml}
     </div>`;
   }).join('');
 
@@ -282,13 +361,21 @@ function render() {
 }
 
 // ── Init Firebase listeners ───────────────────────────────────────
-db.ref('reservations').on('value', snap => {
+db.ref(`orgs/${ORG_ID}/reservations`).on('value', snap => {
   _reservations = snap.val() || {};
   render();
 });
 
-db.ref('appConfig').on('value', snap => {
+db.ref(`orgs/${ORG_ID}/appConfig`).on('value', snap => {
   const d = snap.val() || {};
+  const meta = d?.meta || {};
+  const name = meta.name || ORG_ID;
+  const nameEl = document.getElementById('pubOrgName');
+  if (nameEl) { nameEl.textContent = name; document.title = `${name} — État des locaux`; }
+  if (meta.logoUrl) {
+    const img = document.getElementById('pubLogo');
+    if (img) { img.src = meta.logoUrl; img.onerror = () => { img.src = 'assets/logo.jpg'; }; }
+  }
   _config.agents      = d.agents   ? Object.entries(d.agents).map(([k,v]) => ({key:k, name:v})) : [];
   _config.localLabels = d.localLabels || {};
   _config.agentColors = d.agentColors || {};
@@ -298,9 +385,11 @@ db.ref('appConfig').on('value', snap => {
   _config.messageJourAt         = d.messageJourAt         || null;
   _config.messageJourPublic     = d.messageJourPublic     || '';
   _config.messageJourPublicAt   = d.messageJourPublicAt   || null;
-  _config.publicLabels      = d.publicLabels      || {};
-  _config.agentPublicNames  = d.agentPublicNames  || {};
+  _config.publicLabels        = d.publicLabels        || {};
+  _config.localDescriptions   = d.localDescriptions   || {};
+  _config.agentPublicNames    = d.agentPublicNames    || {};
   _config.queueGroups       = d.queueGroups       || {};
+  _config.screens           = d.screens           || {};
 
   // Lieu — prendre le premier ou celui sauvegardé
   if (d.lieux) {
@@ -312,10 +401,13 @@ db.ref('appConfig').on('value', snap => {
     const active = found || sorted[0];
     if (active) { _currentLieuId = active.id; _locals = active.localIds; }
   }
+
+  // Filtrer par écran si ?screen= est présent
+  _applyScreenFilter();
   render();
 });
 
-db.ref(`agentStatus/${isoDate(new Date())}`).on('value', snap => {
+db.ref(`orgs/${ORG_ID}/agentStatus/${isoDate(new Date())}`).on('value', snap => {
   _agentStatus = snap.val() || {};
   render();
 });
@@ -372,11 +464,18 @@ let _prevQueue = {};
 let _queueReady = false;
 let _callDismissTimer = null;
 
-function showNextCall(localId, agentName, groupName) {
+function showNextCall(localId, agentName, groupName, ticketNum) {
   const bureauLabel = getPublicLocalLabel(localId);
   playChime();
   document.getElementById('nextCallBell').textContent   = '🔔';
   document.getElementById('nextCallLabel').textContent  = 'Bénéficiaire suivant';
+  const ticketEl = document.getElementById('nextCallTicket');
+  if (ticketNum) {
+    ticketEl.textContent = ticketNum;
+    ticketEl.classList.remove('hidden');
+  } else {
+    ticketEl.classList.add('hidden');
+  }
   const grpEl = document.getElementById('nextCallGroup');
   if (groupName) {
     grpEl.textContent = groupName;
@@ -401,8 +500,15 @@ document.getElementById('nextCallOverlay').addEventListener('click', () => {
   if (_callDismissTimer) clearTimeout(_callDismissTimer);
 });
 
+// Écoute Firebase — état ouverture bureaux
+let _bureauState = {};
+db.ref(`orgs/${ORG_ID}/appState/bureaux`).on('value', snap => {
+  _bureauState = snap.val() || {};
+  render();
+});
+
 // Écoute Firebase — file d'attente (rendu uniquement, pas de popup)
-db.ref(`queues/${isoDate(new Date())}`).on('value', snap => {
+db.ref(`orgs/${ORG_ID}/queues/${isoDate(new Date())}`).on('value', snap => {
   _prevQueue  = snap.val() || {};
   _queueReady = true;
   render();
@@ -410,20 +516,31 @@ db.ref(`queues/${isoDate(new Date())}`).on('value', snap => {
 
 // Écoute Firebase — appel bénéficiaire (écrit par l'agent via "Je suis disponible")
 let _lastCallTs = null;
-db.ref('appState/lastCall').on('value', snap => {
+db.ref(`orgs/${ORG_ID}/appState/lastCall`).on('value', snap => {
   const d = snap.val();
   if (!d || !d.ts) return;
   if (_lastCallTs === null) { _lastCallTs = d.ts; return; } // ignorer valeur initiale
   if (d.ts === _lastCallTs) return;
   _lastCallTs = d.ts;
   if (_locals.includes(Number(d.localId))) {
-    showNextCall(Number(d.localId), d.agentName || null, d.groupName || null);
+    showNextCall(Number(d.localId), d.agentName || null, d.groupName || null, d.ticketNum || null);
   }
 });
 
 // Horloge chaque seconde
 setInterval(updateClock, 1000);
 updateClock();
+
+// Mise à jour des timers de pause (toutes les 30 secondes, sans re-render complet)
+setInterval(() => {
+  document.querySelectorAll('.pub-card-pause-timer[data-dur]').forEach(el => {
+    const dur  = parseInt(el.dataset.dur);
+    if (!dur) return;
+    const started = parseInt(el.dataset.started);
+    const rem  = Math.max(0, Math.round(dur - (Date.now() - started) / 60000));
+    el.textContent = rem === 0 ? 'Retour imminent' : `Retour dans ${rem} min`;
+  });
+}, 30000);
 </script>
 </body>
 </html>

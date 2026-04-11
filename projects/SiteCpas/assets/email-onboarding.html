@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Email onboarding — moncompagnon.be</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; background: #f4f4f4; margin: 0; padding: 2rem; color: #1a1a1a; }
+    .wrapper { max-width: 640px; margin: 0 auto; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .header { background: #1a3a5c; padding: 2rem 2.5rem 1.5rem; }
+    .header h1 { margin: 0; color: #fff; font-size: 1.25rem; font-weight: normal; letter-spacing: .02em; }
+    .header p { margin: .35rem 0 0; color: rgba(255,255,255,.65); font-size: .85rem; }
+    .body { padding: 2rem 2.5rem; }
+    .body p { line-height: 1.7; margin: 0 0 1rem; font-size: .94rem; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+    .section { margin-bottom: 1.4rem; }
+    .section h2 { font-size: .88rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #1a3a5c; margin: 0 0 .5rem; }
+    .section p, .section li { font-size: .91rem; line-height: 1.65; color: #374151; margin: 0 0 .35rem; }
+    .section ul { margin: .3rem 0 0 1.1rem; padding: 0; }
+    .section ul li { margin-bottom: .2rem; }
+    .code-block {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px;
+      padding: .6rem 1rem; font-family: 'Courier New', monospace; font-size: .83rem;
+      color: #374151; margin: .5rem 0;
+    }
+    .note { background: #fffbeb; border-left: 3px solid #f59e0b; padding: .6rem .9rem; border-radius: 0 4px 4px 0; font-size: .85rem; color: #92400e; margin: .5rem 0; }
+    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 1.25rem 2.5rem; font-size: .82rem; color: #6b7280; }
+    .footer strong { color: #1a3a5c; }
+    .footer a { color: #1a3a5c; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <div class="header">
+      <h1>moncompagnon.be</h1>
+      <p>Mise en place de votre espace — informations nécessaires</p>
+    </div>
+
+    <div class="body">
+      <p>Madame, Monsieur,</p>
+      <p>
+        Nous vous remercions de votre confiance dans le choix de <strong>moncompagnon.be</strong>
+        pour la gestion de votre service.
+      </p>
+      <p>
+        Afin de préparer votre espace et de vous permettre de démarrer rapidement,
+        nous avons besoin des informations suivantes :
+      </p>
+
+      <hr>
+
+      <div class="section">
+        <h2>1. Identification de votre organisation</h2>
+        <ul>
+          <li>Nom complet de votre structure <em>(ex : CPAS de Quaregnon)</em></li>
+          <li>Identifiant court souhaité <em>(ex : cpas-quaregnon)</em> — il figurera dans l'URL d'accès</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>2. Liste des agents</h2>
+        <p>
+          Merci de nous transmettre la liste de vos collaborateurs dans un fichier
+          <strong>.csv</strong> ou <strong>.txt</strong>, au format suivant, <strong>un agent par ligne</strong> :
+        </p>
+        <div class="code-block">Prénom Nom affiché;Nom public</div>
+        <div class="note">
+          Le <strong>nom affiché</strong> est celui utilisé pour la connexion.
+          Le <strong>nom public</strong> est celui visible en salle d'attente
+          (peut être identique ou plus discret, ex : <em>Marie A.</em> au lieu de <em>Marie Anselin</em>).
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>3. Locaux et bureaux</h2>
+        <p>
+          Liste des bureaux ou salles de réception utilisés par vos agents
+          <em>(ex : Bureau 1, Salle des assistantes sociales, Accueil…)</em>
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>4. Services proposés</h2>
+        <p>
+          Liste des types d'accompagnement gérés en file d'attente
+          <em>(ex : Aide sociale, Logement, Emploi, Général…)</em>
+        </p>
+      </div>
+
+      <div class="section">
+        <h2>5. Horaires d'ouverture</h2>
+        <p>Jours et heures d'accueil du public par défaut pour votre service.</p>
+      </div>
+
+      <div class="section">
+        <h2>6. Logo</h2>
+        <p>Votre logo en format <strong>.png</strong> ou <strong>.jpg</strong> (fond transparent de préférence).</p>
+      </div>
+
+      <hr>
+
+      <p>
+        Ces informations nous permettront de configurer votre espace avant votre première utilisation.
+        Une fois reçues, nous vous communiquerons vos accès sous <strong>48 heures ouvrables</strong>.
+      </p>
+      <p>Pour toute question, n'hésitez pas à nous contacter à cette adresse.</p>
+      <p>Bien cordialement,</p>
+    </div>
+
+    <div class="footer">
+      <strong>Hugo Hismans</strong><br>
+      <a href="https://moncompagnon.be">moncompagnon.be</a>
+    </div>
+
+  </div>
+</body>
+</html>

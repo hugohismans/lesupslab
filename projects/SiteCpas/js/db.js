@@ -6,15 +6,28 @@ const DB = {
   _db:           null,
   _data:         {},
   _cbs:          [],
-  _config:       { agents: [], services: [], localLabels: {}, publicLabels: {} },
+  _config:       { agents: [], services: [], localLabels: {}, publicLabels: {}, permRoles: {}, agentRoles: {} },
   _configCbs:    [],
   _lieux:        {},
   _currentLieuId: null,
 
+  // ── Helpers multi-tenant ─────────────────────────────────────────
+  // Toutes les refs Firebase passent par _ref() pour le préfixe org
+  _ref(path) {
+    return this._db.ref(`orgs/${ORG_ID}/${path}`);
+  },
+  async _update(updates) {
+    const prefixed = {};
+    Object.entries(updates).forEach(([k, v]) => {
+      prefixed[`orgs/${ORG_ID}/${k}`] = v;
+    });
+    return this._db.ref().update(prefixed);
+  },
+
   init() {
     if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
     this._db = firebase.database();
-    this._db.ref('reservations').on('value', snap => {
+    this._ref('reservations').on('value', snap => {
       this._data = snap.val() || {};
       this._cbs.forEach(fn => fn());
     });
@@ -22,7 +35,7 @@ const DB = {
 
   // ── Config dynamique (agents / services) ─────────────────────────
   initConfig() {
-    this._db.ref('appConfig').on('value', snap => {
+    this._ref('appConfig').on('value', snap => {
       const hasConfig = snap.val() !== null;
       const d = snap.val() || {};
       this._config = {
@@ -32,8 +45,9 @@ const DB = {
         services: hasConfig
           ? (d.services ? Object.entries(d.services).map(([k,v]) => ({key: k, name: v})) : [])
           : CONFIG.SERVICES.filter(s => s !== 'Autre').map(name => ({key: null, name})),
-        localLabels:       d.localLabels  || {},
-        publicLabels:      d.publicLabels || {},
+        localLabels:        d.localLabels        || {},
+        publicLabels:       d.publicLabels       || {},
+        localDescriptions:  d.localDescriptions  || {},
         agentColors:       d.agentColors      || {},
         agentEmojis:       d.agentEmojis      || {},
         agentPublicNames:  d.agentPublicNames || {},
@@ -45,6 +59,16 @@ const DB = {
         adminPasswordHash: d.adminPasswordHash || null,
         appPasswordHash:   d.appPasswordHash   || null,
         queueGroups:       d.queueGroups       || {},
+        screens:           d.screens           || {},
+        permRoles:         d.permRoles         || {},
+        agentRoles:        d.agentRoles        || {},
+        agentPasswords:    d.agentPasswords    || {},
+        hiddenLocals:      d.hiddenLocals      || {},
+        accueilDeskLocalId: d.accueilDeskLocalId || null,
+        mascotId:          d.mascotId           || 'poulpe',
+        orgLat:            d.meta?.lat          || null,
+        orgLon:            d.meta?.lon          || null,
+        endOfDayHour:      d.meta?.endOfDayHour ?? 17,
       };
 
       // Charger les lieux triés par order
@@ -53,15 +77,20 @@ const DB = {
         Object.entries(d.lieux)
           .map(([id, lieu]) => ({
             id,
-            name:     lieu.name || 'Sans nom',
-            order:    lieu.order ?? 999,
-            localIds: lieu.localIds
+            name:       lieu.name || 'Sans nom',
+            order:      lieu.order ?? 999,
+            localIds:   lieu.localIds
               ? Object.keys(lieu.localIds).map(Number).sort((a, b) => a - b)
-              : []
+              : [],
+            openHour:    lieu.openHour    ?? null,
+            closeHour:   lieu.closeHour   ?? null,
+            slotMin:     lieu.slotMin     ?? null,
+            activeDays:  lieu.activeDays  || null,  // {1:true,2:true,...} — null = défaut Lun-Ven
+            isBackoffice: !!lieu.isBackoffice,
           }))
           .sort((a, b) => a.order - b.order)
-          .forEach(({ id, name, order, localIds }) => {
-            this._lieux[id] = { name, order, localIds };
+          .forEach(({ id, name, order, localIds, openHour, closeHour, slotMin, activeDays, isBackoffice }) => {
+            this._lieux[id] = { name, order, localIds, openHour, closeHour, slotMin, activeDays, isBackoffice };
           });
       }
 
@@ -74,7 +103,9 @@ const DB = {
         this._currentLieuId = ids.length ? ids[0] : null;
       }
       if (this._currentLieuId && this._lieux[this._currentLieuId]) {
-        CONFIG.LOCALS = [...this._lieux[this._currentLieuId].localIds];
+        // Exclure les locaux cachés de CONFIG.LOCALS (visible partout sauf accueil desk)
+        CONFIG.LOCALS = this._lieux[this._currentLieuId].localIds
+          .filter(id => !this._config.hiddenLocals[String(id)]);
       }
 
       this._configCbs.forEach(fn => fn());
@@ -85,17 +116,77 @@ const DB = {
   getAgents()             { return [...this._config.agents.map(a => a.name),   'Autre']; },
   getServices()           { return [...this._config.services.map(s => s.name), 'Autre']; },
   getAgentsWithKeys()     { return this._config.agents; },
+  // Retourne le nom du lieu auquel appartient un local (ou null)
+  getLocalLieuName(localId) {
+    const found = Object.values(this._lieux).find(l => l.localIds.includes(Number(localId)));
+    return found?.name || null;
+  },
+  // Retourne true si le local appartient à un lieu "backoffice"
+  isLocalBackoffice(localId) {
+    return Object.values(this._lieux).some(l => l.isBackoffice && l.localIds.includes(Number(localId)));
+  },
+  async setLieuBackoffice(lieuId, value) {
+    await this._ref(`appConfig/lieux/${lieuId}/isBackoffice`).set(value || null);
+  },
+  // Présence backoffice : { agentKey: { since } }
+  getBackofficePresence(localId) {
+    return this._bureauState[String(localId)]?.presence || {};
+  },
+  isAgentPresentInLocal(localId, agentKey) {
+    return !!(this._bureauState[String(localId)]?.presence?.[agentKey]);
+  },
+  async setAgentPresence(localId, isPresent) {
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
+    if (!agentKey) return;
+    if (isPresent) {
+      await this._ref(`appState/bureaux/${localId}/presence/${agentKey}`).set({ since: Date.now() });
+    } else {
+      await this._ref(`appState/bureaux/${localId}/presence/${agentKey}`).remove();
+    }
+  },
+  // Retourne le localId backoffice où l'agent courant est déjà présent (ou null)
+  getAgentCurrentBackofficeLocal() {
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
+    if (!agentKey) return null;
+    const backofficeLocals = Object.values(this._lieux)
+      .filter(l => l.isBackoffice)
+      .flatMap(l => l.localIds);
+    for (const lid of backofficeLocals) {
+      if (this.isAgentPresentInLocal(lid, agentKey)) return lid;
+    }
+    return null;
+  },
+
+  // Retourne les agents ayant le rôle accueil
+  getAccueilAgentKeys() {
+    return this._config.agents
+      .filter(a => a.key && this.getAgentPermRole(a.key) === '__accueil__')
+      .map(a => a.key);
+  },
   getServicesWithKeys()   { return this._config.services; },
   getById(id)             { return this._reservations[id] ? { id, ...this._reservations[id] } : null; },
-  getLocalLabel(id)       { return this._config.localLabels[id]  || `Local ${id}`; },
-  getPublicLocalLabel(id) { return this._config.publicLabels[id] || this.getLocalLabel(id); },
+  getLocalLabel(id)       { return this._config.localLabels[id]       || `Local ${id}`; },
+  getPublicLocalLabel(id) { return this._config.publicLabels[id]      || this.getLocalLabel(id); },
+  getLocalDescription(id) { return this._config.localDescriptions[id] || ''; },
+  isLocalHidden(localId)  { return !!(this._config.hiddenLocals[String(localId)]); },
+  getAccueilDeskLocalId() { return this._config.accueilDeskLocalId ? Number(this._config.accueilDeskLocalId) : null; },
+  async setAccueilDeskLocalId(localId) {
+    const prev = this.getAccueilDeskLocalId();
+    if (prev !== null) await this._ref(`appConfig/hiddenLocals/${prev}`).remove();
+    if (localId) {
+      await this._ref('appConfig/accueilDeskLocalId').set(String(localId));
+      await this._ref(`appConfig/hiddenLocals/${localId}`).set(true);
+    } else {
+      await this._ref('appConfig/accueilDeskLocalId').remove();
+    }
+  },
   getAdminHash()           { return this._config.adminPasswordHash || null; },
-  async setAdminHash(hash) { await this._db.ref('appConfig/adminPasswordHash').set(hash); },
+  async setAdminHash(hash) { await this._ref('appConfig/adminPasswordHash').set(hash); },
   getAppHash()             { return this._config.appPasswordHash   || null; },
-  async setAppHash(hash)   { await this._db.ref('appConfig/appPasswordHash').set(hash); },
+  async setAppHash(hash)   { await this._ref('appConfig/appPasswordHash').set(hash); },
 
   async moveReservation(id, newLocalId, newStartISO, newEndISO) {
-    await this._db.ref(`reservations/${id}`).update({
+    await this._ref(`reservations/${id}`).update({
       localId:       String(newLocalId),
       startDateTime: newStartISO,
       endDateTime:   newEndISO,
@@ -106,10 +197,10 @@ const DB = {
     const res = this._reservations[id];
     if (!res) throw new Error('Réservation introuvable');
     // Marquer l'occurrence originale comme exception
-    await this._db.ref(`reservations/${id}/exceptions/${occDateISO}`).set(true);
+    await this._ref(`reservations/${id}/exceptions/${occDateISO}`).set(true);
     // Créer une nouvelle réservation ponctuelle pour cette occurrence
     const { recurrence, exceptions, ...base } = res;
-    await this._db.ref('reservations').push({
+    await this._ref('reservations').push({
       ...base,
       localId:       String(newLocalId),
       startDateTime: newStartISO,
@@ -120,11 +211,15 @@ const DB = {
 
   async setLocalLabel(id, label) {
     const val = label.trim() || null;
-    await this._db.ref(`appConfig/localLabels/${id}`).set(val);
+    await this._ref(`appConfig/localLabels/${id}`).set(val);
   },
   async setPublicLocalLabel(id, label) {
     const val = label.trim() || null;
-    await this._db.ref(`appConfig/publicLabels/${id}`).set(val);
+    await this._ref(`appConfig/publicLabels/${id}`).set(val);
+  },
+  async setLocalDescription(id, desc) {
+    const val = (desc || '').trim() || null;
+    await this._ref(`appConfig/localDescriptions/${id}`).set(val);
   },
 
   // ── Couleurs agents ──────────────────────────────────────────────
@@ -138,8 +233,19 @@ const DB = {
     return this._config.agentColors[agent.key] || null;
   },
 
+  // Couleur du pseudo (définie par le rôle de l'agent)
+  // Fallback sur la couleur individuelle si aucun rôle assigné
+  getAgentRoleColor(agentName) {
+    const agent = this._config.agents.find(a => a.name === agentName);
+    if (!agent?.key) return this.getAgentColor(agentName);
+    const roleId = this.getAgentPermRole(agent.key);
+    if (!roleId) return this.getAgentColor(agentName);
+    const role = this.getPermRole(roleId);
+    return role?.color || this.getAgentColor(agentName);
+  },
+
   async setAgentColor(key, color) {
-    await this._db.ref(`appConfig/agentColors/${key}`).set(color);
+    await this._ref(`appConfig/agentColors/${key}`).set(color);
   },
 
   getAgentEmojiByKey(key) { return this._config.agentEmojis[key] || ''; },
@@ -149,7 +255,7 @@ const DB = {
     return this._config.agentEmojis[agent.key] || '';
   },
   async setAgentEmoji(key, emoji) {
-    await this._db.ref(`appConfig/agentEmojis/${key}`).set(emoji || null);
+    await this._ref(`appConfig/agentEmojis/${key}`).set(emoji || null);
   },
 
   getAgentPublicName(agentName) {
@@ -158,24 +264,71 @@ const DB = {
     return this._config.agentPublicNames[agent.key] || agentName;
   },
   async setAgentPublicName(key, name) {
-    await this._db.ref(`appConfig/agentPublicNames/${key}`).set(name.trim() || null);
+    await this._ref(`appConfig/agentPublicNames/${key}`).set(name.trim() || null);
   },
 
   getFeature(name)           { return !!this._config.features[name]; },
-  async setFeature(name, val) { await this._db.ref(`appConfig/features/${name}`).set(val || null); },
+  async setFeature(name, val) { await this._ref(`appConfig/features/${name}`).set(val || null); },
+
+  getMascotId()              { return this._config.mascotId || 'poulpe'; },
+  async setMascotId(id)      { await this._ref('appConfig/mascotId').set(id); },
+  getOrgCoords()             { return { lat: this._config.orgLat, lon: this._config.orgLon }; },
+  async setOrgCoords(lat, lon) {
+    await this._ref('appConfig/meta/lat').set(parseFloat(lat) || null);
+    await this._ref('appConfig/meta/lon').set(parseFloat(lon) || null);
+  },
+  getEndOfDayHour()          { return this._config.endOfDayHour ?? 17; },
+
+  // ── Cache météo Firebase ──────────────────────────────────────────
+  initWeather() {
+    this._ref('appConfig/weather').on('value', snap => {
+      const data = snap.val();
+      if (typeof WEATHER !== 'undefined') WEATHER._loadFromFirebase(data);
+    });
+  },
+  async setWeatherCache(data) {
+    await this._ref('appConfig/weather').set(data);
+  },
+
+  // Prochain jour ouvré selon les activeDays configurés sur tous les lieux
+  // Retourne { label: 'lundi', daysDelta: 3 } ou null si aucun jour configuré
+  getNextWorkDay() {
+    // Agréger tous les jours actifs de tous les lieux (union)
+    const active = new Set();
+    for (const lieu of Object.values(this._lieux)) {
+      if (lieu.activeDays) {
+        for (const [dow, on] of Object.entries(lieu.activeDays)) {
+          if (on) active.add(Number(dow));
+        }
+      }
+    }
+    // Fallback : lun-ven si aucun lieu configuré
+    if (!active.size) { [1,2,3,4,5].forEach(d => active.add(d)); }
+
+    const DAY_NAMES = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+    const today = new Date().getDay();
+    for (let delta = 1; delta <= 7; delta++) {
+      const dow = (today + delta) % 7;
+      if (active.has(dow)) return { label: DAY_NAMES[dow], delta };
+    }
+    return null;
+  },
+  async setEndOfDayHour(hour) {
+    await this._ref('appConfig/meta/endOfDayHour').set(parseInt(hour) || 17);
+  },
 
   getMessageJour()              { return this._config.messageJour         || ''; },
   getMessageJourAt()            { return this._config.messageJourAt       || null; },
   getMessageJourPublic()        { return this._config.messageJourPublic   || ''; },
   getMessageJourPublicAt()      { return this._config.messageJourPublicAt || null; },
   async setMessageJour(txt) {
-    await this._db.ref('appConfig').update({
+    await this._ref('appConfig').update({
       messageJour:   txt || null,
       messageJourAt: txt ? new Date().toISOString() : null
     });
   },
   async setMessageJourPublic(txt) {
-    await this._db.ref('appConfig').update({
+    await this._ref('appConfig').update({
       messageJourPublic:   txt || null,
       messageJourPublicAt: txt ? new Date().toISOString() : null
     });
@@ -186,30 +339,160 @@ const DB = {
   _agentStatus: {},
   initAgentStatus() {
     const today = isoDate(new Date());
-    this._db.ref(`agentStatus/${today}`).on('value', snap => {
+    this._ref(`agentStatus/${today}`).on('value', snap => {
       this._agentStatus = snap.val() || {};
       this._statusCbs.forEach(fn => fn());
     });
   },
   onAgentStatusChange(fn) { this._statusCbs.push(fn); },
   getAgentStatus(agentKey)  { return this._agentStatus[agentKey] || null; },
+  getAgentDnd(agentKey)     { return !!(this._agentStatus[agentKey]?.dnd); },
   async setAgentStatus(agentKey, status, arrivalTime) {
     const today = isoDate(new Date());
     if (!status) {
-      await this._db.ref(`agentStatus/${today}/${agentKey}`).remove();
+      // Conserver connectedAt + DND, supprimer seulement le statut présence
+      const current = this._agentStatus[agentKey] || {};
+      const keep = {};
+      if (current.connectedAt) keep.connectedAt = current.connectedAt;
+      if (current.dnd)         keep.dnd         = true;
+      if (Object.keys(keep).length) {
+        await this._ref(`agentStatus/${today}/${agentKey}`).set(keep);
+      } else {
+        await this._ref(`agentStatus/${today}/${agentKey}`).remove();
+      }
     } else {
-      await this._db.ref(`agentStatus/${today}/${agentKey}`).set(
-        status === 'late' ? { status, arrivalTime: arrivalTime || '' } : { status }
-      );
+      const current = this._agentStatus[agentKey] || {};
+      const data = status === 'late'
+        ? { status, arrivalTime: arrivalTime || '' }
+        : { status };
+      if (current.dnd)         data.dnd         = true;
+      if (current.connectedAt) data.connectedAt  = current.connectedAt;
+      await this._ref(`agentStatus/${today}/${agentKey}`).set(data);
     }
+  },
+  async setDnd(agentKey, active) {
+    const today = isoDate(new Date());
+    if (active) {
+      await this._ref(`agentStatus/${today}/${agentKey}/dnd`).set(true);
+    } else {
+      await this._ref(`agentStatus/${today}/${agentKey}/dnd`).remove();
+    }
+  },
+  isConnectedToday(agentKey) {
+    return !!(this._agentStatus[agentKey]?.connectedAt);
+  },
+  getConnectedTodayAgents() {
+    // Retourne les clés des agents ayant connectedAt aujourd'hui
+    return Object.entries(this._agentStatus)
+      .filter(([, v]) => v?.connectedAt)
+      .map(([k]) => k);
+  },
+  async markConnectedToday(agentKey) {
+    if (this.isConnectedToday(agentKey)) return; // déjà marqué
+    const today = isoDate(new Date());
+    await this._ref(`agentStatus/${today}/${agentKey}/connectedAt`).set(Date.now());
+  },
+
+  // ── Absences ──────────────────────────────────────────────────
+  _absences:    {},
+  _absenceCbs:  [],
+  initAbsences() {
+    this._ref('absences').on('value', snap => {
+      this._absences = snap.val() || {};
+      this._absenceCbs.forEach(fn => fn());
+    });
+  },
+  onAbsenceChange(fn)  { this._absenceCbs.push(fn); },
+  getAbsences()        { return this._absences; },
+  getAgentAbsenceOn(agentKey, dateStr) {
+    // Retourne l'objet absence si l'agent est absent ce jour-là
+    return Object.entries(this._absences).find(([, a]) =>
+      a.agentKey === agentKey && a.startDate <= dateStr && a.endDate >= dateStr
+    ) || null; // [id, absence] ou null
+  },
+  isAgentAbsentOn(agentKey, dateStr) {
+    return !!this.getAgentAbsenceOn(agentKey, dateStr);
+  },
+  isAgentAbsentToday(agentKey) {
+    return this.isAgentAbsentOn(agentKey, isoDate(new Date()));
+  },
+  async addAbsence({ agentKey, startDate, endDate, motif, comment, createdBy }) {
+    const id = `abs_${Date.now()}`;
+    await this._ref(`absences/${id}`).set({
+      agentKey, startDate, endDate,
+      motif: motif || 'autre',
+      comment: comment || null,
+      createdBy: createdBy || null,
+      createdAt: Date.now(),
+    });
+    return id;
+  },
+  async deleteAbsence(id) {
+    await this._ref(`absences/${id}`).remove();
+  },
+  async updateAbsence(id, fields) {
+    await this._ref(`absences/${id}`).update(fields);
   },
 
   // ── File d'attente ────────────────────────────────────────────
   _queueCbs: [],
+  // ── État ouverture bureaux ───────────────────────────────────────
+  _bureauState: {},
+  _bureauCbs:   [],
+  initBureauState() {
+    this._ref('appState/bureaux').on('value', snap => {
+      this._bureauState = snap.val() || {};
+      this._bureauCbs.forEach(fn => fn());
+    });
+  },
+  onBureauStateChange(fn) { this._bureauCbs.push(fn); },
+  isBureauOpen(localId)          { return !!(this._bureauState[String(localId)]?.open); },
+  getBureauPause(localId)        { return this._bureauState[String(localId)]?.pause || null; },
+  getBureauOptedOut(localId)     { return !!(this._bureauState[String(localId)]?.optedOut); },
+  getBureauDeclaredService(localId) { return this._bureauState[String(localId)]?.declaredService || null; },
+  async setBureauDeclaredService(localId, service) {
+    await this._ref(`appState/bureaux/${localId}/declaredService`).set(service || null);
+  },
+
+  async setBureauOptedOut(localId, optedOut) {
+    if (optedOut) {
+      await this._ref(`appState/bureaux/${localId}/optedOut`).set(true);
+    } else {
+      await this._ref(`appState/bureaux/${localId}/optedOut`).remove();
+    }
+  },
+
+  async openBureau(localId) {
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
+    await this._ref(`appState/bureaux/${localId}`).set({ open: true, ts: Date.now(), agentKey });
+  },
+  getBureauAgentKey(localId) { return this._bureauState[String(localId)]?.agentKey || null; },
+  // Retourne le localId ouvert par l'agent courant (ou null si aucun)
+  getOpenBureauForCurrentAgent() {
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
+    if (!agentKey) return null;
+    const found = Object.entries(this._bureauState).find(([, state]) => state?.open && state?.agentKey === agentKey);
+    return found ? parseInt(found[0]) : null;
+  },
+  async closeBureau(localId) {
+    await this._ref(`appState/bureaux/${localId}`).set({ open: false, ts: Date.now() });
+    await this.setQueue(localId, 0);
+  },
+  async setBureauPause(localId, { estimatedMin, comment }) {
+    await this._ref(`appState/bureaux/${localId}/pause`).set({
+      startedAt:    Date.now(),
+      estimatedMin: estimatedMin || null,
+      comment:      comment      || null,
+    });
+  },
+  async clearBureauPause(localId) {
+    await this._ref(`appState/bureaux/${localId}/pause`).remove();
+  },
+
   _queueData: {},
   initQueue() {
     const today = isoDate(new Date());
-    this._db.ref(`queues/${today}`).on('value', snap => {
+    this._ref(`queues/${today}`).on('value', snap => {
       this._queueData = snap.val() || {};
       this._queueCbs.forEach(fn => fn());
     });
@@ -235,7 +518,7 @@ const DB = {
 
   async setQueue(localId, n) {
     const today = isoDate(new Date());
-    await this._db.ref(`queues/${today}/${localId}`).set(Math.max(0, n) || null);
+    await this._ref(`queues/${today}/${localId}`).set(Math.max(0, n) || null);
   },
 
   // Routage de groupe : trouve le prochain local libre et l'incrémente
@@ -244,8 +527,8 @@ const DB = {
     const grp = (this._config.queueGroups || {})[groupId];
     if (!grp) return null;
     const localIds = (grp.localIds || []).map(Number);
-    const freeLocal = localIds.find(l => this.getQueue(l) === 0);
-    if (freeLocal == null) return null; // tous occupés
+    const freeLocal = localIds.find(l => this.isBureauOpen(l) && this.getQueue(l) === 0 && !this.getBureauOptedOut(l));
+    if (freeLocal == null) return null; // tous occupés ou aucun ouvert
     await this.setQueue(freeLocal, 1);
     return { localId: freeLocal, label: this.getPublicLocalLabel(freeLocal) };
   },
@@ -258,7 +541,7 @@ const DB = {
   async incrementGroupOverflow(groupId) {
     const today = isoDate(new Date());
     const n = this.getGroupOverflowQueue(groupId) + 1;
-    await this._db.ref(`queues/${today}/wait_${groupId}`).set(n);
+    await this._ref(`queues/${today}/wait_${groupId}`).set(n);
   },
 
   async absorbGroupOverflow(groupId) {
@@ -267,39 +550,349 @@ const DB = {
     const today = isoDate(new Date());
     const n = this.getGroupOverflowQueue(groupId);
     if (n <= 0) return false;
-    await this._db.ref(`queues/${today}/wait_${groupId}`).set(n - 1 || null);
+    await this._ref(`queues/${today}/wait_${groupId}`).set(n - 1 || null);
     // Le local reste à 1 (déjà occupé par le nouveau bénéficiaire)
     return true;
   },
 
-  async writeLastCall(localId, agentName, groupName) {
-    await this._db.ref('appState/lastCall').set({
-      localId: Number(localId),
-      agentName: agentName || null,
-      groupName: groupName || null,
+  async clearGroupTickets(groupId) {
+    const today = isoDate(new Date());
+    const ref   = this._ref(`queues/${today}`);
+    await ref.child(`tick_${groupId}`).remove();
+    await ref.child(`tcall_${groupId}`).remove();
+    await ref.child(`wait_${groupId}`).remove();
+  },
+
+  // Lit les données de file d'attente pour une plage de dates (historique)
+  async fetchQueueRange(from, to) {
+    const fromStr = isoDate(from);
+    const toStr   = isoDate(to);
+    const snap = await this._ref('queues')
+      .orderByKey().startAt(fromStr).endAt(toStr).once('value');
+    return snap.val() || {};
+  },
+
+  // ── Tickets journaliers ──────────────────────────────────────────
+  getTicketIssued(groupId) {
+    return this._queueData[`tick_${groupId}`] || 0;
+  },
+
+  _ticketPrefix(groupId) {
+    const grp = (this._config.queueGroups || {})[groupId];
+    if (!grp?.name) return 'T';
+    return grp.name.trim()[0].toUpperCase();
+  },
+
+  formatTicket(groupId, n) {
+    return `${this._ticketPrefix(groupId)}${String(n).padStart(2, '0')}`;
+  },
+
+  // Résout les conflits de prénom dans une même file :
+  // si "Hugo" existe déjà → retourne "Hugo 2", "Hugo 3", etc.
+  _resolveTicketName(groupId, name) {
+    const existing = Object.values(this._queueData[`names_${groupId}`] || {})
+      .map(n => n.toLowerCase());
+    const base = name.trim();
+    if (!existing.includes(base.toLowerCase())) return base;
+    let i = 2;
+    while (existing.includes(`${base.toLowerCase()} ${i}`)) i++;
+    return `${base} ${i}`;
+  },
+
+  async issueTicket(groupId, beneficiaryName) {
+    const today = isoDate(new Date());
+    const n = this.getTicketIssued(groupId) + 1;
+    await this._ref(`queues/${today}/tick_${groupId}`).set(n);
+    let resolvedName = null;
+    if (beneficiaryName) {
+      resolvedName = this._resolveTicketName(groupId, beneficiaryName.trim());
+      await this._ref(`queues/${today}/names_${groupId}/${n}`).set(resolvedName);
+    }
+    // Retourne { label: numéro formaté, resolvedName: nom résolu (null si pas de nom) }
+    return { label: this.formatTicket(groupId, n), resolvedName };
+  },
+
+  getTicketName(groupId, number) {
+    return this._queueData[`names_${groupId}`]?.[String(number)] || null;
+  },
+  // Retourne le label à afficher : nom du bénéficiaire si dispo, sinon numéro formaté
+  formatTicketDisplay(groupId, number) {
+    const name = this.getTicketName(groupId, number);
+    if (name) return name;
+    return this.formatTicket(groupId, number);
+  },
+
+  getTicketCalled(groupId) {
+    return this._queueData[`tcall_${groupId}`] || 0;
+  },
+
+  async callNextTicket(groupId) {
+    const today  = isoDate(new Date());
+    const called = this.getTicketCalled(groupId) + 1;
+    await this._ref(`queues/${today}/tcall_${groupId}`).set(called);
+    // Retourne le nom si disponible, sinon le numéro formaté
+    return this.formatTicketDisplay(groupId, called);
+  },
+
+  async dismissTicket(groupId, ticketNumber) {
+    // Avance tcall jusqu'à ce numéro (retire ce ticket et les éventuels précédents en attente)
+    const today = isoDate(new Date());
+    const current = this.getTicketCalled(groupId);
+    if (ticketNumber <= current) return; // déjà traité
+    await this._ref(`queues/${today}/tcall_${groupId}`).set(ticketNumber);
+    // Si le ticket était dans l'overflow, décrémenter l'overflow
+    const overflow = this.getGroupOverflowQueue(groupId);
+    if (overflow > 0) {
+      const skipped = ticketNumber - current; // nombre de tickets retirés
+      const newOverflow = Math.max(0, overflow - skipped);
+      await this._ref(`queues/${today}/wait_${groupId}`).set(newOverflow || null);
+    }
+  },
+
+  async writeLastCall(localId, agentName, groupName, ticketNum) {
+    await this._ref('appState/lastCall').set({
+      localId:   Number(localId),
+      agentName: agentName  || null,
+      groupName: groupName  || null,
+      ticketNum: ticketNum  || null,
       ts: Date.now()
     });
   },
 
-  async saveQueueGroup(id, name, localIds) {
-    await this._db.ref(`appConfig/queueGroups/${id}`).set({ name, localIds: localIds.map(Number) });
+  async saveQueueGroup(id, name, localIds, services = []) {
+    await this._ref(`appConfig/queueGroups/${id}`).set({
+      name,
+      localIds: localIds.map(Number),
+      services: services.length ? services : null,
+    });
+  },
+
+  // Vérifie si un nom de service correspond au groupe d'un local
+  serviceMatchesGroup(serviceName, grp) {
+    if (!grp || !serviceName) return true;
+    const svcLow = serviceName.toLowerCase();
+    const grpServices = grp.services || [];
+    if (grpServices.length > 0) {
+      return grpServices.some(s => s.toLowerCase() === svcLow);
+    }
+    // Fallback : correspondance partielle avec le nom du groupe
+    const grpLow = (grp.name || '').toLowerCase();
+    return svcLow === grpLow || svcLow.includes(grpLow) || grpLow.includes(svcLow);
   },
 
   async deleteQueueGroup(id) {
-    await this._db.ref(`appConfig/queueGroups/${id}`).remove();
+    await this._ref(`appConfig/queueGroups/${id}`).remove();
   },
 
-  async addAgent(name) {
-    await this._db.ref('appConfig/agents').push(name);
+  // ── Notifications ────────────────────────────────────────────────
+  _notifCbs: [],
+  listenNotifs(agentKey, callback) {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    this._ref('notifications').orderByChild('createdAt').startAt(sevenDaysAgo).on('value', snap => {
+      const all = snap.val() || {};
+      const filtered = {};
+      Object.entries(all).forEach(([id, n]) => {
+        // Garder si broadcast (null) ou ciblé sur cet agent
+        if (!n.targetAgentKey || n.targetAgentKey === agentKey) {
+          // Respecter la date d'expiration
+          if (!n.expiresAt || n.expiresAt > Date.now()) {
+            filtered[id] = n;
+          }
+        }
+      });
+      callback(filtered);
+    });
+  },
+
+  async sendNotif(message, type, targetAgentKey, opts = {}) {
+    const { urgent, expiresMin, ...extra } = opts;
+    const ref = await this._ref('notifications').push({
+      message,
+      type:           type || 'info',
+      urgent:         urgent ? true : null,
+      targetAgentKey: targetAgentKey || null,
+      createdAt:      Date.now(),
+      expiresAt:      expiresMin ? Date.now() + expiresMin * 60000 : null,
+      sourceAgentKey: sessionStorage.getItem('cpas_current_agent_key') || null,
+      ...extra,  // fromAgentKey, fromAgentName, replyable, description, local, etc.
+    });
+    return ref.key;
+  },
+
+  // Envoie une notif "problème technique" à chaque technicien ciblé
+  async sendTechRequest(description, local, technicianKeys) {
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key') || null;
+    const myName = myKey ? (this.getAgentsWithKeys().find(a => a.key === myKey)?.name || myKey) : 'Un agent';
+    const localTxt = local ? ` — ${local}` : '';
+    const message = `🔧 Problème technique${localTxt}\n${description}`;
+    const base = {
+      type:           'tech_request',
+      message,
+      fromAgentKey:   myKey,
+      fromAgentName:  myName,
+      local:          local || null,
+      description,
+      replyable:      true,
+      createdAt:      Date.now(),
+      sourceAgentKey: myKey,
+    };
+    const ids = [];
+    for (const key of technicianKeys) {
+      const ref = await this._ref('notifications').push({ ...base, targetAgentKey: key });
+      ids.push(ref.key);
+    }
+    return ids;
+  },
+
+  // Envoie une réponse d'un technicien à l'agent demandeur
+  async sendTechReply(techRequestNotifId, fromAgentKey, eta, comment) {
+    const fromName = fromAgentKey ? (this.getAgentsWithKeys().find(a => a.key === fromAgentKey)?.name || fromAgentKey) : 'Tech';
+    const etaTxt   = eta?.trim()     || '';
+    const comTxt   = comment?.trim() || '';
+    const parts    = [etaTxt, comTxt].filter(Boolean);
+    const message  = `↩️ Réponse de ${fromName} — ${parts.join(' — ')}`;
+    // Lire la notif originale pour trouver l'expéditeur
+    const origSnap = await this._ref(`notifications/${techRequestNotifId}`).once('value');
+    const orig     = origSnap.val();
+    if (!orig) return;
+    await this._ref('notifications').push({
+      type:             'tech_reply',
+      message,
+      fromAgentKey,
+      fromAgentName:    fromName,
+      eta:              etaTxt || null,
+      comment:          comTxt || null,
+      techRequestId:    techRequestNotifId,
+      targetAgentKey:   orig.fromAgentKey || null,
+      createdAt:        Date.now(),
+      sourceAgentKey:   fromAgentKey,
+    });
+    // Marquer la notif originale comme "répondue"
+    await this._ref(`notifications/${techRequestNotifId}/replied`).set(true);
+  },
+
+  async markNotifRead(notifId) {
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key');
+    if (!agentKey) return;
+    await this._ref(`notifications/${notifId}/readBy/${agentKey}`).set(Date.now());
+  },
+
+  async deleteNotif(notifId) {
+    await this._ref(`notifications/${notifId}`).remove();
+  },
+
+  async cleanOldNotifs() {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const snap = await this._ref('notifications').orderByChild('createdAt').endAt(cutoff).once('value');
+    const old = snap.val() || {};
+    const updates = {};
+    Object.keys(old).forEach(id => { updates[`notifications/${id}`] = null; });
+    if (Object.keys(updates).length) await this._update(updates);
+  },
+
+  // ── Requests (tickets intervention) ──────────────────────────────
+  _requests:    {},
+  _requestCbs:  [],
+  listenRequests() {
+    this._ref('requests').on('value', snap => {
+      this._requests = snap.val() || {};
+      this._requestCbs.forEach(fn => fn(this._requests));
+    });
+  },
+  onRequestChange(fn) { this._requestCbs.push(fn); },
+  getRequests()       { return this._requests; },
+
+  async createRequest({ type, description, local, urgent, fromAgentKey, fromAgentName }) {
+    const id = `req_${Date.now()}`;
+    await this._ref(`requests/${id}`).set({
+      type:         type || 'technique',
+      description,
+      local:        local || null,
+      urgent:       urgent ? true : null,
+      fromAgentKey: fromAgentKey || null,
+      fromAgentName: fromAgentName || null,
+      status:       'open',
+      assignedTo:   null,
+      assignedToName: null,
+      assignedAt:   null,
+      createdAt:    Date.now(),
+    });
+    return id;
+  },
+
+  async claimRequest(requestId) {
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = myKey ? (this.getAgentsWithKeys().find(a => a.key === myKey)?.name || myKey) : null;
+    await this._ref(`requests/${requestId}`).update({
+      status:        'in_progress',
+      assignedTo:    myKey,
+      assignedToName: myName,
+      assignedAt:    Date.now(),
+    });
+  },
+
+  async assignRequest(requestId, agentKey) {
+    const agentName = this.getAgentsWithKeys().find(a => a.key === agentKey)?.name || agentKey;
+    await this._ref(`requests/${requestId}`).update({
+      status:        'in_progress',
+      assignedTo:    agentKey,
+      assignedToName: agentName,
+      assignedAt:    Date.now(),
+    });
+  },
+
+  async setRequestStatus(requestId, status) {
+    await this._ref(`requests/${requestId}/status`).set(status);
+  },
+
+  async addRequestComment(requestId, text) {
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = myKey ? (this.getAgentsWithKeys().find(a => a.key === myKey)?.name || myKey) : 'Anonyme';
+    await this._ref(`requests/${requestId}/comments`).push({
+      agentKey: myKey,
+      agentName: myName,
+      text,
+      createdAt: Date.now(),
+    });
+  },
+
+  async deleteRequest(requestId) {
+    await this._ref(`requests/${requestId}`).remove();
+  },
+
+  // Fin de journée — vider tous les bureaux et présences
+  async clearAllLocals() {
+    const updates = {};
+    const bureaux = this.getAppState()?.bureaux || {};
+    Object.keys(bureaux).forEach(id => { updates[`appState/bureaux/${id}`] = null; });
+    this.getAgentsWithKeys().forEach(({ key }) => {
+      const presences = this.getAgentStatus(key)?.presences || {};
+      Object.keys(presences).forEach(lid => {
+        updates[`agentStatus/${key}/presences/${lid}`] = null;
+      });
+    });
+    if (Object.keys(updates).length) await this._update(updates);
+  },
+
+  async addAgent(name, publicName) {
+    const ref = await this._ref('appConfig/agents').push(name);
+    if (publicName && publicName !== name) {
+      await this._ref(`appConfig/agentPublicNames/${ref.key}`).set(publicName);
+    }
+    return ref.key;
+  },
+
+  getAgentPublicName(key) {
+    return this._cache()?.appConfig?.agentPublicNames?.[key] || null;
   },
   async removeAgentByKey(key) {
-    await this._db.ref(`appConfig/agents/${key}`).remove();
+    await this._ref(`appConfig/agents/${key}`).remove();
   },
   async addService(name) {
-    await this._db.ref('appConfig/services').push(name);
+    await this._ref('appConfig/services').push(name);
   },
   async removeServiceByKey(key) {
-    await this._db.ref(`appConfig/services/${key}`).remove();
+    await this._ref(`appConfig/services/${key}`).remove();
   },
 
   // ── Lieux ────────────────────────────────────────────────────────
@@ -323,12 +916,12 @@ const DB = {
   },
 
   async renameLieu(lieuId, name) {
-    await this._db.ref(`appConfig/lieux/${lieuId}/name`).set(name);
+    await this._ref(`appConfig/lieux/${lieuId}/name`).set(name);
   },
 
   async addLieu(name) {
     const maxOrder = Object.values(this._lieux).reduce((m, l) => Math.max(m, l.order ?? 0), -1);
-    const ref = await this._db.ref('appConfig/lieux').push({ name, order: maxOrder + 1, localIds: {} });
+    const ref = await this._ref('appConfig/lieux').push({ name, order: maxOrder + 1, localIds: {} });
     return ref.key;
   },
 
@@ -346,7 +939,7 @@ const DB = {
       if (i === swapIdx) pos = idx;
       updates[`appConfig/lieux/${id}/order`] = pos;
     });
-    await this._db.ref().update(updates);
+    await this._update(updates);
   },
 
   async removeLieu(lieuId) {
@@ -355,7 +948,7 @@ const DB = {
     if (lieu?.localIds) {
       lieu.localIds.forEach(id => { updates[`appConfig/localLabels/${id}`] = null; });
     }
-    await this._db.ref().update(updates);
+    await this._update(updates);
   },
 
   async addLocalToLieu(lieuId, label) {
@@ -365,19 +958,254 @@ const DB = {
       [`appConfig/localLabels/${newId}`]:              label || `Local ${newId}`,
       [`appConfig/lieux/${lieuId}/localIds/${newId}`]: true
     };
-    await this._db.ref().update(updates);
+    await this._update(updates);
     return newId;
   },
 
   async removeLocal(lieuId, localId) {
-    await this._db.ref().update({
+    await this._update({
       [`appConfig/lieux/${lieuId}/localIds/${localId}`]: null,
       [`appConfig/localLabels/${localId}`]:              null
     });
   },
 
+  // ── Horaires & jours actifs par lieu ─────────────────────────────
+  // activeDays : objet {0:true, 1:true, ...} avec 0=Dim…6=Sam
+  // Valeurs null → fallback sur CONFIG (HOURS_START/END/SLOT_MIN, lun-ven)
+  getLieuConfig(lieuId) {
+    const id   = lieuId || this._currentLieuId;
+    const lieu = this._lieux[id] || {};
+    return {
+      openHour:   lieu.openHour  ?? CONFIG.HOURS_START,
+      closeHour:  lieu.closeHour ?? CONFIG.HOURS_END,
+      slotMin:    lieu.slotMin   ?? CONFIG.SLOT_MIN,
+      activeDays: lieu.activeDays || { 1: true, 2: true, 3: true, 4: true, 5: true },
+    };
+  },
+
+  isDayActive(date, lieuId) {
+    const cfg = this.getLieuConfig(lieuId);
+    return !!cfg.activeDays[date.getDay()];
+  },
+
+  async setLieuHours(lieuId, openHour, closeHour, slotMin, activeDays) {
+    await this._update({
+      [`appConfig/lieux/${lieuId}/openHour`]:   openHour,
+      [`appConfig/lieux/${lieuId}/closeHour`]:  closeHour,
+      [`appConfig/lieux/${lieuId}/slotMin`]:    slotMin,
+      [`appConfig/lieux/${lieuId}/activeDays`]: activeDays,
+    });
+  },
+
+  // ── Écrans publics ───────────────────────────────────────────────
+  // Un écran = un sous-ensemble nommé de locaux affiché via ?screen={id}
+  getScreens() {
+    return Object.entries(this._config.screens || {})
+      .map(([id, s]) => ({
+        id,
+        name:     s.name     || 'Écran sans nom',
+        order:    s.order    ?? 999,
+        localIds: s.localIds ? Object.keys(s.localIds).map(Number).sort((a,b) => a-b) : [],
+      }))
+      .sort((a, b) => a.order - b.order);
+  },
+
+  async addScreen(name) {
+    const order = Object.keys(this._config.screens || {}).length;
+    const ref = await this._ref('appConfig/screens').push({ name, order, localIds: {} });
+    return ref.key;
+  },
+
+  async renameScreen(id, name) {
+    await this._ref(`appConfig/screens/${id}/name`).set(name);
+  },
+
+  async setScreenLocals(id, localIdsObj) {
+    // localIdsObj : { 1: true, 3: true, ... } ou null pour vider
+    await this._ref(`appConfig/screens/${id}/localIds`).set(localIdsObj || null);
+  },
+
+  async removeScreen(id) {
+    await this._ref(`appConfig/screens/${id}`).remove();
+  },
+
+  // ── Rôles & Permissions ──────────────────────────────────────────
+  // Clés de permission disponibles (source unique de vérité)
+  PERM_KEYS: [
+    { key: 'createReservation', label: 'Créer une réservation' },
+    { key: 'editReservation',   label: 'Modifier une réservation' },
+    { key: 'deleteReservation', label: 'Supprimer une réservation' },
+    { key: 'inviteAgents',      label: 'Inviter des agents sur un RDV' },
+    { key: 'manageAgentStatus', label: 'Modifier le statut d\'un autre agent' },
+    { key: 'openBureau',        label: 'Ouvrir un bureau' },
+    { key: 'closeBureau',       label: 'Fermer un bureau' },
+    { key: 'managePause',       label: 'Gérer les pauses' },
+    { key: 'manageQueue',       label: 'Gérer la file d\'attente' },
+    { key: 'sendPublicMessage', label: 'Modifier le message public' },
+    { key: 'sendNotif',         label: 'Envoyer une notification aux agents' },
+    { key: 'sendUrgentNotif',   label: 'Envoyer une notification urgente 🚨' },
+    { key: 'viewAnalytics',     label: 'Voir les statistiques' },
+    { key: 'editSettings',      label: 'Modifier les paramètres (admin)' },
+    { key: 'managePlanning',    label: 'Créer/modifier le planning des agents' },
+    { key: 'viewAllPlanning',   label: 'Voir le planning de tous les agents' },
+  ],
+
+  // Rôles par défaut utilisés si aucun rôle n'est défini dans Firebase
+  // Chaque rôle a un introType implicite (= son propre ID) pour la page welcome.html
+  _defaultPermRoles: {
+    '__admin__': {
+      name: 'Admin', color: '#ef4444', isBuiltin: true,
+      perms: { createReservation:true, editReservation:true, deleteReservation:true,
+               inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
+               managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
+               sendUrgentNotif:true, viewAnalytics:true, editSettings:true,
+               managePlanning:true, viewAllPlanning:true },
+    },
+    '__direction__': {
+      // Vue complète + analytics, pas de gestion opérationnelle directe
+      name: 'Direction', color: '#0369a1', isBuiltin: true,
+      perms: { createReservation:false, editReservation:false, deleteReservation:false,
+               inviteAgents:false, manageAgentStatus:true, openBureau:false, closeBureau:false,
+               managePause:false, manageQueue:false, sendPublicMessage:true, sendNotif:true,
+               sendUrgentNotif:true, viewAnalytics:true, editSettings:false,
+               managePlanning:true, viewAllPlanning:true },
+    },
+    '__chef_service__': {
+      // Coordination équipe : voit tout, peut notifier, peut modifier les RDV de l'équipe
+      name: 'Chef de service', color: '#0f766e', isBuiltin: true,
+      perms: { createReservation:true, editReservation:true, deleteReservation:true,
+               inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
+               managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
+               sendUrgentNotif:false, viewAnalytics:true, editSettings:false,
+               managePlanning:true, viewAllPlanning:true },
+    },
+    '__as__': {
+      // Assistant social : gère ses RDV et sa file, collabore avec l'équipe
+      name: 'Assistant·e social·e', color: '#2563eb', isBuiltin: true,
+      perms: { createReservation:true, editReservation:true, deleteReservation:false,
+               inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
+               managePause:true, manageQueue:true, sendPublicMessage:false, sendNotif:false,
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false },
+    },
+    '__accueil__': {
+      // Accueil : crée des tickets, oriente, voit toute la file
+      name: 'Accueil', color: '#8b5cf6', isBuiltin: true,
+      perms: { createReservation:true, editReservation:false, deleteReservation:false,
+               inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
+               managePause:false, manageQueue:true, sendPublicMessage:false, sendNotif:false,
+               sendUrgentNotif:false, viewAnalytics:true, editSettings:false },
+    },
+    '__agent__': {
+      // Agent de bureau : gère ses RDV et sa propre file
+      name: 'Agent', color: '#3b82f6', isBuiltin: true,
+      perms: { createReservation:true, editReservation:true, deleteReservation:false,
+               inviteAgents:false, manageAgentStatus:false, openBureau:true, closeBureau:true,
+               managePause:true, manageQueue:true, sendPublicMessage:false, sendNotif:false,
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false },
+    },
+    '__technicien__': {
+      // Technicien : consulte l'agenda, pas de gestion de file ni de RDV bénéficiaires
+      name: 'Technicien·ne', color: '#475569', isBuiltin: true,
+      perms: { createReservation:false, editReservation:false, deleteReservation:false,
+               inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
+               managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false },
+    },
+    '__entretien__': {
+      // Agent d'entretien : accès minimal, juste voir la présence et les messages
+      name: 'Entretien', color: '#15803d', isBuiltin: true,
+      perms: { createReservation:false, editReservation:false, deleteReservation:false,
+               inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
+               managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false },
+    },
+    '__juriste__': {
+      // Juriste : gère ses RDV, consulte l'équipe, pas de gestion file
+      name: 'Juriste', color: '#4338ca', isBuiltin: true,
+      perms: { createReservation:true, editReservation:true, deleteReservation:false,
+               inviteAgents:true, manageAgentStatus:false, openBureau:false, closeBureau:false,
+               managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false },
+    },
+  },
+
+  getPermRoles() {
+    const stored = this._config.permRoles;
+    // Fusionner les rôles built-in avec ceux stockés dans Firebase
+    const merged = { ...this._defaultPermRoles };
+    Object.entries(stored).forEach(([id, r]) => {
+      merged[id] = { ...r, isBuiltin: false };
+    });
+    return merged;
+  },
+
+  getPermRole(roleId) {
+    return this.getPermRoles()[roleId] || null;
+  },
+
+  async addPermRole(name, color, introType) {
+    const perms = {};
+    this.PERM_KEYS.forEach(p => { perms[p.key] = false; });
+    const data = { name, color: color || '#6b7280', perms };
+    if (introType) data.introType = introType;
+    const ref = await this._ref('appConfig/permRoles').push(data);
+    return ref.key;
+  },
+
+  async updatePermRole(roleId, { name, color, perms }) {
+    const updates = {};
+    if (name  !== undefined) updates[`appConfig/permRoles/${roleId}/name`]  = name;
+    if (color !== undefined) updates[`appConfig/permRoles/${roleId}/color`] = color;
+    if (perms !== undefined) updates[`appConfig/permRoles/${roleId}/perms`] = perms;
+    await this._update(updates);
+  },
+
+  async deletePermRole(roleId) {
+    if (this._defaultPermRoles[roleId]) return; // ne pas supprimer les built-ins
+    await this._ref(`appConfig/permRoles/${roleId}`).remove();
+    // Retirer ce rôle de tous les agents qui l'avaient
+    const updates = {};
+    Object.entries(this._config.agentRoles).forEach(([agentKey, rid]) => {
+      if (rid === roleId) updates[`appConfig/agentRoles/${agentKey}`] = null;
+    });
+    if (Object.keys(updates).length) await this._update(updates);
+  },
+
+  // Assigner un rôle à un agent (par sa clé Firebase)
+  async setAgentPermRole(agentKey, roleId) {
+    await this._ref(`appConfig/agentRoles/${agentKey}`).set(roleId || null);
+  },
+
+  // Mot de passe individuel d'un agent (hash SHA-256)
+  agentHasPassword(agentKey) { return !!this._config.agentPasswords[agentKey]; },
+  async setAgentPasswordHash(agentKey, hash) {
+    await this._ref(`appConfig/agentPasswords/${agentKey}`).set(hash);
+  },
+  async resetAgentPassword(agentKey) {
+    await this._ref(`appConfig/agentPasswords/${agentKey}`).remove();
+  },
+  // Vérifie si au moins un agent a le rôle Admin (pour la détection du premier superadmin)
+  hasAnySuperAdmin() {
+    return Object.values(this._config.agentRoles).includes('__admin__');
+  },
+
+  getAgentPermRole(agentKey) {
+    return this._config.agentRoles[agentKey] || null;
+  },
+
+  // Vérifie si l'utilisateur courant a une permission donnée.
+  // Rôle non assigné → fallback sur __agent__ (accès de base, pas d'admin).
+  hasPermission(perm) {
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key');
+    if (!agentKey) return false; // non connecté
+    const roleId = this.getAgentPermRole(agentKey) || '__agent__';
+    const role   = this.getPermRole(roleId);
+    if (!role) return false;
+    return !!role.perms?.[perm];
+  },
+
   async seedConfigIfEmpty() {
-    const snap = await this._db.ref('appConfig').once('value');
+    const snap = await this._ref('appConfig').once('value');
     const d    = snap.val() || {};
     const updates = {};
 
@@ -399,7 +1227,14 @@ const DB = {
       updates[`appConfig/lieux/${lieuId}`] = { name: 'CPAS', order: 0, localIds };
     }
 
-    if (Object.keys(updates).length) await this._db.ref().update(updates);
+    // Activer les modules principaux par défaut si pas encore définis
+    if (!d.features) {
+      updates['appConfig/features/enableTickets']    = true;
+      updates['appConfig/features/enablePublicView'] = true;
+      updates['appConfig/features/enablePresence']   = true;
+    }
+
+    if (Object.keys(updates).length) await this._update(updates);
   },
 
   onChange(fn) { this._cbs.push(fn); },
@@ -415,7 +1250,7 @@ const DB = {
   },
 
   async add(data) {
-    const ref = this._db.ref('reservations').push();
+    const ref = this._ref('reservations').push();
     const needsSeries = !data.isPermanent && data.recurrence?.type !== 'none';
     const seriesId = needsSeries ? genId() : null;
     await ref.set({ ...data, recurrence: { ...data.recurrence, seriesId }, createdAt: Date.now() });
@@ -423,16 +1258,16 @@ const DB = {
   },
 
   async update(id, data) {
-    await this._db.ref(`reservations/${id}`).update({ ...data, updatedAt: Date.now() });
+    await this._ref(`reservations/${id}`).update({ ...data, updatedAt: Date.now() });
   },
 
   async remove(id) {
-    await this._db.ref(`reservations/${id}`).remove();
+    await this._ref(`reservations/${id}`).remove();
   },
 
   // Ajoute une date d'exception (suppression d'une seule occurrence)
   async addException(id, occDate) {
-    await this._db.ref(`reservations/${id}/exceptions/${occDate}`).set(true);
+    await this._ref(`reservations/${id}/exceptions/${occDate}`).set(true);
   },
 
   async removeSeries(seriesId) {
@@ -440,12 +1275,12 @@ const DB = {
     Object.entries(this._data).forEach(([id, r]) => {
       if (r.recurrence?.seriesId === seriesId) updates[`reservations/${id}`] = null;
     });
-    if (Object.keys(updates).length) await this._db.ref().update(updates);
+    if (Object.keys(updates).length) await this._update(updates);
   },
 
   // Charge des données de démonstration si Firebase est vide (premier lancement)
   async seedIfEmpty() {
-    const snap = await this._db.ref('reservations').once('value');
+    const snap = await this._ref('reservations').once('value');
     if (snap.val() !== null) return;
 
     const mon = getLastMonday();
@@ -493,12 +1328,62 @@ const DB = {
 
     const updates = {};
     seeds.forEach(s => {
-      const key = this._db.ref('reservations').push().key;
+      const key = this._ref('reservations').push().key;
       updates[`reservations/${key}`] = s;
     });
-    await this._db.ref().update(updates);
+    await this._update(updates);
     console.log('✅ Données de démonstration CPAS chargées.');
-  }
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Planning agents (entretien / technicien)
+  // ══════════════════════════════════════════════════════════════════
+  _planningData: {},
+  _planningCbs:  [],
+
+  initPlanning() {
+    this._ref('planning').on('value', snap => {
+      this._planningData = snap.val() || {};
+      this._planningCbs.forEach(fn => fn());
+    });
+  },
+  onPlanningChange(fn)   { this._planningCbs.push(fn); },
+  getPlanningTasks()     { return this._planningData; },
+
+  async addPlanningTask(data) {
+    const ref = await this._ref('planning').push({
+      ...data,
+      createdBy: sessionStorage.getItem('cpas_current_agent_key') || null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return ref.key;
+  },
+  async updatePlanningTask(id, fields) {
+    await this._ref(`planning/${id}`).update({ ...fields, updatedAt: Date.now() });
+  },
+  async deletePlanningTask(id) {
+    await this._ref(`planning/${id}`).remove();
+  },
+  async addPlanningException(taskId, occDateISO) {
+    await this._ref(`planning/${taskId}/exceptions/${occDateISO}`).set(true);
+  },
+  async checkinPlanningTask(taskId, occDateISO) {
+    const now = Date.now();
+    if (occDateISO) {
+      await this._ref(`planning/${taskId}/occurrences/${occDateISO}`).update({ checkinAt: now, status: 'inprogress' });
+    } else {
+      await this._ref(`planning/${taskId}`).update({ checkinAt: now, status: 'inprogress', updatedAt: now });
+    }
+  },
+  async donePlanningTask(taskId, occDateISO) {
+    const now = Date.now();
+    if (occDateISO) {
+      await this._ref(`planning/${taskId}/occurrences/${occDateISO}`).update({ doneAt: now, status: 'done' });
+    } else {
+      await this._ref(`planning/${taskId}`).update({ doneAt: now, status: 'done', updatedAt: now });
+    }
+  },
 };
 
 // ───────────────────────────────────────────────────────────────────

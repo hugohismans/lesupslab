@@ -3,38 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CPAS de Quaregnon — Réservation des locaux</title>
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <title>moncompagnon</title>
+  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="manifest" href="manifest.json">
 </head>
 <body class="app-page">
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOADING SCREEN (mascotte, masqué une fois Firebase prêt)
+═══════════════════════════════════════════════════════════ -->
+<div id="appLoadingScreen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#1a3a5c 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1rem;font-family:'Segoe UI',system-ui,sans-serif;
+  transition:opacity .4s ease;
+">
+  <!-- Mascotte flottante -->
+  <div style="filter:drop-shadow(0 0 24px rgba(167,139,250,.6));animation:_ld-float 4s ease-in-out infinite">
+    <svg id="loadMascotSvg" viewBox="0 0 100 118" width="90" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+  <!-- Bulle de texte -->
+  <div style="background:#fff;border-radius:1.2rem;padding:.9rem 1.3rem;max-width:280px;text-align:center;
+    font-size:.875rem;color:#1e293b;box-shadow:0 6px 24px rgba(0,0,0,.3);position:relative;line-height:1.6">
+    <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+      border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:10px solid #fff"></div>
+    <span id="loadMascotMsg">Connexion en cours…</span>
+  </div>
+  <!-- Barre de progression -->
+  <div style="width:200px;height:4px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden">
+    <div id="loadProgressBar" style="height:100%;width:10%;background:linear-gradient(90deg,#7c3aed,#3b82f6);
+      border-radius:2px;transition:width .4s ease"></div>
+  </div>
+</div>
+<style>
+@keyframes _ld-float {
+  0%,100% { transform:translateY(0) rotate(-.5deg); }
+  50%      { transform:translateY(-12px) rotate(.5deg); }
+}
+</style>
 
 <!-- ═══════════════════════════════════════════════════════════
      HEADER
 ═══════════════════════════════════════════════════════════ -->
 <header class="hd">
   <div class="hd-brand">
-    <img src="assets/logo.jpg" alt="Logo CPAS" class="hd-logo-img">
-    <span class="hd-title">CPAS de Quaregnon</span>
+    <img src="assets/logo.jpg" alt="Logo" class="hd-logo-img" id="appLogo">
+    <span class="hd-title" id="appOrgName">moncompagnon</span>
   </div>
 
   <nav class="hd-tabs">
-    <button class="tab active" data-view="day">Jour</button>
+    <button class="tab tab-home active" data-view="home">🏠 Accueil</button>
+    <button class="tab" data-view="day">Jour</button>
     <button class="tab" data-view="week">Semaine</button>
     <button class="tab" data-view="month">Mois</button>
+    <button class="tab tab-planning hidden" data-view="planning" id="tabPlanning">📋 Planning</button>
   </nav>
 
   <div class="hd-nav">
-    <button class="btn-nav" id="btnPrev" title="Précédent">&#8249;</button>
-    <button class="btn-today" id="btnToday">Aujourd'hui</button>
-    <button class="btn-nav" id="btnNext" title="Suivant">&#8250;</button>
+    <button class="btn-nav hd-cal-only" id="btnPrev" title="Précédent" style="display:none">&#8249;</button>
+    <button class="btn-today hd-cal-only" id="btnToday" style="display:none">Aujourd'hui</button>
+    <button class="btn-nav hd-cal-only" id="btnNext" title="Suivant" style="display:none">&#8250;</button>
     <button class="btn-new" id="btnNew">+ Réserver</button>
     <button class="btn-live" id="btnLive" title="Vue dispatch en direct">📋 Direct</button>
+    <button class="btn-analytics" id="btnAnalytics" title="Statistiques" style="display:none">📊 Stats</button>
     <button class="btn-presence-hd" id="btnPresenceHd" title="Déclarer mon statut (retard / absence)">👤 Mon statut</button>
-    <a class="btn-live" href="public.html" target="_blank" title="Vue publique (affichage salle d'attente)">🖥 Public</a>
+    <button class="btn-absence-hd" id="btnMyAbsences" title="Déclarer une absence">📅 Absences</button>
+    <button class="btn-broadcast" id="btnBroadcast" title="Diffuser un message à des agents" style="display:none">📢 Diffuser</button>
+    <button class="btn-tech-issue" id="btnTechIssue" title="Envoyer une requête (technique, entretien…)">📤 Requête</button>
+    <div class="req-bell-wrap" style="position:relative;display:inline-flex">
+      <button class="btn-interventions" id="btnInterventions" title="Interventions en cours" style="display:none">🛠️ Interventions
+        <span class="req-badge hidden" id="interventionsBadge"></span>
+      </button>
+    </div>
+    <button class="btn-calendar-export" id="btnCalendarExport" title="Exporter mon agenda (.ics)" style="display:none">📅 Agenda</button>
+    <div class="pub-dd-wrap" id="pubDdWrap">
+      <button class="btn-live" id="btnPublic" title="Vue publique">🖥 Public ▾</button>
+      <div class="pub-dd-menu hidden" id="pubDdMenu"></div>
+    </div>
     <button class="btn-settings" id="btnSettings" title="Paramètres">⚙</button>
+    <button class="btn-dnd" id="btnDnd" title="Activer le mode absent">🔔</button>
+    <div class="notif-bell-wrap">
+      <button class="btn-notif-bell" id="notifBell" title="Notifications">🔔
+        <span class="notif-badge hidden" id="notifBadge"></span>
+      </button>
+    </div>
+    <div class="hd-agent-badge" id="hdAgentBadge" title="Agent connecté"></div>
     <button class="btn-logout" id="btnLogout" title="Se déconnecter">✕</button>
   </div>
 </header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PANNEAU NOTIFICATIONS
+═══════════════════════════════════════════════════════════ -->
+<div class="notif-panel hidden" id="notifPanel"></div>
+<div class="interventions-panel hidden" id="interventionsPanel"></div>
 
 <!-- ═══════════════════════════════════════════════════════════
      MESSAGE DU JOUR — bulle flottante
@@ -76,14 +139,96 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════
+     ÉCRAN D'ACCUEIL
+═══════════════════════════════════════════════════════════ -->
+<section class="home-screen" id="homeScreen">
+
+  <!-- Mascotte centrée en haut — se balade + yeux suivent la souris -->
+  <div class="hs-mascot-stage">
+    <div class="hs-bubble hidden" id="hsMascotBubble"><span id="hsMascotBubbleText"></span></div>
+    <div class="hs-mascot-walker">
+      <div class="hs-mascot-wrap" aria-hidden="true">
+        <svg class="hs-mascot-svg" id="hsMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="hsBonjourHint" class="hs-bonjour-hint hidden" aria-hidden="true">
+        <span>👋 Dis-moi bonjour !</span>
+      </div>
+    </div>
+    <div class="hs-mascot-btns">
+      <button class="hs-ask-tip-btn" id="hsAskTip">💡 Astuce</button>
+      <button class="hs-ask-tip-btn hs-weather-btn hidden" id="hsAskWeather" title="Point météo">🌤️ Météo</button>
+      <button class="hs-ask-tip-btn hs-goodbye-btn" id="hsGoodbye" title="Terminer ma journée">👋 Au revoir</button>
+    </div>
+  </div>
+
+  <!-- Salutation + date -->
+  <div class="hs-hero">
+    <div class="hs-greeting" id="hsGreeting">Bonjour</div>
+    <div class="hs-date" id="hsDate"></div>
+    <span class="hs-weather-indicator hidden" id="hsWeatherIndicator" title=""></span>
+    <button class="hs-wx-refresh hidden" id="hsWeatherRefresh" title="Forcer le rechargement des APIs">↺</button>
+  </div>
+
+  <!-- Statut de l'agent connecté -->
+  <div class="hs-my-status hidden" id="hsMyStatus"></div>
+
+  <!-- Message du jour -->
+  <div class="hs-msg-card hidden" id="hsMsgCard">
+    <span class="hs-msg-icon">📌</span>
+    <span class="hs-msg-text" id="hsMsgText"></span>
+  </div>
+
+  <!-- Bureau d'accueil (local caché, accueil agents uniquement) -->
+  <div class="hs-card hs-desk-card hidden" id="hsAccueilDeskCard"></div>
+
+  <!-- Grille centrale -->
+  <div class="hs-grid">
+
+    <!-- Agenda du jour -->
+    <div class="hs-card">
+      <h3 class="hs-card-title">📅 Mon agenda du jour</h3>
+      <div id="hsAgenda" class="hs-agenda-list"></div>
+    </div>
+
+    <!-- Qui est où -->
+    <div class="hs-card">
+      <h3 class="hs-card-title">🗺 Qui est où</h3>
+      <div id="hsPresence" class="hs-presence-list"></div>
+    </div>
+
+  </div>
+
+  <!-- Me déclarer dans un bureau -->
+  <div class="hs-card hs-declare-card">
+    <h3 class="hs-card-title">📍 Me déclarer dans un bureau</h3>
+    <div class="hs-declare-row">
+      <select id="hsDeclLieu" class="hs-decl-select"></select>
+      <select id="hsDeclLocal" class="hs-decl-select"></select>
+      <button class="btn-primary hs-decl-btn" id="hsDeclBtn">Je suis là</button>
+      <button class="btn-cancel hs-decl-leave-btn hidden" id="hsDeclLeaveBtn">Je pars</button>
+    </div>
+    <div class="hs-decl-status" id="hsDeclStatus"></div>
+  </div>
+
+  <!-- Accès rapide -->
+  <div class="hs-shortcuts">
+    <button class="hs-shortcut" id="hsGoCalendar">📅 Calendrier</button>
+    <button class="hs-shortcut" id="hsGoLive" style="display:none">📋 Vue Direct</button>
+    <button class="hs-shortcut" id="hsGoNew">+ Réserver</button>
+    <button class="hs-shortcut" id="hsGoStatus" style="display:none">👤 Mon statut</button>
+  </div>
+
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
      BARRE DE NAVIGATION — Lieux
 ═══════════════════════════════════════════════════════════ -->
-<div class="lieu-bar" id="lieuBar"></div>
+<div class="lieu-bar hidden" id="lieuBar"></div>
 
 <!-- ═══════════════════════════════════════════════════════════
      STATUS BAR — Vérificateur de disponibilité
 ═══════════════════════════════════════════════════════════ -->
-<div class="sb">
+<div class="sb hidden" id="statusBar">
   <div class="sb-check">
     <span class="sb-label">État des locaux au :</span>
     <input type="date" id="checkDate">
@@ -97,14 +242,126 @@
 <!-- ═══════════════════════════════════════════════════════════
      CALENDRIER
 ═══════════════════════════════════════════════════════════ -->
-<main class="cal" id="cal">
+<main class="cal hidden" id="cal">
   <div class="cal-loading">Connexion à Firebase...</div>
 </main>
 
 <!-- ═══════════════════════════════════════════════════════════
+     PLANNING — Vue semaine agents entretien / technicien
+═══════════════════════════════════════════════════════════ -->
+<section class="planning-panel hidden" id="planningPanel">
+  <div class="pl-header">
+    <div class="pl-header-left" id="plAgentPicker"></div>
+    <div class="pl-header-center">
+      <button class="pl-nav-btn" id="plBtnPrev">&#8249;</button>
+      <span class="pl-week-label" id="plWeekLabel"></span>
+      <button class="pl-nav-btn" id="plBtnNext">&#8250;</button>
+      <button class="pl-today-btn" id="plBtnToday">Aujourd'hui</button>
+    </div>
+    <div class="pl-header-right">
+      <button class="btn-primary pl-btn-add hidden" id="plBtnAdd">+ Tâche</button>
+    </div>
+  </div>
+  <div class="pl-grid-wrap">
+    <div class="pl-grid" id="plGrid"></div>
+  </div>
+</section>
+
+<!-- Modal création / édition de tâche planning -->
+<div class="overlay hidden" id="planningModal">
+  <div class="modal modal-md">
+    <div class="modal-hd">
+      <h2 id="plModalTitle">Nouvelle tâche</h2>
+      <button class="modal-x" id="plModalX">✕</button>
+    </div>
+    <div class="modal-bd">
+
+      <div class="field">
+        <label for="plTitle">Titre <span class="req">*</span></label>
+        <input type="text" id="plTitle" placeholder="Ex : Nettoyage escaliers B">
+      </div>
+
+      <div class="field">
+        <label for="plDescription">Description <span class="field-opt">(optionnel)</span></label>
+        <textarea id="plDescription" rows="2" placeholder="Détails…"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="plModalAgent">Agent assigné <span class="req">*</span></label>
+        <select id="plModalAgent">
+          <option value="">— Sélectionner —</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="plDate">Date <span class="req">*</span></label>
+          <input type="date" id="plDate">
+        </div>
+        <div class="field">
+          <label for="plTimeStart">Début <span class="req">*</span></label>
+          <input type="time" id="plTimeStart" step="900" value="08:00">
+        </div>
+        <div class="field">
+          <label for="plTimeEnd">Fin <span class="req">*</span></label>
+          <input type="time" id="plTimeEnd" step="900" value="10:00">
+        </div>
+      </div>
+
+      <!-- Localisation -->
+      <div class="field">
+        <label>Localisation</label>
+        <div class="pl-loc-toggle">
+          <label class="pl-radio-lbl">
+            <input type="radio" name="plLocMode" value="lieu" checked> Lieu entier
+          </label>
+          <label class="pl-radio-lbl">
+            <input type="radio" name="plLocMode" value="locaux"> Locaux spécifiques
+          </label>
+        </div>
+      </div>
+
+      <div class="field" id="plLieuWrap">
+        <label for="plLieuSelect">Lieu <span class="req">*</span></label>
+        <select id="plLieuSelect">
+          <option value="">— Sélectionner —</option>
+        </select>
+      </div>
+
+      <div class="field hidden" id="plLocauxWrap">
+        <label>Locaux <span class="req">*</span></label>
+        <div class="pl-locaux-grid" id="plLocauxCheckboxes"></div>
+      </div>
+
+      <!-- Récurrence -->
+      <div class="field">
+        <label for="plRecType">Récurrence</label>
+        <select id="plRecType">
+          <option value="none">Aucune</option>
+          <option value="daily">Quotidienne</option>
+          <option value="weekly">Hebdomadaire (même jour)</option>
+          <option value="workdays">Jours ouvrables (lun–ven)</option>
+        </select>
+      </div>
+
+      <div class="field hidden" id="plRecEndWrap">
+        <label for="plRecEndDate">Fin de récurrence <span class="field-opt">(optionnel)</span></label>
+        <input type="date" id="plRecEndDate">
+      </div>
+
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="plModalCancel">Annuler</button>
+      <button class="btn-danger hidden" id="plModalDelete">🗑 Supprimer</button>
+      <button class="btn-primary" id="plModalSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
      LÉGENDE
 ═══════════════════════════════════════════════════════════ -->
-<div class="legend">
+<div class="legend hidden" id="calLegend">
   <span class="leg-item"><span class="leg-dot" style="background:#bbf7d0"></span>7/7 libres</span>
   <span class="leg-item"><span class="leg-dot" style="background:#86efac"></span>5–6 libres</span>
   <span class="leg-item"><span class="leg-dot" style="background:#fde68a"></span>3–4 libres</span>
@@ -226,6 +483,15 @@
         <textarea id="fComment" rows="2" placeholder="Informations complémentaires..."></textarea>
       </div>
 
+      <!-- Agents invités — visible uniquement si permission inviteAgents -->
+      <div class="field hidden" id="fInviteWrap">
+        <label>Agents invités <span class="field-opt">(optionnel)</span></label>
+        <div class="invite-chips" id="fInviteChips"></div>
+        <select id="fInviteSelect" class="invite-select">
+          <option value="">+ Ajouter un agent...</option>
+        </select>
+      </div>
+
     </div>
     <div class="modal-ft">
       <button class="btn-cancel" data-close="resOverlay">Annuler</button>
@@ -286,26 +552,6 @@
 <!-- ═══════════════════════════════════════════════════════════
      MODAL — Choix du mode paramètres
 ═══════════════════════════════════════════════════════════ -->
-<div class="overlay hidden" id="settingsModeOverlay">
-  <div class="modal modal-xs">
-    <div class="modal-hd">
-      <h2>⚙ Paramètres</h2>
-      <button class="modal-x" data-close="settingsModeOverlay">✕</button>
-    </div>
-    <div class="modal-bd" style="display:flex;flex-direction:column;gap:.75rem;padding:1.25rem">
-      <button class="btn-mode-settings" id="btnModeAgent">
-        <span class="bms-icon">🎨</span>
-        <span class="bms-label">Réglages Agent</span>
-        <span class="bms-sub">Personnaliser ma couleur</span>
-      </button>
-      <button class="btn-mode-settings" id="btnModeAdmin">
-        <span class="bms-icon">🔐</span>
-        <span class="bms-label">Réglages Admin</span>
-        <span class="bms-sub">Lieux, agents, services, mots de passe</span>
-      </button>
-    </div>
-  </div>
-</div>
 
 <div class="overlay hidden" id="settingsOverlay">
   <div class="modal modal-sm">
@@ -315,33 +561,18 @@
     </div>
     <div class="modal-bd">
 
-      <div class="st-admin-section">
-        <h3 class="st-title">Lieux</h3>
-        <div id="stLieuList" class="st-list"></div>
-        <div class="st-add">
-          <input type="text" id="stLieuInput" placeholder="Nom du lieu...">
-          <button class="btn-primary" id="stLieuAdd">Ajouter</button>
-        </div>
+      <!-- ══ SECTION ESSENTIELLE ══════════════════════════════════ -->
 
-        <h3 class="st-title" style="margin-top:1.25rem">Locaux — <span id="stLieuName" style="font-weight:700;text-transform:none"></span></h3>
-        <div id="stLocalList" class="st-local-list"></div>
-        <div class="st-add" style="margin-top:.5rem">
-          <input type="text" id="stLocalInput" placeholder="Nom du nouveau local...">
-          <button class="btn-primary" id="stLocalAdd">Ajouter</button>
-        </div>
-      </div>
-
-      <h3 class="st-title" style="margin-top:1.25rem">🎨 Couleurs &amp; emojis des agents</h3>
-      <div class="st-admin-section">
-        <label class="st-toggle-row">
-          <input type="checkbox" id="featureAgentEmoji">
-          <span>Afficher les emojis des agents</span>
-        </label>
-      </div>
+      <h3 class="st-title">🎨 Agents</h3>
       <div id="stAgentList" class="st-list"></div>
       <div class="st-add st-admin-section">
         <input type="text" id="stAgentInput" placeholder="Nom de l'agent...">
         <button class="btn-primary" id="stAgentAdd">Ajouter</button>
+      </div>
+      <div class="st-admin-section st-import-wrap">
+        <input type="file" id="stAgentCsvFile" accept=".csv,.txt" style="display:none">
+        <button type="button" class="btn-secondary" id="stAgentImport">📋 Importer une liste (CSV)</button>
+        <p class="st-import-hint">Format : <code>nom_affiché;nom_public</code> — un agent par ligne</p>
       </div>
 
       <div class="st-admin-section">
@@ -351,31 +582,212 @@
           <input type="text" id="stSvcInput" placeholder="Nom du service...">
           <button class="btn-primary" id="stSvcAdd">Ajouter</button>
         </div>
-
-        <h3 class="st-title" style="margin-top:1.25rem">Mot de passe application</h3>
-        <div class="field">
-          <input type="password" id="stAppPwdNew" placeholder="Nouveau mot de passe...">
-        </div>
-        <div class="field">
-          <input type="password" id="stAppPwdConfirm" placeholder="Confirmer...">
-        </div>
-        <button class="btn-primary" id="stAppPwdSave" style="width:100%">Changer le mot de passe application</button>
-
-        <h3 class="st-title" style="margin-top:1.25rem">Mot de passe administrateur</h3>
-        <div class="field">
-          <input type="password" id="stAdminPwdNew" placeholder="Nouveau mot de passe...">
-        </div>
-        <div class="field">
-          <input type="password" id="stAdminPwdConfirm" placeholder="Confirmer le mot de passe...">
-        </div>
-        <button class="btn-primary" id="stAdminPwdSave" style="width:100%">Changer le mot de passe admin</button>
-
-        <h3 class="st-title" style="margin-top:1.25rem">Données</h3>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <button class="btn-primary" id="stExportJson" style="flex:1">⬇ Exporter JSON</button>
-          <button class="btn-primary" id="stExportPdf"  style="flex:1">🖨 Imprimer planning</button>
-        </div>
       </div>
+
+      <h3 class="st-title" style="margin-top:1.25rem">🔧 Modules</h3>
+      <div class="st-admin-section">
+        <div id="stModulesList"></div>
+      </div>
+
+      <!-- ══ OPTIONS AVANCÉES (repliées par défaut) ═══════════════ -->
+      <details class="st-advanced-details" id="stAdvanced">
+        <summary class="st-advanced-summary">⚙️ Options avancées</summary>
+        <div class="st-advanced-body">
+
+          <!-- Lieux, Horaires, Locaux -->
+          <div class="st-admin-section">
+            <h3 class="st-title">Lieux</h3>
+            <div id="stLieuList" class="st-list"></div>
+            <div class="st-add">
+              <input type="text" id="stLieuInput" placeholder="Nom du lieu...">
+              <button class="btn-primary" id="stLieuAdd">Ajouter</button>
+            </div>
+
+            <h3 class="st-title" style="margin-top:1.25rem">Horaires — <span id="stLieuNameHours" style="font-weight:700;text-transform:none"></span></h3>
+            <div id="stLieuHours" class="st-lieu-hours"></div>
+
+            <h3 class="st-title" style="margin-top:1.25rem">Locaux — <span id="stLieuName" style="font-weight:700;text-transform:none"></span></h3>
+            <div id="stLocalList" class="st-local-list"></div>
+            <div class="st-add" style="margin-top:.5rem">
+              <input type="text" id="stLocalInput" placeholder="Nom du nouveau local...">
+              <button class="btn-primary" id="stLocalAdd">Ajouter</button>
+            </div>
+          </div>
+
+          <!-- Écrans publics -->
+          <h3 class="st-title" style="margin-top:1.25rem">🖥 Écrans publics</h3>
+          <div class="st-admin-section">
+            <div id="stScreenList" class="st-screen-list"></div>
+            <div class="st-add" style="margin-top:.5rem">
+              <input type="text" id="stScreenInput" placeholder="Nom de l'écran (ex: Accueil, Couloir…)">
+              <button class="btn-primary" id="stScreenAdd">Ajouter</button>
+            </div>
+          </div>
+
+          <!-- Gestion des absences -->
+          <div class="st-admin-section" id="absencesAdminSection">
+            <h3 class="st-title" style="margin-top:1.25rem">📅 Absences</h3>
+            <p class="st-perm-intro">Déclarez une absence pour n'importe quel agent (congé, maladie, mission…).</p>
+            <button class="btn-primary abs-manage-btn" id="btnManageAbsences">📋 Gérer les absences</button>
+          </div>
+
+          <!-- Mascotte de l'organisation -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">🐙 Mascotte</h3>
+            <p class="st-perm-intro">Choisissez la mascotte affichée sur l'écran d'accueil et la page de connexion.</p>
+            <div class="st-mascot-grid" id="stMascotGrid"></div>
+          </div>
+
+          <!-- Localisation (pour la météo) -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">📍 Localisation</h3>
+            <p class="st-perm-intro">Indiquez la ville pour afficher la météo contextuelle dans l'assistant.</p>
+            <div class="st-location-row">
+              <select id="stCitySelect" class="st-city-select">
+                <option value="">— Choisir une ville —</option>
+                <option value="50.4501,3.8199">Quaregnon</option>
+                <option value="50.4542,3.9567">Mons</option>
+                <option value="50.4669,3.8498">Jemappes</option>
+                <option value="50.4554,3.8225">Colfontaine</option>
+                <option value="50.4764,3.9124">Frameries</option>
+                <option value="50.5039,4.0348">La Louvière</option>
+                <option value="50.4108,4.4446">Charleroi</option>
+                <option value="50.6503,5.5714">Liège</option>
+                <option value="50.8503,4.3517">Bruxelles</option>
+                <option value="51.0500,3.7167">Gand</option>
+                <option value="51.2194,4.4025">Anvers</option>
+                <option value="50.6292,5.5796">Namur</option>
+                <option value="custom">✏️ Coordonnées manuelles</option>
+              </select>
+            </div>
+            <div class="st-location-coords hidden" id="stLocationManual">
+              <input type="number" id="stLatInput" placeholder="Latitude (ex: 50.4501)" step="0.0001" min="-90" max="90" class="st-coord-input">
+              <input type="number" id="stLonInput" placeholder="Longitude (ex: 3.8199)" step="0.0001" min="-180" max="180" class="st-coord-input">
+            </div>
+            <div class="st-location-actions">
+              <button class="btn-primary" id="stLocationSave">Enregistrer</button>
+              <span class="st-hint" id="stLocationHint"></span>
+            </div>
+          </div>
+
+          <!-- Alerte fin de journée -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">🔔 Alerte fin de journée</h3>
+            <p class="st-perm-intro">À cette heure, l'admin est alerté si des agents sont encore connectés et peut leur envoyer un rappel.</p>
+            <div style="display:flex;gap:.6rem;align-items:center">
+              <input type="number" id="stEndOfDayHour" min="12" max="23" step="1" value="17"
+                     style="width:70px;padding:.4rem .6rem;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.9rem">
+              <span style="color:#94a3b8;font-size:.9rem">h00</span>
+              <button class="btn-primary" id="stEndOfDayHourSave">Enregistrer</button>
+            </div>
+          </div>
+
+          <!-- Fonctionnalités avancées (feature flags) -->
+          <h3 class="st-title" style="margin-top:1.25rem">🔬 Options avancées — Modules</h3>
+          <div class="st-admin-section">
+            <div id="stModulesAdvList"></div>
+          </div>
+
+          <!-- Bureau d'accueil (local caché) -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">🪟 Bureau d'accueil</h3>
+            <p class="st-perm-intro">Désignez un local comme bureau d'accueil caché — invisible dans le calendrier et les stats, mais visible sur l'écran d'accueil pour les agents de permanence.</p>
+            <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+              <select id="stAccueilDeskSelect" style="flex:1;min-width:160px;padding:.45rem .65rem;border-radius:8px;border:1.5px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.9rem">
+                <option value="">— Aucun —</option>
+              </select>
+              <button class="btn-primary" id="stAccueilDeskSave">Enregistrer</button>
+            </div>
+            <div class="st-hint" id="stAccueilDeskHint"></div>
+          </div>
+
+          <!-- Rôles & Permissions -->
+          <h3 class="st-title" style="margin-top:1.25rem">🔐 Rôles &amp; Permissions</h3>
+          <div class="st-admin-section" id="stPermSection">
+            <p class="st-perm-intro">Définissez des collections de droits et assignez-les aux agents. Les agents sans rôle ont accès à tout (jusqu'au système de comptes agents).</p>
+
+            <h4 class="st-perm-subtitle">Assigner un rôle aux agents</h4>
+            <div id="stPermAgentsList" class="perm-agents-assign"></div>
+
+            <h4 class="st-perm-subtitle" style="margin-top:1.25rem">Gérer les rôles</h4>
+            <div id="stPermRolesList" class="perm-roles-list"></div>
+            <div class="st-add" style="margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stPermRoleInput" placeholder="Nom du nouveau rôle..." style="flex:1;min-width:140px">
+              <select id="stPermRoleIntroType" title="Intro mascotte à la 1ère connexion" style="border:1.5px solid #d1d5db;border-radius:8px;padding:.55rem .65rem;font-size:.83rem;font-family:inherit;color:#374151">
+                <option value="__agent__">Intro : Agent</option>
+                <option value="__accueil__">Intro : Accueil</option>
+                <option value="__as__">Intro : Assistant social</option>
+                <option value="__chef_service__">Intro : Chef de service</option>
+                <option value="__direction__">Intro : Direction</option>
+                <option value="__technicien__">Intro : Technicien</option>
+                <option value="__entretien__">Intro : Entretien</option>
+                <option value="__juriste__">Intro : Juriste</option>
+              </select>
+              <button class="btn-primary" id="stPermRoleAdd">Créer</button>
+            </div>
+          </div>
+
+          <!-- Test intro mascotte (superadmin) -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">🎭 Tester une intro mascotte</h3>
+            <p class="st-hint" style="margin-bottom:.6rem">Prévisualise l'écran de bienvenue qu'un agent voit à sa première connexion.</p>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+              <select id="stTestIntroSelect" style="flex:1;min-width:150px;border:1.5px solid #334155;border-radius:8px;padding:.5rem .65rem;background:#0f172a;color:#e2e8f0;font-size:.85rem;font-family:inherit">
+                <option value="__direction__">👑 Direction</option>
+                <option value="__admin__">⚙️ Admin</option>
+                <option value="__chef_service__">💼 Chef de service</option>
+                <option value="__as__">💙 Assistant·e social·e</option>
+                <option value="__accueil__">🌟 Accueil</option>
+                <option value="__agent__">🎉 Agent</option>
+                <option value="__technicien__">🔧 Technicien·ne</option>
+                <option value="__entretien__">🌿 Entretien</option>
+                <option value="__juriste__">⚖️ Juriste</option>
+              </select>
+              <button class="btn-primary" id="stTestIntroBtn">▶ Voir l'intro</button>
+            </div>
+          </div>
+
+          <!-- Fin de journée -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">🌙 Fin de journée</h3>
+            <p class="st-hint" style="margin-bottom:.6rem">Ferme tous les bureaux ouverts et retire les présences backoffice en une seule action.</p>
+            <button class="btn-danger" id="btnClearAllLocals">🧹 Vider tous les locaux</button>
+          </div>
+
+          <!-- Envoi notification manuelle -->
+          <div class="st-admin-section">
+            <h3 class="st-title" style="margin-top:1.25rem">📣 Envoyer une notification</h3>
+            <div class="st-notif-send">
+              <select id="stNotifTarget" class="st-notif-target">
+                <option value="">— Tous les agents —</option>
+              </select>
+              <select id="stNotifType" class="st-notif-type">
+                <option value="info">ℹ️ Info</option>
+                <option value="warn">⚠️ Avertissement</option>
+                <option value="alert">🚨 Alerte</option>
+              </select>
+              <label class="st-notif-urgent-label">
+                <input type="checkbox" id="stNotifUrgent">
+                <span>🚨 Marquer comme urgence</span>
+              </label>
+              <textarea id="stNotifMessage" rows="2" placeholder="Message de la notification…" class="st-notif-msg"></textarea>
+              <button class="btn-primary" id="stNotifSend">Envoyer</button>
+            </div>
+
+            <!-- Mots de passe -->
+            <h3 class="st-title" style="margin-top:1.25rem">Agents — Réinitialiser un mot de passe</h3>
+            <div id="stAgentPasswordList" class="perm-agents-assign"></div>
+
+            <!-- Export -->
+            <h3 class="st-title" style="margin-top:1.25rem">Données</h3>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="btn-primary" id="stExportJson" style="flex:1">⬇ Exporter JSON</button>
+              <button class="btn-primary" id="stExportPdf"  style="flex:1">🖨 Imprimer planning</button>
+            </div>
+          </div>
+
+        </div>
+      </details>
 
     </div>
     <div class="modal-ft">
@@ -405,43 +817,6 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════
-     MODAL — Authentification admin
-═══════════════════════════════════════════════════════════ -->
-<div class="overlay hidden" id="adminAuthOverlay">
-  <div class="modal modal-xs">
-    <div class="modal-hd">
-      <h2 id="adminAuthTitle">🔐 Accès administrateur</h2>
-    </div>
-    <div class="modal-bd">
-      <!-- Mode connexion -->
-      <div id="adminLoginSection">
-        <div class="field">
-          <label>Mot de passe</label>
-          <input type="password" id="adminPwdInput" placeholder="Mot de passe admin...">
-          <small id="adminPwdError" class="hidden" style="color:#dc2626;margin-top:.25rem">Mot de passe incorrect.</small>
-        </div>
-      </div>
-      <!-- Mode création (première fois) -->
-      <div id="adminCreateSection" class="hidden">
-        <p style="margin-bottom:.75rem;color:#475569;font-size:.85rem">Aucun mot de passe admin n'est défini. Créez-en un maintenant.</p>
-        <div class="field">
-          <label>Nouveau mot de passe</label>
-          <input type="password" id="adminNewPwd" placeholder="Choisir un mot de passe...">
-        </div>
-        <div class="field">
-          <label>Confirmer</label>
-          <input type="password" id="adminNewPwdConfirm" placeholder="Confirmer...">
-          <small id="adminCreateError" class="hidden" style="color:#dc2626;margin-top:.25rem">Les mots de passe ne correspondent pas.</small>
-        </div>
-      </div>
-    </div>
-    <div class="modal-ft">
-      <button class="btn-cancel" id="adminAuthCancel">Annuler</button>
-      <button class="btn-primary" id="adminAuthConfirm">Accéder</button>
-    </div>
-  </div>
-</div>
 
 <!-- ═══════════════════════════════════════════════════════════
      MODAL — Avertissement occurrences week-end
@@ -495,8 +870,24 @@
       <button class="lv-qgroup-add" id="btnQgroupAdd">+ Créer</button>
     </div>
   </div>
+  <!-- Alerte début de réservation -->
+  <div class="lv-upcoming-banner hidden" id="upcomingBanner">
+    <span class="lv-upcoming-icon">🔔</span>
+    <div class="lv-upcoming-body">
+      <span class="lv-upcoming-top">
+        <strong class="lv-upcoming-bureau"></strong>
+        <span class="lv-upcoming-min"></span>
+      </span>
+      <span class="lv-upcoming-bottom">
+        <span class="lv-upcoming-service"></span>
+        <span class="lv-upcoming-sep"> — </span>
+        <span class="lv-upcoming-agent"></span>
+      </span>
+    </div>
+  </div>
   <!-- Notification routage dispatcheur -->
   <div class="lv-routing-banner hidden" id="routingBanner">
+    <span class="lv-routing-ticket hidden" id="routingTicket"></span>
     <span class="lv-routing-arrow">→</span>
     <span class="lv-routing-text">Envoyez le bénéficiaire au</span>
     <span class="lv-routing-bureau" id="routingBureau"></span>
@@ -508,6 +899,7 @@
       <span class="lv-wait-text">Invitez le bénéficiaire à patienter</span>
       <span class="lv-wait-sub" id="waitBannerSub"></span>
     </div>
+    <span class="lv-wait-ticket hidden" id="waitTicket"></span>
   </div>
   <!-- Notification agent : bénéficiaire entrant -->
   <div class="lv-agent-call-banner hidden" id="agentCallBanner">
@@ -515,8 +907,22 @@
     <span class="lv-agent-call-text">Un bénéficiaire arrive</span>
   </div>
   <div class="live-presence-bar" id="livePresenceBar"></div>
+  <div class="lv-lieu-filters hidden" id="liveLieuFilters"></div>
   <div class="live-grid" id="liveGrid"></div>
   <div class="live-agent-result hidden" id="liveAgentResult"></div>
+</div>
+
+<!-- Modal confirmation ouverture/fermeture bureau -->
+<div class="lv-bureau-modal-overlay hidden" id="bureauConfirmOverlay">
+  <div class="lv-bureau-modal">
+    <div class="lv-bureau-modal-icon" id="bureauConfirmIcon"></div>
+    <div class="lv-bureau-modal-title" id="bureauConfirmTitle"></div>
+    <div class="lv-bureau-modal-info" id="bureauConfirmInfo"></div>
+    <div class="lv-bureau-modal-btns">
+      <button class="lv-bureau-modal-cancel" id="bureauConfirmCancel">Annuler</button>
+      <button class="lv-bureau-modal-ok" id="bureauConfirmOk"></button>
+    </div>
+  </div>
 </div>
 
 <!-- Modal statut présence -->
@@ -535,18 +941,54 @@
         <label>Statut</label>
         <select id="presenceStatus">
           <option value="">✅ Présent</option>
-          <option value="late">🕐 En retard</option>
+          <option value="late">🚶 J'arrive !</option>
           <option value="absent">❌ Absent</option>
         </select>
       </div>
       <div class="field" id="presenceTimeWrap" style="display:none">
-        <label>Heure d'arrivée prévue</label>
+        <label>J'arrive à quelle heure ?</label>
         <input type="time" id="presenceTime" step="300">
+      </div>
+      <div class="field hidden" id="presenceNotifWrap">
+        <label>Notifier <span class="field-opt">(optionnel)</span></label>
+        <div id="presenceNotifChecks" class="presence-notif-checks"></div>
       </div>
     </div>
     <div class="modal-ft">
       <button class="btn-cancel" data-close="presenceOverlay">Annuler</button>
       <button class="btn-primary" id="presenceSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL — Confirmation notification statut
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="presenceConfirmOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>Confirmer la notification</h2>
+      <button class="modal-x" data-close="presenceConfirmOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+      <p style="margin-bottom:.75rem;color:#475569;font-size:.88rem">
+        Envoyer une notification au(x) groupe(s) :
+      </p>
+      <ul id="presenceConfirmList" class="presence-confirm-list"></ul>
+      <div class="field" style="margin-top:.85rem">
+        <label>Message <span class="field-opt">(optionnel)</span></label>
+        <textarea id="presenceConfirmMsg" rows="2"
+          placeholder="Ex : Je suis dans les embouteillages, j'arrive vers 9h30…"
+          style="width:100%;resize:vertical"></textarea>
+      </div>
+      <label class="presence-notif-check-label hidden" id="presenceUrgentWrap" style="margin-top:.6rem;color:#ef4444;font-weight:700">
+        <input type="checkbox" id="presenceConfirmUrgent">
+        <span>🚨 Notification urgente — passe tous les filtres</span>
+      </label>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="presenceConfirmCancel">Annuler</button>
+      <button class="btn-primary" id="presenceConfirmOk">Envoyer</button>
     </div>
   </div>
 </div>
@@ -570,18 +1012,258 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════
+     PAUSE BUREAU
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="pauseOverlay">
+  <div class="modal pause-modal">
+    <div class="modal-hd">
+      <span class="modal-title">⏸ Partir en pause</span>
+      <button class="modal-x" id="pauseClose">✕</button>
+    </div>
+    <div class="modal-bd">
+      <p class="pause-bureau-label" id="pauseBureauLabel"></p>
+
+      <div class="field">
+        <label class="field-lbl">Durée estimée <span class="field-opt">(optionnel)</span></label>
+        <div class="pause-dur-grid">
+          <label class="pause-dur-opt"><input type="radio" name="pauseDur" value="0" checked> Pas de durée</label>
+          <label class="pause-dur-opt"><input type="radio" name="pauseDur" value="5">  5 min</label>
+          <label class="pause-dur-opt"><input type="radio" name="pauseDur" value="10"> 10 min</label>
+          <label class="pause-dur-opt"><input type="radio" name="pauseDur" value="15"> 15 min</label>
+          <label class="pause-dur-opt"><input type="radio" name="pauseDur" value="30"> 30 min</label>
+          <label class="pause-dur-opt pause-dur-custom">
+            <input type="radio" name="pauseDur" value="custom">
+            <input type="number" id="pauseDurCustom" min="1" max="180" placeholder="Autre (min)" class="pause-custom-input">
+          </label>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:.85rem">
+        <label class="field-lbl">Message public <span class="field-opt">(optionnel)</span></label>
+        <input type="text" id="pauseComment" class="field-input"
+               placeholder="Ex : Retour dans 15 minutes…" maxlength="80">
+      </div>
+
+      <button class="btn-primary full" id="pauseConfirm" style="margin-top:1.25rem">⏸ Partir en pause</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ANALYTICS
+═══════════════════════════════════════════════════════════ -->
+<div class="an-overlay hidden" id="analyticsOverlay">
+  <div class="an-modal">
+    <div class="an-modal-hd">
+      <div class="an-modal-hd-left">
+        <span class="an-modal-icon">📊</span>
+        <h2 class="an-modal-title">Statistiques</h2>
+      </div>
+      <div class="an-period-bar">
+        <button class="an-period active" data-period="today">Aujourd'hui</button>
+        <button class="an-period" data-period="week">7 jours</button>
+        <button class="an-period" data-period="month">30 jours</button>
+      </div>
+      <div class="an-modal-hd-right">
+        <button class="an-export-btn" id="btnAnExportCsv" title="Exporter en CSV">⬇ CSV</button>
+        <button class="an-close-btn" id="btnAnalyticsClose">✕</button>
+      </div>
+    </div>
+    <div class="an-grid" id="analyticsGrid">
+      <div class="an-loading">Chargement…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : envoyer une requête ────────────────────────────── -->
+<div class="modal-overlay hidden" id="techIssueModal">
+  <div class="modal-box" style="max-width:500px">
+    <div class="modal-header">
+      <h2 id="techIssueTitle">📤 Nouvelle requête</h2>
+      <button class="modal-close" id="techIssueClose">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+
+      <!-- Type de requête -->
+      <div>
+        <label class="form-label">Type de requête</label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap" id="techIssueTypes">
+          <button class="ti-type-btn active" data-type="technique" data-role="__technicien__">🔧 Problème technique</button>
+          <button class="ti-type-btn" data-type="entretien" data-role="__entretien__">🧹 Entretien / Nettoyage</button>
+          <button class="ti-type-btn" data-type="autre" data-role="">📋 Autre</button>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label class="form-label">Description <span style="color:#ef4444">*</span></label>
+        <textarea id="techIssueDesc" rows="3" placeholder="Décris le problème ou la demande…" style="width:100%;resize:vertical;border:1.5px solid #334155;border-radius:8px;padding:.6rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit"></textarea>
+      </div>
+
+      <!-- Lieu -->
+      <div style="position:relative">
+        <label class="form-label">Bureau / Lieu (optionnel)</label>
+        <input id="techIssueLocal" type="text" autocomplete="off" placeholder="Recherche un bureau…" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.55rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit;box-sizing:border-box">
+        <div id="techIssueLocalSuggest" class="ti-local-suggest hidden"></div>
+      </div>
+
+      <!-- Destinataires (rôles) -->
+      <div>
+        <label class="form-label">Envoyer à</label>
+        <div id="techIssueTargets" style="display:flex;flex-direction:column;gap:.25rem;max-height:160px;overflow-y:auto;border:1px solid #1e293b;border-radius:8px;padding:.4rem .5rem"></div>
+        <div id="techIssueNoTech" class="hidden" style="color:#f59e0b;font-size:.83rem;margin-top:.35rem">Aucun poste configuré — la notification sera envoyée aux administrateurs.</div>
+      </div>
+
+      <!-- Urgence -->
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
+        <input type="checkbox" id="techIssueUrgent" style="width:1.1rem;height:1.1rem;accent-color:#ef4444">
+        <span style="font-size:.88rem;color:#e2e8f0">🚨 Marquer comme <strong>urgent</strong></span>
+      </label>
+
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn-secondary" id="techIssueCancelBtn">Annuler</button>
+      <button class="btn-primary" id="techIssueSendBtn">📤 Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : répondre à un problème technique ───────────────── -->
+<div class="modal-overlay hidden" id="techReplyModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <h2>↩️ Répondre au problème</h2>
+      <button class="modal-close" id="techReplyClose">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:.9rem">
+      <div id="techReplyContext" style="background:#1e293b;border-radius:8px;padding:.65rem .85rem;font-size:.85rem;color:#94a3b8"></div>
+      <div>
+        <label class="form-label">Heure d'arrivée estimée</label>
+        <input id="techReplyEta" type="text" placeholder="Ex : J'arrive à 14h30" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.55rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+      </div>
+      <div>
+        <label class="form-label">Commentaire (optionnel)</label>
+        <textarea id="techReplyComment" rows="2" placeholder="Ex : J'apporte une imprimante de remplacement" style="width:100%;resize:vertical;border:1.5px solid #334155;border-radius:8px;padding:.6rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn-secondary" id="techReplyCancelBtn">Annuler</button>
+      <button class="btn-primary" id="techReplySendBtn">Envoyer la réponse</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : diffusion accueil ───────────────────────────────── -->
+<div class="modal-overlay hidden" id="broadcastModal">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-header">
+      <h2>📢 Diffuser un message</h2>
+      <button class="modal-close" id="broadcastClose">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+      <div>
+        <label class="form-label">Message <span style="color:#ef4444">*</span></label>
+        <textarea id="broadcastMsg" rows="3" placeholder="Ex : Quelqu'un vous attend à l'accueil…" style="width:100%;resize:vertical;border:1.5px solid #334155;border-radius:8px;padding:.6rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit"></textarea>
+      </div>
+      <div>
+        <label class="form-label">Envoyer à</label>
+        <div id="broadcastTargets" style="display:flex;flex-direction:column;gap:.25rem;max-height:180px;overflow-y:auto;border:1px solid #1e293b;border-radius:8px;padding:.4rem .5rem"></div>
+      </div>
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
+        <input type="checkbox" id="broadcastUrgent" style="width:1.1rem;height:1.1rem;accent-color:#ef4444">
+        <span style="font-size:.88rem;color:#e2e8f0">🚨 Marquer comme <strong>urgent</strong></span>
+      </label>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn-secondary" id="broadcastCancelBtn">Annuler</button>
+      <button class="btn-primary" id="broadcastSendBtn">📢 Envoyer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <!-- App scripts (ordre important) -->
 <script src="js/config.js"></script>
+<script src="js/gender.js"></script>
+<script src="js/mascots.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/holidays.js"></script>
 <script src="js/calendar.js"></script>
 <script src="js/emoji-picker.js"></script>
 <script src="js/modal.js"></script>
+<script src="js/notif.js"></script>
+<script src="js/requests.js"></script>
+<script src="js/analytics.js"></script>
+<script src="js/planning.js"></script>
+<script src="js/weather.js"></script>
 <script src="js/app.js"></script>
+
+<!-- ── Modal : déclarer une absence ───────────────────────────── -->
+<div class="modal-overlay hidden" id="absenceModal">
+  <div class="modal-box abs-modal">
+    <div class="modal-header">
+      <span class="modal-title" id="absenceModalTitle">Déclarer une absence</span>
+      <button class="modal-close" id="absenceModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Sélection agent (admin seulement) -->
+      <div class="abs-field hidden" id="absAgentWrap">
+        <label class="abs-label">Agent</label>
+        <select class="abs-select" id="absAgentSelect"></select>
+      </div>
+      <!-- Dates -->
+      <div class="abs-row">
+        <div class="abs-field">
+          <label class="abs-label">Du</label>
+          <input type="date" class="abs-input" id="absStartDate">
+        </div>
+        <div class="abs-field">
+          <label class="abs-label">Au</label>
+          <input type="date" class="abs-input" id="absEndDate">
+        </div>
+      </div>
+      <!-- Motif -->
+      <div class="abs-field">
+        <label class="abs-label">Motif</label>
+        <select class="abs-select" id="absMotif">
+          <option value="maladie">🤒 Maladie</option>
+          <option value="conge">🏖️ Congé</option>
+          <option value="mission">🚗 Mission extérieure</option>
+          <option value="formation">📚 Formation</option>
+          <option value="autre">📝 Autre</option>
+        </select>
+      </div>
+      <!-- Commentaire (optionnel) -->
+      <div class="abs-field">
+        <label class="abs-label">Commentaire <span class="abs-opt">(optionnel)</span></label>
+        <input type="text" class="abs-input" id="absComment" placeholder="Précision sur le motif…" maxlength="120">
+      </div>
+      <div class="abs-err hidden" id="absErr">Veuillez remplir les dates correctement.</div>
+      <button class="abs-submit" id="absSubmit">Enregistrer l'absence</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Panel admin : liste des absences ────────────────────────── -->
+<div class="modal-overlay hidden" id="absencesListModal">
+  <div class="modal-box abs-list-modal">
+    <div class="modal-header">
+      <span class="modal-title">Gestion des absences</span>
+      <button class="modal-close" id="absencesListClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <button class="abs-add-btn" id="absAddNew">+ Déclarer une absence</button>
+      <div id="absencesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Zone d'impression de ticket (Phase 5.5 — masquée sauf @media print) -->
+<div id="ticketPrintArea" style="display:none"></div>
 
 </body>
 </html>

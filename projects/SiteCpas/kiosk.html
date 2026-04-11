@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Borne — moncompagnon</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #f8fafc; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+    /* ── Layout principal ─────────────────────────────── */
+    .kiosk-wrap {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 2rem;
+    }
+
+    /* ── Écran de chargement ──────────────────────────── */
+    #screenLoading {
+      text-align: center; color: #64748b;
+    }
+    .loading-spinner {
+      width: 56px; height: 56px; border: 5px solid #e2e8f0;
+      border-top-color: #3b82f6; border-radius: 50%;
+      animation: spin .8s linear infinite; margin: 1.5rem auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Écran indisponible ───────────────────────────── */
+    #screenUnavailable { display: none; text-align: center; }
+    #screenUnavailable h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+    #screenUnavailable p  { font-size: 1.2rem; color: #64748b; }
+
+    /* ── Écran principal : sélection service ─────────── */
+    #screenMain { display: none; width: 100%; max-width: 700px; }
+
+    .kiosk-header { text-align: center; margin-bottom: 2rem; }
+    .kiosk-logo {
+      width: 72px; height: 72px; object-fit: contain; border-radius: 12px; margin-bottom: .75rem;
+    }
+    .kiosk-title { font-size: 2rem; font-weight: 700; color: #1e293b; }
+    .kiosk-subtitle { font-size: 1.1rem; color: #64748b; margin-top: .25rem; }
+
+    .kiosk-step { font-size: 1.05rem; font-weight: 600; color: #475569; margin-bottom: 1rem; }
+
+    /* Name field */
+    .kiosk-name-wrap { margin-bottom: 1.5rem; }
+    .kiosk-name-wrap label { display: block; font-size: 1rem; font-weight: 600; color: #374151; margin-bottom: .4rem; }
+    .kiosk-name-input {
+      width: 100%; padding: .8rem 1rem; font-size: 1.1rem; border: 2px solid #e2e8f0;
+      border-radius: 12px; outline: none; transition: border-color .2s;
+    }
+    .kiosk-name-input:focus { border-color: #3b82f6; }
+
+    /* Service grid */
+    .kiosk-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .kiosk-btn {
+      background: #fff; border: 2px solid #e2e8f0; border-radius: 16px;
+      padding: 1.4rem 1rem; font-size: 1.05rem; font-weight: 600; color: #1e293b;
+      cursor: pointer; transition: all .15s; text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .kiosk-btn:hover  { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+    .kiosk-btn:active { transform: scale(.96); }
+    .kiosk-btn .kb-icon { font-size: 2rem; display: block; margin-bottom: .4rem; }
+
+    /* ── Écran ticket ─────────────────────────────────── */
+    #screenTicket {
+      display: none; text-align: center; animation: fadeIn .4s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
+    .ticket-card {
+      background: #fff; border-radius: 24px; padding: 3rem 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,.12); max-width: 480px; margin: 0 auto;
+    }
+    .ticket-card .tc-svc { font-size: 1.1rem; color: #64748b; margin-bottom: .5rem; }
+    .ticket-card .tc-label { font-size: 1.3rem; font-weight: 600; color: #374151; margin-bottom: .75rem; }
+    .ticket-card .tc-num {
+      font-size: 6rem; font-weight: 900; color: #1e40af; line-height: 1;
+      margin: .5rem 0 1rem;
+    }
+    .ticket-card .tc-name { font-size: 1.15rem; color: #475569; margin-bottom: 1rem; }
+    .ticket-card .tc-wait { font-size: 1rem; color: #94a3b8; margin-bottom: 2rem; }
+    .ticket-card .tc-msg  { font-size: 1rem; color: #059669; font-weight: 500; }
+
+    .kiosk-btn-back {
+      background: #f1f5f9; border: none; border-radius: 12px; padding: .9rem 2rem;
+      font-size: 1rem; font-weight: 600; color: #475569; cursor: pointer;
+      margin-top: 2rem; transition: background .15s;
+    }
+    .kiosk-btn-back:hover { background: #e2e8f0; }
+
+    /* Countdown bar */
+    .kiosk-countdown {
+      height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 1.5rem; overflow: hidden;
+    }
+    .kiosk-countdown-bar {
+      height: 100%; background: #3b82f6; border-radius: 2px;
+      transition: width .1s linear;
+    }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 480px) {
+      .kiosk-grid { grid-template-columns: 1fr; }
+      .kiosk-title { font-size: 1.5rem; }
+      .ticket-card .tc-num { font-size: 4.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="kiosk-wrap">
+
+  <!-- Chargement -->
+  <div id="screenLoading">
+    <div class="loading-spinner"></div>
+    <p>Chargement…</p>
+  </div>
+
+  <!-- Borne désactivée -->
+  <div id="screenUnavailable">
+    <h1>🔒</h1>
+    <h2 style="font-size:1.8rem;margin-bottom:.5rem">Borne non disponible</h2>
+    <p>La borne en libre service n'est pas activée pour cet établissement.</p>
+  </div>
+
+  <!-- Sélection du service -->
+  <div id="screenMain">
+    <div class="kiosk-header">
+      <img src="assets/logo.jpg" alt="Logo" class="kiosk-logo" onerror="this.style.display='none'">
+      <div class="kiosk-title" id="kOrgName">moncompagnon</div>
+      <div class="kiosk-subtitle">Bienvenue — Prenez un ticket pour votre service</div>
+    </div>
+
+    <div class="kiosk-name-wrap">
+      <label for="kBenefName">Votre nom (optionnel)</label>
+      <input type="text" id="kBenefName" class="kiosk-name-input" placeholder="Votre nom…" autocomplete="off" maxlength="60">
+    </div>
+
+    <div class="kiosk-step">Quel service souhaitez-vous ?</div>
+    <div class="kiosk-grid" id="kServiceGrid"></div>
+  </div>
+
+  <!-- Ticket émis -->
+  <div id="screenTicket">
+    <div class="ticket-card">
+      <div class="tc-svc" id="tSvc"></div>
+      <div class="tc-label">Votre numéro de ticket</div>
+      <div class="tc-num" id="tNum">—</div>
+      <div class="tc-name" id="tName"></div>
+      <div class="tc-wait" id="tWait"></div>
+      <div class="tc-msg">Merci de patienter, vous serez appelé(e) bientôt.</div>
+    </div>
+    <div class="kiosk-countdown"><div class="kiosk-countdown-bar" id="kCountdown" style="width:100%"></div></div>
+    <button class="kiosk-btn-back" id="kBtnBack">← Retour à l'accueil</button>
+  </div>
+
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// kiosk.js — Borne en libre-service (émission de tickets)
+// ═══════════════════════════════════════════════════════════════════
+
+const KIOSK_RETURN_DELAY = 12; // secondes avant retour auto à l'accueil
+
+// ── Firebase init ─────────────────────────────────────────────────
+const _app = firebase.initializeApp(CONFIG.FIREBASE);
+const _db  = firebase.database(_app);
+const _base = `orgs/${ORG_ID}`;
+
+// ── Helpers ───────────────────────────────────────────────────────
+const show = id => document.getElementById(id).style.display = '';
+const hide = id => document.getElementById(id).style.display = 'none';
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+// ── Service icons par mot-clé ──────────────────────────────────────
+const SVC_ICONS = {
+  permanence: '🤝', aide: '🤝', général: '🤝',
+  energie: '⚡', énergie: '⚡',
+  insertion: '💼', socio: '💼',
+  médiation: '💰', dette: '💰',
+  étranger: '🌍', logement: '🏠',
+  urgence: '🚨', divers: '📋',
+  accueil: '👋',
+};
+
+function svcIcon(name) {
+  const lower = name.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  for (const [kw, icon] of Object.entries(SVC_ICONS)) {
+    const kwN = kw.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+    if (lower.includes(kwN)) return icon;
+  }
+  return '📋';
+}
+
+// ── État ──────────────────────────────────────────────────────────
+let _config     = null;
+let _countdownT = null;
+
+// ── Initialisation ────────────────────────────────────────────────
+_db.ref(`${_base}/appConfig`).once('value').then(snap => {
+  _config = snap.val() || {};
+
+  const feats = _config.features || {};
+  if (!feats.enableKiosk) {
+    hide('screenLoading');
+    show('screenUnavailable');
+    return;
+  }
+
+  // Nom de l'organisation
+  if (_config.orgName) {
+    document.getElementById('kOrgName').textContent = _config.orgName;
+    document.title = `Borne — ${_config.orgName}`;
+  }
+
+  _buildGrid();
+  hide('screenLoading');
+  show('screenMain');
+}).catch(() => {
+  hide('screenLoading');
+  show('screenUnavailable');
+});
+
+// ── Construire la grille de services ─────────────────────────────
+function _buildGrid() {
+  const groups = _config.queueGroups || {};
+  const grid   = document.getElementById('kServiceGrid');
+  grid.innerHTML = '';
+
+  const entries = Object.entries(groups).filter(([, g]) => g && g.name);
+  if (!entries.length) {
+    grid.innerHTML = '<p style="color:#94a3b8;grid-column:1/-1;text-align:center">Aucun service configuré.</p>';
+    return;
+  }
+
+  entries.forEach(([gid, grp]) => {
+    const icon = svcIcon(grp.name);
+    const btn  = document.createElement('button');
+    btn.className   = 'kiosk-btn';
+    btn.innerHTML   = `<span class="kb-icon">${icon}</span>${escapeHtml(grp.name)}`;
+    btn.addEventListener('click', () => _issueTicket(gid, grp.name));
+    grid.appendChild(btn);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Résoudre les conflits de prénom dans la même file ─────────────
+async function _resolveKioskName(groupId, name) {
+  if (!name) return name;
+  const today = isoDate(new Date());
+  const namesSnap = await _db.ref(`${_base}/queues/${today}/names_${groupId}`).once('value');
+  const existing = Object.values(namesSnap.val() || {}).map(n => n.toLowerCase());
+  const base = name.trim();
+  if (!existing.includes(base.toLowerCase())) return base;
+  let i = 2;
+  while (existing.includes(`${base.toLowerCase()} ${i}`)) i++;
+  return `${base} ${i}`;
+}
+
+// ── Émettre un ticket ─────────────────────────────────────────────
+async function _issueTicket(groupId, groupName) {
+  const rawName = document.getElementById('kBenefName').value.trim();
+  const today = isoDate(new Date());
+
+  // Lire le compteur actuel
+  const tickSnap   = await _db.ref(`${_base}/queues/${today}/tick_${groupId}`).once('value');
+  const tcallSnap  = await _db.ref(`${_base}/queues/${today}/tcall_${groupId}`).once('value');
+  const n = (tickSnap.val() || 0) + 1;
+  const called = tcallSnap.val() || 0;
+
+  // Résoudre les conflits de prénom dans la même file
+  const name = rawName ? await _resolveKioskName(groupId, rawName) : null;
+
+  // Incrémenter
+  await _db.ref(`${_base}/queues/${today}/tick_${groupId}`).set(n);
+  if (name) {
+    await _db.ref(`${_base}/queues/${today}/names_${groupId}/${n}`).set(name);
+  }
+
+  // Calcul du numéro formaté
+  const prefix = (groupName.trim()[0] || 'T').toUpperCase();
+  const ticket = `${prefix}${String(n).padStart(2, '0')}`;
+  const waiting = Math.max(0, n - called - 1);
+
+  _showTicket(ticket, groupName, name, waiting);
+}
+
+// ── Afficher le ticket émis ───────────────────────────────────────
+function _showTicket(ticket, svcName, benefName, waiting) {
+  document.getElementById('tSvc').textContent  = svcName;
+  document.getElementById('tNum').textContent  = ticket;
+  document.getElementById('tName').textContent = benefName ? `Bonjour ${benefName} !` : '';
+  document.getElementById('tWait').textContent = waiting > 0
+    ? `Environ ${waiting} personne${waiting > 1 ? 's' : ''} avant vous`
+    : 'Vous êtes le(la) prochain(e) !';
+
+  hide('screenMain');
+  show('screenTicket');
+
+  _startCountdown();
+}
+
+// ── Countdown retour auto ─────────────────────────────────────────
+function _startCountdown() {
+  clearInterval(_countdownT);
+  let remaining = KIOSK_RETURN_DELAY;
+  const bar = document.getElementById('kCountdown');
+  bar.style.width = '100%';
+
+  _countdownT = setInterval(() => {
+    remaining--;
+    const pct = Math.round((remaining / KIOSK_RETURN_DELAY) * 100);
+    bar.style.width = `${pct}%`;
+    if (remaining <= 0) {
+      clearInterval(_countdownT);
+      _goHome();
+    }
+  }, 1000);
+}
+
+// ── Retour à l'accueil ────────────────────────────────────────────
+function _goHome() {
+  clearInterval(_countdownT);
+  document.getElementById('kBenefName').value = '';
+  hide('screenTicket');
+  show('screenMain');
+}
+
+document.getElementById('kBtnBack').addEventListener('click', _goHome);
+
+// Empêcher le zoom sur double-tap (kiosk tactile)
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>
