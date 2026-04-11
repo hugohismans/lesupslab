@@ -677,6 +677,12 @@ const DB = {
     return this.formatTicket(groupId, number);
   },
 
+  // Label affiché du prochain ticket en attente dans l'overflow
+  getNextQueueTicketDisplay(groupId) {
+    const next = (this._queueData[`tcall_${groupId}`] || 0) + 1;
+    return this.formatTicketDisplay(groupId, next);
+  },
+
   getTicketCalled(groupId) {
     return this._queueData[`tcall_${groupId}`] || 0;
   },

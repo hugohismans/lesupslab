@@ -1725,7 +1725,19 @@
       <h2>⚠️ Priorité file d'attente</h2>
     </div>
     <div class="modal-bd">
-      <p style="font-size:.9rem;line-height:1.6">Voulez-vous faire passer <strong id="prefBypassName"></strong> devant les autres personnes actuellement en file d'attente ?</p>
+      <p style="font-size:.9rem;line-height:1.6;margin-bottom:.75rem">Voulez-vous faire passer <strong id="prefBypassName"></strong> devant les personnes en file d'attente ?</p>
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+        <tr style="border-bottom:1px solid #e2e8f0">
+          <td style="padding:.4rem .5rem;color:#64748b;white-space:nowrap">📋 File partagée</td>
+          <td style="padding:.4rem .5rem;font-weight:700" id="prefBypassQueueTicket">—</td>
+          <td style="padding:.4rem .5rem;color:#64748b;text-align:right" id="prefBypassQueueTime">—</td>
+        </tr>
+        <tr>
+          <td style="padding:.4rem .5rem;color:#64748b;white-space:nowrap">⭐ Avec préférence</td>
+          <td style="padding:.4rem .5rem;font-weight:700" id="prefBypassPrefName">—</td>
+          <td style="padding:.4rem .5rem;color:#64748b;text-align:right" id="prefBypassPrefTime">—</td>
+        </tr>
+      </table>
     </div>
     <div class="modal-ft">
       <button class="btn-cancel" id="prefBypassNo">Non — attendre son tour</button>

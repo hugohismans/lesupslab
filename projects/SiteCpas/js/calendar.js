@@ -1224,11 +1224,15 @@ const LIVE = {
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
         };
         // Bypass seulement si des gens en overflow sont arrivés AVANT la demande preferred
-        const prefTs       = DB.getPreferredPending(localId)?.ts || 0;
+        const prefTs        = DB.getPreferredPending(localId)?.ts || 0;
         const overflowSince = grp ? DB.getGroupOverflowSince(grp.id) : null;
         const overflowFirst = queue > 0 && overflowSince && overflowSince < prefTs;
         if (overflowFirst) {
-          window._openPreferredBypassModal?.(reqId, localId, dispName, doReceive);
+          window._openPreferredBypassModal?.(reqId, localId, dispName, doReceive, {
+            prefTs,
+            overflowSince,
+            nextTicket: grp ? DB.getNextQueueTicketDisplay(grp.id) : null,
+          });
         } else {
           await doReceive();
         }

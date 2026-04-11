@@ -2617,11 +2617,22 @@ document.addEventListener('DOMContentLoaded', async function () {
   // ── Modal C : Bypass queue ────────────────────────────────────────
   let _prefBypassCallback = null;
 
-  window._openPreferredBypassModal = (reqId, localId, displayName, onYes) => {
+  window._openPreferredBypassModal = (reqId, localId, displayName, onYes, meta = {}) => {
     const overlay = document.getElementById('preferredBypassOverlay');
     if (!overlay) return;
+    const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '—';
     const nameEl = document.getElementById('prefBypassName');
     if (nameEl) nameEl.textContent = displayName;
+    // Ticket file partagée (prochain en attente)
+    const qTicketEl = document.getElementById('prefBypassQueueTicket');
+    const qTimeEl   = document.getElementById('prefBypassQueueTime');
+    if (qTicketEl) qTicketEl.textContent = meta.nextTicket || '—';
+    if (qTimeEl)   qTimeEl.textContent   = fmtTime(meta.overflowSince);
+    // Personne avec préférence
+    const pNameEl = document.getElementById('prefBypassPrefName');
+    const pTimeEl = document.getElementById('prefBypassPrefTime');
+    if (pNameEl) pNameEl.textContent = displayName;
+    if (pTimeEl) pTimeEl.textContent = fmtTime(meta.prefTs);
     _prefBypassCallback = onYes;
     overlay.classList.remove('hidden');
   };
