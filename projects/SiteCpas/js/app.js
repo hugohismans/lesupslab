@@ -781,15 +781,37 @@ const HOME = {
   },
 
   // ── Déclencher le bonjour explicitement (clic mascotte) ──────────
+  _firstBonjourKey(agentKey) { return `mc_first_bonjour_${agentKey}`; },
+  _isFirstEverBonjour(agentKey) { return !localStorage.getItem(this._firstBonjourKey(agentKey)); },
+  _markFirstBonjour(agentKey) { localStorage.setItem(this._firstBonjourKey(agentKey), '1'); },
+
   sayBonjour(agentName) {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key') || 'anon';
     if (agentKey === 'anon') return;
     const mascotId = (typeof DB !== 'undefined' && DB.getMascotId) ? DB.getMascotId() : 'poulpe';
     const mascot   = MASCOTS[mascotId] || MASCOTS.poulpe;
+
+    const firstEver = this._isFirstEverBonjour(agentKey);
+
     this._markSaidBonjourToday(agentKey);
     DB.markConnectedToday(agentKey);
     this._showBubble(this._getBonjourPhrase(agentName, mascot.name));
     this._lastPhraseAt = Date.now();
+
+    // Premier bonjour de la première connexion → présentation du rôle d'assistant
+    if (firstEver) {
+      this._markFirstBonjour(agentKey);
+      const prenom = agentName ? agentName.split(' ')[0] : null;
+      const n = prenom ? ` ${prenom}` : '';
+      const onboardingMsgs = [
+        `Je suis là pour t'aider à prendre l'application en main, en douceur 💡 Je te glisserai des petits conseils régulièrement — tu peux aussi en demander un à tout moment !`,
+        `Je serai ton guide${n} ! Je t'apprendrai les fonctionnalités pas à pas et je te donnerai des astuces au fil des jours 🌟 Tu peux cliquer sur "💡 Astuce" quand tu veux !`,
+        `Mon rôle${n} : t'aider à maîtriser l'application en douceur, à ton rythme 😊 Je te ferai des petits rappels et conseils réguliers — pas de pression !`,
+      ];
+      setTimeout(() => {
+        this._showBubble(onboardingMsgs[Math.floor(Math.random() * onboardingMsgs.length)]);
+      }, 4500);
+    }
   },
 
   // ── Bloquer une action si bonjour pas dit ────────────────────────
