@@ -1057,6 +1057,10 @@ const DB = {
     return ref.key;
   },
 
+  // Niveau de volume son : 0=muet 0.5=discret 1=normal 1.5=fort 2=très fort (défaut 1)
+  getSoundLevel()    { return this._config.features?.soundLevel ?? 1; },
+  async setSoundLevel(v) { await this._ref('appConfig/features/soundLevel').set(v); },
+
   getAgentPublicName(key) {
     return this._config.agentPublicNames?.[key] || null;
   },

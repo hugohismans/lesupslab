@@ -2782,6 +2782,18 @@ body {
   background: #f8fafc; border-radius: 8px; padding: .6rem .85rem;
   border-left: 3px solid #cbd5e1; margin-bottom: .75rem;
 }
+/* Sélecteur volume sons */
+.st-sound-levels { display: flex; gap: .4rem; flex-wrap: wrap; }
+.st-sound-btn {
+  padding: .4rem .85rem; border-radius: 8px; border: 1.5px solid #334155;
+  background: #1e293b; color: #94a3b8; font-size: .85rem; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.st-sound-btn:hover { background: #334155; color: #e2e8f0; }
+.st-sound-btn.st-sound-active {
+  background: #1d4ed8; border-color: #3b82f6; color: #fff; font-weight: 700;
+}
+
 .st-perm-subtitle {
   font-size: .8rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: .06em; color: #475569; margin: .5rem 0 .4rem;

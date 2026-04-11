@@ -471,6 +471,33 @@ const MODAL = {
       }));
     }
 
+    // ── Volume des sons ───────────────────────────────────────────
+    const soundLevels = g('stSoundLevels');
+    if (soundLevels) {
+      const LEVELS = [
+        { v: 0,   label: '🔇 Muet' },
+        { v: 0.5, label: '🔈 Discret' },
+        { v: 1,   label: '🔉 Normal' },
+        { v: 1.5, label: '🔊 Fort' },
+        { v: 2,   label: '📢 Très fort' },
+      ];
+      const _updateSoundBtns = (cur) => {
+        soundLevels.querySelectorAll('.st-sound-btn').forEach(b => {
+          b.classList.toggle('st-sound-active', Number(b.dataset.level) === Number(cur));
+        });
+      };
+      _updateSoundBtns(DB.getSoundLevel());
+      soundLevels.querySelectorAll('.st-sound-btn').forEach(btn => {
+        btn.addEventListener('click', () => this._requireAdmin(async () => {
+          const v = Number(btn.dataset.level);
+          await DB.setSoundLevel(v);
+          _updateSoundBtns(v);
+          const lbl = LEVELS.find(l => l.v === v)?.label || '';
+          showToast(`Volume : ${lbl} ✓`);
+        }));
+      });
+    }
+
     // ── Heure de fin de journée ───────────────────────────────────
     const eodInput = g('stEndOfDayHour');
     const eodSave  = g('stEndOfDayHourSave');

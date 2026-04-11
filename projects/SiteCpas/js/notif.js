@@ -146,9 +146,12 @@ const NOTIF = {
   // ── Son — jouer un son selon le type de notif ───────────────────
   _playSound(type) {
     if (this._dnd) return;
+    const lvl = DB.getSoundLevel();
+    if (lvl === 0) return;
     try {
       const ctx  = new (window.AudioContext || window.webkitAudioContext)();
       const tone = (freq, t0, dur, vol = 0.28, shape = 'sine') => {
+        vol = Math.min(1, vol * lvl);
         const osc  = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
