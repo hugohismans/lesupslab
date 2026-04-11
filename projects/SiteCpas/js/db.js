@@ -76,6 +76,7 @@ const DB = {
               .map(([id, p]) => ({ id, name: p.name || '', description: p.description || '', order: p.order ?? 999 }))
               .sort((a, b) => a.order - b.order)
           : [],
+        publicPermLieux: d.publicPermLieux || {},
       };
 
       // Charger les lieux triés par order
@@ -94,10 +95,11 @@ const DB = {
             slotMin:     lieu.slotMin     ?? null,
             activeDays:  lieu.activeDays  || null,  // {1:true,2:true,...} — null = défaut Lun-Ven
             isBackoffice: !!lieu.isBackoffice,
+            publicName:   lieu.publicName || null,
           }))
           .sort((a, b) => a.order - b.order)
-          .forEach(({ id, name, order, localIds, openHour, closeHour, slotMin, activeDays, isBackoffice }) => {
-            this._lieux[id] = { name, order, localIds, openHour, closeHour, slotMin, activeDays, isBackoffice };
+          .forEach(({ id, name, order, localIds, openHour, closeHour, slotMin, activeDays, isBackoffice, publicName }) => {
+            this._lieux[id] = { name, order, localIds, openHour, closeHour, slotMin, activeDays, isBackoffice, publicName };
           });
       }
 
@@ -1180,6 +1182,21 @@ const DB = {
 
   async renameLieu(lieuId, name) {
     await this._ref(`appConfig/lieux/${lieuId}/name`).set(name);
+  },
+
+  async setLieuPublicName(lieuId, publicName) {
+    await this._ref(`appConfig/lieux/${lieuId}/publicName`).set(publicName || null);
+  },
+
+  getPublicPermLieux() {
+    return this._config.publicPermLieux || {};
+  },
+
+  async setPublicPermLieux(lieuIds) {
+    // lieuIds = array of lieuId strings to show permanences for
+    const obj = {};
+    lieuIds.forEach(id => { obj[id] = true; });
+    await this._ref('appConfig/publicPermLieux').set(Object.keys(obj).length ? obj : null);
   },
 
   async addLieu(name) {

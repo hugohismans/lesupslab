@@ -132,22 +132,34 @@ const MODAL = {
     const currentLieuId = DB.getCurrentLieuId();
     const lieuEntries   = Object.entries(lieux);
     const backofficeEnabled = DB.getFeature('enableBackoffice');
+    const publicPermLieux = DB.getPublicPermLieux();
     g('stLieuList').innerHTML = lieuEntries.length
       ? lieuEntries.map(([id, lieu], idx) => `
-          <div class="st-local-row">
-            <div class="st-lieu-arrows">
-              <button class="st-lieu-up"   data-lieu-id="${id}" title="Monter"  ${idx === 0 ? 'disabled' : ''}>▲</button>
-              <button class="st-lieu-down" data-lieu-id="${id}" title="Descendre" ${idx === lieuEntries.length - 1 ? 'disabled' : ''}>▼</button>
+          <div class="st-local-row st-lieu-row-wrap">
+            <div class="st-lieu-row-main">
+              <div class="st-lieu-arrows">
+                <button class="st-lieu-up"   data-lieu-id="${id}" title="Monter"  ${idx === 0 ? 'disabled' : ''}>▲</button>
+                <button class="st-lieu-down" data-lieu-id="${id}" title="Descendre" ${idx === lieuEntries.length - 1 ? 'disabled' : ''}>▼</button>
+              </div>
+              <input class="st-local-input st-lieu-name-input" type="text" data-lieu-id="${id}"
+                     value="${escapeHtml(lieu.name)}" placeholder="Nom interne du lieu">
+              ${id === currentLieuId ? '<em class="st-lieu-active">(actif)</em>' : ''}
+              ${backofficeEnabled ? `<label class="st-lieu-bo-label" title="Ce lieu est un backoffice (non public, présence sans réservation)">
+                <input type="checkbox" class="st-lieu-bo-toggle" data-lieu-id="${id}" ${lieu.isBackoffice ? 'checked' : ''}>
+                <span>🏢 BackOffice</span>
+              </label>` : ''}
+              <button class="st-local-save st-lieu-save" data-lieu-id="${id}" title="Renommer">✓</button>
+              <button class="st-lieu-del" data-lieu-id="${id}" data-name="${escapeHtml(lieu.name)}" title="Supprimer">✕</button>
             </div>
-            <input class="st-local-input st-lieu-name-input" type="text" data-lieu-id="${id}"
-                   value="${escapeHtml(lieu.name)}" placeholder="Nom du lieu">
-            ${id === currentLieuId ? '<em class="st-lieu-active">(actif)</em>' : ''}
-            ${backofficeEnabled ? `<label class="st-lieu-bo-label" title="Ce lieu est un backoffice (non public, présence sans réservation)">
-              <input type="checkbox" class="st-lieu-bo-toggle" data-lieu-id="${id}" ${lieu.isBackoffice ? 'checked' : ''}>
-              <span>🏢 BackOffice</span>
-            </label>` : ''}
-            <button class="st-local-save st-lieu-save" data-lieu-id="${id}" title="Renommer">✓</button>
-            <button class="st-lieu-del" data-lieu-id="${id}" data-name="${escapeHtml(lieu.name)}" title="Supprimer">✕</button>
+            <div class="st-lieu-row-extra">
+              <input class="st-local-input st-lieu-pubname-input" type="text" data-lieu-id="${id}"
+                     value="${escapeHtml(lieu.publicName || '')}" placeholder="Nom public (affiché sur l'écran public)">
+              <button class="st-local-save st-lieu-pubname-save" data-lieu-id="${id}" title="Sauver nom public">✓</button>
+              <label class="st-lieu-perm-label" title="Afficher les permanences de ce lieu sur l'écran public">
+                <input type="checkbox" class="st-lieu-perm-toggle" data-lieu-id="${id}" ${publicPermLieux[id] ? 'checked' : ''}>
+                <span>📅 Permanences publiques</span>
+              </label>
+            </div>
           </div>`).join('')
       : '<p class="st-empty">Aucun lieu configuré.</p>';
 
@@ -193,6 +205,28 @@ const MODAL = {
       chk.addEventListener('change', () => this._requireAdmin(async () => {
         await DB.setLieuBackoffice(chk.dataset.lieuId, chk.checked || null);
         showToast(chk.checked ? 'Lieu marqué BackOffice ✓' : 'BackOffice désactivé ✓');
+      }));
+    });
+
+    g('settingsOverlay').querySelectorAll('.st-lieu-pubname-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id    = btn.dataset.lieuId;
+        const row   = btn.closest('.st-lieu-row-wrap');
+        const input = row?.querySelector('.st-lieu-pubname-input');
+        const name  = input?.value.trim() || null;
+        btn.disabled = true;
+        await DB.setLieuPublicName(id, name);
+        showToast('Nom public sauvegardé ✓');
+        btn.disabled = false;
+      }));
+    });
+
+    g('settingsOverlay').querySelectorAll('.st-lieu-perm-toggle').forEach(chk => {
+      chk.addEventListener('change', () => this._requireAdmin(async () => {
+        const allChecked = [...g('settingsOverlay').querySelectorAll('.st-lieu-perm-toggle')]
+          .filter(c => c.checked).map(c => c.dataset.lieuId);
+        await DB.setPublicPermLieux(allChecked);
+        showToast('Permanences publiques mises à jour ✓');
       }));
     });
 
