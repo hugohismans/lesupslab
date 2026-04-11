@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiteCpas — Super Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100dvh; }
+
+    /* ── Login ── */
+    .sa-login { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
+    .sa-login-card {
+      background: #1e293b; border-radius: 20px; padding: 2.5rem 2rem;
+      width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 1.25rem;
+      box-shadow: 0 8px 40px rgba(0,0,0,.4);
+    }
+    .sa-login-title { font-size: 1.3rem; font-weight: 800; color: #38bdf8; text-align: center; }
+    .sa-login-sub { font-size: .8rem; color: #64748b; text-align: center; }
+    .sa-field { display: flex; flex-direction: column; gap: .4rem; }
+    .sa-field label { font-size: .8rem; color: #94a3b8; font-weight: 600; }
+    .sa-input {
+      background: #0f172a; border: 1.5px solid #334155; border-radius: 8px;
+      color: #e2e8f0; padding: .6rem .9rem; font-size: .95rem; outline: none; width: 100%;
+    }
+    .sa-input:focus { border-color: #38bdf8; }
+    .sa-btn {
+      padding: .7rem 1.5rem; border-radius: 10px; border: none; font-size: .95rem;
+      font-weight: 700; cursor: pointer; transition: opacity .12s;
+    }
+    .sa-btn:hover { opacity: .85; }
+    .sa-btn-primary { background: #0ea5e9; color: #fff; }
+    .sa-btn-success { background: #16a34a; color: #fff; }
+    .sa-btn-danger  { background: #dc2626; color: #fff; font-size: .8rem; padding: .4rem .9rem; }
+    .sa-btn-sm      { font-size: .8rem; padding: .4rem .9rem; }
+    .sa-btn-ghost   { background: #1e293b; border: 1.5px solid #334155; color: #94a3b8; }
+    .sa-err { color: #f87171; font-size: .82rem; }
+    .hidden { display: none !important; }
+
+    /* ── App ── */
+    .sa-app { display: none; flex-direction: column; min-height: 100dvh; }
+    .sa-hd {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+      padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+    }
+    .sa-hd-title { font-size: 1.1rem; font-weight: 800; color: #38bdf8; }
+    .sa-hd-sub   { font-size: .75rem; color: #64748b; }
+    .sa-body { padding: 2rem; max-width: 960px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 2rem; }
+
+    /* ── Section ── */
+    .sa-section { background: #1e293b; border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+    .sa-section-title { font-size: 1rem; font-weight: 800; color: #e2e8f0; display: flex; align-items: center; gap: .5rem; }
+    .sa-section-title span { font-size: 1.2rem; }
+
+    /* ── Orgs list ── */
+    .sa-org-list { display: flex; flex-direction: column; gap: .6rem; }
+    .sa-org-item {
+      background: #0f172a; border-radius: 10px; padding: .9rem 1rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+    .sa-org-id   { font-family: monospace; font-size: .9rem; color: #38bdf8; font-weight: 700; }
+    .sa-org-name { font-size: .82rem; color: #94a3b8; }
+    .sa-org-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .sa-org-url  { font-family: monospace; font-size: .72rem; color: #475569; }
+
+    /* ── Create org ── */
+    .sa-create-form { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    @media (max-width: 600px) { .sa-create-form { grid-template-columns: 1fr; } }
+    .sa-create-form .full { grid-column: 1 / -1; }
+
+    /* ── Feature flags ── */
+    .sa-flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .6rem; }
+    .sa-flag {
+      background: #0f172a; border: 1.5px solid #334155; border-radius: 8px;
+      padding: .6rem .9rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+    }
+    .sa-flag-label { font-size: .82rem; color: #cbd5e1; }
+    .sa-toggle {
+      width: 38px; height: 20px; background: #334155; border-radius: 99px;
+      cursor: pointer; position: relative; transition: background .15s; flex-shrink: 0; border: none;
+    }
+    .sa-toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 50%; background: #fff;
+      transition: left .15s;
+    }
+    .sa-toggle.on { background: #0ea5e9; }
+    .sa-toggle.on::after { left: 20px; }
+
+    /* ── Org flags panel ── */
+    .sa-org-flags-panel {
+      margin-top: .5rem; padding: 1rem; background: #0f172a; border-radius: 10px;
+      display: none; flex-direction: column; gap: .75rem;
+    }
+    .sa-org-flags-panel.open { display: flex; }
+    .sa-org-flags-title { font-size: .8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Log ── */
+    .sa-log { background: #0f172a; border-radius: 8px; padding: .75rem 1rem; font-family: monospace; font-size: .78rem; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: .2rem; }
+    .sa-log .ok   { color: #4ade80; }
+    .sa-log .err  { color: #f87171; }
+    .sa-log .info { color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div class="sa-login" id="saLogin">
+  <div class="sa-login-card">
+    <div class="sa-login-title">⚙️ Super Admin</div>
+    <div class="sa-login-sub">SiteCpas — Panneau d'administration plateforme</div>
+    <div class="sa-field" id="loginFields">
+      <label>Mot de passe super admin</label>
+      <input type="password" class="sa-input" id="saPwd" placeholder="••••••••" autocomplete="off">
+      <div class="sa-err hidden" id="saLoginErr">Mot de passe incorrect.</div>
+      <button class="sa-btn sa-btn-primary" id="saBtnLogin">Se connecter</button>
+    </div>
+    <div class="sa-field hidden" id="createFields">
+      <div class="sa-login-sub" style="color:#fbbf24">Aucun mot de passe configuré. Créez-en un.</div>
+      <label>Nouveau mot de passe</label>
+      <input type="password" class="sa-input" id="saNewPwd" placeholder="Choisir...">
+      <label style="margin-top:.5rem">Confirmer</label>
+      <input type="password" class="sa-input" id="saNewPwdConfirm" placeholder="Confirmer...">
+      <div class="sa-err hidden" id="saCreateErr">Les mots de passe ne correspondent pas.</div>
+      <button class="sa-btn sa-btn-success" id="saBtnCreate">Créer le mot de passe</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div class="sa-app" id="saApp">
+  <header class="sa-hd">
+    <div>
+      <div class="sa-hd-title">⚙️ Super Admin — SiteCpas</div>
+      <div class="sa-hd-sub">Panneau de gestion des organisations</div>
+    </div>
+    <button class="sa-btn sa-btn-ghost sa-btn-sm" id="saBtnLogout">Déconnexion</button>
+  </header>
+
+  <div class="sa-body">
+
+    <!-- Organisations existantes -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>🏢</span> Organisations</div>
+      <div class="sa-org-list" id="saOrgList">
+        <div style="color:#64748b;font-size:.85rem">Chargement…</div>
+      </div>
+    </div>
+
+    <!-- Créer une nouvelle org -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>➕</span> Créer une nouvelle organisation</div>
+      <div class="sa-create-form">
+        <div class="sa-field">
+          <label>Identifiant (orgId)</label>
+          <input type="text" class="sa-input" id="newOrgId" placeholder="cpas-jemappes" autocomplete="off">
+          <div style="font-size:.72rem;color:#64748b;margin-top:.25rem">Minuscules, tirets uniquement. Ex: cpas-jemappes</div>
+        </div>
+        <div class="sa-field">
+          <label>Nom affiché</label>
+          <input type="text" class="sa-input" id="newOrgName" placeholder="CPAS de Jemappes">
+        </div>
+        <div class="sa-field full">
+          <label>URL du logo <span style="color:#64748b;font-weight:400">(optionnel — lien direct vers une image)</span></label>
+          <input type="url" class="sa-input" id="newOrgLogo" placeholder="https://exemple.com/logo.png">
+        </div>
+        <div class="sa-field full">
+          <label>Feature flags initiaux</label>
+          <div class="sa-flags" id="newOrgFlags"></div>
+        </div>
+        <div class="full">
+          <button class="sa-btn sa-btn-success" id="saBtnCreateOrg">Créer l'organisation</button>
+        </div>
+        <div class="sa-log full hidden" id="createLog"></div>
+      </div>
+    </div>
+
+    <!-- Outils de test -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>🎭</span> Outils de test</div>
+      <div>
+        <div style="color:#94a3b8;font-size:.82rem;margin-bottom:.5rem">Prévisualiser l'écran de bienvenue d'un rôle (ne marque pas l'agent comme "accueilli")</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <select id="saTestIntroSelect" style="flex:1;min-width:160px;border:1.5px solid #334155;border-radius:8px;padding:.5rem .65rem;background:#0f172a;color:#e2e8f0;font-size:.85rem;font-family:inherit">
+            <option value="__direction__">👑 Direction</option>
+            <option value="__admin__">⚙️ Admin</option>
+            <option value="__chef_service__">💼 Chef de service</option>
+            <option value="__as__">💙 Assistant·e social·e</option>
+            <option value="__accueil__">🌟 Accueil</option>
+            <option value="__agent__">🎉 Agent</option>
+            <option value="__technicien__">🔧 Technicien·ne</option>
+            <option value="__entretien__">🌿 Entretien</option>
+            <option value="__juriste__">⚖️ Juriste</option>
+          </select>
+          <button id="saTestIntroBtn" style="background:#6366f1;color:#fff;border:none;border-radius:8px;padding:.5rem 1rem;font-size:.85rem;font-weight:700;cursor:pointer;white-space:nowrap">▶ Voir l'intro</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script>
+// ── Config ────────────────────────────────────────────────────────
+const SA_KEY       = 'sitecpas_superadmin';
+const SA_HASH_PATH = 'superadmin/passwordHash'; // à la racine Firebase, hors /orgs/
+
+const ALL_FLAGS = [
+  { key: 'enableTickets',    label: 'Files d\'attente',  default: true  },
+  { key: 'enablePublicView', label: 'Vue publique',       default: true  },
+  { key: 'enablePresence',   label: 'Statuts présence',   default: true  },
+  { key: 'enableAnalytics',  label: 'Analytics',          default: false },
+  { key: 'enableKiosk',      label: 'Borne kiosk',        default: false },
+  { key: 'rdvMode',          label: 'Mode RDV nominatifs', default: false },
+  { key: 'agentEmoji',       label: 'Emojis agents',      default: false },
+];
+
+// Services et agents par défaut pour une nouvelle org
+const DEFAULT_SERVICES = [
+  'Aide générale', 'Permanence Énergie', 'Insertion socio-professionnelle',
+  'Médiation de dettes', 'Étrangers / Logement', 'Urgence et divers', 'Accueil'
+];
+const DEFAULT_AGENTS = ['Agent 1', 'Agent 2'];
+
+// ── Firebase ──────────────────────────────────────────────────────
+firebase.initializeApp(CONFIG.FIREBASE);
+const db = firebase.database();
+
+function genId() { return Math.random().toString(36).slice(2, 11); }
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── Auth superadmin ───────────────────────────────────────────────
+const saLogin  = document.getElementById('saLogin');
+const saApp    = document.getElementById('saApp');
+
+async function showApp() {
+  saLogin.style.display = 'none';
+  saApp.style.display   = 'flex';
+  loadOrgs();
+  buildFlagToggles();
+}
+
+// Vérifier session
+if (sessionStorage.getItem(SA_KEY) === '1') {
+  showApp();
+} else {
+  db.ref(SA_HASH_PATH).once('value').then(snap => {
+    const hash = snap.val();
+    if (!hash) {
+      // Premier lancement — créer le mot de passe
+      document.getElementById('loginFields').classList.add('hidden');
+      document.getElementById('createFields').classList.remove('hidden');
+    }
+  });
+}
+
+document.getElementById('saBtnLogin').addEventListener('click', async () => {
+  const pwd = document.getElementById('saPwd').value;
+  if (!pwd) return;
+  const inputHash = await sha256(pwd);
+  const snap = await db.ref(SA_HASH_PATH).once('value');
+  if (inputHash === snap.val()) {
+    sessionStorage.setItem(SA_KEY, '1');
+    showApp();
+  } else {
+    document.getElementById('saLoginErr').classList.remove('hidden');
+  }
+});
+document.getElementById('saPwd').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('saBtnLogin').click(); });
+
+document.getElementById('saBtnCreate').addEventListener('click', async () => {
+  const pwd  = document.getElementById('saNewPwd').value;
+  const conf = document.getElementById('saNewPwdConfirm').value;
+  if (!pwd) return;
+  if (pwd !== conf) { document.getElementById('saCreateErr').classList.remove('hidden'); return; }
+  document.getElementById('saCreateErr').classList.add('hidden');
+  const hash = await sha256(pwd);
+  await db.ref(SA_HASH_PATH).set(hash);
+  sessionStorage.setItem(SA_KEY, '1');
+  showApp();
+});
+
+document.getElementById('saBtnLogout').addEventListener('click', () => {
+  sessionStorage.removeItem(SA_KEY);
+  location.reload();
+});
+
+// ── Charger les orgs existantes ───────────────────────────────────
+async function loadOrgs() {
+  const snap = await db.ref('orgs').once('value');
+  const orgs = snap.val() || {};
+  const list = document.getElementById('saOrgList');
+
+  if (!Object.keys(orgs).length) {
+    list.innerHTML = '<div style="color:#64748b;font-size:.85rem">Aucune organisation configurée.</div>';
+    return;
+  }
+
+  list.innerHTML = Object.entries(orgs).map(([orgId, data]) => {
+    const name    = data?.appConfig?.meta?.name || orgId;
+    const hasConf = !!data?.appConfig;
+    const flags   = data?.appConfig?.features || {};
+    const flagBadges = ALL_FLAGS
+      .filter(f => flags[f.key])
+      .map(f => `<span style="font-size:.68rem;background:#1e3a5f;color:#38bdf8;padding:.1rem .4rem;border-radius:4px">${f.label}</span>`)
+      .join('');
+
+    return `<div class="sa-org-item" id="org-item-${orgId}">
+      <div style="display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+          <span class="sa-org-id">${orgId}</span>
+          <span class="sa-org-name">${name}</span>
+          ${hasConf ? '<span style="color:#4ade80;font-size:.75rem">✓ configuré</span>' : '<span style="color:#f87171;font-size:.75rem">⚠ vide</span>'}
+        </div>
+        ${flagBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.25rem">${flagBadges}</div>` : ''}
+        <div class="sa-org-url">?org=${orgId}</div>
+      </div>
+      <div class="sa-org-actions">
+        <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleFlagsPanel('${orgId}')">⚙ Flags</button>
+        <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleMetaPanel('${orgId}')">✏️ Infos</button>
+        <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
+      </div>
+    </div>
+    <div class="sa-org-flags-panel" id="flags-${orgId}">
+      <div class="sa-org-flags-title">Feature flags — ${orgId}</div>
+      <div class="sa-flags" id="flags-grid-${orgId}"></div>
+    </div>
+    <div class="sa-org-flags-panel" id="meta-${orgId}">
+      <div class="sa-org-flags-title">Informations — ${orgId}</div>
+      <div class="sa-field">
+        <label>Nom affiché</label>
+        <input type="text" class="sa-input" id="meta-name-${orgId}" value="${name}" placeholder="Nom de l'organisation">
+      </div>
+      <div class="sa-field">
+        <label>URL du logo <span style="color:#64748b;font-weight:400">(lien direct vers une image)</span></label>
+        <input type="url" class="sa-input" id="meta-logo-${orgId}" value="${data?.appConfig?.meta?.logoUrl || ''}" placeholder="https://exemple.com/logo.png">
+        <div id="meta-logo-preview-${orgId}" style="margin-top:.5rem"></div>
+      </div>
+      <button class="sa-btn sa-btn-success sa-btn-sm" onclick="saveMeta('${orgId}')">Enregistrer</button>
+    </div>`;
+  }).join('');
+
+  // Construire les grilles de flags pour chaque org
+  Object.entries(orgs).forEach(([orgId, data]) => {
+    const flags = data?.appConfig?.features || {};
+    buildFlagGrid(document.getElementById(`flags-grid-${orgId}`), flags, async (key, val) => {
+      await db.ref(`orgs/${orgId}/appConfig/features/${key}`).set(val || null);
+    });
+  });
+}
+
+function toggleFlagsPanel(orgId) {
+  document.getElementById(`flags-${orgId}`).classList.toggle('open');
+  document.getElementById(`meta-${orgId}`).classList.remove('open');
+}
+
+function toggleMetaPanel(orgId) {
+  const panel = document.getElementById(`meta-${orgId}`);
+  panel.classList.toggle('open');
+  document.getElementById(`flags-${orgId}`).classList.remove('open');
+  // Aperçu logo
+  if (panel.classList.contains('open')) {
+    const logoUrl = document.getElementById(`meta-logo-${orgId}`).value;
+    updateLogoPreview(orgId, logoUrl);
+    document.getElementById(`meta-logo-${orgId}`).addEventListener('input', function () {
+      updateLogoPreview(orgId, this.value);
+    });
+  }
+}
+
+function updateLogoPreview(orgId, url) {
+  const preview = document.getElementById(`meta-logo-preview-${orgId}`);
+  if (url) {
+    preview.innerHTML = `<img src="${url}" style="height:48px;border-radius:6px;object-fit:contain;background:#1e293b;padding:4px" onerror="this.style.display='none'">`;
+  } else {
+    preview.innerHTML = '';
+  }
+}
+
+async function saveMeta(orgId) {
+  const name    = document.getElementById(`meta-name-${orgId}`).value.trim();
+  const logoUrl = document.getElementById(`meta-logo-${orgId}`).value.trim();
+  if (!name) return;
+  const updates = { [`orgs/${orgId}/appConfig/meta/name`]: name };
+  if (logoUrl) updates[`orgs/${orgId}/appConfig/meta/logoUrl`] = logoUrl;
+  else updates[`orgs/${orgId}/appConfig/meta/logoUrl`] = null;
+  await db.ref().update(updates);
+  document.getElementById(`meta-${orgId}`).classList.remove('open');
+  loadOrgs();
+}
+
+// ── Toggles feature flags ─────────────────────────────────────────
+function buildFlagGrid(container, currentFlags, onChange) {
+  container.innerHTML = ALL_FLAGS.map(f => `
+    <div class="sa-flag">
+      <span class="sa-flag-label">${f.label}</span>
+      <button class="sa-toggle ${currentFlags[f.key] ? 'on' : ''}" data-key="${f.key}"></button>
+    </div>`).join('');
+
+  container.querySelectorAll('.sa-toggle').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.dataset.key;
+      const val = !btn.classList.contains('on');
+      btn.classList.toggle('on', val);
+      await onChange(key, val);
+    });
+  });
+}
+
+// Toggles pour nouvelle org
+const _newOrgFlags = {};
+ALL_FLAGS.forEach(f => { _newOrgFlags[f.key] = f.default; });
+
+function buildFlagToggles() {
+  const container = document.getElementById('newOrgFlags');
+  container.innerHTML = ALL_FLAGS.map(f => `
+    <div class="sa-flag">
+      <span class="sa-flag-label">${f.label}</span>
+      <button class="sa-toggle ${f.default ? 'on' : ''}" data-key="${f.key}"></button>
+    </div>`).join('');
+
+  container.querySelectorAll('.sa-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      _newOrgFlags[key] = !btn.classList.contains('on');
+      btn.classList.toggle('on', _newOrgFlags[key]);
+    });
+  });
+}
+
+// ── Créer une nouvelle org ────────────────────────────────────────
+function logCreate(msg, cls = 'info') {
+  const log = document.getElementById('createLog');
+  log.classList.remove('hidden');
+  log.innerHTML += `<div class="${cls}">${msg}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+document.getElementById('saBtnCreateOrg').addEventListener('click', async () => {
+  const orgId = document.getElementById('newOrgId').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-');
+  const name  = document.getElementById('newOrgName').value.trim();
+
+  if (!orgId) { logCreate('❌ L\'identifiant est requis.', 'err'); return; }
+  if (!name)  { logCreate('❌ Le nom est requis.', 'err'); return; }
+
+  // Vérifier si l'org existe déjà
+  const existing = await db.ref(`orgs/${orgId}`).once('value');
+  if (existing.val() !== null) {
+    logCreate(`❌ L'org "${orgId}" existe déjà.`, 'err');
+    return;
+  }
+
+  document.getElementById('saBtnCreateOrg').disabled = true;
+  document.getElementById('createLog').innerHTML = '';
+  logCreate(`Création de l'org "${orgId}"…`);
+
+  try {
+    const updates = {};
+
+    // Méta
+    const logoUrl = document.getElementById('newOrgLogo').value.trim();
+    updates[`orgs/${orgId}/appConfig/meta/name`]  = name;
+    updates[`orgs/${orgId}/appConfig/meta/orgId`] = orgId;
+    updates[`orgs/${orgId}/appConfig/meta/createdAt`] = Date.now();
+    if (logoUrl) updates[`orgs/${orgId}/appConfig/meta/logoUrl`] = logoUrl;
+
+    // Feature flags
+    ALL_FLAGS.forEach(f => {
+      if (_newOrgFlags[f.key]) {
+        updates[`orgs/${orgId}/appConfig/features/${f.key}`] = true;
+      }
+    });
+
+    // Agents par défaut
+    DEFAULT_AGENTS.forEach(a => {
+      updates[`orgs/${orgId}/appConfig/agents/${genId()}`] = a;
+    });
+    logCreate('✓ Agents par défaut ajoutés', 'ok');
+
+    // Services par défaut
+    DEFAULT_SERVICES.forEach(s => {
+      updates[`orgs/${orgId}/appConfig/services/${genId()}`] = s;
+    });
+    logCreate('✓ Services par défaut ajoutés', 'ok');
+
+    // Lieu par défaut avec locaux 1-3
+    const lieuId  = genId();
+    const localIds = {};
+    [1, 2, 3].forEach(id => { localIds[id] = true; });
+    updates[`orgs/${orgId}/appConfig/lieux/${lieuId}`] = {
+      name: name, order: 0, localIds
+    };
+    updates[`orgs/${orgId}/appConfig/localLabels/1`] = 'Bureau 1';
+    updates[`orgs/${orgId}/appConfig/localLabels/2`] = 'Bureau 2';
+    updates[`orgs/${orgId}/appConfig/localLabels/3`] = 'Bureau 3';
+    logCreate('✓ Lieu + 3 locaux par défaut créés', 'ok');
+
+    await db.ref().update(updates);
+
+    logCreate(`✅ Organisation "${orgId}" créée avec succès !`, 'ok');
+    logCreate(`🔗 URL : <a href="index.html?org=${orgId}" target="_blank" style="color:#38bdf8">index.html?org=${orgId}</a>`, 'ok');
+
+    document.getElementById('newOrgId').value  = '';
+    document.getElementById('newOrgName').value = '';
+    loadOrgs();
+
+  } catch (e) {
+    logCreate(`❌ Erreur : ${e.message}`, 'err');
+  }
+
+  document.getElementById('saBtnCreateOrg').disabled = false;
+});
+
+// ── Tester une intro mascotte ─────────────────────────────────────
+document.getElementById('saTestIntroBtn')?.addEventListener('click', () => {
+  const type = document.getElementById('saTestIntroSelect')?.value;
+  if (!type) return;
+  localStorage.setItem('mc_welcome_test_intro', type);
+  window.open('welcome.html', '_blank');
+});
+</script>
+</body>
+</html>

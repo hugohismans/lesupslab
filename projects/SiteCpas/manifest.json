@@ -1,0 +1,19 @@
+{
+  "name": "SiteCpas",
+  "short_name": "SiteCpas",
+  "description": "Gestion des réservations et files d'attente",
+  "start_url": "app.html",
+  "display": "standalone",
+  "background_color": "#1a3a5c",
+  "theme_color": "#1a3a5c",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "assets/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}

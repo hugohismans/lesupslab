@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Migration multi-tenant — SiteCpas</title>
+  <style>
+    body { font-family: monospace; background: #0f172a; color: #e2e8f0; padding: 2rem; }
+    h1 { color: #38bdf8; }
+    .log { background: #1e293b; border-radius: 8px; padding: 1rem; margin: 1rem 0; max-height: 60vh; overflow-y: auto; }
+    .ok  { color: #4ade80; }
+    .err { color: #f87171; }
+    .warn { color: #fbbf24; }
+    .info { color: #94a3b8; }
+    button { padding: .75rem 2rem; background: #0ea5e9; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin: .5rem; }
+    button:disabled { opacity: .4; cursor: default; }
+    button.danger { background: #dc2626; }
+  </style>
+</head>
+<body>
+
+<h1>🚀 Migration SiteCpas — Multi-tenant</h1>
+<p>Ce script copie toutes les données existantes (à la racine Firebase) vers <code>/orgs/cpas-quaregnon/</code>.</p>
+<p><strong style="color:#fbbf24">⚠ À n'exécuter qu'une seule fois. Les données originales sont conservées en place.</strong></p>
+
+<div>
+  <button id="btnCheck">1. Vérifier l'état actuel</button>
+  <button id="btnMigrate" disabled>2. Lancer la migration</button>
+  <button id="btnVerify" disabled>3. Vérifier après migration</button>
+  <button id="btnCleanup" class="danger" disabled>4. Supprimer les anciennes données (irréversible)</button>
+</div>
+
+<div class="log" id="log"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script>
+const TARGET_ORG = 'cpas-quaregnon';
+const ROOTS = ['reservations', 'appConfig', 'queues', 'appState', 'agentStatus'];
+
+firebase.initializeApp(CONFIG.FIREBASE);
+const db = firebase.database();
+
+function log(msg, cls = 'info') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// 1. Vérifier l'état
+document.getElementById('btnCheck').addEventListener('click', async () => {
+  log('── Vérification de l\'état actuel ──');
+  let hasOld = false, hasNew = false;
+
+  for (const root of ROOTS) {
+    const snapOld = await db.ref(root).once('value');
+    const snapNew = await db.ref(`orgs/${TARGET_ORG}/${root}`).once('value');
+    const oldExists = snapOld.val() !== null;
+    const newExists = snapNew.val() !== null;
+    if (oldExists) hasOld = true;
+    if (newExists) hasNew = true;
+    log(`/${root} : ${oldExists ? '✓ données existantes' : '✗ vide'} → orgs/${TARGET_ORG}/${root} : ${newExists ? '✓ déjà migré' : '✗ vide'}`,
+        oldExists ? 'ok' : 'warn');
+  }
+
+  if (hasNew && hasOld) {
+    log('✅ Données déjà présentes sous /orgs/ — vérifiez puis nettoyez la racine.', 'ok');
+    document.getElementById('btnVerify').disabled = false;
+  } else if (hasNew && !hasOld) {
+    log('✅ Migration déjà effectuée, racine déjà nettoyée.', 'ok');
+    document.getElementById('btnVerify').disabled = false;
+  } else if (hasOld && !hasNew) {
+    log('✅ Prêt pour la migration !', 'ok');
+    document.getElementById('btnMigrate').disabled = false;
+  } else {
+    log('ℹ Aucune donnée trouvée ni à la racine ni sous /orgs/.', 'warn');
+  }
+});
+
+// 2. Migrer
+document.getElementById('btnMigrate').addEventListener('click', async () => {
+  document.getElementById('btnMigrate').disabled = true;
+  log('── Début de la migration ──');
+
+  try {
+    for (const root of ROOTS) {
+      const snap = await db.ref(root).once('value');
+      const val = snap.val();
+      if (val === null) {
+        log(`/${root} : vide, ignoré`, 'warn');
+        continue;
+      }
+      await db.ref(`orgs/${TARGET_ORG}/${root}`).set(val);
+      const keys = typeof val === 'object' ? Object.keys(val).length : 1;
+      log(`✅ /${root} → /orgs/${TARGET_ORG}/${root} (${keys} entrée${keys > 1 ? 's' : ''})`, 'ok');
+    }
+    log('── Migration terminée ! ──', 'ok');
+    document.getElementById('btnVerify').disabled = false;
+    document.getElementById('btnCleanup').disabled = false;
+  } catch (e) {
+    log(`❌ Erreur : ${e.message}`, 'err');
+    document.getElementById('btnMigrate').disabled = false;
+  }
+});
+
+// 3. Vérifier
+document.getElementById('btnVerify').addEventListener('click', async () => {
+  log('── Vérification post-migration ──');
+  let ok = true;
+  for (const root of ROOTS) {
+    const snap = await db.ref(`orgs/${TARGET_ORG}/${root}`).once('value');
+    if (snap.val() !== null) {
+      const keys = typeof snap.val() === 'object' ? Object.keys(snap.val()).length : 1;
+      log(`✅ orgs/${TARGET_ORG}/${root} — ${keys} entrée${keys > 1 ? 's' : ''}`, 'ok');
+    } else {
+      log(`⚠ orgs/${TARGET_ORG}/${root} — vide`, 'warn');
+    }
+  }
+  log(ok ? '✅ Vérification OK — l\'app devrait fonctionner normalement.' : '⚠ Certains nœuds sont vides.', ok ? 'ok' : 'warn');
+  if (ok) document.getElementById('btnCleanup').disabled = false;
+});
+
+// 4. Nettoyer les anciennes données
+document.getElementById('btnCleanup').addEventListener('click', async () => {
+  if (!confirm(`⚠ Supprimer définitivement les données à la racine Firebase ?\n(${ROOTS.join(', ')})\n\nCette action est IRRÉVERSIBLE.`)) return;
+  log('── Suppression des anciennes données ──', 'warn');
+  try {
+    for (const root of ROOTS) {
+      await db.ref(root).remove();
+      log(`🗑 /${root} supprimé`, 'warn');
+    }
+    log('✅ Nettoyage terminé.', 'ok');
+    document.getElementById('btnCleanup').disabled = true;
+  } catch (e) {
+    log(`❌ Erreur : ${e.message}`, 'err');
+  }
+});
+</script>
+</body>
+</html>

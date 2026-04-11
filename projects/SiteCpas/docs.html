@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — moncompagnon</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; }
+
+    /* ── Layout ────────────────────────────────────────── */
+    .docs-layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ───────────────────────────────────────── */
+    .docs-sidebar {
+      width: 260px; min-width: 260px; background: #1e293b; color: #e2e8f0;
+      padding: 2rem 1.25rem; position: sticky; top: 0; height: 100vh;
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .docs-sidebar-logo { display: flex; align-items: center; gap: .6rem; margin-bottom: 2rem; }
+    .docs-sidebar-logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+    .docs-sidebar-logo span { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .docs-sidebar h3 { font-size: .7rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: #94a3b8; margin: 1.5rem 0 .5rem; padding-left: .5rem; }
+    .docs-sidebar a {
+      display: block; padding: .45rem .75rem; border-radius: 8px; color: #cbd5e1;
+      text-decoration: none; font-size: .875rem; transition: all .15s;
+    }
+    .docs-sidebar a:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .docs-sidebar a.active { background: #3b82f6; color: #fff; font-weight: 600; }
+
+    /* ── Content ───────────────────────────────────────── */
+    .docs-content { flex: 1; padding: 3rem 4rem; max-width: 900px; }
+
+    /* ── Page header ───────────────────────────────────── */
+    .docs-page-header {
+      border-bottom: 2px solid #e2e8f0; padding-bottom: 1.5rem; margin-bottom: 2.5rem;
+    }
+    .docs-page-header h1 { font-size: 2rem; font-weight: 800; color: #0f172a; }
+    .docs-page-header p  { color: #64748b; margin-top: .4rem; font-size: 1.05rem; }
+
+    /* ── Sections ──────────────────────────────────────── */
+    .docs-section { margin-bottom: 4rem; scroll-margin-top: 2rem; }
+    .docs-section-header {
+      display: flex; align-items: center; gap: .75rem;
+      background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+      border: 1px solid #bfdbfe; border-radius: 16px;
+      padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .docs-section-icon { font-size: 2rem; }
+    .docs-section-header h2 { font-size: 1.4rem; font-weight: 700; color: #1e293b; }
+    .docs-section-header p  { font-size: .9rem; color: #64748b; margin-top: .1rem; }
+
+    /* ── Feature blocks ────────────────────────────────── */
+    .docs-features { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+    .docs-feat {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+      padding: 1.1rem 1.2rem; transition: box-shadow .15s;
+    }
+    .docs-feat:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .docs-feat-icon { font-size: 1.5rem; margin-bottom: .4rem; }
+    .docs-feat h3 { font-size: .95rem; font-weight: 700; color: #1e293b; margin-bottom: .25rem; }
+    .docs-feat p  { font-size: .85rem; color: #64748b; line-height: 1.5; }
+
+    /* ── Step list ─────────────────────────────────────── */
+    .docs-steps { list-style: none; counter-reset: steps; }
+    .docs-steps li {
+      counter-increment: steps; display: flex; gap: 1rem;
+      padding: .85rem 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .docs-steps li::before {
+      content: counter(steps); display: flex; align-items: center; justify-content: center;
+      min-width: 28px; height: 28px; border-radius: 50%; background: #3b82f6;
+      color: #fff; font-size: .8rem; font-weight: 700; flex-shrink: 0; margin-top: .1rem;
+    }
+    .docs-steps li strong { display: block; font-weight: 600; color: #1e293b; margin-bottom: .1rem; }
+    .docs-steps li span   { font-size: .875rem; color: #64748b; }
+
+    /* ── Tips ──────────────────────────────────────────── */
+    .docs-tip {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+      padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #92400e;
+    }
+    .docs-tip strong { color: #b45309; }
+    .docs-info {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;
+      padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #1e40af;
+    }
+
+    /* ── Shortcut badge ────────────────────────────────── */
+    .kbd { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px;
+      padding: .1rem .4rem; font-family: monospace; font-size: .8rem; color: #374151; }
+
+    /* ── General section divider ───────────────────────── */
+    .docs-divider { border: none; border-top: 2px dashed #e2e8f0; margin: 3rem 0; }
+
+    /* ── Back link ─────────────────────────────────────── */
+    .docs-back { display: inline-flex; align-items: center; gap: .4rem; color: #3b82f6;
+      text-decoration: none; font-size: .9rem; margin-bottom: 2rem; }
+    .docs-back:hover { color: #1d4ed8; }
+
+    /* ── Responsive ────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .docs-layout { flex-direction: column; }
+      .docs-sidebar { width: 100%; height: auto; position: static; }
+      .docs-content { padding: 2rem 1.25rem; max-width: 100%; }
+      .docs-features { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="docs-layout">
+
+  <!-- ══════════════════════════════════════════
+       SIDEBAR NAVIGATION
+  ═══════════════════════════════════════════ -->
+  <aside class="docs-sidebar">
+    <div class="docs-sidebar-logo">
+      <img src="assets/logo.jpg" alt="Logo" onerror="this.style.display='none'">
+      <span>moncompagnon</span>
+    </div>
+
+    <h3>Général</h3>
+    <a href="#general">Vue d'ensemble</a>
+    <a href="#connexion">Connexion & accès</a>
+    <a href="#notifs">Notifications</a>
+    <a href="#faq">FAQ</a>
+
+    <h3>Par poste</h3>
+    <a href="#role-accueil">🌟 Agent d'accueil</a>
+    <a href="#role-as">💙 Assistant·e Social·e</a>
+    <a href="#role-technicien">🔧 Technicien·ne</a>
+    <a href="#role-entretien">🧹 Agent d'entretien</a>
+    <a href="#role-chef">💼 Chef de service</a>
+    <a href="#role-direction">🏛️ Direction</a>
+    <a href="#role-admin">⚙️ Administrateur</a>
+
+    <a href="#mod-materiel">🖨️ Matériel</a>
+
+    <h3>Modules</h3>
+    <a href="#mod-agenda">Agenda</a>
+    <a href="#mod-queue">Files d'attente</a>
+    <a href="#mod-live">Vue Direct</a>
+    <a href="#mod-interventions">Interventions</a>
+    <a href="#mod-stats">Statistiques</a>
+  </aside>
+
+  <!-- ══════════════════════════════════════════
+       CONTENU PRINCIPAL
+  ═══════════════════════════════════════════ -->
+  <main class="docs-content">
+
+    <div class="docs-page-header">
+      <h1>Documentation moncompagnon</h1>
+      <p>Guide complet pour les agents du CPAS de Quaregnon — organisation, files d'attente, agenda partagé.</p>
+    </div>
+
+    <!-- ── VUE D'ENSEMBLE ──────────────────────────────── -->
+    <section class="docs-section" id="general">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">📖</div>
+        <div>
+          <h2>Vue d'ensemble</h2>
+          <p>Ce que fait moncompagnon et pourquoi il est là</p>
+        </div>
+      </div>
+
+      <p>moncompagnon est l'outil de gestion quotidienne du CPAS. Il centralise :</p>
+      <br>
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📅</div>
+          <h3>Agenda des locaux</h3>
+          <p>Réservez vos locaux à la journée, gérez les récurrences, évitez les conflits.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🎫</div>
+          <h3>Files d'attente</h3>
+          <p>Émission et appel de tickets en direct pour les permanences et accueil.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👥</div>
+          <h3>Présence équipe</h3>
+          <p>Qui est là, dans quel bureau, disponible ou en cours — en temps réel.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🔔</div>
+          <h3>Notifications</h3>
+          <p>Alertes, rappels, messages de l'équipe — sans chercher dans votre boîte mail.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🛠️</div>
+          <h3>Interventions</h3>
+          <p>Signalez un problème technique ou d'entretien — les bons intervenants sont prévenus.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📊</div>
+          <h3>Statistiques</h3>
+          <p>Vue chiffrée de l'activité du service — tickets traités, taux d'occupation, services demandés.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CONNEXION ───────────────────────────────────── -->
+    <section class="docs-section" id="connexion">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🔑</div>
+        <div>
+          <h2>Connexion &amp; accès</h2>
+          <p>Comment se connecter et gérer son compte</p>
+        </div>
+      </div>
+
+      <ol class="docs-steps">
+        <li>
+          <div>
+            <strong>Ouvrir l'application</strong>
+            <span>Allez sur l'adresse fournie par votre administrateur. Favorisez Chrome ou Firefox à jour.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Sélectionner votre nom</strong>
+            <span>Choisissez votre nom dans la liste des agents. Si vous n'apparaissez pas, contactez l'admin.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Entrer votre code</strong>
+            <span>Votre administrateur vous a communiqué un code personnel à 4 chiffres minimum. Gardez-le secret.</span>
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Premier accès</strong>
+            <span>La mascotte vous guidera dans une courte présentation des fonctionnalités de votre poste.</span>
+          </div>
+        </li>
+      </ol>
+
+      <div class="docs-tip">
+        <strong>Mot de passe oublié ?</strong> Contactez votre administrateur — il peut réinitialiser votre code depuis les paramètres.
+      </div>
+      <div class="docs-info">
+        L'application fonctionne sans installation. Ajoutez-la à votre bureau : dans Chrome, cliquez sur <strong>⋮ → Installer moncompagnon</strong>.
+      </div>
+    </section>
+
+    <!-- ── NOTIFICATIONS ───────────────────────────────── -->
+    <section class="docs-section" id="notifs">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🔔</div>
+        <div>
+          <h2>Notifications</h2>
+          <p>Comment lire et gérer vos alertes</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🚨</div>
+          <h3>Alerte (rouge)</h3>
+          <p>Message urgent — action immédiate requise. Son triple bip.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">⚠️</div>
+          <h3>Avertissement (orange)</h3>
+          <p>Information importante mais non urgente. Son double bip.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">ℹ️</div>
+          <h3>Info (bleue)</h3>
+          <p>Notification informative standard. Son discret.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">💬</div>
+          <h3>Répondre</h3>
+          <p>Certaines notifications permettent de répondre directement — cliquez sur "Répondre".</p>
+        </div>
+      </div>
+
+      <ol class="docs-steps">
+        <li><div><strong>Accéder aux notifications</strong><span>Cliquez sur la cloche 🔔 en haut à droite. Un badge rouge indique les non-lues.</span></div></li>
+        <li><div><strong>Lire et archiver</strong><span>Les notifications récentes sont affichées. Cliquez sur ✕ pour archiver, ou utilisez "Tout marquer lu".</span></div></li>
+        <li><div><strong>Répondre à une demande</strong><span>Si un collègue vous a contacté via le panneau Interventions ou Requête, vous pouvez lui répondre directement.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- ── FAQ ─────────────────────────────────────────── -->
+    <section class="docs-section" id="faq">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">❓</div>
+        <div><h2>FAQ</h2><p>Questions fréquentes</p></div>
+      </div>
+
+      <ol class="docs-steps">
+        <li><div><strong>L'application ne se charge pas</strong><span>Vérifiez votre connexion internet. Essayez de vider le cache du navigateur (<span class="kbd">Ctrl+Shift+R</span>). Si le problème persiste, contactez l'admin.</span></div></li>
+        <li><div><strong>Mon nom n'apparaît pas dans la liste</strong><span>Votre administrateur doit d'abord vous créer un compte depuis les Paramètres → Gestion des agents.</span></div></li>
+        <li><div><strong>Je n'entends pas les sons de notification</strong><span>Vérifiez que le son de votre ordinateur n'est pas coupé. Les sons utilisent l'API audio du navigateur — ils fonctionnent sans extension.</span></div></li>
+        <li><div><strong>Ma file d'attente affiche 0 alors qu'il y a des gens</strong><span>Vérifiez que votre bureau est ouvert (bouton "Ouvrir bureau" en haut). Un bureau fermé n'accepte pas de tickets.</span></div></li>
+        <li><div><strong>Je ne vois pas le bouton Statistiques</strong><span>Les stats sont réservées aux rôles admin, direction et chef de service. Contactez votre administrateur si vous pensez y avoir accès.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- ── MATÉRIEL COMPLÉMENTAIRE ───────────────────────── -->
+    <section class="docs-section" id="mod-materiel">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-color:#cbd5e1">
+        <div class="docs-section-icon">🖨️</div>
+        <div>
+          <h2>Matériel complémentaire</h2>
+          <p>Équipements recommandés pour tirer le meilleur de moncompagnon — à discuter avec votre intégrateur</p>
+        </div>
+      </div>
+
+      <div class="docs-info">
+        <strong>Important :</strong> La sélection et l'installation du matériel doit être discutée avec votre intégrateur ou prestataire informatique. Il connaît votre infrastructure et pourra vous conseiller les options les mieux adaptées à votre contexte.
+      </div>
+
+      <div class="docs-features" style="grid-template-columns:1fr 1fr">
+        <div class="docs-feat" style="border-left:3px solid #3b82f6">
+          <div class="docs-feat-icon">🖨️</div>
+          <h3>Imprimante tickets <span style="font-size:.75rem;background:#dbeafe;color:#1d4ed8;padding:.1rem .4rem;border-radius:.3rem;font-weight:600">Recommandé</span></h3>
+          <p>Une imprimante thermique <strong>Epson TM-T20</strong> (ou série TM) est idéale pour imprimer les tickets numérotés. Compatible réseau, silencieuse, et sans encre — elle s'intègre directement avec le module tickets de moncompagnon.</p>
+        </div>
+        <div class="docs-feat" style="border-left:3px solid #8b5cf6">
+          <div class="docs-feat-icon">📋</div>
+          <h3>Alternative : tickets nominatifs</h3>
+          <p>Si vous ne souhaitez pas d'imprimante physique, moncompagnon supporte les <strong>tickets nominatifs</strong> : le bénéficiaire donne son nom à l'accueil, il est appelé par son prénom sur l'écran public. Aucun matériel supplémentaire nécessaire.</p>
+        </div>
+        <div class="docs-feat" style="border-left:3px solid #059669">
+          <div class="docs-feat-icon">🖥️</div>
+          <h3>Écrans publics en salle d'attente <span style="font-size:.75rem;background:#d1fae5;color:#065f46;padding:.1rem .4rem;border-radius:.3rem;font-weight:600">Recommandé</span></h3>
+          <p>Un ou plusieurs écrans affichant la <strong>vue publique</strong> de moncompagnon (numéros appelés, bureaux disponibles). N'importe quel téléviseur ou moniteur avec navigateur web fait l'affaire — connecté en Wi-Fi ou câble Ethernet.</p>
+        </div>
+        <div class="docs-feat" style="border-left:3px solid #f59e0b">
+          <div class="docs-feat-icon">📟</div>
+          <h3>Borne tactile kiosque <span style="font-size:.75rem;background:#fef3c7;color:#92400e;padding:.1rem .4rem;border-radius:.3rem;font-weight:600">Optionnel</span></h3>
+          <p>Une tablette ou un écran tactile sur pied permet aux bénéficiaires de <strong>prendre eux-mêmes un ticket</strong> en choisissant leur service. Recommandé si l'accueil est souvent surchargé ou absent. Si un agent d'accueil est toujours présent, la borne est optionnelle.</p>
+        </div>
+        <div class="docs-feat" style="border-left:3px solid #64748b">
+          <div class="docs-feat-icon">💻</div>
+          <h3>Postes agents</h3>
+          <p>Chaque agent doit disposer d'un <strong>ordinateur, d'une tablette ou d'un smartphone</strong> avec un navigateur web récent (Chrome ou Firefox recommandé). moncompagnon fonctionne entièrement dans le navigateur — aucune installation requise.</p>
+        </div>
+        <div class="docs-feat" style="border-left:3px solid #94a3b8">
+          <div class="docs-feat-icon">📶</div>
+          <h3>Réseau &amp; connectivité</h3>
+          <p>Une connexion <strong>Wi-Fi stable ou câble Ethernet</strong> est nécessaire pour tous les postes. moncompagnon est hébergé sur Firebase (Google) — aucun serveur local à maintenir.</p>
+        </div>
+      </div>
+
+      <div class="docs-tip">
+        <strong>Conseil intégration :</strong> Discutez avec votre intégrateur du câblage réseau pour les écrans publics et la borne kiosque, et de la compatibilité réseau de votre imprimante Epson. La configuration matérielle se fait une seule fois — moncompagnon gère le reste.
+      </div>
+    </section>
+
+    <hr class="docs-divider">
+
+    <!-- ══════════════════════════════════════════
+         GUIDES PAR POSTE
+    ═══════════════════════════════════════════ -->
+
+    <!-- ── AGENT D'ACCUEIL ────────────────────────────── -->
+    <section class="docs-section" id="role-accueil">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#ecfdf5,#f0fdfa);border-color:#6ee7b7">
+        <div class="docs-section-icon">🌟</div>
+        <div>
+          <h2>Guide — Agent d'accueil</h2>
+          <p>Tu es en première ligne. Voici tout ce qu'il faut savoir pour gérer ton poste.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🎫</div>
+          <h3>Émettre un ticket</h3>
+          <p>Depuis la Vue Direct, sélectionnez le groupe de file et cliquez "Émettre un ticket". Le numéro s'affiche sur la vue publique automatiquement.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👥</div>
+          <h3>Voir les statuts équipe</h3>
+          <p>La Vue Direct → onglet Équipe montre qui est disponible, dans quel bureau, absent ou en route.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📢</div>
+          <h3>Diffuser un message</h3>
+          <p>Bouton "📢 Diffuser" dans le header. Sélectionnez les rôles destinataires et envoyez votre message en 3 secondes.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📋</div>
+          <h3>Vue Direct complète</h3>
+          <p>Voyez tous les bureaux, leur taux d'occupation, les tickets en attente et les agents présents — tout en une page.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size:1rem;font-weight:700;margin:.5rem 0">Routine du matin</h3>
+      <ol class="docs-steps">
+        <li><div><strong>Ouvrir l'application &amp; se connecter</strong><span>La mascotte vous accueille avec les infos du jour (météo, messages).</span></div></li>
+        <li><div><strong>Activer la Vue Direct</strong><span>Bouton "📋 Direct" dans le header. C'est votre vue principale pour la journée.</span></div></li>
+        <li><div><strong>Vérifier les bureaux ouverts</strong><span>Chaque agent doit avoir ouvert son bureau. Si un bureau est vide, contactez l'agent concerné.</span></div></li>
+        <li><div><strong>Commencer l'accueil des bénéficiaires</strong><span>Émettez les tickets au fur et à mesure des arrivées. Les agents voient les demandes en direct.</span></div></li>
+      </ol>
+
+      <div class="docs-tip">
+        <strong>Astuce :</strong> Si la file d'un bureau est trop longue, utilisez "📢 Diffuser" pour prévenir l'agent qu'il peut appeler plus vite ou demander un renfort.
+      </div>
+    </section>
+
+    <!-- ── ASSISTANT SOCIAL ───────────────────────────── -->
+    <section class="docs-section" id="role-as">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#eff6ff,#f0f9ff);border-color:#93c5fd">
+        <div class="docs-section-icon">💙</div>
+        <div>
+          <h2>Guide — Assistant·e Social·e</h2>
+          <p>Ton agenda, ta file et ta coordination équipe — tout au même endroit.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📅</div>
+          <h3>Agenda rendez-vous</h3>
+          <p>Vues Jour, Semaine, Mois. Réservez un local, ajoutez un service et un agent. Les conflits sont détectés automatiquement.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🎫</div>
+          <h3>Appel de ticket</h3>
+          <p>Depuis votre bureau, appelez le prochain bénéficiaire en un clic. Il voit son numéro affiché sur l'écran public.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📤</div>
+          <h3>Signaler un problème</h3>
+          <p>Bouton "📤 Requête" → choisissez "Technique" ou "Entretien" pour prévenir les intervenants appropriés.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👥</div>
+          <h3>Disponibilité collègues</h3>
+          <p>Vue Direct → onglet Équipe. Vous voyez instantanément si un collègue est disponible pour un renvoi ou une coordination.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size:1rem;font-weight:700;margin:.5rem 0">Ouvrir votre bureau</h3>
+      <ol class="docs-steps">
+        <li><div><strong>Vue Direct → Mon bureau</strong><span>Votre rôle est lié à un bureau spécifique. Cliquez "Ouvrir bureau" pour signaler votre présence.</span></div></li>
+        <li><div><strong>Voir les tickets en attente</strong><span>Le compteur sur votre carte bureau indique combien de personnes attendent. Appelez le suivant via le bouton "⬇️ Appeler".</span></div></li>
+        <li><div><strong>Fermer votre bureau en partant</strong><span>Cliquez "Fermer bureau" à la fin de votre permanence. Les bénéficiaires ne seront plus dirigés vers votre local.</span></div></li>
+      </ol>
+
+      <div class="docs-info">
+        <strong>Rendez-vous récurrents :</strong> Créez un rendez-vous hebdomadaire ou mensuel en une seule action depuis le formulaire de réservation → section "Récurrence".
+      </div>
+    </section>
+
+    <!-- ── TECHNICIEN ─────────────────────────────────── -->
+    <section class="docs-section" id="role-technicien">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-color:#7dd3fc">
+        <div class="docs-section-icon">🔧</div>
+        <div>
+          <h2>Guide — Technicien·ne</h2>
+          <p>Gérez les demandes d'intervention technique et restez informé de l'état des locaux.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🛠️</div>
+          <h3>Panneau Interventions</h3>
+          <p>Bouton "🛠️ Interventions" dans le header. Vous y voyez toutes les demandes techniques qui vous sont adressées, triées par statut.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🙋</div>
+          <h3>Prendre en charge</h3>
+          <p>Cliquez "🙋 Je prends" pour vous assigner une intervention. L'agent demandeur reçoit une notification automatique.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">✅</div>
+          <h3>Terminer &amp; reporter</h3>
+          <p>Marquez une intervention comme terminée ou reportée. Le demandeur est notifié à chaque changement d'état.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">💬</div>
+          <h3>Commenter</h3>
+          <p>Ajoutez un commentaire sur une intervention pour informer le demandeur de l'avancement ou poser une question.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size:1rem;font-weight:700;margin:.5rem 0">Statuts d'une intervention</h3>
+      <ol class="docs-steps">
+        <li><div><strong>🟡 Ouverte</strong><span>Nouvelle demande — personne n'a encore pris en charge. Prenez-la ou assignez-la.</span></div></li>
+        <li><div><strong>🔵 En cours</strong><span>Vous avez pris en charge. Le demandeur sait que vous travaillez dessus.</span></div></li>
+        <li><div><strong>⏸ Reportée</strong><span>Impossible de traiter maintenant. Sera visible dans l'onglet "Reportées" pour ne pas l'oublier.</span></div></li>
+        <li><div><strong>✅ Terminée</strong><span>Intervention résolue. Le demandeur reçoit une notification de résolution.</span></div></li>
+      </ol>
+
+      <div class="docs-tip">
+        <strong>Badge rouge sur 🛠️ :</strong> Indique le nombre de demandes ouvertes non prises en charge. Vérifiez régulièrement — surtout après une notification.
+      </div>
+    </section>
+
+    <!-- ── AGENT D'ENTRETIEN ──────────────────────────── -->
+    <section class="docs-section" id="role-entretien">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border-color:#86efac">
+        <div class="docs-section-icon">🧹</div>
+        <div>
+          <h2>Guide — Agent·e d'entretien</h2>
+          <p>Simple et rapide — voici l'essentiel pour votre quotidien.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🛠️</div>
+          <h3>Interventions entretien</h3>
+          <p>Les demandes d'entretien (nettoyage, aménagement) vous parviennent via le panneau "🛠️ Interventions". Vous ne voyez que les demandes de type "entretien".</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📅</div>
+          <h3>Planning</h3>
+          <p>Consultez l'agenda pour voir les réservations de la journée — utile pour planifier le nettoyage des locaux selon leur occupation.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👥</div>
+          <h3>Équipe présente</h3>
+          <p>Voyez qui est là aujourd'hui. Utile pour savoir à qui s'adresser en cas de question ou pour coordonner une tâche.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🔔</div>
+          <h3>Notifications</h3>
+          <p>Vous recevez une alerte sonore quand une nouvelle demande d'entretien arrive. Vérifiez la cloche 🔔 en haut.</p>
+        </div>
+      </div>
+
+      <ol class="docs-steps">
+        <li><div><strong>Se connecter le matin</strong><span>Ouvrez l'application, sélectionnez votre nom et entrez votre code.</span></div></li>
+        <li><div><strong>Vérifier les interventions</strong><span>Cliquez sur "🛠️ Interventions" — s'il y a un badge rouge, c'est qu'une nouvelle demande vous attend.</span></div></li>
+        <li><div><strong>Prendre en charge et traiter</strong><span>Cliquez "🙋 Je prends", effectuez l'intervention, puis "✓ Terminée". L'agent demandeur est informé.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- ── CHEF DE SERVICE ────────────────────────────── -->
+    <section class="docs-section" id="role-chef">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#fefce8,#fffbeb);border-color:#fde047">
+        <div class="docs-section-icon">💼</div>
+        <div>
+          <h2>Guide — Chef de service</h2>
+          <p>Coordonnez votre équipe et suivez l'activité de votre service.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👥</div>
+          <h3>Suivi équipe</h3>
+          <p>Vue Direct → onglet Équipe. Présences, absences, bureaux ouverts — tout en temps réel pour votre service.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📊</div>
+          <h3>Statistiques</h3>
+          <p>Bouton "📊 Stats" → tickets traités, taux d'occupation, services les plus demandés — par jour, semaine ou mois.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📅</div>
+          <h3>Agenda partagé</h3>
+          <p>Visualisez les réservations de tous les locaux. Ajoutez, modifiez ou supprimez une réservation pour n'importe quel agent.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🔔</div>
+          <h3>Alertes absence</h3>
+          <p>Quand un agent déclare une absence ou un retard, vous pouvez être notifié selon la configuration des alertes.</p>
+        </div>
+      </div>
+
+      <div class="docs-info">
+        <strong>Inviter des agents à un RDV :</strong> Dans le formulaire de réservation, la section "Agents invités" vous permet d'ajouter des collègues — ils voient le RDV dans leur agenda avec un badge 👥.
+      </div>
+    </section>
+
+    <!-- ── DIRECTION ──────────────────────────────────── -->
+    <section class="docs-section" id="role-direction">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#fdf4ff,#fae8ff);border-color:#e879f9">
+        <div class="docs-section-icon">🏛️</div>
+        <div>
+          <h2>Guide — Direction</h2>
+          <p>Vue globale de l'activité et accès aux données de pilotage.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📊</div>
+          <h3>Dashboard complet</h3>
+          <p>Accès à toutes les statistiques : réservations, files d'attente, agents actifs, services les plus demandés, heures de pointe.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">📤</div>
+          <h3>Export données</h3>
+          <p>Exportez les statistiques en CSV depuis le Dashboard → bouton "📥 Exporter CSV".</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👁️</div>
+          <h3>Vue globale</h3>
+          <p>Agenda multi-locaux, présences de tous les agents, état de l'ensemble du service en temps réel.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🗓️</div>
+          <h3>Export iCal</h3>
+          <p>Bouton d'export iCal pour synchroniser votre agenda avec Outlook, Google Calendar ou tout autre agenda.</p>
+        </div>
+      </div>
+
+      <div class="docs-tip" style="background:#f0f9ff;border-color:#7dd3fc;color:#0c4a6e">
+        <strong>🖨️ Matériel :</strong> Avant le déploiement, discutez avec votre intégrateur du matériel nécessaire — imprimante tickets Epson, écrans publics en salle d'attente, borne kiosque optionnelle, postes agents. Tout est détaillé dans la section <a href="#mod-materiel" style="color:#0369a1;font-weight:600">Matériel complémentaire</a>.
+      </div>
+    </section>
+
+    <!-- ── ADMINISTRATEUR ─────────────────────────────── -->
+    <section class="docs-section" id="role-admin">
+      <div class="docs-section-header" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-color:#fdba74">
+        <div class="docs-section-icon">⚙️</div>
+        <div>
+          <h2>Guide — Administrateur</h2>
+          <p>Configuration, gestion des agents et des paramètres de l'organisation.</p>
+        </div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat">
+          <div class="docs-feat-icon">👤</div>
+          <h3>Gestion des agents</h3>
+          <p>Paramètres → Agents. Ajoutez, renommez, changez le code ou le rôle d'un agent. Définissez des rôles personnalisés avec des permissions précises.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🏠</div>
+          <h3>Configuration des lieux</h3>
+          <p>Paramètres → Lieux. Créez des lieux avec leurs locaux, horaires d'ouverture et jours actifs.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🚩</div>
+          <h3>Feature flags</h3>
+          <p>Paramètres → Fonctionnalités. Activez/désactivez les modules (files d'attente, borne kiosk, push PWA, vue publique…) sans toucher au code.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🎫</div>
+          <h3>Files d'attente</h3>
+          <p>Paramètres → Files. Créez et configurez les groupes de files (nom, locaux associés). Chaque groupe a son propre préfixe de ticket.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🖥️</div>
+          <h3>Écrans publics</h3>
+          <p>Créez des écrans multi-vues pour l'affichage public. Chaque écran peut montrer un sous-ensemble de locaux.</p>
+        </div>
+        <div class="docs-feat">
+          <div class="docs-feat-icon">🧹</div>
+          <h3>Vider les locaux</h3>
+          <p>Paramètres → section "Fin de journée" → bouton "Vider tous les locaux". Réinitialise toutes les présences en un clic.</p>
+        </div>
+      </div>
+
+      <h3 style="font-size:1rem;font-weight:700;margin:.5rem 0">Créer un nouvel agent</h3>
+      <ol class="docs-steps">
+        <li><div><strong>Ouvrir les Paramètres</strong><span>Bouton ⚙️ Paramètres dans le header. Accessible uniquement avec le rôle admin.</span></div></li>
+        <li><div><strong>Section "Agents"</strong><span>Entrez le nom complet de l'agent dans le champ et cliquez "Ajouter".</span></div></li>
+        <li><div><strong>Définir le code</strong><span>Dans la liste des agents, cliquez sur le cadenas 🔒 pour définir le code de l'agent.</span></div></li>
+        <li><div><strong>Assigner un rôle</strong><span>Cliquez sur "Rôle" pour attribuer un rôle prédéfini ou personnalisé. Le rôle détermine les fonctionnalités visibles.</span></div></li>
+        <li><div><strong>Communiquer le code à l'agent</strong><span>Transmettez le code en personne ou par message sécurisé. L'agent peut se connecter immédiatement.</span></div></li>
+      </ol>
+
+      <div class="docs-tip">
+        <strong>Sécurité :</strong> Ne partagez jamais les codes par email ou messagerie non sécurisée. Si un agent perd son code, réinitialisez-le depuis les Paramètres.
+      </div>
+
+      <div class="docs-tip" style="background:#f0f9ff;border-color:#7dd3fc;color:#0c4a6e;margin-top:1rem">
+        <strong>🖨️ Matériel :</strong> En tant qu'administrateur, vous êtes souvent l'interlocuteur du prestataire informatique. Consultez la section <a href="#mod-materiel" style="color:#0369a1;font-weight:600">Matériel complémentaire</a> pour connaître les équipements recommandés (imprimante Epson, écrans publics, borne kiosque) et préparer votre discussion avec l'intégrateur.
+      </div>
+    </section>
+
+    <hr class="docs-divider">
+
+    <!-- ══════════════════════════════════════════
+         GUIDES MODULES
+    ═══════════════════════════════════════════ -->
+
+    <!-- ── MODULE AGENDA ─────────────────────────────── -->
+    <section class="docs-section" id="mod-agenda">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">📅</div>
+        <div><h2>Module — Agenda</h2><p>Réserver un local, gérer les récurrences, voir les conflits</p></div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat"><div class="docs-feat-icon">📋</div><h3>Vue Jour</h3><p>Grille horaire complète avec tous les locaux. Cliquez sur une case libre pour réserver. Les créneaux occupés s'affichent avec couleur agent.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">📆</div><h3>Vue Semaine</h3><p>Vue condensée 5 jours. Cliquez sur un créneau pour ouvrir le formulaire de réservation sur ce jour.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🗓️</div><h3>Vue Mois</h3><p>Aperçu global avec indicateur coloré de disponibilité par jour. Cliquez sur un jour pour aller en vue Jour.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🔒</div><h3>Permanences</h3><p>Une réservation permanente bloque un local toute la journée. Elle apparaît en fond sombre et ne peut être écrasée qu'avec confirmation.</p></div>
+      </div>
+
+      <ol class="docs-steps">
+        <li><div><strong>Nouvelle réservation</strong><span>Cliquez sur une case libre en vue Jour, ou sur "+ Réserver" dans le header.</span></div></li>
+        <li><div><strong>Remplir le formulaire</strong><span>Local, service, agent, heure de début et fin. Ajoutez optionnellement un commentaire ou des agents invités.</span></div></li>
+        <li><div><strong>Récurrence (optionnel)</strong><span>Section "Récurrence" → Quotidien / Hebdomadaire / Mensuel. Définissez une date de fin si nécessaire.</span></div></li>
+        <li><div><strong>Sauvegarder</strong><span>Cliquez "Enregistrer". En cas de conflit, une boîte de dialogue vous propose de résoudre ou annuler.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- ── MODULE FILE D'ATTENTE ──────────────────────── -->
+    <section class="docs-section" id="mod-queue">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🎫</div>
+        <div><h2>Module — Files d'attente</h2><p>Tickets, appels, flux de bénéficiaires</p></div>
+      </div>
+
+      <ol class="docs-steps">
+        <li><div><strong>Ouvrir votre bureau</strong><span>Vue Direct → votre carte bureau → "Ouvrir bureau". Le bureau apparaît comme disponible pour l'accueil.</span></div></li>
+        <li><div><strong>Émission de tickets</strong><span>L'accueil émet les tickets via Vue Direct → "Émettre un ticket" sur votre groupe de file. Le numéro apparaît sur l'écran public.</span></div></li>
+        <li><div><strong>Appel du prochain</strong><span>Cliquez "⬇️ Appeler" sur votre carte bureau. Le bénéficiaire est appelé sur l'écran public avec un son.</span></div></li>
+        <li><div><strong>Clôture</strong><span>En fin de permanence, cliquez "Fermer bureau". Les bénéficiaires suivants seront redirigés vers les bureaux ouverts.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- ── MODULE LIVE ─────────────────────────────────── -->
+    <section class="docs-section" id="mod-live">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">📋</div>
+        <div><h2>Module — Vue Direct</h2><p>Dispatch en temps réel de l'ensemble du service</p></div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat"><div class="docs-feat-icon">🏢</div><h3>Mode Bureau</h3><p>Vous voyez uniquement votre bureau. Parfait pour les agents en permanence — appel de ticket, statut, file.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🌐</div><h3>Mode Accueil</h3><p>Tous les bureaux visibles avec leur état (occupé, libre, fermé), le nombre de personnes en attente et l'agent présent.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🔍</div><h3>Recherche agent</h3><p>Tapez le nom d'un collègue dans la barre de recherche pour le localiser instantanément dans l'organisation.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">⏸</div><h3>Mode Ne pas déranger</h3><p>Activez le mode DND depuis votre profil pour bloquer les notifications entrantes pendant un entretien important.</p></div>
+      </div>
+    </section>
+
+    <!-- ── MODULE INTERVENTIONS ───────────────────────── -->
+    <section class="docs-section" id="mod-interventions">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🛠️</div>
+        <div><h2>Module — Interventions</h2><p>Signaler et gérer les demandes techniques et d'entretien</p></div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat"><div class="docs-feat-icon">📤</div><h3>Envoyer une requête</h3><p>Bouton "📤 Requête" → choisissez le type (Technique / Entretien / Autre), décrivez le problème, précisez le local et le niveau d'urgence.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🛠️</div><h3>Gérer (tech/entretien)</h3><p>Panneau "🛠️ Interventions" (visible pour les techniciens et agents d'entretien). Prenez en charge, commentez, résolvez.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🔔</div><h3>Notifications automatiques</h3><p>Le demandeur reçoit une notification à chaque changement d'état : prise en charge, reportée, résolue, commentaire.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🚨</div><h3>Urgence</h3><p>Cochez "Urgent" pour envoyer une alerte sonore (triple bip) aux intervenants. Utilisez avec discernement.</p></div>
+      </div>
+    </section>
+
+    <!-- ── MODULE STATISTIQUES ────────────────────────── -->
+    <section class="docs-section" id="mod-stats">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">📊</div>
+        <div><h2>Module — Statistiques</h2><p>Dashboard de pilotage — réservations, tickets, activité</p></div>
+      </div>
+
+      <div class="docs-features">
+        <div class="docs-feat"><div class="docs-feat-icon">📅</div><h3>Périodes</h3><p>Aujourd'hui / 7 jours / 30 jours. Sélectionnez la période en haut du dashboard.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">📈</div><h3>Graphique quotidien</h3><p>Réservations et tickets par jour sous forme de barres verticales. Survolez pour voir le détail.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">🏆</div><h3>Top services</h3><p>Les services les plus réservés sur la période — utile pour identifier les pics de demande.</p></div>
+        <div class="docs-feat"><div class="docs-feat-icon">📥</div><h3>Export CSV</h3><p>Bouton en bas du dashboard — toutes les données dans un fichier Excel-compatible.</p></div>
+      </div>
+    </section>
+
+    <p style="text-align:center;color:#94a3b8;font-size:.8rem;margin-top:3rem;padding-bottom:2rem">
+      moncompagnon — Documentation v1 · CPAS de Quaregnon · 2026
+    </p>
+
+  </main>
+</div>
+
+<script>
+// Highlight active sidebar link on scroll
+const sections = document.querySelectorAll('.docs-section');
+const links     = document.querySelectorAll('.docs-sidebar a');
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
