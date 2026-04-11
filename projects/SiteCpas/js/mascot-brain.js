@@ -197,6 +197,25 @@ const MascotBrain = {
     checkReady();
   },
 
+  // ── Helpers animation visiteur ─────────────────────────────────
+  _showVisitor(el) {
+    el.style.display = 'flex';
+    el.classList.remove('ms-visitor-leave');
+    // Double rAF pour laisser le navigateur calculer le display avant la transition
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.classList.add('ms-visitor-enter');
+    }));
+  },
+  _hideVisitor(el) {
+    document.getElementById('msVisitorBubble')?.classList.add('hidden');
+    el.classList.remove('ms-visitor-enter');
+    el.classList.add('ms-visitor-leave');
+    setTimeout(() => {
+      el.style.display = 'none';
+      el.classList.remove('ms-visitor-leave');
+    }, 500);
+  },
+
   // ── Scan contexte → choix état ─────────────────────────────────
   _scan() {
     if (this._state === 'concentrating' || this._state === 'visitor') return;
@@ -539,8 +558,7 @@ const MascotBrain = {
     clearInterval(this._scanInterval);
 
     // Entrée festive
-    visitorEl.classList.remove('hidden', 'ms-visitor-leave');
-    visitorEl.classList.add('ms-visitor-enter');
+    this._showVisitor(visitorEl);
     this._applyState('idle', 1, 'stars', []);
 
     let t = 600;
@@ -577,13 +595,7 @@ const MascotBrain = {
 
     // Clôture de la fête
     setTimeout(() => {
-      document.getElementById('msVisitorBubble')?.classList.add('hidden');
-      visitorEl.classList.remove('ms-visitor-enter');
-      visitorEl.classList.add('ms-visitor-leave');
-      setTimeout(() => {
-        visitorEl.classList.add('hidden');
-        visitorEl.classList.remove('ms-visitor-leave');
-      }, 500);
+      this._hideVisitor(visitorEl);
       // Mascotte encore festive un moment
       this._state    = 'idle';
       this._priority = 99;
@@ -627,8 +639,7 @@ const MascotBrain = {
     clearInterval(this._scanInterval);
 
     // Animation d'entrée
-    visitorEl.classList.remove('hidden', 'ms-visitor-leave');
-    visitorEl.classList.add('ms-visitor-enter');
+    this._showVisitor(visitorEl);
 
     // Séquence de dialogue
     let t = 800;
@@ -665,16 +676,7 @@ const MascotBrain = {
 
     // Départ du visiteur
     setTimeout(() => {
-      // Masquer bulle visiteur
-      document.getElementById('msVisitorBubble')?.classList.add('hidden');
-
-      // Animation de départ
-      visitorEl.classList.remove('ms-visitor-enter');
-      visitorEl.classList.add('ms-visitor-leave');
-      setTimeout(() => {
-        visitorEl.classList.add('hidden');
-        visitorEl.classList.remove('ms-visitor-leave');
-      }, 500);
+      this._hideVisitor(visitorEl);
 
       // Mascotte hôte heureuse
       this._state    = 'idle';

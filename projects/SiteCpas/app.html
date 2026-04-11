@@ -159,23 +159,25 @@
   <!-- Mascotte centrée en haut — se balade + yeux suivent la souris -->
   <div class="hs-mascot-stage">
     <div class="hs-bubble hidden" id="hsMascotBubble"><span id="hsMascotBubbleText"></span></div>
-    <!-- Visiteur inter-org (injecté par MascotBrain) -->
-    <div class="ms-visitor hidden" id="msVisitor">
-      <div class="ms-visitor-bubble hidden" id="msVisitorBubble">
-        <span id="msVisitorBubbleText"></span>
-      </div>
-      <div>
+    <!-- Duo : visiteur + mascotte locale côte à côte -->
+    <div class="hs-mascot-duo">
+      <!-- Visiteur inter-org -->
+      <div class="ms-visitor" id="msVisitor" style="display:none">
+        <div class="ms-visitor-bubble hidden" id="msVisitorBubble">
+          <span id="msVisitorBubbleText"></span>
+        </div>
         <svg class="ms-visitor-svg" id="msVisitorSvg"
              viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="ms-visitor-name" id="msVisitorName"></div>
       </div>
-      <div class="ms-visitor-name" id="msVisitorName"></div>
-    </div>
-    <div class="hs-mascot-walker">
-      <div class="hs-mascot-wrap" aria-hidden="true">
-        <svg class="hs-mascot-svg" id="hsMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg"></svg>
-      </div>
-      <div id="hsBonjourHint" class="hs-bonjour-hint hidden" aria-hidden="true">
-        <span>👋 Dis-moi bonjour !</span>
+      <!-- Mascotte locale -->
+      <div class="hs-mascot-walker">
+        <div class="hs-mascot-wrap" aria-hidden="true">
+          <svg class="hs-mascot-svg" id="hsMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div id="hsBonjourHint" class="hs-bonjour-hint hidden" aria-hidden="true">
+          <span>👋 Dis-moi bonjour !</span>
+        </div>
       </div>
     </div>
     <div class="hs-mascot-btns">
