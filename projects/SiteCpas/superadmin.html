@@ -952,12 +952,13 @@ async function deploySubmission(subKey) {
 ══════════════════════════════════════════════════════════════════ */
 
 const MASCOT_TYPES = {
-  poulpe: { label: 'Poulpe 🐙', name: 'Bulbi' },
-  chat:   { label: 'Chat 🐱',   name: 'Mochi' },
-  lion:   { label: 'Lion 🦁',   name: 'Léo'   },
-  renard: { label: 'Renard 🦊', name: 'Rusty' },
-  lapin:  { label: 'Lapin 🐰',  name: 'Lulu'  },
-  hibou:  { label: 'Hibou 🦉',  name: 'Sacha' },
+  poulpe: { label: 'Poulpe 🐙',  name: 'Bulbi'    },
+  chat:   { label: 'Chat 🐱',    name: 'Mochi'    },
+  robot:  { label: 'Robot 🤖',   name: 'Pixo'     },
+  renard: { label: 'Renard 🦊',  name: 'Roux'     },
+  singe:  { label: 'Singe 🐒',   name: 'Coco'     },
+  ourson: { label: 'Ourson 🐻',  name: 'Nounours' },
+  cori:   { label: 'Cori ❤️',   name: 'Cori'     },
 };
 
 function _orgDirRef() { return db.ref('superadmin/orgDirectory'); }
