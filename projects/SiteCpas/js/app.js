@@ -1756,6 +1756,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.initQueue();
   DB.initAgentStatus();
   DB.initBureauState();
+  DB.initPreferredPending();
   DB.initAbsences();
   DB.initPlanning();
   DB.listenRequests();
@@ -2338,12 +2339,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   // ─── "Ne veut voir qu'un agent" — circuit préférentiel ────────
   // ═══════════════════════════════════════════════════════════════
 
-  // Initialiser les listeners preferredPending pour les locaux visibles
-  DB.onConfigChange(() => {
-    const lieux  = DB.getLieux();
-    const locals = Object.values(lieux).flatMap(l => l.localIds || []).map(Number);
-    if (locals.length) DB.initPreferredPending(locals);
-  });
+  // initPreferredPending() est appelé directement au démarrage (voir ligne init)
 
   // Nettoyer les données sensibles expirées au démarrage
   DB.cleanExpiredPreferredData?.();
@@ -2630,12 +2626,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   };
 
-  // Re-render vue Direct quand preferredPending change
-  DB.onConfigChange(() => {
-    const lieux  = DB.getLieux();
-    const locals = Object.values(lieux).flatMap(l => l.localIds || []).map(Number);
-    locals.forEach(localId => DB.onPreferredPending(localId, () => LIVE.render()));
-  });
+  // Re-render vue Direct quand preferredPending change (listener top-level)
+  DB.onPreferredPendingChange(() => { LIVE.render(); HOME.render(); });
 
   // ═══════════════════════════════════════════════════════════════
   // ─── Panic button ─────────────────────────────────────────────

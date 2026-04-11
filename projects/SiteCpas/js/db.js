@@ -760,35 +760,22 @@ const DB = {
   },
 
   _preferredPending: {},
-  _preferredPendingCbs: {},
-  _preferredPendingListeners: {},
+  _preferredPendingCbs: [],
 
-  initPreferredPending(localIds) {
-    // Détacher les anciens listeners avant de rebinder (évite l'accumulation)
-    Object.keys(this._preferredPendingListeners).forEach(lid => {
-      this._ref(`appState/preferredPending/${lid}`).off('value', this._preferredPendingListeners[lid]);
-    });
-    this._preferredPendingListeners = {};
-
-    localIds.forEach(lid => {
-      const listener = snap => {
-        const val = snap.val();
-        if (val) this._preferredPending[lid] = val;
-        else delete this._preferredPending[lid];
-        (this._preferredPendingCbs[lid] || []).forEach(fn => fn(val));
-      };
-      this._preferredPendingListeners[lid] = listener;
-      this._ref(`appState/preferredPending/${lid}`).on('value', listener);
+  // Listener top-level unique — fiable dès le démarrage, sans dépendance au config timing
+  initPreferredPending() {
+    this._ref('appState/preferredPending').on('value', snap => {
+      this._preferredPending = snap.val() || {};
+      this._preferredPendingCbs.forEach(fn => fn());
     });
   },
 
-  onPreferredPending(localId, fn) {
-    if (!this._preferredPendingCbs[localId]) this._preferredPendingCbs[localId] = [];
-    this._preferredPendingCbs[localId].push(fn);
+  onPreferredPendingChange(fn) {
+    this._preferredPendingCbs.push(fn);
   },
 
   getPreferredPending(localId) {
-    return this._preferredPending[localId] || null;
+    return this._preferredPending[String(localId)] || this._preferredPending[localId] || null;
   },
 
   async createPreferredRequest(benefName, targetAgentKey, accueilAgentKey, publicPlaceId, publicPlaceName, localId) {
