@@ -679,13 +679,16 @@ const STEPS = [
           <span class="ob-card-title">Votre équipe</span>
         </div>
         <div class="ob-field">
-          <label class="ob-label">Liste des collaborateurs</label>
+          <label class="ob-label">Liste des collaborateurs <span style="font-size:.7rem;color:rgba(255,255,255,.35);text-transform:none;font-weight:400">— optionnel</span></label>
           <div class="ob-hint">Un collaborateur par ligne — format : <strong style="color:rgba(255,255,255,.6)">Prénom Nom ; Nom public</strong></div>
           <textarea class="ob-textarea" id="fAgents" placeholder="Sophie Martin ; Sophie&#10;Marc Dubois ; Marc&#10;Julie Renard ; Julie">${esc(formData.agents)}</textarea>
           <div class="ob-count" id="fAgentCount"></div>
         </div>
         <div class="ob-hint" style="margin-top:-.3rem">
           💡 Le <strong>nom affiché</strong> est utilisé pour la connexion. Le <strong>nom public</strong> apparaît dans la salle d'attente (ex: "Sophie" plutôt que "Sophie Martin").
+        </div>
+        <div class="ob-hint" style="margin-top:-.1rem;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.2);border-radius:.65rem;padding:.55rem .75rem;color:rgba(255,255,255,.6)">
+          ✨ Quelques noms suffisent pour une première expérience — votre administrateur pourra compléter la liste à tout moment depuis l'application.
         </div>`;
     },
     onMount() {
