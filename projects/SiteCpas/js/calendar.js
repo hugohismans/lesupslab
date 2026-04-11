@@ -933,13 +933,14 @@ const LIVE = {
         // _lastCalled[l] peut être false (sentinelle effacé) → traiter comme null
         const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? (this._lastCalled[l] || null) : null;
         const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
-        // Bouton "Bénéficiaire parti" : visible dès qu'on est en permanence (isBusyLocal)
-        const dismissBtn = (!isAccueil && isBusyLocal)
+        // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
+        // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
+        const dismissBtn = (!isAccueil && busyWithPref)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
         const infoHint  = lastCallOngoing
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}${dismissBtn}</div>`
-          : (!isAccueil && isBusyLocal ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
+          : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
           : '';
