@@ -365,14 +365,16 @@ body {
 
 .next-call-label  { font-size: 1.5rem; font-weight: 700; color: var(--muted); margin: .75rem 0 .25rem; text-transform: uppercase; letter-spacing: .08em; }
 .next-call-ticket {
-  font-size: 4rem; font-weight: 900; color: #1d4ed8;
+  font-size: 2.8rem; font-weight: 900; color: #1d4ed8;
   background: #eff6ff; border: 3px solid #bfdbfe;
-  border-radius: 16px; padding: .1rem 1.5rem;
-  letter-spacing: .08em; margin: .25rem 0;
+  border-radius: 16px; padding: .05rem 1.2rem;
+  letter-spacing: .08em; margin: .2rem 0;
   display: inline-block;
 }
+.next-call-name   { font-size: 4rem; font-weight: 900; color: #1e3a8a; line-height: 1.1; margin: .1rem 0; }
 .next-call-group  { font-size: 2.2rem; font-weight: 900; color: var(--text); line-height: 1.1; margin: .1rem 0 0; }
-.next-call-bureau { font-size: 2rem; font-weight: 800; color: #1d4ed8; line-height: 1.2; margin: .15rem 0 .75rem; }
+.next-call-bureau { font-size: 2rem; font-weight: 800; color: #1d4ed8; line-height: 1.2; margin: .1rem 0 .4rem; }
+.next-call-agent  { font-size: 1.15rem; font-weight: 700; color: #1d4ed8; margin-bottom: .5rem; }
 .next-call-hint   { font-size: 1rem; color: var(--muted); }
 .next-call-queue  { margin-top: .75rem; font-size: .9rem; font-weight: 600; color: #fff; background: #64748b; border-radius: 999px; padding: .3rem 1rem; display: inline-block; }
 

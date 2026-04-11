@@ -680,12 +680,14 @@ const DB = {
     }
   },
 
-  async writeLastCall(localId, agentName, groupName, ticketNum) {
+  async writeLastCall(localId, agentName, groupName, ticketNum, ticketLabel, ticketName) {
     await this._ref('appState/lastCall').set({
-      localId:   Number(localId),
-      agentName: agentName  || null,
-      groupName: groupName  || null,
-      ticketNum: ticketNum  || null,
+      localId:     Number(localId),
+      agentName:   agentName   || null,
+      groupName:   groupName   || null,
+      ticketNum:   ticketNum   || null,   // display (rétro-compatibilité)
+      ticketLabel: ticketLabel || null,   // ex. "M01"
+      ticketName:  ticketName  || null,   // ex. "Michel" (tickets nominatifs)
       ts: Date.now()
     });
   },

@@ -1094,7 +1094,7 @@ const LIVE = {
             Number(o.localId) === routed.localId && o._start <= _now2 && (o._end === null || o._end >= _now2)
           );
           const _pubAgent2 = _occ2?.agent ? DB.getAgentPublicName(_occ2.agent) : null;
-          await DB.writeLastCall(routed.localId, _pubAgent2, _grpObj?.name || null, _calledTicket.display);
+          await DB.writeLastCall(routed.localId, _pubAgent2, _grpObj?.name || null, _calledTicket.display, _calledTicket.label, _calledTicket.name);
           LIVE._storeCall(routed.localId, _calledTicket, _occ2);
         } else {
           await DB.incrementGroupOverflow(grpId);
@@ -1207,7 +1207,7 @@ const LIVE = {
             const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
             const _ticket   = await DB.callNextTicket(grp.id);
             showAgentCallNotif(_ticket.label, _ticket.name);
-            await DB.writeLastCall(localId, _pubAgent, grp?.name || null, _ticket.display);
+            await DB.writeLastCall(localId, _pubAgent, grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
             LIVE._storeCall(localId, _ticket, _occ);
           }
         } else {
@@ -1242,7 +1242,7 @@ const LIVE = {
           const _grp      = DB.getQueueGroups()[grpId];
           const _ticket   = await DB.callNextTicket(grpId);
           showAgentCallNotif(_ticket.label, _ticket.name);
-          await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display);
+          await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
           LIVE._storeCall(localId, _ticket, _occ);
         };
         if (isAccueilBtn) {
@@ -1371,7 +1371,7 @@ const LIVE = {
               const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
               const _ticket   = await DB.callNextTicket(grp.id);
               showAgentCallNotif(_ticket.label, _ticket.name);
-              await DB.writeLastCall(localId, _pubAgent, grp.name || null, _ticket.display);
+              await DB.writeLastCall(localId, _pubAgent, grp.name || null, _ticket.display, _ticket.label, _ticket.name);
               LIVE._storeCall(localId, _ticket, _occ);
             }
           }

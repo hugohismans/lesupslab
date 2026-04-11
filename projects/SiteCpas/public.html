@@ -45,8 +45,10 @@
     <div class="next-call-bell" id="nextCallBell">🔔</div>
     <div class="next-call-label" id="nextCallLabel">Bénéficiaire suivant</div>
     <div class="next-call-ticket hidden" id="nextCallTicket"></div>
+    <div class="next-call-name hidden" id="nextCallName"></div>
     <div class="next-call-group hidden" id="nextCallGroup"></div>
     <div class="next-call-bureau" id="nextCallBureau"></div>
+    <div class="next-call-agent hidden" id="nextCallAgent"></div>
     <div class="next-call-hint" id="nextCallHint">Veuillez vous présenter au bureau</div>
     <div class="next-call-queue hidden" id="nextCallQueue"></div>
   </div>
@@ -478,18 +480,32 @@ let _queueReady = false;
 let _callDismissTimer = null;
 let _preferredPending = {}; // { localId: { displayName, agentPublicName, requestId } }
 
-function showNextCall(localId, agentName, groupName, ticketNum) {
+function showNextCall(localId, agentName, groupName, ticketNum, ticketLabel, ticketName) {
   const bureauLabel = getPublicLocalLabel(localId);
   playChime();
-  document.getElementById('nextCallBell').textContent   = '🔔';
-  document.getElementById('nextCallLabel').textContent  = 'Bénéficiaire suivant';
+  document.getElementById('nextCallBell').textContent  = '🔔';
+  document.getElementById('nextCallLabel').textContent = 'Bénéficiaire suivant';
+
+  // Numéro de ticket (ticketLabel prioritaire, sinon ticketNum si c'est un code)
+  const label   = ticketLabel || (!ticketName ? ticketNum : null);
+  const nameVal = ticketName  || (ticketLabel ? ticketNum : null); // nom = ticketName ou display si label séparé
+
   const ticketEl = document.getElementById('nextCallTicket');
-  if (ticketNum) {
-    ticketEl.textContent = ticketNum;
+  if (label) {
+    ticketEl.textContent = `n°${label}`;
     ticketEl.classList.remove('hidden');
   } else {
     ticketEl.classList.add('hidden');
   }
+
+  const nameEl = document.getElementById('nextCallName');
+  if (nameVal) {
+    nameEl.textContent = nameVal;
+    nameEl.classList.remove('hidden');
+  } else {
+    nameEl.classList.add('hidden');
+  }
+
   const grpEl = document.getElementById('nextCallGroup');
   if (groupName) {
     grpEl.textContent = groupName;
@@ -497,11 +513,18 @@ function showNextCall(localId, agentName, groupName, ticketNum) {
   } else {
     grpEl.classList.add('hidden');
   }
+
   document.getElementById('nextCallBureau').textContent = bureauLabel;
-  const hint = agentName
-    ? `Veuillez vous présenter au bureau — vous serez reçu(e) par ${agentName}`
-    : 'Veuillez vous présenter au bureau';
-  document.getElementById('nextCallHint').textContent = hint;
+
+  const agentEl = document.getElementById('nextCallAgent');
+  if (agentName) {
+    agentEl.textContent = `Vous serez accueilli(e) par ${agentName}`;
+    agentEl.classList.remove('hidden');
+  } else {
+    agentEl.classList.add('hidden');
+  }
+
+  document.getElementById('nextCallHint').textContent = 'Veuillez vous présenter au bureau';
   document.getElementById('nextCallQueue').classList.add('hidden');
   const overlay = document.getElementById('nextCallOverlay');
   overlay.classList.remove('hidden');
@@ -537,7 +560,7 @@ db.ref(`orgs/${ORG_ID}/appState/lastCall`).on('value', snap => {
   if (d.ts === _lastCallTs) return;
   _lastCallTs = d.ts;
   if (_locals.includes(Number(d.localId))) {
-    showNextCall(Number(d.localId), d.agentName || null, d.groupName || null, d.ticketNum || null);
+    showNextCall(Number(d.localId), d.agentName || null, d.groupName || null, d.ticketNum || null, d.ticketLabel || null, d.ticketName || null);
   }
 });
 
