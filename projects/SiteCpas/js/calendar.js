@@ -830,9 +830,11 @@ const LIVE = {
       }
 
       // File individuelle de ce local
-      const queue       = DB.getQueue(l);
-      const isBusyLocal = queue >= 1;
-      const isOpen      = DB.isBureauOpen(l);
+      const queue          = DB.getQueue(l);
+      const pendingPref    = DB.getPreferredPending(l);
+      // queue=1 posée pour une réservation preferred ne compte pas comme "occupé"
+      const isBusyLocal    = queue >= 1 && !pendingPref;
+      const isOpen         = DB.isBureauOpen(l);
       const pause       = DB.getBureauPause(l);
 
       // En mode bureau : si pas encore ouvert → carte "Ouvrir le bureau"
@@ -927,7 +929,7 @@ const LIVE = {
           ${grpHint}
           ${preferredBtn}
           ${preferredRecallBtn}
-          ${queue > 0 ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${queue > 0 && !pendingPref ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
           <div class="lv-queue-actions">${leaveBtn}${printBtnHtml}${pauseBtn}${fermerBtn}</div>
@@ -938,9 +940,19 @@ const LIVE = {
         const noQueueWarn = !isAccueil && isOpen && l === currentAgentOpenLocal
           ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — préviens l'agent d'accueil pour qu'il t'envoie des bénéficiaires.</div>`
           : '';
+        const noGrpPreferred = !isAccueil ? DB.getPreferredPending(l) : null;
+        const noGrpPrefBtn = noGrpPreferred
+          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}">📥 Recevoir ${escapeHtml(noGrpPreferred.displayName || '?')} qui ne souhaite voir que moi</button>`
+          : '';
+        const noGrpPrefRecall = isAccueil ? DB.getPreferredPending(l) : null;
+        const noGrpPrefRecallBtn = noGrpPrefRecall
+          ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(noGrpPrefRecall.displayName || '?')}" data-agent="${escapeHtml(noGrpPrefRecall.agentPublicName || '')}">📢 Rappeler ${escapeHtml(noGrpPrefRecall.displayName || '?')}</button>`
+          : '';
         queueHtml = `<div class="lv-queue lv-queue-agent">
           ${noQueueWarn}
-          ${queue > 0 ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${noGrpPrefBtn}
+          ${noGrpPrefRecallBtn}
+          ${queue > 0 && !noGrpPreferred && !noGrpPrefRecall ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           <div class="lv-queue-actions">${printBtnHtml}${pauseBtn}${fermerBtn}</div>
         </div>`;
       }
