@@ -345,12 +345,17 @@ function render() {
       </div>`;
     }
 
-    // Bureau ouvert mais sans réservation active
-    const declSvc = _bureauState[String(l)]?.declaredService || null;
-    return `<div class="pub-card pub-free">
+    // Bureau ouvert mais sans réservation active (walk-in / permanence)
+    const declSvc   = _bureauState[String(l)]?.declaredService || null;
+    const wiBusy    = isLocalBusy(l);
+    const wiClass   = wiBusy ? 'pub-busy' : 'pub-free';
+    const wiStatus  = wiBusy ? '🔴 Occupé' : '🟢 Disponible';
+    const wiWaiting = Math.max(0, getQueueForLocal(l) - 1);
+    return `<div class="pub-card ${wiClass}">
       <div class="pub-card-label">${label}</div>
-      <div class="pub-card-status">🟢 Disponible</div>
+      <div class="pub-card-status">${wiStatus}</div>
       ${declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : ''}
+      ${wiWaiting > 0 ? `<div class="pub-card-until">${wiWaiting} personne${wiWaiting > 1 ? 's' : ''} en attente</div>` : ''}
       ${descHtml}
       ${prefBanner}
     </div>`;

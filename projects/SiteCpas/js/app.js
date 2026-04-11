@@ -2449,13 +2449,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     const enableNamed = DB.getFeature('enableNamedTickets');
     const displayName = enableNamed ? (benefName.split(' ')[0] || benefName) : 'Bénéficiaire';
 
-    // Déterminer le public name de l'agent cible
-    const now2  = new Date();
-    const dayS2 = new Date(now2); dayS2.setHours(0,0,0,0);
-    const dayE2 = new Date(now2); dayE2.setHours(23,59,59,999);
-    const occ   = DB.getInRange(dayS2, dayE2).find(o =>
-      Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
-    );
     const agentPublicName = DB.getAgentPublicName(targetAgentKey);
 
     // Créer la demande en Firebase

@@ -17,8 +17,9 @@ const NOTIF = {
   _livePanel:     null,
   _liveBell:      null,
   _liveBadge:     null,
-  _livePanelOpen: false,
-  _localIdSeq:    0,
+  _livePanelOpen:    false,
+  _reminderInterval: null,
+  _localIdSeq:       0,
 
   init() {
     this._agentKey = sessionStorage.getItem('cpas_current_agent_key');
@@ -255,7 +256,8 @@ const NOTIF = {
       });
     };
 
-    setInterval(check, 30000);
+    clearInterval(this._reminderInterval);
+    this._reminderInterval = setInterval(check, 30000);
     setTimeout(check, 5000); // premier check léger après le chargement
   },
 
@@ -501,11 +503,11 @@ const NOTIF = {
     });
 
     // Démarrer les countdowns temps réel
-    this._startCountdowns(target);
+    this._startCountdowns();
   },
 
   _countdownInterval: null,
-  _startCountdowns(panelEl) {
+  _startCountdowns() {
     clearInterval(this._countdownInterval);
     // Chercher les countdowns dans tous les panels visibles
     const getPanels = () => [this._panel, this._livePanel].filter(p => p && !p.classList.contains('hidden'));

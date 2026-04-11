@@ -351,7 +351,6 @@ const MODAL = {
       { key: 'enableNotif',      label: 'Centre de notifications',    desc: 'Cloche dans le header — panneau de notifications in-app' },
       { key: 'agentEmoji',       label: 'Emojis des agents',          desc: 'Afficher les emojis dans le calendrier' },
       { key: 'enableBackoffice', label: 'BackOffice',                 desc: 'Lieux internes non publics — présence des agents sans réservation ni queue' },
-      { key: 'enableMascot',    label: 'Assistant virtuel (Mascotte)', desc: 'Animation, conseils et personnalité de MonCompagnon au démarrage — désactiver pour une interface sobre avec boutons simples Bonjour / Au revoir' },
     ];
 
     // Modules avancés (dans le bloc <details>)
@@ -549,7 +548,27 @@ const MODAL = {
     DB.onConfigChange(() => { if (g('stPublicPlacesList')) renderPublicPlaces(); });
 
     // ── Mascotte ──────────────────────────────────────────────────
-    const mascotGrid = g('stMascotGrid');
+    const mascotToggle      = g('stMascotEnabledToggle');
+    const mascotPickerLabel = g('stMascotPickerLabel');
+    const mascotGrid        = g('stMascotGrid');
+
+    const _applyMascotToggleUI = (enabled) => {
+      if (mascotToggle) mascotToggle.checked = !!enabled;
+      if (mascotPickerLabel) mascotPickerLabel.style.opacity = enabled ? '' : '.4';
+      if (mascotGrid) mascotGrid.style.opacity = enabled ? '' : '.4';
+      if (mascotGrid) mascotGrid.querySelectorAll('button').forEach(b => b.disabled = !enabled);
+    };
+
+    if (mascotToggle) {
+      _applyMascotToggleUI(DB.getFeature('enableMascot') !== false);
+      mascotToggle.addEventListener('change', () => this._requireAdmin(async () => {
+        await DB.setFeature('enableMascot', mascotToggle.checked || null);
+        _applyMascotToggleUI(mascotToggle.checked);
+        applyFeatureFlags();
+        showToast(mascotToggle.checked ? 'Mascotte activée ✓' : 'Mascotte désactivée — boutons simples actifs');
+      }));
+    }
+
     if (mascotGrid) {
       const currentMascot = DB.getMascotId();
       mascotGrid.innerHTML = Object.entries(MASCOTS).map(([id, m]) => `
@@ -557,6 +576,9 @@ const MODAL = {
           <svg class="st-mascot-preview" viewBox="${m.viewBox}" xmlns="http://www.w3.org/2000/svg">${m.svg}</svg>
           <span>${m.label}</span>
         </button>`).join('');
+      if (DB.getFeature('enableMascot') === false) {
+        mascotGrid.querySelectorAll('button').forEach(b => b.disabled = true);
+      }
       mascotGrid.querySelectorAll('.st-mascot-btn').forEach(btn => {
         btn.addEventListener('click', () => this._requireAdmin(async () => {
           await DB.setMascotId(btn.dataset.mascotId);
@@ -1824,9 +1846,13 @@ function showWaitBanner(queueCount, ticketNum) {
 }
 
 let _agentCallTimer = null;
-function showAgentCallNotif(bureauLabel) {
-  const banner = document.getElementById('agentCallBanner');
+function showAgentCallNotif(ticketLabel, benefName) {
+  const banner    = document.getElementById('agentCallBanner');
+  const nameEl    = document.getElementById('agentCallName');
+  const ticketEl  = document.getElementById('agentCallTicket');
   if (!banner) return;
+  if (nameEl)   { nameEl.textContent   = benefName  || ''; nameEl.classList.toggle('hidden', !benefName); }
+  if (ticketEl) { ticketEl.textContent = ticketLabel ? `n°${ticketLabel}` : ''; ticketEl.classList.toggle('hidden', !ticketLabel); }
   banner.classList.remove('hidden');
   if (_agentCallTimer) clearTimeout(_agentCallTimer);
   _agentCallTimer = setTimeout(() => banner.classList.add('hidden'), 7000);

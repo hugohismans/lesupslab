@@ -531,31 +531,41 @@ const LIVE = {
   _lastCalled:        {},   // localId → { ticket, svc, localLabel, time }
 
   // Stocke le dernier ticket appelé pour un local (session uniquement)
-  _storeCall(localId, ticket, occ) {
-    const svc     = occ ? (occ.service === 'Autre' ? occ.serviceCustom : occ.service) : '';
-    const agent   = occ ? (occ.agent   === 'Autre' ? occ.agentCustom  : occ.agent)   : null;
+  // ticketInfo peut être une string (display) ou { display, label, name }
+  _storeCall(localId, ticketInfo, occ) {
+    const isObj     = ticketInfo && typeof ticketInfo === 'object';
+    const ticket    = isObj ? ticketInfo.display : ticketInfo;
+    const ticketLabel = isObj ? ticketInfo.label  : ticketInfo;
+    const ticketName  = isObj ? (ticketInfo.name || null) : null;
+    const svc      = occ ? (occ.service === 'Autre' ? occ.serviceCustom : occ.service) : '';
+    const agent    = occ ? (occ.agent   === 'Autre' ? occ.agentCustom  : occ.agent)   : null;
     const pubAgent = agent ? DB.getAgentPublicName(agent) : null;
-    this._lastCalled[localId] = { ticket, svc, pubAgent, localLabel: DB.getLocalLabel(localId), time: new Date() };
+    this._lastCalled[localId] = { ticket, ticketLabel, ticketName, svc, pubAgent, localLabel: DB.getLocalLabel(localId), time: new Date() };
   },
 
-  // Imprime le dernier ticket appelé pour un local
-  _printTicket(localId) {
-    const d = this._lastCalled[localId];
-    if (!d) return;
+  // Imprime un ticket avec les données passées directement
+  _doPrintTicket({ ticket, svc, localLabel }) {
     const area = document.getElementById('ticketPrintArea');
     if (!area) return;
     const orgName = document.getElementById('appOrgName')?.textContent || 'SiteCpas';
-    const hm = d.time.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+    const hm = new Date().toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
     area.innerHTML = `
       <div class="ticket-print">
         <div class="tp-org">${escapeHtml(orgName)}</div>
         <div class="tp-label">Ticket numéro</div>
-        <div class="tp-num">${escapeHtml(d.ticket || '—')}</div>
-        ${d.svc ? `<div class="tp-svc">${escapeHtml(d.svc)}</div>` : ''}
-        <div class="tp-local">${escapeHtml(d.localLabel)}</div>
+        <div class="tp-num">${escapeHtml(ticket || '—')}</div>
+        ${svc ? `<div class="tp-svc">${escapeHtml(svc)}</div>` : ''}
+        <div class="tp-local">${escapeHtml(localLabel)}</div>
         <div class="tp-time">${hm}</div>
       </div>`;
     window.print();
+  },
+
+  // Réimprime le dernier ticket appelé pour un local (bouton côté bureau)
+  _printTicket(localId) {
+    const d = this._lastCalled[localId];
+    if (!d) return;
+    this._doPrintTicket({ ticket: d.ticket, svc: d.svc, localLabel: d.localLabel });
   },
 
   // ── Rôle de l'utilisateur ─────────────────────────────────────────
@@ -864,7 +874,7 @@ const LIVE = {
         : '';
 
       const printBtnHtml = DB.getFeature('enableTicketPrint') && this._lastCalled[l]?.ticket
-        ? `<button class="lv-print-btn" data-local="${l}" title="Imprimer ticket ${this._lastCalled[l].ticket}">🖨 ${this._lastCalled[l].ticket}</button>`
+        ? `<button class="lv-print-btn" data-local="${l}" title="Réimprimer ticket ${this._lastCalled[l].ticket}">🖨 Réimprimer ${this._lastCalled[l].ticket}</button>`
         : '';
 
       if (grp) {
@@ -1053,13 +1063,19 @@ const LIVE = {
         }
         const routed = await DB.routeGroupQueue(grpId);
         const { label: ticket, resolvedName } = await DB.issueTicket(grpId, benefName);
+        // Impression du ticket côté accueil au moment de l'envoi
+        if (DB.getFeature('enableTicketPrint')) {
+          const _grpPrint   = DB.getQueueGroups()[grpId];
+          const _localLabel = routed ? DB.getLocalLabel(routed.localId) : (_grpPrint?.name || '');
+          LIVE._doPrintTicket({ ticket, svc: _grpPrint?.name || '', localLabel: _localLabel });
+        }
         // Informer l'agent si le prénom a été désambiguïsé (homonyme dans la même file)
         if (resolvedName && benefName && resolvedName !== benefName) {
           showToast(`Homonyme détecté — ce bénéficiaire sera appelé « ${resolvedName} » 👥`);
         }
         if (routed) {
           const _calledTicket = await DB.callNextTicket(grpId);
-          showRoutingToast(routed.label, _calledTicket);
+          showRoutingToast(routed.label, _calledTicket.display);
           const _grpObj = DB.getQueueGroups()[grpId];
           const _now2 = new Date();
           const _dayS2 = new Date(_now2); _dayS2.setHours(0,0,0,0);
@@ -1068,7 +1084,7 @@ const LIVE = {
             Number(o.localId) === routed.localId && o._start <= _now2 && (o._end === null || o._end >= _now2)
           );
           const _pubAgent2 = _occ2?.agent ? DB.getAgentPublicName(_occ2.agent) : null;
-          await DB.writeLastCall(routed.localId, _pubAgent2, _grpObj?.name || null, _calledTicket);
+          await DB.writeLastCall(routed.localId, _pubAgent2, _grpObj?.name || null, _calledTicket.display);
           LIVE._storeCall(routed.localId, _calledTicket, _occ2);
         } else {
           await DB.incrementGroupOverflow(grpId);
@@ -1159,7 +1175,6 @@ const LIVE = {
           if (!absorbed) {
             await DB.setQueue(localId, 0);
           } else {
-            showAgentCallNotif(DB.getLocalLabel(localId));
             const _now = new Date();
             const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
             const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
@@ -1168,7 +1183,8 @@ const LIVE = {
             );
             const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
             const _ticket   = await DB.callNextTicket(grp.id);
-            await DB.writeLastCall(localId, _pubAgent, grp?.name || null, _ticket);
+            showAgentCallNotif(_ticket.label, _ticket.name);
+            await DB.writeLastCall(localId, _pubAgent, grp?.name || null, _ticket.display);
             LIVE._storeCall(localId, _ticket, _occ);
           }
         } else {
@@ -1193,7 +1209,6 @@ const LIVE = {
         const doCall = async () => {
           await DB.setQueue(localId, 1);
           await DB.absorbGroupOverflow(grpId);
-          showAgentCallNotif(DB.getLocalLabel(localId));
           const _now  = new Date();
           const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
           const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
@@ -1203,7 +1218,8 @@ const LIVE = {
           const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
           const _grp      = DB.getQueueGroups()[grpId];
           const _ticket   = await DB.callNextTicket(grpId);
-          await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket);
+          showAgentCallNotif(_ticket.label, _ticket.name);
+          await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display);
           LIVE._storeCall(localId, _ticket, _occ);
         };
         if (isAccueilBtn) {
@@ -1323,7 +1339,6 @@ const LIVE = {
             if (grp && DB.getGroupOverflowQueue(grp.id) > 0) {
               await DB.setQueue(localId, 1);
               await DB.absorbGroupOverflow(grp.id);
-              showAgentCallNotif(DB.getLocalLabel(localId));
               const _now = new Date();
               const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
               const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
@@ -1332,7 +1347,8 @@ const LIVE = {
               );
               const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
               const _ticket   = await DB.callNextTicket(grp.id);
-              await DB.writeLastCall(localId, _pubAgent, grp.name || null, _ticket);
+              showAgentCallNotif(_ticket.label, _ticket.name);
+              await DB.writeLastCall(localId, _pubAgent, grp.name || null, _ticket.display);
               LIVE._storeCall(localId, _ticket, _occ);
             }
           }
@@ -1359,7 +1375,7 @@ const LIVE = {
         const grp = DB.getLocalGroup(localId);
         await DB.writeLastCall(localId, d.pubAgent ?? null, grp?.name ?? null, d.ticket);
         // Notif visuelle locale
-        showAgentCallNotif(d.localLabel);
+        showAgentCallNotif(d.ticketLabel || d.ticket, d.ticketName || null);
         showToast(`📢 Rappel envoyé — ticket ${d.ticket || ''}`);
       });
     });

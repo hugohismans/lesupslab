@@ -180,7 +180,7 @@ const DB = {
       .map(a => a.key);
   },
   getServicesWithKeys()   { return this._config.services; },
-  getById(id)             { return this._reservations[id] ? { id, ...this._reservations[id] } : null; },
+  getById(id)             { return this._data[id] ? { id, ...this._data[id] } : null; },
   getLocalLabel(id)       { return this._config.localLabels[id]       || `Local ${id}`; },
   getPublicLocalLabel(id) { return this._config.publicLabels[id]      || this.getLocalLabel(id); },
   getLocalDescription(id) { return this._config.localDescriptions[id] || ''; },
@@ -210,7 +210,7 @@ const DB = {
   },
 
   async moveOccurrence(id, occDateISO, newLocalId, newStartISO, newEndISO) {
-    const res = this._reservations[id];
+    const res = this._data[id];
     if (!res) throw new Error('Réservation introuvable');
     // Marquer l'occurrence originale comme exception
     await this._ref(`reservations/${id}/exceptions/${occDateISO}`).set(true);
@@ -656,7 +656,9 @@ const DB = {
     await this._ref(`queues/${today}/tcall_${groupId}`).set(called);
     // Supprimer le nom du bénéficiaire dès que le ticket est appelé (données sensibles)
     if (name) await this._ref(`queues/${today}/names_${groupId}/${called}`).remove();
-    return this.formatTicketDisplay(groupId, called, name);
+    const label   = this.formatTicket(groupId, called);
+    const display = name || label;
+    return { display, label, name: name || null };
   },
 
   async dismissTicket(groupId, ticketNumber) {
@@ -745,15 +747,24 @@ const DB = {
 
   _preferredPending: {},
   _preferredPendingCbs: {},
+  _preferredPendingListeners: {},
 
   initPreferredPending(localIds) {
+    // Détacher les anciens listeners avant de rebinder (évite l'accumulation)
+    Object.keys(this._preferredPendingListeners).forEach(lid => {
+      this._ref(`appState/preferredPending/${lid}`).off('value', this._preferredPendingListeners[lid]);
+    });
+    this._preferredPendingListeners = {};
+
     localIds.forEach(lid => {
-      this._ref(`appState/preferredPending/${lid}`).on('value', snap => {
+      const listener = snap => {
         const val = snap.val();
         if (val) this._preferredPending[lid] = val;
         else delete this._preferredPending[lid];
         (this._preferredPendingCbs[lid] || []).forEach(fn => fn(val));
-      });
+      };
+      this._preferredPendingListeners[lid] = listener;
+      this._ref(`appState/preferredPending/${lid}`).on('value', listener);
     });
   },
 
