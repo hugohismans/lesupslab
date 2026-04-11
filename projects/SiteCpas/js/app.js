@@ -945,7 +945,17 @@ const HOME = {
       const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
       const isDone    = DB.getAgentStatus(agentKey)?.status === 'done';
       if (isDone) {
-        // Retour en présent
+        // Retour en présent → vérifier si cet admin avait accordé un grant temporaire
+        const grant = DB.getTempAdminGrant();
+        if (grant && grant.grantedBy === agentKey) {
+          await DB.revokeTempAdminGrant();
+          // Notifier le temp-admin que ses droits sont révoqués
+          const adminName = agentName ? agentName.split(' ')[0] : 'L\'admin';
+          await DB.sendNotif(
+            `⚙️ Tes droits administrateur temporaires ont été révoqués — ${adminName} est de retour.`,
+            'info', grant.grantedTo
+          );
+        }
         await DB.setAgentStatus(agentKey, null);
         const prenom = agentName ? agentName.split(' ')[0] : null;
         const n = prenom ? ` ${prenom}` : '';
@@ -961,6 +971,11 @@ const HOME = {
         await DB.setAgentStatus(agentKey, 'done');
         const msg = this._getGoodbyePhrase(agentName);
         this._showBubble(msg);
+        // Si l'agent est admin → proposer un admin temporaire
+        const roleId = DB.getAgentPermRole(agentKey);
+        if (roleId === '__admin__') {
+          await _promptTempAdmin(agentKey, agentName);
+        }
       }
     });
 
@@ -1410,6 +1425,60 @@ const HOME = {
     }
   },
 };
+
+// ─── Modal admin temporaire ────────────────────────────────────────
+async function _promptTempAdmin(adminKey, adminName) {
+  const overlay = document.getElementById('tempAdminOverlay');
+  const select  = document.getElementById('tempAdminSelect');
+  if (!overlay || !select) return;
+
+  // Remplir la liste avec tous les agents sauf l'admin lui-même
+  const agents = DB.getAgentsWithKeys().filter(a => a.key && a.key !== adminKey);
+  select.innerHTML = '<option value="">— Aucun administrateur temporaire —</option>';
+  agents.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.key;
+    opt.textContent = a.name;
+    select.appendChild(opt);
+  });
+
+  overlay.classList.remove('hidden');
+
+  await new Promise(resolve => {
+    const confirm = document.getElementById('tempAdminConfirm');
+    const skip    = document.getElementById('tempAdminSkip');
+    const closeX  = overlay.querySelector('[data-close="tempAdminOverlay"]');
+
+    const close = () => {
+      overlay.classList.add('hidden');
+      confirm.removeEventListener('click', onConfirm);
+      skip.removeEventListener('click', onSkip);
+      closeX?.removeEventListener('click', onSkip);
+    };
+
+    const onConfirm = async () => {
+      const chosenKey = select.value;
+      close();
+      if (!chosenKey) { resolve(); return; }
+
+      await DB.setTempAdminGrant(chosenKey, adminKey);
+
+      const chosenName = DB.getAgentsWithKeys().find(a => a.key === chosenKey)?.name || 'Agent';
+      const adminPrenom = adminName ? adminName.split(' ')[0] : 'L\'admin';
+      await DB.sendNotif(
+        `⚙️ Tu es désigné·e administrateur·rice temporaire pendant l'absence de ${adminPrenom}. Tu recevras les notifications admin jusqu'à son retour.`,
+        'info', chosenKey
+      );
+      resolve();
+    };
+
+    const onSkip = () => { close(); resolve(); };
+
+    confirm.addEventListener('click', onConfirm);
+    skip.addEventListener('click', onSkip);
+    closeX?.addEventListener('click', onSkip);
+  });
+}
 
 function applyFeatureFlags() {
   const show = (id, visible) => {

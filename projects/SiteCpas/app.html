@@ -1538,5 +1538,31 @@
 })();
 </script>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL — Admin temporaire (affiché quand l'admin se déclare absent)
+═══════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="tempAdminOverlay">
+  <div class="modal modal-xs">
+    <div class="modal-hd">
+      <h2>⚙️ Admin absent</h2>
+      <button class="modal-x" data-close="tempAdminOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+      <p style="margin-bottom:.9rem;font-size:.9rem;color:#475569">
+        Souhaitez-vous désigner un <strong>administrateur temporaire</strong> pendant votre absence ?<br>
+        Il recevra les droits et notifications admin jusqu'à votre retour.
+      </p>
+      <label class="field-label" for="tempAdminSelect">Choisir un agent</label>
+      <select class="field-input" id="tempAdminSelect">
+        <option value="">— Aucun administrateur temporaire —</option>
+      </select>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="tempAdminSkip">Passer sans désigner</button>
+      <button class="btn-primary" id="tempAdminConfirm">Confirmer</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

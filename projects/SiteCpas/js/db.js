@@ -6,7 +6,7 @@ const DB = {
   _db:           null,
   _data:         {},
   _cbs:          [],
-  _config:       { agents: [], services: [], localLabels: {}, publicLabels: {}, permRoles: {}, agentRoles: {} },
+  _config:       { agents: [], services: [], localLabels: {}, publicLabels: {}, permRoles: {}, agentRoles: {}, tempAdminGrant: null },
   _configCbs:    [],
   _lieux:        {},
   _currentLieuId: null,
@@ -69,6 +69,7 @@ const DB = {
         orgLat:            d.meta?.lat          || null,
         orgLon:            d.meta?.lon          || null,
         endOfDayHour:      d.meta?.endOfDayHour ?? 17,
+        tempAdminGrant:    d.tempAdminGrant     || null,
       };
 
       // Charger les lieux triés par order
@@ -1195,7 +1196,20 @@ const DB = {
   },
 
   getAgentPermRole(agentKey) {
+    // Grant temporaire : l'agent désigné obtient le rôle __admin__ pendant l'absence
+    const grant = this._config.tempAdminGrant;
+    if (grant && grant.grantedTo === agentKey) return '__admin__';
     return this._config.agentRoles[agentKey] || null;
+  },
+
+  getTempAdminGrant() { return this._config.tempAdminGrant || null; },
+
+  async setTempAdminGrant(grantedTo, grantedBy) {
+    await this._ref('appConfig/tempAdminGrant').set({ grantedTo, grantedBy, grantedAt: Date.now() });
+  },
+
+  async revokeTempAdminGrant() {
+    await this._ref('appConfig/tempAdminGrant').remove();
   },
 
   // Vérifie si l'utilisateur courant a une permission donnée.
