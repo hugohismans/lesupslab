@@ -565,7 +565,14 @@ const DB = {
     const grp = (this._config.queueGroups || {})[groupId];
     if (!grp) return null;
     const localIds = (grp.localIds || []).map(Number);
-    const freeLocal = localIds.find(l => this.isBureauOpen(l) && this.getQueue(l) === 0 && !this.getBureauOptedOut(l));
+    // Un local est disponible si : ouvert, file vide, pas retiré, pas de préférence en attente, pas en cours avec un preferred
+    const freeLocal = localIds.find(l =>
+      this.isBureauOpen(l) &&
+      this.getQueue(l) === 0 &&
+      !this.getBureauOptedOut(l) &&
+      !this.getPreferredPending(l) &&
+      !this.isBureauBusyWithPreferred(l)
+    );
     if (freeLocal == null) return null; // tous occupés ou aucun ouvert
     await this.setQueue(freeLocal, 1);
     return { localId: freeLocal, label: this.getPublicLocalLabel(freeLocal) };
