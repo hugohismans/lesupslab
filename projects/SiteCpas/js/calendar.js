@@ -916,17 +916,10 @@ const LIVE = {
              </button>`
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
-        // "En cours" : uniquement depuis la session en mémoire (évite les fantômes Firebase)
-        // _lastCalled[l] peut être false (sentinelle effacé) → traiter comme null
+        // "En cours" et "Rappeler" : uniquement depuis la session en mémoire/localStorage
+        // (false = sentinelle "effacé volontairement" → traiter comme null)
         const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? (this._lastCalled[l] || null) : null;
-        // "Rappeler" : fallback Firebase si pas en mémoire (ticket routé depuis l'accueil)
-        // Seulement si === undefined : false = sentinelle "effacé volontairement"
-        const _fbLastCall = !isAccueil && this._lastCalled[l] === undefined ? DB.getLastCallForLocal(l) : null;
-        const _fbLastCallObj = _fbLastCall ? {
-          ticket: _fbLastCall.ticketNum || _fbLastCall.ticketLabel || null,
-          svc:    _fbLastCall.groupName || null,
-        } : null;
-        const lastCallAny = !isAccueil ? (this._lastCalled[l] || _fbLastCallObj || null) : null;
+        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
         const dismissBtn = (!isAccueil && busyWithPref)
