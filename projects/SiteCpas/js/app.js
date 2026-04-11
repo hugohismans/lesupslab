@@ -868,6 +868,17 @@ const HOME = {
       this._showBubble(tip);
     });
 
+    // ─ Bouton "🎯 Focus" ─────────────────────────────────────────────
+    document.getElementById('hsFocusBtn')?.addEventListener('click', () => {
+      if (window.MascotBrain?._state === 'concentrating') window.MascotBrain.exitFocus();
+      else window.MascotBrain?.enterFocus?.();
+    });
+
+    // ─ Bouton "🎉 Inviter mes amis" ──────────────────────────────────
+    document.getElementById('hsPartyBtn')?.addEventListener('click', () => {
+      window.MascotBrain?.triggerParty?.();
+    });
+
     // ─ Bouton refresh APIs (admin) ───────────────────────────────────
     document.getElementById('hsWeatherRefresh')?.addEventListener('click', async () => {
       const btn = document.getElementById('hsWeatherRefresh');
@@ -1660,6 +1671,21 @@ document.addEventListener('DOMContentLoaded', async function () {
   HOME.init();
   HOME.render();
 
+  // Initialiser le cerveau de la mascotte
+  if (typeof MascotBrain !== 'undefined') {
+    window.MascotBrain = MascotBrain;
+    MascotBrain.init();
+    // Révéler le bouton "Inviter mes amis" si l'orgDirectory contient des voisins
+    // (révélé uniquement si Firebase répond et si des orgs voisines existent)
+    firebase.database().ref('superadmin/orgDirectory').once('value').then(snap => {
+      const dir = snap.val();
+      const currentId = window.CONFIG?.ORG_ID || '';
+      const hasNeighbours = dir && Object.keys(dir).some(id => id !== currentId && dir[id].visitsEnabled !== false);
+      const partyBtn = document.getElementById('hsPartyBtn');
+      if (partyBtn && hasNeighbours) partyBtn.classList.remove('hidden');
+    }).catch(() => {});
+  }
+
   // ─── Badge agent connecté ──────────────────────────────────────
   (function initAgentBadge() {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key');
@@ -1992,6 +2018,7 @@ document.addEventListener('DOMContentLoaded', async function () {
           }
           await _sendPresenceNotifs(agentName, status, time, checkedGroups, comment, urgent);
           document.getElementById('presenceOverlay').classList.add('hidden');
+          if (!status || status === 'present') window.MascotBrain?.triggerAgentArrived?.(agentName);
           resolve();
         };
         const onCancel = () => { close(); resolve(); };
@@ -2006,6 +2033,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         await DB.sendNotif(`Votre statut a été mis à jour : ${lbl[status] || 'Présent(e)'}.`, 'info', key);
       }
       document.getElementById('presenceOverlay').classList.add('hidden');
+      if (!status || status === 'present') window.MascotBrain?.triggerAgentArrived?.(agentName);
     }
   });
   document.getElementById('presenceOverlay').addEventListener('click', e => {

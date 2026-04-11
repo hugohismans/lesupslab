@@ -3796,3 +3796,305 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   .mob-tab { min-height: 52px; }
   .mob-tab.active::before { top: 2px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MASCOT BRAIN — Animations réactives au contexte
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Keyframes états ─────────────────────────────────────────────── */
+
+@keyframes ms-happy {
+  0%,100% { transform: translateY(0) scale(1); }
+  20%     { transform: translateY(-18px) scale(1.05); }
+  40%     { transform: translateY(0) scale(.98); }
+  55%     { transform: translateY(-12px) scale(1.03); }
+  70%     { transform: translateY(0) scale(.99); }
+  82%     { transform: translateY(-7px) scale(1.01); }
+}
+
+@keyframes ms-excited {
+  0%   { transform: rotate(0) scale(1); }
+  15%  { transform: rotate(-8deg) scale(1.12); }
+  30%  { transform: rotate(8deg) scale(1.14); }
+  45%  { transform: rotate(-5deg) scale(1.10); }
+  60%  { transform: rotate(5deg) scale(1.12); }
+  80%  { transform: rotate(-2deg) scale(1.06); }
+  100% { transform: rotate(0) scale(1); }
+}
+
+@keyframes ms-sleepy {
+  0%,100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  25%     { transform: translateY(3px) rotate(-4deg); opacity: .88; }
+  50%     { transform: translateY(6px) rotate(-6deg); opacity: .82; }
+  75%     { transform: translateY(3px) rotate(-3deg); opacity: .88; }
+}
+
+@keyframes ms-stressed {
+  0%,100% { transform: translateX(0); }
+  10%     { transform: translateX(-6px) rotate(-2deg); }
+  20%     { transform: translateX(6px) rotate(2deg); }
+  30%     { transform: translateX(-5px) rotate(-1deg); }
+  40%     { transform: translateX(5px) rotate(1deg); }
+  50%     { transform: translateX(-3px); }
+  60%     { transform: translateX(3px); }
+}
+
+@keyframes ms-alarmed {
+  0%,100% { transform: translateX(0) scale(1); }
+  10%     { transform: translateX(-10px) scale(1.04); }
+  20%     { transform: translateX(10px) scale(.97); }
+  30%     { transform: translateX(-8px) scale(1.03); }
+  40%     { transform: translateX(8px) scale(.98); }
+  50%     { transform: translateX(-5px) rotate(-3deg); }
+  60%     { transform: translateX(5px) rotate(3deg); }
+}
+
+@keyframes ms-bored {
+  0%   { transform: rotate(0) translateY(0); }
+  15%  { transform: rotate(-3deg) translateY(2px); }
+  40%  { transform: rotate(3deg) translateY(4px); }
+  60%  { transform: rotate(-2deg) translateY(2px); }
+  80%  { transform: rotate(2deg) translateY(0); }
+  100% { transform: rotate(0) translateY(0); }
+}
+
+@keyframes ms-coffee {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  30%     { transform: translateY(-4px) rotate(-2deg); }
+  60%     { transform: translateY(-2px) rotate(2deg); }
+}
+
+@keyframes ms-cozy {
+  0%,100% { transform: rotate(0) scale(1); }
+  25%     { transform: rotate(-3deg) scale(1.02); }
+  75%     { transform: rotate(3deg) scale(1.02); }
+}
+
+@keyframes ms-celebrating {
+  0%   { transform: translateY(0) rotate(0); }
+  15%  { transform: translateY(-25px) rotate(-5deg) scale(1.1); }
+  30%  { transform: translateY(0) rotate(3deg); }
+  45%  { transform: translateY(-18px) rotate(5deg) scale(1.07); }
+  60%  { transform: translateY(0) rotate(-2deg); }
+  75%  { transform: translateY(-10px) rotate(2deg) scale(1.04); }
+  100% { transform: translateY(0) rotate(0); }
+}
+
+@keyframes ms-curious {
+  0%,100% { transform: rotate(0) scale(1); }
+  40%     { transform: rotate(6deg) scale(1.04) translateX(8px); }
+  70%     { transform: rotate(4deg) scale(1.02) translateX(5px); }
+}
+
+@keyframes ms-waving {
+  0%,100% { transform: translateY(0); }
+  20%     { transform: translateY(-10px) rotate(-5deg); }
+  40%     { transform: translateY(0) rotate(5deg); }
+  60%     { transform: translateY(-8px) rotate(-3deg); }
+  80%     { transform: translateY(0); }
+}
+
+@keyframes ms-deep-sleep {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  30%     { transform: translateY(4px) rotate(-5deg); }
+  60%     { transform: translateY(7px) rotate(-7deg); }
+}
+
+@keyframes ms-slow-blink {
+  0%,85%,100% { transform: scaleY(1); }
+  88%,98%     { transform: scaleY(0.05); }
+}
+
+@keyframes ms-eyes-closed {
+  0%,10%,90%,100% { transform: scaleY(1); }
+  15%,85%         { transform: scaleY(.05); }
+}
+
+/* ── Classes d'état sur .hs-mascot-stage ────────────────────────── */
+
+.ms-happy .hs-mascot-wrap    { animation: ms-happy 1.2s ease-in-out 3; }
+.ms-excited .hs-mascot-wrap  { animation: ms-excited 1s ease-in-out infinite; }
+.ms-sleepy .hs-mascot-wrap   { animation: ms-sleepy 3s ease-in-out infinite; }
+.ms-stressed .hs-mascot-wrap { animation: ms-stressed 0.5s ease-in-out 4; }
+.ms-alarmed .hs-mascot-wrap  { animation: ms-alarmed 0.4s ease-in-out infinite; }
+.ms-bored .hs-mascot-wrap    { animation: ms-bored 4s ease-in-out infinite; }
+.ms-coffee .hs-mascot-wrap   { animation: ms-coffee 3s ease-in-out infinite; }
+.ms-cozy .hs-mascot-wrap     { animation: ms-cozy 4s ease-in-out infinite; }
+.ms-celebrating .hs-mascot-wrap { animation: ms-celebrating 1.4s ease-in-out 3; }
+.ms-curious .hs-mascot-wrap  { animation: ms-curious 2.5s ease-in-out infinite; }
+.ms-waving .hs-mascot-wrap   { animation: ms-waving 0.6s ease-in-out 5; }
+
+.ms-sleepy .mc-pupil { animation: ms-slow-blink 3s step-end infinite; }
+.ms-concentrating .hs-mascot-wrap {
+  opacity: .35; transition: opacity 1.5s ease;
+  animation: ms-deep-sleep 6s ease-in-out infinite;
+}
+.ms-concentrating .mc-pupil { animation: ms-eyes-closed 8s ease-in-out infinite; }
+
+/* Flash rouge sur alarme */
+.ms-alarmed .hs-mascot-stage::before {
+  content: '';
+  position: absolute; inset: -8px; border-radius: 50%;
+  background: rgba(239,68,68,.15);
+  animation: ms-alarm-pulse 0.8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes ms-alarm-pulse {
+  0%,100% { opacity: 0; transform: scale(1); }
+  50%     { opacity: 1; transform: scale(1.08); }
+}
+
+/* ── Mode concentration badge ───────────────────────────────────── */
+.ms-focus-badge {
+  font-size: .72rem; color: #94a3b8; font-weight: 700;
+  cursor: pointer; padding: .25rem .6rem;
+  background: rgba(0,0,0,.05); border-radius: 99px;
+  transition: background .12s; margin-top: .25rem;
+  text-align: center;
+}
+.ms-focus-badge:hover { background: rgba(0,0,0,.1); color: #475569; }
+
+/* ── Accessoires — conteneur positionné ─────────────────────────── */
+.ms-acc-container {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Coffee */
+.ms-acc-coffee { bottom: 55%; right: -14px; width: 54px; }
+.ms-acc-svg { display: block; width: 100%; height: auto; }
+.ms-steam { animation: ms-steam-rise 1.2s ease-out infinite; }
+.ms-s1 { animation-delay: 0s; }
+.ms-s2 { animation-delay: .3s; }
+.ms-s3 { animation-delay: .6s; }
+@keyframes ms-steam-rise {
+  0%   { opacity: 0; transform: translateY(0); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* ZZZ */
+.ms-acc-zzz { top: -5px; right: -5px; }
+.ms-zzz-wrap { position: relative; width: 46px; height: 46px; }
+.ms-z {
+  font-size: 1.1rem; font-weight: 900; color: #94a3b8;
+  position: absolute; line-height: 1;
+}
+.ms-z1 { animation: ms-z-float 2s 0.0s ease-in-out infinite; right: 0; top: 20px; font-size: .85rem; }
+.ms-z2 { animation: ms-z-float 2s 0.6s ease-in-out infinite; right: -8px; top: 8px; font-size: 1rem; }
+.ms-z3 { animation: ms-z-float 2s 1.2s ease-in-out infinite; right: -16px; top: -4px; font-size: 1.3rem; }
+@keyframes ms-z-float {
+  0%   { transform: translateY(0) rotate(0); opacity: .9; }
+  50%  { transform: translateY(-12px) rotate(8deg); opacity: .6; }
+  100% { transform: translateY(-22px) rotate(-4deg); opacity: 0; }
+}
+
+/* Sweat */
+.ms-acc-sweat { top: 15%; right: -16px; width: 32px; }
+.ms-sweat-svg { display: block; width: 100%; height: auto; }
+.ms-sweat { animation: ms-sweat-fall 1.5s ease-in infinite; }
+.ms-sw1 { animation-delay: 0s; }
+.ms-sw2 { animation-delay: .4s; }
+.ms-sw3 { animation-delay: .8s; }
+@keyframes ms-sweat-fall {
+  0%   { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(22px); opacity: 0; }
+}
+
+/* Hearts */
+.ms-acc-hearts { top: -14px; left: 0; right: 0; height: 50px; }
+.ms-hearts-wrap { position: relative; width: 100%; height: 100%; }
+.ms-heart { position: absolute; font-size: .9rem; animation: ms-heart-float 2.5s ease-in-out infinite; }
+.ms-h1 { left: 8%;  animation-delay: 0s; }
+.ms-h2 { left: 42%; animation-delay: .5s; }
+.ms-h3 { left: 72%; animation-delay: 1s; }
+@keyframes ms-heart-float {
+  0%,100% { transform: translateY(0) scale(1); opacity: .8; }
+  50%     { transform: translateY(-16px) scale(1.1); opacity: 1; }
+}
+
+/* Stars */
+.ms-acc-stars { top: 0; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; }
+.ms-stars-wrap { position: relative; width: 100%; height: 100%; }
+.ms-star { position: absolute; top: 50%; left: 50%; font-size: .85rem; animation: ms-star-orbit 3s linear infinite; }
+.ms-st1 { animation-delay: 0s; }
+.ms-st2 { animation-delay: 1s; font-size: .7rem; }
+.ms-st3 { animation-delay: 2s; }
+@keyframes ms-star-orbit {
+  0%   { transform: rotate(0deg)   translateX(36px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(36px) rotate(-360deg); }
+}
+
+/* Moon */
+.ms-acc-moon { top: -10px; left: -20px; width: 44px; }
+.ms-moon-svg { display: block; width: 100%; height: auto; }
+
+/* Snow */
+.ms-acc-snow { top: -20px; left: 0; right: 0; height: 60px; overflow: visible; }
+.ms-snow-wrap { position: relative; width: 100%; height: 100%; }
+.ms-flake { position: absolute; animation: ms-snow-fall 3s linear infinite; font-size: .9rem; }
+.ms-f1 { left: 15%; animation-delay: 0s; }
+.ms-f2 { left: 50%; animation-delay: 1s; }
+.ms-f3 { left: 78%; animation-delay: 2s; }
+@keyframes ms-snow-fall {
+  0%   { transform: translateY(-10px) rotate(0); opacity: 1; }
+  100% { transform: translateY(36px)  rotate(180deg); opacity: 0; }
+}
+
+/* Thought bubble */
+.ms-acc-thought { top: -56px; left: 50%; transform: translateX(-50%); }
+.ms-thought-wrap { position: relative; }
+.ms-thought-bubble {
+  background: #fff; border-radius: 12px; padding: .4rem .7rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap;
+}
+.ms-thought-bubble::after {
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 8px solid transparent; border-top-color: #fff;
+}
+.ms-thought-dots span {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #94a3b8; margin: 0 2px;
+  animation: ms-dot-pulse 1.2s ease-in-out infinite;
+}
+.ms-thought-dots span:nth-child(2) { animation-delay: .2s; }
+.ms-thought-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes ms-dot-pulse {
+  0%,100% { transform: scaleY(1); }
+  50%     { transform: scaleY(1.6); }
+}
+
+/* ── Visiteur inter-org ─────────────────────────────────────────── */
+.ms-visitor {
+  position: absolute; right: -16px; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; gap: .3rem;
+  transform: translateX(130%); transition: transform .5s cubic-bezier(.34,1.56,.64,1);
+  z-index: 20;
+}
+.ms-visitor:not(.hidden).ms-visitor-enter { transform: translateX(0); }
+.ms-visitor-leave { animation: ms-visitor-out .4s ease-in forwards; }
+@keyframes ms-visitor-in  { from { transform: translateX(130%); } to { transform: translateX(0); } }
+@keyframes ms-visitor-out { from { transform: translateX(0); } to { transform: translateX(130%); } }
+
+.ms-visitor-svg {
+  width: 72px; height: auto;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.18));
+}
+.ms-visitor-bubble {
+  background: #fff; border-radius: 12px; padding: .5rem .8rem;
+  font-size: .75rem; font-weight: 600; color: #1e293b;
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  max-width: 170px; text-align: center; line-height: 1.3;
+  position: absolute; bottom: calc(100% + 10px); right: 0;
+}
+.ms-visitor-bubble::after {
+  content: ''; position: absolute; top: 100%; right: 20px;
+  border: 7px solid transparent; border-top-color: #fff;
+}
+.ms-visitor-name {
+  font-size: .6rem; color: #94a3b8; font-weight: 700;
+  text-align: center; max-width: 90px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ms-visitor-excited { animation: ms-excited 1s ease-in-out; }

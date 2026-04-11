@@ -194,3 +194,68 @@ function _applyMascot(id) {
     loadSvg.innerHTML = m.svg;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MASCOT_ACCESSORIES — Éléments HTML/SVG injectés par MascotBrain
+═══════════════════════════════════════════════════════════════════ */
+const MASCOT_ACCESSORIES = {
+
+  coffee: `<svg viewBox="0 0 60 52" class="ms-acc-svg">
+    <rect x="6" y="16" width="34" height="28" rx="5" fill="#92400e"/>
+    <rect x="8" y="18" width="30" height="24" rx="4" fill="#c2410c"/>
+    <rect x="8" y="18" width="30" height="9" rx="4" fill="#fde68a" opacity=".85"/>
+    <path d="M40 24 Q52 24 52 32 Q52 40 40 40" stroke="#92400e" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <path class="ms-steam ms-s1" d="M16 14 Q18 8 16 2"  stroke="#94a3b8" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path class="ms-steam ms-s2" d="M23 12 Q25 6 23 0"  stroke="#94a3b8" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path class="ms-steam ms-s3" d="M30 14 Q32 8 30 2"  stroke="#94a3b8" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>`,
+
+  zzz: `<div class="ms-zzz-wrap">
+    <span class="ms-z ms-z1">z</span>
+    <span class="ms-z ms-z2">z</span>
+    <span class="ms-z ms-z3">Z</span>
+  </div>`,
+
+  sweat: `<svg viewBox="0 0 36 56" class="ms-sweat-svg">
+    <ellipse class="ms-sweat ms-sw1" cx="9"  cy="10" rx="4"   ry="6.5" fill="#60a5fa" opacity=".85"/>
+    <ellipse class="ms-sweat ms-sw2" cx="22" cy="20" rx="3.5" ry="5.5" fill="#93c5fd" opacity=".7"/>
+    <ellipse class="ms-sweat ms-sw3" cx="13" cy="34" rx="3"   ry="5"   fill="#60a5fa" opacity=".75"/>
+  </svg>`,
+
+  hearts: `<div class="ms-hearts-wrap">
+    <span class="ms-heart ms-h1">💜</span>
+    <span class="ms-heart ms-h2">💙</span>
+    <span class="ms-heart ms-h3">💜</span>
+  </div>`,
+
+  stars: `<div class="ms-stars-wrap">
+    <span class="ms-star ms-st1">⭐</span>
+    <span class="ms-star ms-st2">✨</span>
+    <span class="ms-star ms-st3">⭐</span>
+  </div>`,
+
+  moon: `<svg viewBox="0 0 50 54" class="ms-moon-svg">
+    <path d="M32 6 Q14 12 12 28 Q10 46 28 50 Q12 46 10 30 Q8 12 26 6Z" fill="#fde68a"/>
+    <circle cx="40" cy="10" r="2.2" fill="#fde68a" opacity=".7"/>
+    <circle cx="46" cy="22" r="1.6" fill="#fde68a" opacity=".5"/>
+    <circle cx="42" cy="36" r="1.2" fill="#fde68a" opacity=".4"/>
+  </svg>`,
+
+  snow: `<div class="ms-snow-wrap">
+    <span class="ms-flake ms-f1">❄️</span>
+    <span class="ms-flake ms-f2">❄️</span>
+    <span class="ms-flake ms-f3">❄️</span>
+  </div>`,
+
+  thought: `<div class="ms-thought-wrap">
+    <div class="ms-thought-bubble">
+      <span class="ms-thought-dots"><span></span><span></span><span></span></span>
+    </div>
+  </div>`,
+
+  sparkles: `<div class="ms-stars-wrap">
+    <span class="ms-star ms-st1">✨</span>
+    <span class="ms-star ms-st2">⭐</span>
+    <span class="ms-star ms-st3">✨</span>
+  </div>`,
+};

@@ -1357,6 +1357,8 @@ const MODAL = {
       if (this._editId) await DB.update(this._editId, data);
       else              await DB.add(data);
       g('resOverlay').classList.add('hidden');
+      // Mascotte célèbre la réservation
+      if (!this._editId) window.MascotBrain?.triggerCelebrate?.();
     } catch (err) {
       alert('Erreur : ' + err.message);
     }

@@ -159,6 +159,17 @@
   <!-- Mascotte centrée en haut — se balade + yeux suivent la souris -->
   <div class="hs-mascot-stage">
     <div class="hs-bubble hidden" id="hsMascotBubble"><span id="hsMascotBubbleText"></span></div>
+    <!-- Visiteur inter-org (injecté par MascotBrain) -->
+    <div class="ms-visitor hidden" id="msVisitor">
+      <div class="ms-visitor-bubble hidden" id="msVisitorBubble">
+        <span id="msVisitorBubbleText"></span>
+      </div>
+      <div>
+        <svg class="ms-visitor-svg" id="msVisitorSvg"
+             viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="ms-visitor-name" id="msVisitorName"></div>
+    </div>
     <div class="hs-mascot-walker">
       <div class="hs-mascot-wrap" aria-hidden="true">
         <svg class="hs-mascot-svg" id="hsMascotSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -170,6 +181,8 @@
     <div class="hs-mascot-btns">
       <button class="hs-ask-tip-btn" id="hsAskTip">💡 Astuce</button>
       <button class="hs-ask-tip-btn hs-weather-btn hidden" id="hsAskWeather" title="Point météo">🌤️ Météo</button>
+      <button class="hs-ask-tip-btn hs-focus-btn" id="hsFocusBtn" title="Mode concentration — la mascotte se tait">🎯 Focus</button>
+      <button class="hs-ask-tip-btn hs-party-btn hidden" id="hsPartyBtn" title="Inviter les mascottes amies">🎉 Inviter mes amis</button>
       <button class="hs-ask-tip-btn hs-goodbye-btn" id="hsGoodbye" title="Terminer ma journée">👋 Au revoir</button>
     </div>
   </div>
@@ -1202,6 +1215,7 @@
 <script src="js/config.js"></script>
 <script src="js/gender.js"></script>
 <script src="js/mascots.js"></script>
+<script src="js/mascot-brain.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/holidays.js"></script>

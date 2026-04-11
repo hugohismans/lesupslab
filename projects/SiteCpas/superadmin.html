@@ -280,6 +280,22 @@
       </div>
     </div>
 
+    <!-- Annuaire inter-org (visites mascottes) -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>🐙</span> Annuaire des organisations — Visites mascottes</div>
+      <div style="font-size:.82rem;color:#64748b">
+        Gérez quelles organisations peuvent s'envoyer des visites de mascottes.
+        Aucune donnée sensible n'est partagée — uniquement le nom, le type de mascotte et le nom de l'org.
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="sa-btn sa-btn-primary sa-btn-sm" id="saSyncOrgDir">🔄 Synchroniser depuis les orgs déployées</button>
+        <button class="sa-btn sa-btn-ghost sa-btn-sm" id="saAddOrgEntry">➕ Ajouter manuellement</button>
+      </div>
+      <div id="saOrgDirList" style="display:flex;flex-direction:column;gap:.65rem;margin-top:.25rem">
+        <div style="color:#64748b;font-size:.82rem">Chargement…</div>
+      </div>
+    </div>
+
     <!-- Outils de test -->
     <div class="sa-section">
       <div class="sa-section-title"><span>🎭</span> Outils de test</div>
@@ -380,6 +396,7 @@ async function showApp() {
   buildFlagToggles();
   loadTokenStatus();
   loadSubmissions();
+  loadOrgDirectory();
 }
 
 // Vérifier session
@@ -929,6 +946,119 @@ async function deploySubmission(subKey) {
     logDeploy(`❌ Erreur : ${e.message}`, 'err');
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   ANNUAIRE DES ORGANISATIONS — Visites mascottes
+══════════════════════════════════════════════════════════════════ */
+
+const MASCOT_TYPES = {
+  poulpe: { label: 'Poulpe 🐙', name: 'Bulbi' },
+  chat:   { label: 'Chat 🐱',   name: 'Mochi' },
+  lion:   { label: 'Lion 🦁',   name: 'Léo'   },
+  renard: { label: 'Renard 🦊', name: 'Rusty' },
+  lapin:  { label: 'Lapin 🐰',  name: 'Lulu'  },
+  hibou:  { label: 'Hibou 🦉',  name: 'Sacha' },
+};
+
+function _orgDirRef() { return db.ref('superadmin/orgDirectory'); }
+
+async function loadOrgDirectory() {
+  const snap = await _orgDirRef().once('value');
+  const dir  = snap.val() || {};
+  const list = document.getElementById('saOrgDirList');
+  if (!list) return;
+
+  if (!Object.keys(dir).length) {
+    list.innerHTML = '<div style="color:#64748b;font-size:.82rem">Aucune organisation dans l\'annuaire. Cliquez sur "Synchroniser" pour auto-remplir.</div>';
+    return;
+  }
+
+  list.innerHTML = Object.entries(dir).map(([id, d]) => `
+    <div class="sa-org-dir-entry" style="background:#0f172a;border:1.5px solid #334155;border-radius:12px;padding:.85rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <div style="font-weight:800;color:#e2e8f0;font-size:.92rem">${escHtml(d.orgName || id)}</div>
+        <div style="font-size:.75rem;color:#64748b;margin-top:.1rem">${id}</div>
+      </div>
+      <select class="sa-dir-mascot" data-id="${id}" style="border:1.5px solid #334155;border-radius:8px;padding:.35rem .6rem;background:#1e293b;color:#e2e8f0;font-size:.82rem;font-family:inherit">
+        ${Object.entries(MASCOT_TYPES).map(([k,v]) => `<option value="${k}"${d.mascotType===k?' selected':''}>${v.label}</option>`).join('')}
+      </select>
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;color:#94a3b8;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" class="sa-dir-enabled" data-id="${id}"${d.visitsEnabled!==false?' checked':''}>
+        Visites actives
+      </label>
+      <button class="sa-btn sa-btn-ghost sa-btn-sm sa-dir-save" data-id="${id}">💾 Sauvegarder</button>
+      <button class="sa-btn sa-btn-sm sa-dir-remove" data-id="${id}" style="background:#7f1d1d;color:#fca5a5;border-color:#991b1b">🗑 Retirer</button>
+    </div>
+  `).join('');
+
+  // Listeners
+  list.querySelectorAll('.sa-dir-save').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id      = btn.dataset.id;
+      const mascot  = list.querySelector(`.sa-dir-mascot[data-id="${id}"]`)?.value || 'poulpe';
+      const enabled = list.querySelector(`.sa-dir-enabled[data-id="${id}"]`)?.checked !== false;
+      const name    = MASCOT_TYPES[mascot]?.name || 'Bulbi';
+      await _orgDirRef().child(id).update({ mascotType: mascot, mascotName: name, visitsEnabled: enabled });
+      btn.textContent = '✓ Sauvegardé';
+      setTimeout(() => btn.textContent = '💾 Sauvegarder', 2000);
+    });
+  });
+  list.querySelectorAll('.sa-dir-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Retirer "${btn.dataset.id}" de l'annuaire ?`)) return;
+      await _orgDirRef().child(btn.dataset.id).remove();
+      loadOrgDirectory();
+    });
+  });
+}
+
+// Synchroniser depuis les orgs déployées
+document.getElementById('saSyncOrgDir')?.addEventListener('click', async () => {
+  const btn = document.getElementById('saSyncOrgDir');
+  btn.disabled = true; btn.textContent = '⏳ Synchronisation…';
+  try {
+    const orgsSnap  = await db.ref('orgs').once('value');
+    const orgs      = orgsSnap.val() || {};
+    const dirSnap   = await _orgDirRef().once('value');
+    const existing  = dirSnap.val() || {};
+
+    const updates = {};
+    for (const [orgId, orgData] of Object.entries(orgs)) {
+      if (existing[orgId]) continue; // ne pas écraser les existants
+      const meta      = orgData?.appConfig?.meta || {};
+      const mascotId  = meta.mascotId || 'poulpe';
+      const mascotObj = MASCOT_TYPES[mascotId] || MASCOT_TYPES.poulpe;
+      updates[orgId] = {
+        orgName:       meta.orgName  || orgId,
+        mascotType:    mascotId,
+        mascotName:    mascotObj.name,
+        visitsEnabled: true,
+      };
+    }
+
+    if (!Object.keys(updates).length) {
+      alert('Toutes les organisations sont déjà dans l\'annuaire.');
+    } else {
+      await _orgDirRef().update(updates);
+      alert(`${Object.keys(updates).length} organisation(s) ajoutée(s) à l'annuaire.`);
+    }
+    loadOrgDirectory();
+  } catch (e) { alert('Erreur : ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '🔄 Synchroniser depuis les orgs déployées'; }
+});
+
+// Ajout manuel
+document.getElementById('saAddOrgEntry')?.addEventListener('click', async () => {
+  const id = prompt('ID de l\'organisation (ex: cpas-mons) :')?.trim();
+  if (!id) return;
+  const name = prompt('Nom complet (ex: CPAS de Mons) :')?.trim();
+  if (!name) return;
+  await _orgDirRef().child(id).set({ orgName: name, mascotType: 'poulpe', mascotName: 'Bulbi', visitsEnabled: true });
+  loadOrgDirectory();
+});
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 
 </script>
 </body>
