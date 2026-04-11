@@ -4074,27 +4074,43 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   gap: 1.25rem;
 }
 
-/* Positionnement relatif du walker pour la bulle hôte */
-.hs-mascot-walker { position: relative; }
-
-/* Bulle hôte → visiteur (au-dessus de la mascotte locale) */
-.ms-host-bubble {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%; transform: translateX(-50%);
-  background: #eff6ff;
-  border: 2px solid #bfdbfe;
-  border-radius: 14px; padding: .55rem .9rem;
-  font-size: .8rem; font-weight: 600; color: #1e3a8a;
-  box-shadow: 0 6px 20px rgba(0,0,0,.13);
-  min-width: 150px; max-width: 210px;
+/* Bulle visiteur — en flux sous le SVG, flèche vers le haut */
+.ms-visitor-bubble {
+  position: relative;
+  background: #fff;
+  border-radius: 14px; padding: .5rem .85rem;
+  font-size: .78rem; font-weight: 600; color: #1e293b;
+  box-shadow: 0 4px 16px rgba(0,0,0,.13);
+  min-width: 130px; max-width: 190px;
   text-align: center; line-height: 1.35;
-  white-space: normal; z-index: 30;
+  white-space: normal;
+  margin-top: .35rem;
   animation: hs-bubble-in .25s ease;
 }
-.ms-host-bubble::after {
-  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  border: 8px solid transparent; border-top-color: #eff6ff;
+.ms-visitor-bubble::before {
+  content: ''; position: absolute;
+  bottom: 100%; left: 50%; transform: translateX(-50%);
+  border: 8px solid transparent; border-bottom-color: #fff;
+}
+
+/* Bulle hôte — en flux sous le SVG, flèche vers le haut */
+.ms-host-bubble {
+  position: relative;
+  background: #eff6ff;
+  border: 2px solid #bfdbfe;
+  border-radius: 14px; padding: .5rem .85rem;
+  font-size: .78rem; font-weight: 600; color: #1e3a8a;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  min-width: 130px; max-width: 190px;
+  text-align: center; line-height: 1.35;
+  white-space: normal;
+  margin-top: .35rem;
+  animation: hs-bubble-in .25s ease;
+}
+.ms-host-bubble::before {
+  content: ''; position: absolute;
+  bottom: 100%; left: 50%; transform: translateX(-50%);
+  border: 8px solid transparent; border-bottom-color: #eff6ff;
 }
 
 /* ── Visiteur inter-org ─────────────────────────────────────────── */
@@ -4132,21 +4148,6 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .ms-visitor-svg {
   width: 76px; height: auto;
   filter: drop-shadow(0 4px 10px rgba(0,0,0,.18));
-}
-.ms-visitor-bubble {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%; transform: translateX(-50%);
-  background: #fff; border-radius: 14px; padding: .55rem .9rem;
-  font-size: .8rem; font-weight: 600; color: #1e293b;
-  box-shadow: 0 6px 20px rgba(0,0,0,.14);
-  min-width: 150px; max-width: 210px; text-align: center; line-height: 1.35;
-  white-space: normal;
-  z-index: 30;
-}
-.ms-visitor-bubble::after {
-  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-  border: 8px solid transparent; border-top-color: #fff;
 }
 .ms-visitor-name {
   font-size: .65rem; color: #94a3b8; font-weight: 700;

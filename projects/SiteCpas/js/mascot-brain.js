@@ -136,39 +136,118 @@ const BRAIN_TEXTS = {
   ],
 
   // Dialogues visiteur — [{ speaker: 'host'|'visitor', text }]
+  // Dialogues visiteur — { ctx, lines[] }
+  // ctx : 'any' | 'morning' | 'friday' | 'monday' | 'busy' | 'quiet' | 'late'
   visitor_dialogues: [
-    [
-      { speaker: 'visitor', text: "Bonjour ! Je suis {guestName}, la mascotte de {guestOrg} ! 🙌" },
-      { speaker: 'host',    text: "Ah, {guestName} ! Quelle surprise ! Bienvenue à {hostOrg} ! 😊" },
-      { speaker: 'visitor', text: "Ça baigne à {hostOrg} ?" },
-      { speaker: 'host',    text: "On s'en sort ! Et à {guestOrg} ?" },
-      { speaker: 'visitor', text: "Nickel ! Allez, je te laisse travailler. À bientôt ! 👋" },
-      { speaker: 'host',    text: "À bientôt {guestName} ! Passe le bonjour 💙" },
-    ],
-    [
-      { speaker: 'visitor', text: "Toc toc ! C'est {guestName} de {guestOrg} 🐾" },
+    // ── Toujours disponibles ──────────────────────────────────────
+    { ctx: 'any', lines: [
+      { speaker: 'visitor', text: "Bonjour ! Moi c'est {guestName}, la mascotte du {guestOrg} — je passais dans le coin ! 🙌" },
+      { speaker: 'host',    text: "Oh ! {guestName} ! Quelle belle surprise — bienvenue chez nous ! 😊" },
+      { speaker: 'visitor', text: "Ça se passe bien par ici ?" },
+      { speaker: 'host',    text: "On assure ! Et à {guestOrg} ?" },
+      { speaker: 'visitor', text: "Super aussi ! Bon, je te laisse — à bientôt {hostName} 👋" },
+      { speaker: 'host',    text: "Avec plaisir {guestName} ! Reviens quand tu veux 💙" },
+    ]},
+    { ctx: 'any', lines: [
+      { speaker: 'visitor', text: "Toc toc ! {guestName} du {guestOrg} — je faisais la tournée du réseau 🐾" },
       { speaker: 'host',    text: "ALORS ! Mais c'est {guestName} ! Entre, entre ! 🎉" },
-      { speaker: 'visitor', text: "Je passais dans le coin... comment ça se passe par ici ?" },
-      { speaker: 'host',    text: "L'équipe assure comme toujours 💪 Et chez vous ?" },
-      { speaker: 'visitor', text: "Pareil ! On est des pros. Bon, à la prochaine ! 👋" },
-      { speaker: 'host',    text: "Reviens quand tu veux {guestName} ! 🌟" },
-    ],
-    [
-      { speaker: 'visitor', text: "Salut {hostName} ! {guestName} de {guestOrg} à l'appareil 📡" },
-      { speaker: 'host',    text: "Salut {guestName} ! Quel bon vent t'amène ? 😄" },
-      { speaker: 'visitor', text: "Je faisais la tournée du réseau moncompagnon — vous tenez le coup ?" },
-      { speaker: 'host',    text: "On gère ! C'est quand même plus facile avec moncompagnon non ? 😊" },
-      { speaker: 'visitor', text: "Tellement ! Bon, à très vite {hostName} 👋" },
+      { speaker: 'visitor', text: "Je voulais voir comment vous vous en sortez par ici ?" },
+      { speaker: 'host',    text: "On gère ! C'est plus facile avec moncompagnon 😄 Et chez vous ?" },
+      { speaker: 'visitor', text: "Pareil — on est des pros. Bon, à la prochaine ! 👋" },
+      { speaker: 'host',    text: "Reviens quand tu veux, {guestName} ! 🌟" },
+    ]},
+    { ctx: 'any', lines: [
+      { speaker: 'visitor', text: "Salut {hostName} ! C'est {guestName} depuis {guestOrg} — réseau moncompagnon en visite 📡" },
+      { speaker: 'host',    text: "Salut {guestName} ! Quel bon vent t'amène aujourd'hui ? 😄" },
+      { speaker: 'visitor', text: "Je voulais juste passer dire bonjour et voir comment ça se passe chez vous !" },
+      { speaker: 'host',    text: "C'est adorable ! On tient le fort ici — et à {guestOrg} ?" },
+      { speaker: 'visitor', text: "Nickel aussi ! Allez, à très vite {hostName} 👋" },
       { speaker: 'host',    text: "Prends soin de toi {guestName} ! ✨" },
-    ],
-    [
-      { speaker: 'visitor', text: "Coucou {hostName} ! {guestName} de {guestOrg} ici 🌤️" },
-      { speaker: 'host',    text: "Ah {guestName} ! Quelle belle surprise du matin ! 🌟" },
-      { speaker: 'visitor', text: "On se tient compagnie entre mascottes 😄 Comment va l'équipe ?" },
-      { speaker: 'host',    text: "Elle est au top ! On fait du bon travail ensemble 💙" },
-      { speaker: 'visitor', text: "C'est ça qui compte. À bientôt les ami·es ! 🤝" },
+    ]},
+    { ctx: 'any', lines: [
+      { speaker: 'visitor', text: "Coucou ! Je m'appelle {guestName}, je viens du {guestOrg} 🌤️" },
+      { speaker: 'host',    text: "{guestName} ! On se tient compagnie entre mascottes, j'adore ça 😄" },
+      { speaker: 'visitor', text: "Haha exactement ! Comment va l'équipe ici ?" },
+      { speaker: 'host',    text: "Au top ! On fait du bon travail ensemble 💙 Et chez toi ?" },
+      { speaker: 'visitor', text: "Pareil — on est fiers de nos équipes ! À bientôt 🤝" },
       { speaker: 'host',    text: "À bientôt {guestName} ! 💫" },
-    ],
+    ]},
+    { ctx: 'any', lines: [
+      { speaker: 'visitor', text: "Yoohoo ! {guestName} du {guestOrg} ici — petite visite surprise 🎊" },
+      { speaker: 'host',    text: "Oh {guestName} ! Tu tombes bien — une petite pause ça fait du bien ! 😄" },
+      { speaker: 'visitor', text: "C'est l'idée ! Comment ça se passe côté travail en ce moment ?" },
+      { speaker: 'host',    text: "On gère tout ça avec le sourire 💪 Toi aussi j'espère ?" },
+      { speaker: 'visitor', text: "Toujours ! Allez, je te laisse — bonne journée à {hostOrg} 🌈" },
+      { speaker: 'host',    text: "Merci {guestName} ! À bientôt chez nous 💙" },
+    ]},
+
+    // ── Matin (avant 10h) ─────────────────────────────────────────
+    { ctx: 'morning', lines: [
+      { speaker: 'visitor', text: "Bonjour {hostName} ! {guestName} du {guestOrg} — vous commencez tôt à {hostOrg} ! 🌅" },
+      { speaker: 'host',    text: "{guestName} ! Et toi aussi apparemment ! Tu prends le café ?" },
+      { speaker: 'visitor', text: "Avec plaisir ☕ Bonne journée en vue chez vous ?" },
+      { speaker: 'host',    text: "On espère ! Et à {guestOrg} ?" },
+      { speaker: 'visitor', text: "Ça se lance doucement 😄 Bon courage à toute l'équipe !" },
+      { speaker: 'host',    text: "Pareil pour vous {guestName} ! À bientôt ☀️" },
+    ]},
+    { ctx: 'morning', lines: [
+      { speaker: 'visitor', text: "Bien le bonjour ! Je suis {guestName}, mascotte du {guestOrg} — debout de bonne heure ! ⏰" },
+      { speaker: 'host',    text: "{guestName} ! Quelle énergie ce matin ! Bienvenue ! ☀️" },
+      { speaker: 'visitor', text: "Haha merci ! On aime bien commencer la journée du bon pied 😊" },
+      { speaker: 'host',    text: "C'est la meilleure façon ! Comment ça se passe à {guestOrg} en ce moment ?" },
+      { speaker: 'visitor', text: "Ça roule ! Bon, je vous laisse attaquer la journée — bonne chance ! 💪" },
+      { speaker: 'host',    text: "À toi aussi {guestName} ! Reviens quand tu veux 🌟" },
+    ]},
+
+    // ── Lundi ────────────────────────────────────────────────────
+    { ctx: 'monday', lines: [
+      { speaker: 'visitor', text: "Bon lundi ! {guestName} du {guestOrg} passe vous donner un coup de boost ☕🎉" },
+      { speaker: 'host',    text: "{guestName} ! Un lundi avec une visite, c'est un bon signe 😄" },
+      { speaker: 'visitor', text: "C'est ma mission ! La semaine commence bien ici ?" },
+      { speaker: 'host',    text: "On s'y met ! Et à {guestOrg} ?" },
+      { speaker: 'visitor', text: "Pareil — lundi oblige ! Allez, bon courage à l'équipe 💪" },
+      { speaker: 'host',    text: "Merci {guestName} ! Ça fait chaud au cœur 💙" },
+    ]},
+
+    // ── Vendredi ─────────────────────────────────────────────────
+    { ctx: 'friday', lines: [
+      { speaker: 'visitor', text: "VENDREDI ! {guestName} du {guestOrg} passe célébrer ça avec vous 🎉" },
+      { speaker: 'host',    text: "{guestName} ! T'as bien fait de passer — on en avait besoin ! 🥳" },
+      { speaker: 'visitor', text: "La semaine s'est bien passée à {hostOrg} ?" },
+      { speaker: 'host',    text: "On a assuré ! Et vous à {guestOrg} ?" },
+      { speaker: 'visitor', text: "Pareil ! On a mérité ce week-end 🏖️ Bon repos à toute l'équipe !" },
+      { speaker: 'host',    text: "À toi aussi {guestName} ! Passe un super week-end 🌈" },
+    ]},
+
+    // ── File chargée ──────────────────────────────────────────────
+    { ctx: 'busy', lines: [
+      { speaker: 'visitor', text: "Oh là là ! {guestName} du {guestOrg} — ça a l'air animé chez vous ! 😅" },
+      { speaker: 'host',    text: "{guestName} ! Oui c'est du sport aujourd'hui — mais l'équipe tient ! 💪" },
+      { speaker: 'visitor', text: "Respect ! On a eu des jours pareils à {guestOrg} — ça forge le caractère !" },
+      { speaker: 'host',    text: "Ha ! T'as raison 😄 Comment vous gérez ces moments chez vous ?" },
+      { speaker: 'visitor', text: "Beaucoup de café et d'entraide ! Bon courage — vous assurez 🔥" },
+      { speaker: 'host',    text: "Merci {guestName} ! Ça recharge les batteries ! 💙" },
+    ]},
+
+    // ── Journée calme ─────────────────────────────────────────────
+    { ctx: 'quiet', lines: [
+      { speaker: 'visitor', text: "Coucou ! Je suis {guestName} du {guestOrg} — j'avais l'impression que vous soufflez un peu aujourd'hui 😌" },
+      { speaker: 'host',    text: "{guestName} ! Bien vu — journée tranquille, on en profite ! 🧘" },
+      { speaker: 'visitor', text: "C'est bien de souffler parfois ! Chez nous c'est pareil en ce moment." },
+      { speaker: 'host',    text: "Le calme avant la tempête peut-être ! Mais on est prêts 😄" },
+      { speaker: 'visitor', text: "Profitez-en bien ! Allez, à bientôt {hostName} 🌿" },
+      { speaker: 'host',    text: "À bientôt {guestName} ! Merci pour la petite visite 💙" },
+    ]},
+
+    // ── Fin de journée ────────────────────────────────────────────
+    { ctx: 'late', lines: [
+      { speaker: 'visitor', text: "Bonsoir ! {guestName} du {guestOrg} — encore au bureau à cette heure-ci ? 🌙" },
+      { speaker: 'host',    text: "{guestName} ! Fin de journée chez nous — et chez toi ?" },
+      { speaker: 'visitor', text: "Pareil ! On range les dossiers 😄 La journée s'est bien passée ?" },
+      { speaker: 'host',    text: "Oui, l'équipe a bien assuré ! Bonne soirée à {guestOrg} !" },
+      { speaker: 'visitor', text: "Merci {hostName} ! Rentrez bien — à bientôt 🌙" },
+      { speaker: 'host',    text: "Bonne soirée {guestName} ! À très vite 💙" },
+    ]},
   ],
 };
 
@@ -499,6 +578,29 @@ const MascotBrain = {
     }
   },
 
+  // ── Picker dialogue contextuel ────────────────────────────────
+  _pickVisitorDialogue() {
+    const ctx = this._buildContext();
+    const { h, dow, queueTotal, todayBookings } = ctx;
+
+    // Mapper contexte actuel → tags prioritaires
+    const tags = ['any'];
+    if (h < 10)                              tags.unshift('morning');
+    if (dow === 1 && h < 12)                 tags.unshift('monday');
+    if (dow === 5 && h >= 14)                tags.unshift('friday');
+    if (queueTotal >= 5)                     tags.unshift('busy');
+    if (todayBookings === 0 && h >= 9)       tags.unshift('quiet');
+    if (h >= 17)                             tags.unshift('late');
+
+    // Filtrer les dialogues par tag prioritaire, fallback sur 'any'
+    for (const tag of tags) {
+      const matches = BRAIN_TEXTS.visitor_dialogues.filter(d => d.ctx === tag);
+      if (matches.length) return matches[Math.floor(Math.random() * matches.length)].lines;
+    }
+    const all = BRAIN_TEXTS.visitor_dialogues;
+    return all[Math.floor(Math.random() * all.length)].lines;
+  },
+
   // ── Visites inter-org ──────────────────────────────────────────
   _scheduleVisit() {
     if (sessionStorage.getItem('mc_visit_done')) return;
@@ -661,8 +763,7 @@ const MascotBrain = {
     const hostOrg     = (window.CONFIG?.ORG_NAME || 'ici').replace(/^(CPAS d[eu]?|CPAS de la)\s+/i, '');
     const guestOrg    = (visitor.orgName || 'là-bas').replace(/^(CPAS d[eu]?|CPAS de la)\s+/i, '');
 
-    const dialogues = BRAIN_TEXTS.visitor_dialogues;
-    const dlg = dialogues[Math.floor(Math.random() * dialogues.length)];
+    const dlg = this._pickVisitorDialogue();
     const sequence = dlg.map(line => ({
       speaker: line.speaker,
       text: line.text
