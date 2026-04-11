@@ -1757,6 +1757,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.initAgentStatus();
   DB.initBureauState();
   DB.initPreferredPending();
+  DB.initLastCallPerLocal();
   DB.initAbsences();
   DB.initPlanning();
   DB.listenRequests();
@@ -1799,6 +1800,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.onQueueChange(() => { LIVE.render(); HOME.render(); });
   DB.onAgentStatusChange(() => { LIVE.render(); HOME.render(); });
   DB.onBureauStateChange(() => { LIVE.render(); HOME.render(); });
+  DB.onLastCallPerLocalChange(() => { LIVE.render(); });
   DB.onAbsenceChange(() => { LIVE.render(); HOME.render(); });
 
   // Météo — lire Firebase d'abord, puis rafraîchir l'API si besoin (1x/heure)

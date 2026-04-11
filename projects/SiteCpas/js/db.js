@@ -457,6 +457,17 @@ const DB = {
 
   // ── File d'attente ────────────────────────────────────────────
   _queueCbs: [],
+  // ── Dernier appel par local (Firebase, pour rappel côté bureau) ──
+  _lastCallPerLocal: {},
+  _lastCallPerLocalCbs: [],
+  initLastCallPerLocal() {
+    this._ref('appState/lastCalls').on('value', snap => {
+      this._lastCallPerLocal = snap.val() || {};
+      this._lastCallPerLocalCbs.forEach(fn => fn());
+    });
+  },
+  onLastCallPerLocalChange(fn) { this._lastCallPerLocalCbs.push(fn); },
+  getLastCallForLocal(localId) { return this._lastCallPerLocal[String(localId)] || this._lastCallPerLocal[localId] || null; },
   // ── État ouverture bureaux ───────────────────────────────────────
   _bureauState: {},
   _bureauCbs:   [],
@@ -693,7 +704,7 @@ const DB = {
   },
 
   async writeLastCall(localId, agentName, groupName, ticketNum, ticketLabel, ticketName) {
-    await this._ref('appState/lastCall').set({
+    const payload = {
       localId:     Number(localId),
       agentName:   agentName   || null,
       groupName:   groupName   || null,
@@ -701,7 +712,12 @@ const DB = {
       ticketLabel: ticketLabel || null,   // ex. "M01"
       ticketName:  ticketName  || null,   // ex. "Michel" (tickets nominatifs)
       ts: Date.now()
-    });
+    };
+    // Écriture globale (vue publique) + par local (rappel côté bureau)
+    await Promise.all([
+      this._ref('appState/lastCall').set(payload),
+      this._ref(`appState/lastCalls/${localId}`).set(payload),
+    ]);
   },
 
   async saveQueueGroup(id, name, localIds, services = []) {

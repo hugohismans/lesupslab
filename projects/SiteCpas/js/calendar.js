@@ -915,6 +915,19 @@ const LIVE = {
              </button>`
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
+        // Fallback Firebase si _lastCalled n'est pas en mémoire (autre appareil ou rechargement)
+        const _fbLastCall = !isAccueil ? DB.getLastCallForLocal(l) : null;
+        if (!this._lastCalled[l] && _fbLastCall) {
+          this._lastCalled[l] = {
+            ticket: _fbLastCall.ticketNum || _fbLastCall.ticketLabel || null,
+            ticketLabel: _fbLastCall.ticketLabel || null,
+            ticketName:  _fbLastCall.ticketName  || null,
+            svc:         _fbLastCall.groupName    || null,
+            pubAgent:    _fbLastCall.agentName    || null,
+            localLabel:  DB.getLocalLabel(l),
+            time:        new Date(_fbLastCall.ts || Date.now()),
+          };
+        }
         const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? this._lastCalled[l] : null;
         const lastCallAny     = !isAccueil ? this._lastCalled[l] : null;
         // Bouton "Bénéficiaire parti" : visible dès qu'on est en permanence (isBusyLocal)
