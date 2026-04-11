@@ -497,18 +497,21 @@
       <div class="docs-subsection" id="mdp">
         <h3>🔒 Mots de passe &amp; accès</h3>
 
+        <p style="margin-bottom:.75rem">Tous les mots de passe sont stockés côté Firebase sous forme de hash SHA-256. Aucun mot de passe n'est jamais stocké en clair ni dans le code source.</p>
+
         <table class="docs-table">
-          <thead><tr><th>Élément</th><th>Stockage</th><th>Description</th></tr></thead>
+          <thead><tr><th>Élément</th><th>Stockage Firebase</th><th>Description</th></tr></thead>
           <tbody>
-            <tr><td>Mot de passe agent</td><td><code>appConfig/agentPasswords/{agentKey}</code></td><td>Hash SHA-256 du code personnel. Si absent → connexion libre (sélection du nom suffit).</td></tr>
-            <tr><td>Mot de passe admin</td><td>Hors Firebase (config.js)</td><td>Protège l'accès aux Paramètres admin dans l'application.</td></tr>
-            <tr><td>Mot de passe superadmin</td><td>Hors Firebase</td><td>Accès exclusif à superadmin.html — gestion multi-org.</td></tr>
+            <tr><td>Mot de passe agent</td><td><code>orgs/{orgId}/appConfig/agentPasswords/{agentKey}</code></td><td>Hash SHA-256 du code personnel. Si absent → connexion libre (sélection du nom suffit). Défini à la première connexion ou réinitialisé par l'admin.</td></tr>
+            <tr><td>Mot de passe superadmin</td><td><code>superadmin/passwordHash</code></td><td>Hash SHA-256 — accès à superadmin.html. Créé à la toute première ouverture (écran de création dédié).</td></tr>
+            <tr><td>Mot de passe documentation admin</td><td><code>superadmin/docsAdminPasswordHash</code></td><td>Hash SHA-256 — protège docs-admin.html. Configuré depuis superadmin.html. Si absent → accès libre.</td></tr>
           </tbody>
         </table>
 
         <ul style="margin-top:.75rem">
           <li><strong>Réinitialiser</strong> un code agent : Paramètres → Agents → bouton Réinitialiser → supprime le hash, connexion redevient libre</li>
           <li><strong>Modifier</strong> son propre code : page de connexion → "Changer mon code"</li>
+          <li><strong>Superadmin</strong> : si le hash est supprimé manuellement de Firebase, la page repasse en mode création au prochain chargement</li>
         </ul>
       </div>
     </section>
