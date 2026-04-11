@@ -728,9 +728,6 @@
         return;
       }
       localStorage.setItem(`mc_welcomed_${agentKey}`, '1');
-      // Marquer "bonjour dit aujourd'hui" pour que la mascotte ne re-demande pas dans app.html
-      const _todayUTC = new Date().toISOString().slice(0, 10);
-      localStorage.setItem(`mc_bonjour_${agentKey}_${_todayUTC}`, '1');
       document.body.classList.add('wl-out');
       setTimeout(() => { location.href = `app.html${orgParam}`; }, 480);
     }
