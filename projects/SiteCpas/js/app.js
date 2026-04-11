@@ -1677,13 +1677,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     MascotBrain.init();
     // Révéler le bouton "Inviter mes amis" si l'orgDirectory contient des voisins
     // (révélé uniquement si Firebase répond et si des orgs voisines existent)
-    firebase.database().ref('superadmin/orgDirectory').once('value').then(snap => {
-      const dir = snap.val();
-      const currentId = window.CONFIG?.ORG_ID || '';
-      const hasNeighbours = dir && Object.keys(dir).some(id => id !== currentId && dir[id].visitsEnabled !== false);
-      const partyBtn = document.getElementById('hsPartyBtn');
-      if (partyBtn && hasNeighbours) partyBtn.classList.remove('hidden');
-    }).catch(() => {});
   }
 
   // ─── Badge agent connecté ──────────────────────────────────────
