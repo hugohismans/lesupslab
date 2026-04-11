@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>moncompagnon — Choisir une organisation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+      min-height: 100dvh; color: #e2e8f0;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* ── Header ── */
+    .pt-header {
+      width: 100%; padding: 2rem 2rem 1rem;
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      text-align: center;
+    }
+    .pt-logo {
+      font-size: 2.5rem; margin-bottom: .25rem;
+    }
+    .pt-title {
+      font-size: 1.5rem; font-weight: 800;
+      background: linear-gradient(90deg, #a78bfa, #38bdf8);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .pt-sub {
+      font-size: .85rem; color: #64748b;
+    }
+
+    /* ── Grid ── */
+    .pt-grid {
+      width: 100%; max-width: 860px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.25rem;
+      padding: 1.5rem 2rem 3rem;
+    }
+
+    /* ── Carte org ── */
+    .pt-card {
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(255,255,255,.1);
+      border-radius: 18px;
+      padding: 1.75rem 1rem 1.25rem;
+      display: flex; flex-direction: column; align-items: center; gap: .85rem;
+      cursor: pointer; text-decoration: none; color: inherit;
+      transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+    }
+    .pt-card:hover {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(167,139,250,.5);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(0,0,0,.35);
+    }
+    .pt-card:active { transform: translateY(-1px); }
+
+    .pt-card-logo {
+      width: 72px; height: 72px; border-radius: 16px;
+      object-fit: contain;
+      background: rgba(255,255,255,.08);
+    }
+    .pt-card-initials {
+      width: 72px; height: 72px; border-radius: 16px;
+      background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 900; color: #fff;
+      letter-spacing: -.02em;
+    }
+    .pt-card-name {
+      font-size: .88rem; font-weight: 700;
+      text-align: center; color: #e2e8f0;
+      line-height: 1.35; word-break: break-word;
+    }
+    .pt-card-id {
+      font-size: .68rem; color: #475569;
+      font-family: monospace;
+    }
+
+    /* ── États ── */
+    .pt-loading, .pt-empty {
+      color: #475569; font-size: .9rem;
+      padding: 3rem; text-align: center;
+      grid-column: 1/-1;
+    }
+    .pt-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,.1);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="pt-header">
+    <div class="pt-logo">🐙</div>
+    <div class="pt-title">moncompagnon</div>
+    <div class="pt-sub">Sélectionnez votre organisation</div>
+  </div>
+
+  <div class="pt-grid" id="ptGrid">
+    <div class="pt-loading">
+      <div class="pt-spinner"></div>
+      Connexion à Firebase…
+    </div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script>
+  firebase.initializeApp(CONFIG.FIREBASE);
+  const db   = firebase.database();
+  const grid = document.getElementById('ptGrid');
+
+  db.ref('orgs').once('value').then(snap => {
+    const orgs = snap.val() || {};
+    const entries = Object.entries(orgs)
+      .filter(([, d]) => !!d?.appConfig)          // org configurée uniquement
+      .map(([id, d]) => ({
+        id,
+        name:    d.appConfig?.meta?.name    || id,
+        logoUrl: d.appConfig?.meta?.logoUrl || null,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+    if (!entries.length) {
+      grid.innerHTML = '<div class="pt-empty">Aucune organisation configurée.</div>';
+      return;
+    }
+
+    grid.innerHTML = entries.map(({ id, name, logoUrl }) => {
+      const initials = name
+        .split(/\s+/).slice(0, 2)
+        .map(w => w[0]?.toUpperCase() || '').join('');
+
+      const logoHtml = logoUrl
+        ? `<img class="pt-card-logo" src="${_esc(logoUrl)}" alt="${_esc(name)}"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+            + `<div class="pt-card-initials" style="display:none">${_esc(initials)}</div>`
+        : `<div class="pt-card-initials">${_esc(initials)}</div>`;
+
+      const url = id === 'cpas-quaregnon'
+        ? 'index.html'
+        : `index.html?org=${encodeURIComponent(id)}`;
+
+      return `<a class="pt-card" href="${url}">
+        ${logoHtml}
+        <div class="pt-card-name">${_esc(name)}</div>
+        <div class="pt-card-id">${_esc(id)}</div>
+      </a>`;
+    }).join('');
+
+  }).catch(err => {
+    grid.innerHTML = `<div class="pt-empty">Erreur de chargement : ${_esc(err.message)}</div>`;
+  });
+
+  function _esc(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+      .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
