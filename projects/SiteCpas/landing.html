@@ -68,7 +68,22 @@
     align-items: center; padding: 5rem 2.5rem 3rem;
     max-width: 1200px; margin: 0 auto; gap: 3rem;
   }
-  @media(max-width:768px) { .lp-hero { grid-template-columns:1fr; text-align:center; padding:3rem 1.5rem; min-height:auto; } .lp-hero-visual { order:-1; } .lp-hero-actions { justify-content:center; } }
+  @media(max-width:768px) {
+    .lp-hero { grid-template-columns:1fr; text-align:center; padding:3rem 1.5rem; min-height:auto; }
+    .lp-hero-visual { order:-1; }
+    .lp-hero-actions { justify-content:center; }
+    /* Sur mobile la bulle passe sous la mascotte pour ne pas être cachée par le header */
+    .lp-hero-bubble {
+      bottom: auto;
+      top: calc(100% + 16px);
+    }
+    .lp-hero-bubble::after {
+      top: auto;
+      bottom: 100%;
+      border-top: none;
+      border-bottom: 10px solid #fff;
+    }
+  }
   .lp-tag {
     display: inline-flex; align-items: center; gap: .4rem;
     background: rgba(124,58,237,.18); border: 1px solid rgba(167,139,250,.3);
