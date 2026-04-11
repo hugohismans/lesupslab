@@ -4256,6 +4256,51 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .btn-panic-confirm:hover  { background: #b91c1c; }
 .btn-panic-confirm:active { transform: scale(.96); }
 
+/* ── Panic alert plein écran (reçue) ─────────────────────────── */
+.panic-alert-overlay {
+  position: fixed; inset: 0;
+  background: rgba(127, 0, 0, .92);
+  z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  animation: panic-bg-flash 0.5s ease-in-out infinite alternate;
+}
+.panic-alert-overlay.hidden { display: none !important; }
+@keyframes panic-bg-flash {
+  from { background: rgba(127, 0, 0, .92); }
+  to   { background: rgba(185, 28, 28, .97); }
+}
+.panic-alert-box {
+  text-align: center; max-width: 540px; width: 90%;
+  padding: 2.5rem 2rem;
+}
+.panic-alert-icon {
+  font-size: 5rem; line-height: 1;
+  animation: panic-shake 0.3s ease-in-out infinite alternate;
+}
+@keyframes panic-shake {
+  from { transform: rotate(-6deg) scale(1); }
+  to   { transform: rotate(6deg)  scale(1.08); }
+}
+.panic-alert-title {
+  color: #fff; font-size: 2.2rem; font-weight: 900;
+  letter-spacing: .08em; margin: .75rem 0 .5rem;
+  text-shadow: 0 2px 12px rgba(0,0,0,.5);
+}
+.panic-alert-msg {
+  color: #fecaca; font-size: 1.25rem; line-height: 1.5;
+  margin-bottom: 2rem; font-weight: 600;
+}
+.panic-alert-ack {
+  background: #fff; color: #991b1b;
+  border: none; border-radius: 12px;
+  padding: 1rem 2rem; font-size: 1.1rem; font-weight: 800;
+  cursor: pointer; letter-spacing: .03em;
+  transition: transform .1s, background .15s;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+}
+.panic-alert-ack:hover  { background: #fef2f2; }
+.panic-alert-ack:active { transform: scale(.96); }
+
 /* Notif panic dans le panel */
 .notif-item.notif-panic {
   border-left: 4px solid #dc2626;

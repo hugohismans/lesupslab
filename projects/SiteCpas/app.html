@@ -1688,6 +1688,18 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     Panic alert — modal plein écran (reçue par les autres agents)
+════════════════════════════════════════════════════════════════ -->
+<div id="panicAlertOverlay" class="panic-alert-overlay hidden">
+  <div class="panic-alert-box">
+    <div class="panic-alert-icon">🚨</div>
+    <div class="panic-alert-title">ALERTE D'URGENCE</div>
+    <div class="panic-alert-msg" id="panicAlertMsg"></div>
+    <button class="panic-alert-ack" id="panicAlertAck">J'ai vu — Je me rends sur place</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      Panic button flottant (accueil uniquement)
 ════════════════════════════════════════════════════════════════ -->
 <button id="panicBtn" class="panic-float hidden" title="Alerte urgente">

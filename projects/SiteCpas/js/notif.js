@@ -104,7 +104,11 @@ const NOTIF = {
           if (isUnread) {
             this._shownIds.add(id);
             this._showBrowserNotif(n);
-            this._playSound(n.urgent ? 'urgent' : (n.type || 'info'));
+            this._playSound(n.type === 'panic' ? 'panic' : (n.urgent ? 'urgent' : (n.type || 'info')));
+            // Panic : ouvrir la modal d'alerte plein écran (pas à l'émetteur)
+            if (n.type === 'panic' && n.sourceAgentKey !== agentKey) {
+              window._showPanicAlert?.(n);
+            }
           }
         }
       });

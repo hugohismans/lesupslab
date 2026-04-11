@@ -2626,6 +2626,18 @@ document.addEventListener('DOMContentLoaded', async function () {
       } catch (_) {}
     }
 
+    // Modale d'alerte reçue par les autres agents
+    const panicAlertOverlay = document.getElementById('panicAlertOverlay');
+    const panicAlertMsg     = document.getElementById('panicAlertMsg');
+    window._showPanicAlert = (n) => {
+      if (!panicAlertOverlay) return;
+      if (panicAlertMsg) panicAlertMsg.textContent = n.message || 'Alerte d\'urgence !';
+      panicAlertOverlay.classList.remove('hidden');
+    };
+    document.getElementById('panicAlertAck')?.addEventListener('click', () => {
+      panicAlertOverlay?.classList.add('hidden');
+    });
+
     // Déclencher l'alerte
     document.getElementById('panicConfirm')?.addEventListener('click', async () => {
       overlay.classList.add('hidden');
