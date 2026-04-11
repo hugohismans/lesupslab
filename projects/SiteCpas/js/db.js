@@ -1060,6 +1060,17 @@ const DB = {
   getAgentPublicName(key) {
     return this._config.agentPublicNames?.[key] || null;
   },
+  // Nom d'affichage public d'un agent (public name configuré, sinon nom normal)
+  getAgentDisplayName(key) {
+    if (!key) return null;
+    return this._config.agentPublicNames?.[key]
+      || this.getAgentsWithKeys().find(a => a.key === key)?.name
+      || null;
+  },
+  // Nom d'affichage public de l'agent actuellement dans un bureau
+  getBureauAgentDisplayName(localId) {
+    return this.getAgentDisplayName(this.getBureauAgentKey(localId));
+  },
   async removeAgentByKey(key) {
     await this._ref(`appConfig/agents/${key}`).remove();
   },

@@ -1093,7 +1093,7 @@ const LIVE = {
           const _occ2 = DB.getInRange(_dayS2, _dayE2).find(o =>
             Number(o.localId) === routed.localId && o._start <= _now2 && (o._end === null || o._end >= _now2)
           );
-          const _pubAgent2 = _occ2?.agent ? DB.getAgentPublicName(_occ2.agent) : null;
+          const _pubAgent2 = DB.getBureauAgentDisplayName(routed.localId);
           await DB.writeLastCall(routed.localId, _pubAgent2, _grpObj?.name || null, _calledTicket.display, _calledTicket.label, _calledTicket.name);
           LIVE._storeCall(routed.localId, _calledTicket, _occ2);
         } else {
@@ -1169,7 +1169,7 @@ const LIVE = {
           const occ2  = DB.getInRange(dayS2, dayE2).find(o =>
             Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
           );
-          const pubAgent = occ2?.agent ? DB.getAgentPublicName(occ2.agent) : null;
+          const pubAgent = DB.getBureauAgentDisplayName(localId);
           await DB.closePreferredRequest(reqId, localId);
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
           LIVE._storeCall(localId, dispName, occ2);
@@ -1204,7 +1204,7 @@ const LIVE = {
             const _occ = DB.getInRange(_dayS, _dayE).find(o =>
               Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
             );
-            const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
+            const _pubAgent = DB.getBureauAgentDisplayName(localId);
             const _ticket   = await DB.callNextTicket(grp.id);
             showAgentCallNotif(_ticket.label, _ticket.name);
             await DB.writeLastCall(localId, _pubAgent, grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
@@ -1368,7 +1368,7 @@ const LIVE = {
               const _occ  = DB.getInRange(_dayS, _dayE).find(o =>
                 Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
               );
-              const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
+              const _pubAgent = DB.getBureauAgentDisplayName(localId);
               const _ticket   = await DB.callNextTicket(grp.id);
               showAgentCallNotif(_ticket.label, _ticket.name);
               await DB.writeLastCall(localId, _pubAgent, grp.name || null, _ticket.display, _ticket.label, _ticket.name);
