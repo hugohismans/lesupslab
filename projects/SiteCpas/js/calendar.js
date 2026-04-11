@@ -913,14 +913,20 @@ const LIVE = {
         const recallBtn = lastCallAny
           ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
           : '';
-        // Bouton "Recevoir X" si une personne attend spécifiquement cet agent
+        // Bouton "Recevoir X" si une personne attend spécifiquement cet agent (côté agent)
         const preferred = !isAccueil ? DB.getPreferredPending(l) : null;
         const preferredBtn = preferred
           ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(preferred.displayName || '?')} qui ne souhaite voir que moi</button>`
           : '';
+        // Rappel preferred côté accueil (rappeler l'annonce publique)
+        const pendingForAccueil = isAccueil ? DB.getPreferredPending(l) : null;
+        const preferredRecallBtn = pendingForAccueil
+          ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(pendingForAccueil.displayName || '?')}" data-agent="${escapeHtml(pendingForAccueil.agentPublicName || '')}">📢 Rappeler ${escapeHtml(pendingForAccueil.displayName || '?')}</button>`
+          : '';
         queueHtml = `<div class="lv-queue lv-queue-agent${optedOut ? ' lv-queue-opted-out' : ''}">
           ${grpHint}
           ${preferredBtn}
+          ${preferredRecallBtn}
           ${queue > 0 ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
@@ -1176,6 +1182,8 @@ const LIVE = {
           );
           const pubAgent = DB.getBureauAgentDisplayName(localId);
           await DB.closePreferredRequest(reqId, localId);
+          // Libérer la réservation (queue-1 posée à l'envoi)
+          await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) - 1));
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
           LIVE._storeCall(localId, dispName, occ2);
           showToast(`✅ ${dispName} reçu.`);
@@ -1405,6 +1413,19 @@ const LIVE = {
         // Notif visuelle locale
         showAgentCallNotif(d.ticketLabel || d.ticket, d.ticketName || null);
         showToast(`📢 Rappel envoyé — ticket ${d.ticket || ''}`);
+      });
+    });
+
+    // Bouton "Rappeler preferred" (accueil) — ré-annonce sur l'écran public
+    g('liveGrid').querySelectorAll('.lv-pref-recall').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId   = parseInt(btn.dataset.local);
+        const dispName  = btn.dataset.name || '?';
+        const agentName = btn.dataset.agent || null;
+        const grp = DB.getLocalGroup(localId);
+        await DB.writeLastCall(localId, agentName, grp?.name || null, dispName, dispName, null);
+        showToast(`📢 Rappel envoyé pour ${dispName}`);
       });
     });
 

@@ -2450,7 +2450,14 @@ body {
   color: #fbbf24; font-size: .82rem; font-weight: 700;
   cursor: pointer; white-space: nowrap; transition: background .12s;
 }
-.lv-q-recall:hover { background: rgba(251,191,36,.22); }
+.lv-q-recall:hover  { background: rgba(251,191,36,.22); }
+.lv-pref-recall {
+  padding: .35rem .75rem; border-radius: 8px;
+  border: 1.5px solid #60a5fa; background: rgba(96,165,250,.1);
+  color: #60a5fa; font-size: .82rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: background .12s;
+}
+.lv-pref-recall:hover { background: rgba(96,165,250,.22); }
 .lv-queue-group-hint {
   font-size: .72rem; color: #64748b; padding: .15rem 0 .25rem;
   font-style: normal; letter-spacing: .01em;

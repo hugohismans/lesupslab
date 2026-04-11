@@ -2469,10 +2469,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       await DB.respondToPreferredRequest(requestId, 'accepted', null, null, localId, agentPublicName, displayName);
 
+      // Réserver le bureau (queue+1) et annoncer sur l'écran public
+      await DB.setQueue(localId, DB.getQueue(localId) + 1);
+      await DB.writeLastCall(localId, agentPublicName || agentName, null, displayName, displayName, benefName);
+
       await DB.sendNotif(
         `${agentName} est au ${localLabel}${dndNote} — dirigez le bénéficiaire directement vers ce bureau.`,
         'info', myKey,
-        { requestId }
+        { requestId, localId }
       );
     } else {
       // Pas de bureau ouvert → notif agent avec boutons réponse + notif accueil "en attente"
