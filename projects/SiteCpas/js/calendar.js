@@ -765,7 +765,6 @@ const LIVE = {
           return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
         }).join('')}</div>
         <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
-        <button class="lv-grp-preferred" data-grp="${grpId}">👤 Ne veut voir qu'un agent</button>
       </div>`;
     }).join('');
 
@@ -1025,7 +1024,12 @@ const LIVE = {
 
     if (isAccueil) {
       const bureauHtml = this._showAllBureaux ? lieuGroupsHtml : '';
-      g('liveGrid').innerHTML = groupCards + bureauHtml;
+      const preferredCard = `<div class="lv-card lv-preferred-standalone">
+        <div class="lv-preferred-standalone-title">👤 Demande agent spécifique</div>
+        <div class="lv-preferred-standalone-desc">Un bénéficiaire souhaite être reçu par un agent en particulier.</div>
+        <button class="lv-grp-preferred" id="lvPreferredBtn">Ne veut voir qu'un agent</button>
+      </div>`;
+      g('liveGrid').innerHTML = groupCards + preferredCard + bureauHtml;
     } else {
       // Mode bureau : n'afficher que la carte du local sélectionné
       g('liveGrid').innerHTML = renderCard(bureauLocal);
