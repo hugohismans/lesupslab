@@ -1521,12 +1521,16 @@ const DB = {
       updates[`appConfig/lieux/${lieuId}`] = { name: 'CPAS', order: 0, localIds };
     }
 
-    // Activer les modules principaux par défaut si pas encore définis
-    if (!d.features) {
-      updates['appConfig/features/enableTickets']    = true;
-      updates['appConfig/features/enablePublicView'] = true;
-      updates['appConfig/features/enablePresence']   = true;
-    }
+    // Activer les modules principaux par défaut si pas encore définis (vérification individuelle)
+    [
+      ['enableTickets',    true],
+      ['enablePublicView', true],
+      ['enablePresence',   true],
+    ].forEach(([key, val]) => {
+      if (!d.features || d.features[key] === undefined || d.features[key] === null) {
+        updates[`appConfig/features/${key}`] = val;
+      }
+    });
 
     if (Object.keys(updates).length) await this._update(updates);
   },

@@ -1597,7 +1597,7 @@ function applyFeatureFlags() {
     if (el) el.style.display = visible ? '' : 'none';
   };
   show('btnLive',             DB.getFeature('enableTickets'));
-  show('pubDdWrap',           DB.getFeature('enablePublicView'));
+  show('pubDdWrap',           DB._config.features['enablePublicView'] !== false);
   show('btnPresenceHd',       DB.getFeature('enablePresence'));
   show('btnAnalytics',        DB.getFeature('enableAnalytics'));
   show('notifBell',           DB.getFeature('enableNotif'));
