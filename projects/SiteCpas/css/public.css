@@ -422,6 +422,34 @@ body {
   .pub-grp-card { padding: .85rem; }
 }
 
+/* ── Prochaines permanences ────────────────────────────────────── */
+.pub-perm-list {
+  grid-column: 1 / -1;
+  display: flex; flex-direction: column; gap: .35rem;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  border: 1.5px solid var(--border);
+}
+.pub-perm-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr 1fr 1fr;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  border-radius: 8px;
+  font-size: .95rem;
+  border-left: 4px solid var(--border);
+}
+.pub-perm-row.pub-perm-now {
+  background: #f0fdf4;
+  border-left-color: #22c55e;
+}
+.pub-perm-time { font-weight: 700; color: var(--text); white-space: nowrap; }
+.pub-perm-svc  { color: var(--text); }
+.pub-perm-agt  { color: var(--text-muted); }
+.pub-perm-loc  { color: var(--text-muted); font-size: .85rem; }
+
 /* ── Mode kiosque (plein écran) ────────────────────────────────── */
 @media (display-mode: fullscreen) {
   .pub-main { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }

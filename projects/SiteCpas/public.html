@@ -381,13 +381,38 @@ function render() {
     </div>`;
   }).join('');
 
+  // ── Prochaines permanences ─────────────────────────────────────
+  const todayOccs = getOccs(now)
+    .filter(r => !r.isPermanent && r._end > now) // exclure passées et permanentes
+    .sort((a, b) => (a._start||0) - (b._start||0));
+
+  const permSection = todayOccs.length ? (() => {
+    const rows = todayOccs.map(r => {
+      const svc  = r.service === 'Autre' ? r.serviceCustom : r.service;
+      const agt  = r.agent   === 'Autre' ? r.agentCustom  : r.agent;
+      const loc  = _config.localLabels[r.localId] || `Local ${r.localId}`;
+      const hm   = r._start.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' });
+      const hme  = r._end?.toLocaleTimeString('fr-BE',  { hour:'2-digit', minute:'2-digit' }) || '';
+      const active = r._start <= now;
+      return `<div class="pub-perm-row${active ? ' pub-perm-now' : ''}">
+        <span class="pub-perm-time">${hm}${hme ? `–${hme}` : ''}</span>
+        <span class="pub-perm-svc">${escapeHtml(svc || '')}</span>
+        <span class="pub-perm-agt">${escapeHtml(getAgentPublicName(agt) || '')}</span>
+        <span class="pub-perm-loc">📍 ${escapeHtml(loc)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="pub-section-divider"></div>
+      <div class="pub-section-header">🕐 Permanences aujourd'hui</div>
+      <div class="pub-perm-list">${rows}</div>`;
+  })() : '';
+
   // Assembler les deux sections
   const grpSection = groupCards
     ? `<div class="pub-section-header">Services disponibles</div>${groupCards}
        <div class="pub-section-divider"></div>`
     : '';
   const bureauSection = `<div class="pub-section-header">🏢 Bureaux</div>${bureauCards}`;
-  main.innerHTML = grpSection + bureauSection;
+  main.innerHTML = grpSection + bureauSection + permSection;
 
   document.getElementById('pubLastUpdate').textContent =
     `Dernière mise à jour : ${now.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' })}`;
