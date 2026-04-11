@@ -832,8 +832,9 @@ const LIVE = {
       // File individuelle de ce local
       const queue          = DB.getQueue(l);
       const pendingPref    = DB.getPreferredPending(l);
-      // queue=1 posée pour une réservation preferred ne compte pas comme "occupé"
-      const isBusyLocal    = queue >= 1 && !pendingPref;
+      const busyWithPref   = DB.isBureauBusyWithPreferred(l);
+      // "Occupé" = file classique OU agent en cours avec un bénéficiaire preferred
+      const isBusyLocal    = queue >= 1 || busyWithPref;
       const isOpen         = DB.isBureauOpen(l);
       const pause       = DB.getBureauPause(l);
 
@@ -929,7 +930,7 @@ const LIVE = {
           ${grpHint}
           ${preferredBtn}
           ${preferredRecallBtn}
-          ${queue > 0 && !pendingPref ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${queue > 0 && !pendingPref && !busyWithPref ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
           <div class="lv-queue-actions">${leaveBtn}${printBtnHtml}${pauseBtn}${fermerBtn}</div>
@@ -1194,7 +1195,8 @@ const LIVE = {
           );
           const pubAgent = DB.getBureauAgentDisplayName(localId);
           await DB.closePreferredRequest(reqId, localId);
-          // queue reste à 1 → bureau occupé jusqu'au clic "Bénéficiaire parti"
+          // Marquer le bureau comme "en cours avec quelqu'un" jusqu'au clic "Bénéficiaire parti"
+          await DB.setBureauBusyWithPreferred(localId, true);
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
           LIVE._storeCall(localId, dispName, occ2);
           showToast(`✅ ${dispName} reçu.`);
@@ -1440,15 +1442,13 @@ const LIVE = {
       });
     });
 
-    // Bouton "Bénéficiaire parti" — efface le dernier ticket + libère la queue
+    // Bouton "Bénéficiaire parti" — efface le dernier ticket + libère le flag busyWithPreferred
     g('liveGrid').querySelectorAll('.lv-q-done').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         const localId = parseInt(btn.dataset.local);
         delete this._lastCalled[localId];
-        // Libère la réservation posée à l'envoi du preferred (ou d'un ticket classique)
-        const curQ = DB.getQueue(localId);
-        if (curQ > 0) await DB.setQueue(localId, curQ - 1);
+        await DB.setBureauBusyWithPreferred(localId, false);
         this._renderGridMode();
       });
     });

@@ -99,7 +99,7 @@ function getQueueForLocal(localId) {
   return _prevQueue[localId] ?? _prevQueue[String(localId)] ?? 0;
 }
 function isLocalBusy(localId) {
-  return getQueueForLocal(localId) >= 1;
+  return getQueueForLocal(localId) >= 1 || !!_bureauState[String(localId)]?.busyWithPreferred;
 }
 
 function getAgentPublicName(name) {
@@ -335,8 +335,8 @@ function render() {
       const color = getAgentColor(agt);
       const queue    = getQueueForLocal(l);
       const busy     = isLocalBusy(l);
-      const reserved = pref && queue === 1;
-      const waiting  = reserved ? 0 : Math.max(0, queue - 1);
+      const reserved = pref && !busy;
+      const waiting  = Math.max(0, queue - 1);
       const cardClass  = reserved ? 'pub-reserved' : busy ? 'pub-busy' : 'pub-free';
       const statusIcon = reserved ? '🟡 Réservé' : busy ? '🔴 Occupé' : '🟢 Disponible';
       return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
@@ -352,12 +352,12 @@ function render() {
 
     // Bureau ouvert mais sans réservation active (walk-in / permanence)
     const declSvc   = _bureauState[String(l)]?.declaredService || null;
-    const wiBusy    = isLocalBusy(l);
-    // Si une demande preferred est en chemin → "Réservé", pas "Occupé"
-    const wiReserved = pref && getQueueForLocal(l) === 1;
-    const wiClass   = wiReserved ? 'pub-reserved' : wiBusy ? 'pub-busy' : 'pub-free';
-    const wiStatus  = wiReserved ? '🟡 Réservé' : wiBusy ? '🔴 Occupé' : '🟢 Disponible';
-    const wiWaiting = wiReserved ? 0 : Math.max(0, getQueueForLocal(l) - 1);
+    const wiBusy     = isLocalBusy(l);
+    // Si une demande preferred est en chemin → "Réservé" (pas encore avec l'agent)
+    const wiReserved = pref && !wiBusy;
+    const wiClass    = wiReserved ? 'pub-reserved' : wiBusy ? 'pub-busy' : 'pub-free';
+    const wiStatus   = wiReserved ? '🟡 Réservé' : wiBusy ? '🔴 Occupé' : '🟢 Disponible';
+    const wiWaiting  = Math.max(0, getQueueForLocal(l) - 1);
     return `<div class="pub-card ${wiClass}">
       <div class="pub-card-label">${label}</div>
       <div class="pub-card-status">${wiStatus}</div>

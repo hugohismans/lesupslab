@@ -487,7 +487,12 @@ const DB = {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
     await this._ref(`appState/bureaux/${localId}`).set({ open: true, ts: Date.now(), agentKey });
   },
-  getBureauAgentKey(localId) { return this._bureauState[String(localId)]?.agentKey || null; },
+  getBureauAgentKey(localId)            { return this._bureauState[String(localId)]?.agentKey || null; },
+  isBureauBusyWithPreferred(localId)    { return !!(this._bureauState[String(localId)]?.busyWithPreferred); },
+  async setBureauBusyWithPreferred(localId, busy) {
+    if (busy) await this._ref(`appState/bureaux/${localId}/busyWithPreferred`).set(true);
+    else      await this._ref(`appState/bureaux/${localId}/busyWithPreferred`).remove();
+  },
   // Retourne le localId ouvert par l'agent courant (ou null si aucun)
   getOpenBureauForCurrentAgent() {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;

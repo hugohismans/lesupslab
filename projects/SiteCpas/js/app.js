@@ -2432,11 +2432,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Trouver le bureau ouvert (non-backoffice) de l'agent
     const localId = DB.getBureauByAgent(targetAgentKey);
 
-    // Vérifier si le bureau est déjà occupé (en cours avec quelqu'un OU preferred en attente)
+    // Vérifier si le bureau est déjà occupé (preferred en attente OU agent en cours avec quelqu'un)
     if (localId !== null) {
       const existingPending = DB.getPreferredPending(localId);
-      const bureauOccupied  = DB.getQueue(localId) > 0;
-      if (existingPending || bureauOccupied) {
+      const busyWithPref    = DB.isBureauBusyWithPreferred(localId);
+      if (existingPending || busyWithPref) {
         showToast(`${agentName} est déjà occupé(e) — impossible d'envoyer une demande pour l'instant.`);
         return;
       }
@@ -2469,9 +2469,6 @@ document.addEventListener('DOMContentLoaded', async function () {
       );
 
       await DB.respondToPreferredRequest(requestId, 'accepted', null, null, localId, agentPublicName, displayName);
-
-      // Réserver le bureau (queue+1) — la popup public se déclenche seulement quand l'agent clique "Recevoir"
-      await DB.setQueue(localId, DB.getQueue(localId) + 1);
 
       await DB.sendNotif(
         `${agentName} est au ${localLabel}${dndNote} — dirigez le bénéficiaire directement vers ce bureau.`,
