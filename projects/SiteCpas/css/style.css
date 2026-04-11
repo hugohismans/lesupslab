@@ -2217,6 +2217,11 @@ body {
 
 /* ── Modal Pause ───────────────────────────────────────────────── */
 #pauseOverlay { z-index: 2500; } /* au-dessus de .live-overlay (2000) */
+/* Modales preferred — au-dessus de la vue Direct */
+#preferredRequestOverlay,
+#preferredResponseOverlay,
+#preferredBypassOverlay,
+#preferredDirectionConfirmOverlay { z-index: 2500; }
 .pause-modal { max-width: 420px; }
 .pause-bureau-label {
   font-size: .9rem; font-weight: 700; color: #f59e0b;
