@@ -295,8 +295,21 @@ function render() {
     const desc   = getLocalDescription(l);
     const descHtml = desc ? `<div class="pub-card-desc">${escapeHtml(desc)}</div>` : '';
 
-    // Bureau non ouvert → toujours Fermé, quelle que soit la réservation
+    // Bureau non ouvert → Fermé, sauf si une réservation est active maintenant
     if (!isOpen) {
+      const activeRes = perm || res; // perm ou réservation en cours
+      if (activeRes) {
+        const svc = activeRes.service === 'Autre' ? activeRes.serviceCustom : activeRes.service;
+        const agt = activeRes.agent   === 'Autre' ? activeRes.agentCustom  : activeRes.agent;
+        return `<div class="pub-card pub-opening">
+          <div class="pub-card-label">${label}</div>
+          <div class="pub-card-status">🟠 Ouverture imminente</div>
+          <div class="pub-card-svc">${escapeHtml(svc || '')}</div>
+          <div class="pub-card-agt">${escapeHtml(getAgentPublicName(agt) || '')}</div>
+          <div class="pub-card-opening-hint">Le bureau ne va pas tarder à ouvrir</div>
+          ${descHtml}
+        </div>`;
+      }
       return `<div class="pub-card pub-closed">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">⚫ Fermé</div>

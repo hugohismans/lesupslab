@@ -422,6 +422,18 @@ body {
   .pub-grp-card { padding: .85rem; }
 }
 
+/* ── Bureau ouverture imminente ────────────────────────────────── */
+.pub-opening {
+  border-top-color: #f59e0b !important;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+.pub-opening .pub-card-status { color: #b45309; }
+.pub-opening .pub-card-svc    { color: #92400e; }
+.pub-opening .pub-card-agt    { color: #78350f; }
+.pub-card-opening-hint {
+  font-size: .85rem; color: #d97706; font-style: italic; margin-top: .35rem;
+}
+
 /* ── Prochaines permanences ────────────────────────────────────── */
 .pub-perm-list {
   grid-column: 1 / -1;
