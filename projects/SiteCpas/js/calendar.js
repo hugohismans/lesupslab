@@ -529,6 +529,7 @@ const LIVE = {
   _agentQuery:        '',
   _pauseTimerInterval: null,
   _lastCalled:        {},   // localId → { ticket, svc, localLabel, time }
+  _lastEmittedByGrp:  {},   // grpId  → { display, label, name } (côté accueil)
 
   // Stocke le dernier ticket appelé pour un local (session uniquement)
   // ticketInfo peut être une string (display) ou { display, label, name }
@@ -773,12 +774,17 @@ const LIVE = {
             const busy = DB.getQueue(l) >= 1;
             return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
           }).join('')}</div>` : '';
+      const lastEmitted  = this._lastEmittedByGrp[grpId];
+      const reprintBtn   = DB.getFeature('enableTicketPrint') && lastEmitted
+        ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
+        : '';
       return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
         ${overflowTxt}
         ${dotsHtml}
         <button class="lv-grp-add" data-grp="${grpId}"${!hasOpen ? ' disabled title="Aucun bureau ouvert dans ce groupe"' : ''}>+ Envoyer un bénéficiaire</button>
+        ${reprintBtn}
       </div>`;
     }).join('');
 
@@ -1065,11 +1071,13 @@ const LIVE = {
         }
         const routed = await DB.routeGroupQueue(grpId);
         const { label: ticket, resolvedName } = await DB.issueTicket(grpId, benefName);
+        // Mémoriser le dernier ticket émis pour ce groupe (bouton reprint accueil)
+        LIVE._lastEmittedByGrp[grpId] = { display: resolvedName || ticket, label: ticket, name: resolvedName || null };
         // Impression du ticket côté accueil au moment de l'envoi
         if (DB.getFeature('enableTicketPrint')) {
           const _grpPrint   = DB.getQueueGroups()[grpId];
           const _localLabel = routed ? DB.getLocalLabel(routed.localId) : (_grpPrint?.name || '');
-          LIVE._doPrintTicket({ ticket, svc: _grpPrint?.name || '', localLabel: _localLabel });
+          LIVE._doPrintTicket({ ticket: resolvedName || ticket, svc: _grpPrint?.name || '', localLabel: _localLabel });
         }
         // Informer l'agent si le prénom a été désambiguïsé (homonyme dans la même file)
         if (resolvedName && benefName && resolvedName !== benefName) {
@@ -1095,6 +1103,19 @@ const LIVE = {
         }
       });
     });
+
+    // Bouton réimprimer dernier ticket (accueil)
+    g('liveGrid').querySelectorAll('.lv-grp-reprint').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const grpId = btn.dataset.grp;
+        const last  = LIVE._lastEmittedByGrp[grpId];
+        if (!last) return;
+        const grpObj = DB.getQueueGroups()[grpId];
+        LIVE._doPrintTicket({ ticket: last.display, svc: grpObj?.name || '', localLabel: grpObj?.name || '' });
+      });
+    });
+
 
     // Bouton "Ne veut voir qu'un agent" (accueil uniquement)
     g('liveGrid').querySelectorAll('.lv-grp-preferred').forEach(btn => {
