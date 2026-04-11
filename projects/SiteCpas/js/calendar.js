@@ -916,23 +916,17 @@ const LIVE = {
              </button>`
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
-        // Fallback Firebase si _lastCalled n'est pas en mémoire (autre appareil ou rechargement)
-        // Seulement si === undefined : false = sentinelle "effacé volontairement, ne pas restaurer"
-        const _fbLastCall = !isAccueil ? DB.getLastCallForLocal(l) : null;
-        if (this._lastCalled[l] === undefined && _fbLastCall) {
-          this._lastCalled[l] = {
-            ticket: _fbLastCall.ticketNum || _fbLastCall.ticketLabel || null,
-            ticketLabel: _fbLastCall.ticketLabel || null,
-            ticketName:  _fbLastCall.ticketName  || null,
-            svc:         _fbLastCall.groupName    || null,
-            pubAgent:    _fbLastCall.agentName    || null,
-            localLabel:  DB.getLocalLabel(l),
-            time:        new Date(_fbLastCall.ts || Date.now()),
-          };
-        }
+        // "En cours" : uniquement depuis la session en mémoire (évite les fantômes Firebase)
         // _lastCalled[l] peut être false (sentinelle effacé) → traiter comme null
         const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? (this._lastCalled[l] || null) : null;
-        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
+        // "Rappeler" : fallback Firebase si pas en mémoire (ticket routé depuis l'accueil)
+        // Seulement si === undefined : false = sentinelle "effacé volontairement"
+        const _fbLastCall = !isAccueil && this._lastCalled[l] === undefined ? DB.getLastCallForLocal(l) : null;
+        const _fbLastCallObj = _fbLastCall ? {
+          ticket: _fbLastCall.ticketNum || _fbLastCall.ticketLabel || null,
+          svc:    _fbLastCall.groupName || null,
+        } : null;
+        const lastCallAny = !isAccueil ? (this._lastCalled[l] || _fbLastCallObj || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
         const dismissBtn = (!isAccueil && busyWithPref)
