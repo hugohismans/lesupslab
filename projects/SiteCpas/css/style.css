@@ -2832,6 +2832,30 @@ body {
   background: #f8fafc; border-radius: 8px; padding: .6rem .85rem;
   border-left: 3px solid #cbd5e1; margin-bottom: .75rem;
 }
+
+/* ── Permanences du jour ─────────────────────────────────────── */
+.st-select-lieu {
+  width: 100%; padding: .4rem .6rem; border-radius: 6px;
+  border: 1px solid #cbd5e1; font-size: .88rem; margin-bottom: .6rem;
+  background: #f8fafc;
+}
+.st-perm-day-list { display: flex; flex-direction: column; gap: .3rem; }
+.st-perm-day-row {
+  display: grid;
+  grid-template-columns: 1.2rem 5rem 1fr 1fr 1fr;
+  gap: .4rem; align-items: center;
+  padding: .4rem .6rem; border-radius: 7px;
+  font-size: .82rem; border-left: 3px solid #cbd5e1;
+  background: #f8fafc;
+}
+.st-perm-day-row.perm-active   { background: #f0fdf4; border-left-color: #22c55e; }
+.st-perm-day-row.perm-past     { opacity: .55; }
+.st-perm-day-row.perm-upcoming { border-left-color: #94a3b8; }
+.st-perm-badge { font-size: .85rem; }
+.st-perm-time  { font-weight: 600; white-space: nowrap; color: #1e293b; }
+.st-perm-svc   { color: #1e293b; }
+.st-perm-agt   { color: #475569; }
+.st-perm-loc   { color: #94a3b8; font-size: .78rem; }
 /* Diagnostic notifications */
 .st-notif-diag-row { display:flex; gap:.75rem; align-items:center; margin-bottom:.35rem; font-size:.85rem; }
 .st-notif-diag-label { color:#94a3b8; min-width:180px; }

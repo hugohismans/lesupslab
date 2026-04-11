@@ -66,8 +66,66 @@ const MODAL = {
     g('settingsOverlay').classList.remove('hidden');
   },
 
+  _renderPermDay(lieuId) {
+    const listEl = g('stPermList');
+    if (!listEl) return;
+    if (!lieuId) { listEl.innerHTML = '<p class="st-empty">Sélectionnez un lieu.</p>'; return; }
+
+    const lieux = DB.getLieux();
+    const lieu  = lieux[lieuId];
+    if (!lieu) { listEl.innerHTML = '<p class="st-empty">Lieu introuvable.</p>'; return; }
+
+    const localIds = (lieu.localIds || []).map(Number);
+    const todayS   = new Date(); todayS.setHours(0,0,0,0);
+    const todayE   = new Date(); todayE.setHours(23,59,59,999);
+    const now      = new Date();
+
+    const occs = DB.getInRange(todayS, todayE)
+      .filter(r => localIds.includes(parseInt(r.localId)))
+      .sort((a, b) => (a._start||0) - (b._start||0));
+
+    if (!occs.length) {
+      listEl.innerHTML = '<p class="st-empty">Aucune réservation aujourd\'hui pour ce lieu.</p>';
+      return;
+    }
+
+    listEl.innerHTML = occs.map(r => {
+      const svc   = r.service === 'Autre' ? r.serviceCustom : r.service;
+      const agt   = r.agent   === 'Autre' ? r.agentCustom  : r.agent;
+      const loc   = DB.getLocalLabel(r.localId);
+      const hm    = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
+      const hme   = r._end?.toLocaleTimeString('fr-BE',   { hour:'2-digit', minute:'2-digit' }) || '';
+      const past   = r._end && r._end < now;
+      const active = r._start <= now && (!r._end || r._end >= now);
+      const state  = past ? 'perm-past' : active ? 'perm-active' : 'perm-upcoming';
+      const badge  = past ? '✅' : active ? '🟢' : '🕐';
+      return `<div class="st-perm-day-row ${state}">
+        <span class="st-perm-badge">${badge}</span>
+        <span class="st-perm-time">${hm}${hme ? ` – ${hme}` : ''}</span>
+        <span class="st-perm-svc">${escapeHtml(svc || '—')}</span>
+        <span class="st-perm-agt">${escapeHtml(agt || '—')}</span>
+        <span class="st-perm-loc">📍 ${escapeHtml(loc)}</span>
+      </div>`;
+    }).join('');
+  },
+
   _renderSettingsList() {
     const isAdmin = DB.hasPermission('editSettings');
+
+    // ── Permanences du jour ────────────────────────────────────────
+    const permSelect = g('stPermLieuSelect');
+    if (permSelect) {
+      const lieux = DB.getLieux();
+      const lieuEntries = Object.entries(lieux).filter(([, l]) => !l.isBackoffice);
+      permSelect.innerHTML = lieuEntries.map(([id, l]) =>
+        `<option value="${id}">${escapeHtml(l.name)}</option>`
+      ).join('');
+      if (!permSelect._bound) {
+        permSelect._bound = true;
+        permSelect.addEventListener('change', () => this._renderPermDay(permSelect.value));
+      }
+      this._renderPermDay(permSelect.value || lieuEntries[0]?.[0] || '');
+    }
 
     // ── Lieux ──────────────────────────────────────────────────────
     const lieux = DB.getLieux();
