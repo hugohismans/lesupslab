@@ -892,15 +892,17 @@ const LIVE = {
              </button>`
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé)
-        const lastCall  = !isAccueil && queue === 0 ? this._lastCalled[l] : null;
-        const infoHint  = lastCall
-          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCall.ticket ? `<strong>n°${escapeHtml(lastCall.ticket)}</strong>` : 'ticket en cours'}${lastCall.svc ? ` · ${escapeHtml(lastCall.svc)}` : ''}</div>`
+        const lastCallOngoing = !isAccueil && queue === 0 ? this._lastCalled[l] : null;
+        const lastCallAny     = !isAccueil ? this._lastCalled[l] : null;
+        const infoHint  = lastCallOngoing
+          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}</div>`
           : '';
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
           : '';
-        const recallBtn = lastCall
-          ? `<button class="lv-q-recall" data-local="${l}" title="Rappeler le ticket ${lastCall.ticket || ''}">📢 Rappeler ${lastCall.ticket ? `n°${lastCall.ticket}` : 'le dernier'}</button>`
+        // Rappel disponible dès qu'un ticket a été appelé, même si quelqu'un est en salle
+        const recallBtn = lastCallAny
+          ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
           : '';
         // Bouton "Recevoir X" si une personne attend spécifiquement cet agent
         const preferred = !isAccueil ? DB.getPreferredPending(l) : null;
