@@ -2432,11 +2432,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Trouver le bureau ouvert (non-backoffice) de l'agent
     const localId = DB.getBureauByAgent(targetAgentKey);
 
-    // Vérifier si un preferredPending existe déjà pour ce bureau
+    // Vérifier si le bureau est déjà occupé (en cours avec quelqu'un OU preferred en attente)
     if (localId !== null) {
       const existingPending = DB.getPreferredPending(localId);
-      if (existingPending) {
-        showToast(`${agentName} a déjà un bénéficiaire en attente — impossible d'envoyer une 2ème demande.`);
+      const bureauOccupied  = DB.getQueue(localId) > 0;
+      if (existingPending || bureauOccupied) {
+        showToast(`${agentName} est déjà occupé(e) — impossible d'envoyer une demande pour l'instant.`);
         return;
       }
     }

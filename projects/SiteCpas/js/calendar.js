@@ -1182,8 +1182,7 @@ const LIVE = {
           );
           const pubAgent = DB.getBureauAgentDisplayName(localId);
           await DB.closePreferredRequest(reqId, localId);
-          // Libérer la réservation (queue-1 posée à l'envoi)
-          await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) - 1));
+          // queue reste à 1 → bureau occupé jusqu'au clic "Bénéficiaire parti"
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
           LIVE._storeCall(localId, dispName, occ2);
           showToast(`✅ ${dispName} reçu.`);
@@ -1429,12 +1428,15 @@ const LIVE = {
       });
     });
 
-    // Bouton "Bénéficiaire parti" — efface le dernier ticket en cours
+    // Bouton "Bénéficiaire parti" — efface le dernier ticket + libère la queue
     g('liveGrid').querySelectorAll('.lv-q-done').forEach(btn => {
-      btn.addEventListener('click', e => {
+      btn.addEventListener('click', async e => {
         e.stopPropagation();
         const localId = parseInt(btn.dataset.local);
         delete this._lastCalled[localId];
+        // Libère la réservation posée à l'envoi du preferred (ou d'un ticket classique)
+        const curQ = DB.getQueue(localId);
+        if (curQ > 0) await DB.setQueue(localId, curQ - 1);
         this._renderGridMode();
       });
     });
