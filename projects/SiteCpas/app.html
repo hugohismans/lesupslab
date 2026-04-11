@@ -1687,5 +1687,30 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     Panic button flottant (accueil uniquement)
+════════════════════════════════════════════════════════════════ -->
+<button id="panicBtn" class="panic-float hidden" title="Alerte urgente">
+  🚨
+</button>
+
+<!-- Modal confirmation panic -->
+<div class="overlay hidden" id="panicConfirmOverlay" style="z-index:9999;background:rgba(127,0,0,.85)">
+  <div class="modal" style="border:3px solid #ef4444;max-width:480px;text-align:center">
+    <div style="font-size:3.5rem;line-height:1;margin-bottom:.5rem">🚨</div>
+    <h2 style="font-size:1.5rem;color:#ef4444;letter-spacing:.05em;margin-bottom:.5rem">ALERTE D'URGENCE</h2>
+    <p style="color:#64748b;font-size:.95rem;margin-bottom:1.25rem">
+      Cette action va envoyer une <strong>alerte immédiate</strong> à tous les agents disponibles.<br>
+      Êtes-vous sûr(e) ?
+    </p>
+    <div style="display:flex;gap:.75rem;justify-content:center">
+      <button class="btn-cancel" id="panicCancel" style="flex:1;max-width:180px">Annuler</button>
+      <button id="panicConfirm" class="btn-panic-confirm" style="flex:1;max-width:220px">
+        🚨 DÉCLENCHER L'ALERTE
+      </button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

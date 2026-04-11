@@ -131,7 +131,13 @@ const NOTIF = {
         osc.start(ctx.currentTime + t0);
         osc.stop(ctx.currentTime + t0 + dur + 0.05);
       };
-      if (type === 'preferred_request') {
+      if (type === 'panic') {
+        // Alarme stridentes — urgence absolue (5 bips rapides)
+        for (let i = 0; i < 5; i++) {
+          tone(1320, i * 0.16, 0.12, 0.6);
+          tone(880,  i * 0.16 + 0.08, 0.08, 0.5);
+        }
+      } else if (type === 'preferred_request') {
         // Sonnette douce 3 tons — quelqu'un demande cet agent spécifiquement
         tone(523, 0,    0.18, 0.3, 'sine');
         tone(659, 0.22, 0.18, 0.3, 'sine');
@@ -322,7 +328,8 @@ const NOTIF = {
           const isRead = n._local ? n._read : !!(n.readBy?.[agentKey]);
           const isPref = n.type === 'preferred_request';
           const isPrefReply = n.type === 'preferred_reply_accueil';
-          const icon   = isPref ? '👤' : (isPrefReply ? '↩️' : (n.type === 'tech_request' ? '🔧' : (n.type === 'tech_reply' ? '↩️' : (n.urgent ? '🚨' : (icons[n.type] || 'ℹ️')))));
+          const isPanic = n.type === 'panic';
+          const icon   = isPanic ? '🚨' : (isPref ? '👤' : (isPrefReply ? '↩️' : (n.type === 'tech_request' ? '🔧' : (n.type === 'tech_reply' ? '↩️' : (n.urgent ? '🚨' : (icons[n.type] || 'ℹ️'))))));
           const d      = new Date(n.createdAt);
           const time   = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const canReply = n.type === 'tech_request' && n.replyable && !n.replied;

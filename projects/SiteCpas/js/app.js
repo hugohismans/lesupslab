@@ -2575,6 +2575,80 @@ document.addEventListener('DOMContentLoaded', async function () {
     locals.forEach(localId => DB.onPreferredPending(localId, () => LIVE.render()));
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // ─── Panic button ─────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  (function initPanicButton() {
+    const btn     = document.getElementById('panicBtn');
+    const overlay = document.getElementById('panicConfirmOverlay');
+    if (!btn || !overlay) return;
+
+    // Afficher/masquer selon le rôle
+    function updatePanicVisibility() {
+      const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+      const myRole = myKey ? DB.getAgentPermRole(myKey) : null;
+      const canPanic = myRole === '__accueil__' || myRole === '__admin__';
+      btn.classList.toggle('hidden', !canPanic);
+    }
+    DB.onConfigChange(updatePanicVisibility);
+    updatePanicVisibility();
+
+    // Ouvrir la modale de confirmation
+    btn.addEventListener('click', () => overlay.classList.remove('hidden'));
+
+    // Annuler
+    document.getElementById('panicCancel')?.addEventListener('click', () => {
+      overlay.classList.add('hidden');
+    });
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.add('hidden');
+    });
+
+    // Son d'alarme local (déclenché côté émetteur aussi)
+    function _playPanicAlarm() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const tone = (freq, t0, dur, vol = 0.6) => {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'sawtooth'; osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, ctx.currentTime + t0);
+          gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + t0 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t0 + dur);
+          osc.start(ctx.currentTime + t0);
+          osc.stop(ctx.currentTime + t0 + dur + 0.05);
+        };
+        for (let i = 0; i < 5; i++) {
+          tone(1320, i * 0.16, 0.12);
+          tone(880,  i * 0.16 + 0.08, 0.08);
+        }
+      } catch (_) {}
+    }
+
+    // Déclencher l'alerte
+    document.getElementById('panicConfirm')?.addEventListener('click', async () => {
+      overlay.classList.add('hidden');
+
+      const myKey    = sessionStorage.getItem('cpas_current_agent_key');
+      const myName   = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'Un agent d\'accueil';
+      const localId  = DB.getOpenBureauForCurrentAgent();
+      const localLbl = localId ? DB.getLocalLabel(localId) : null;
+      const location = localLbl || 'l\'accueil';
+
+      _playPanicAlarm();
+
+      // Broadcast à tous (null = tous les agents)
+      await DB.sendNotif(
+        `🚨 ALERTE — ${myName} a besoin d'aide immédiate à ${location} !`,
+        'panic', null,
+        { urgent: true, fromAgentKey: myKey, fromAgentName: myName, local: location }
+      );
+
+      showToast('🚨 Alerte envoyée à tous les agents.', 'warn');
+    });
+  })();
+
   // ─── Push PWA (Couche D.2) ─────────────────────────────────────
   // Actif seulement si : service worker supporté + VAPID_KEY configuré + feature enablePushNotif
   (function initPushPWA() {
