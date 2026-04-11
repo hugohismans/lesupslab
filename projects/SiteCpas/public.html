@@ -107,6 +107,11 @@ function getAgentPublicName(name) {
   if (!agent?.key) return name;
   return _config.agentPublicNames[agent.key] || name;
 }
+function getAgentPublicNameByKey(key) {
+  const agent = _config.agents.find(a => a.key === key);
+  if (!agent) return null;
+  return _config.agentPublicNames[key] || agent.name;
+}
 
 function expandRec(id, res, viewStart, viewEnd) {
   if (res.isPermanent) return [{ id, ...res, _start: new Date(res.startDateTime), _end: null }];
@@ -341,11 +346,14 @@ function render() {
       const waiting  = Math.max(0, queue - 1);
       const cardClass  = reserved ? 'pub-reserved' : busy ? 'pub-busy' : 'pub-free';
       const statusIcon = reserved ? '🟡 Réservé' : busy ? '🔴 Occupé' : '🟢 Disponible';
+      // Agent affiché : celui réellement connecté si occupé, sinon celui de la réservation
+      const actualKey   = _bureauState[String(l)]?.agentKey || null;
+      const displayAgt  = busy && actualKey ? (getAgentPublicNameByKey(actualKey) || getAgentPublicName(agt)) : getAgentPublicName(agt);
       return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">${statusIcon}</div>
         <div class="pub-card-svc">${svc}</div>
-        <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
+        <div class="pub-card-agt">${displayAgt}</div>
         ${waiting > 0 ? `<div class="pub-card-until">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>` : ''}
         ${descHtml}
         ${prefBanner}
@@ -360,10 +368,13 @@ function render() {
     const wiClass    = wiReserved ? 'pub-reserved' : wiBusy ? 'pub-busy' : 'pub-free';
     const wiStatus   = wiReserved ? '🟡 Réservé' : wiBusy ? '🔴 Occupé' : '🟢 Disponible';
     const wiWaiting  = Math.max(0, getQueueForLocal(l) - 1);
+    const wiAgentKey = _bureauState[String(l)]?.agentKey || null;
+    const wiAgentName = wiAgentKey ? getAgentPublicNameByKey(wiAgentKey) : null;
     return `<div class="pub-card ${wiClass}">
       <div class="pub-card-label">${label}</div>
       <div class="pub-card-status">${wiStatus}</div>
       ${declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : ''}
+      ${wiAgentName ? `<div class="pub-card-agt">${escapeHtml(wiAgentName)}</div>` : ''}
       ${wiWaiting > 0 ? `<div class="pub-card-until">${wiWaiting} personne${wiWaiting > 1 ? 's' : ''} en attente</div>` : ''}
       ${descHtml}
       ${prefBanner}
