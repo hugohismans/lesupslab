@@ -911,7 +911,7 @@ const LIVE = {
           : '';
         const infoHint  = lastCallOngoing
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}${dismissBtn}</div>`
-          : '';
+          : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
           : '';
@@ -1190,6 +1190,10 @@ const LIVE = {
         const grp      = DB.getLocalGroup(localId);
         const queue    = grp ? DB.getGroupOverflowQueue(grp.id) : DB.getQueue(localId);
         const doReceive = async () => {
+          // Stocker en mémoire immédiatement — pas de latence Firebase
+          LIVE._storeCall(localId, dispName, null);
+          LIVE._renderGridMode();
+          showToast(`✅ ${dispName} reçu.`);
           const now2  = new Date();
           const dayS2 = new Date(now2); dayS2.setHours(0,0,0,0);
           const dayE2 = new Date(now2); dayE2.setHours(23,59,59,999);
@@ -1197,13 +1201,10 @@ const LIVE = {
             Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
           );
           const pubAgent = DB.getBureauAgentDisplayName(localId);
+          // Écriture Firebase en arrière-plan (le bouton est déjà affiché)
           await DB.closePreferredRequest(reqId, localId);
-          // Marquer le bureau comme "en cours avec quelqu'un" jusqu'au clic "Bénéficiaire parti"
           await DB.setBureauBusyWithPreferred(localId, true);
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
-          LIVE._storeCall(localId, dispName, occ2);
-          LIVE._renderGridMode(); // re-render immédiat pour afficher "Bénéficiaire parti"
-          showToast(`✅ ${dispName} reçu.`);
         };
         if (queue > 0) {
           // D'autres personnes attendent — demander si bypass
