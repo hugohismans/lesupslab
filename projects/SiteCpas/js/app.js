@@ -792,11 +792,35 @@ const HOME = {
     this._lastPhraseAt = Date.now();
   },
 
+  // ── Bloquer une action si bonjour pas dit ────────────────────────
+  _requireBonjour(action) {
+    const agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+    if (!agentKey || this._hasSaidBonjourToday(agentKey)) { action(); return; }
+    const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+    const prenom    = agentName ? agentName.split(' ')[0] : null;
+    const n         = prenom ? ` ${prenom}` : '';
+    const msgs = [
+      `Un petit bonjour d'abord${n} ! 👋 Clique sur moi pour signaler ton arrivée.`,
+      `Impossible de faire ça sans dire bonjour d'abord${n} ! 🙈 Un clic sur moi suffit.`,
+      `${prenom ? prenom + ', ' : ''}dis-moi bonjour en cliquant sur moi — ensuite tu pourras tout faire 😊`,
+      `Hé${n} ! Ta présence n'est pas encore signalée — clique sur moi d'abord 👇`,
+    ];
+    this._showBubble(msgs[Math.floor(Math.random() * msgs.length)]);
+    document.getElementById('hsMascotSvg')?.classList.add('needs-bonjour');
+  },
+
   _updateBubble(agentName, myRes) {
     const agentKey  = sessionStorage.getItem('cpas_current_agent_key') || 'anon';
     const mascotId  = (typeof DB !== 'undefined' && DB.getMascotId) ? DB.getMascotId() : 'poulpe';
     const mascot    = MASCOTS[mascotId] || MASCOTS.poulpe;
     const prenom    = agentName ? agentName.split(' ')[0] : null;
+
+    // Priorité absolue : bonjour pas encore dit → rappel permanent
+    if (agentKey !== 'anon' && !this._hasSaidBonjourToday(agentKey)) {
+      const text = this._getNotYetBonjourPhrase(agentName, mascot.name);
+      if (text !== this._lastPhrase) this._showBubble(text);
+      return;
+    }
 
     // Première rencontre avec cette mascotte → phrase d'introduction
     if (!this._hasMet(mascotId, agentKey)) {
@@ -808,13 +832,6 @@ const HOME = {
     const now  = new Date();
     const diff = Date.now() - this._lastPhraseAt;
     if (diff < 30000 && this._lastPhrase) return;
-
-    // Pas encore dit bonjour aujourd'hui → rappels
-    if (agentKey !== 'anon' && !this._hasSaidBonjourToday(agentKey)) {
-      const text = this._getNotYetBonjourPhrase(agentName, mascot.name);
-      if (text !== this._lastPhrase) this._showBubble(text);
-      return;
-    }
 
     // Rotation habituelle
     const text = this._getMascotPhrase(agentName, myRes, now);
@@ -918,8 +935,10 @@ const HOME = {
     });
     document.getElementById('hsGoLive').addEventListener('click', () => LIVE.open());
     document.getElementById('hsGoNew').addEventListener('click', () => {
-      const btnNew = document.getElementById('btnNew');
-      if (btnNew) btnNew.click();
+      this._requireBonjour(() => {
+        const btnNew = document.getElementById('btnNew');
+        if (btnNew) btnNew.click();
+      });
     });
     document.getElementById('hsGoStatus').addEventListener('click', () => {
       const btnSt = document.getElementById('btnPresenceHd');
@@ -928,7 +947,8 @@ const HOME = {
 
     // ─ Se déclarer dans un bureau ────────────────────────────────────
     document.getElementById('hsDeclLieu').addEventListener('change', () => this._fillDeclLocals());
-    document.getElementById('hsDeclBtn').addEventListener('click', async () => {
+    document.getElementById('hsDeclBtn').addEventListener('click', () => {
+      this._requireBonjour(async () => {
       const localId = parseInt(document.getElementById('hsDeclLocal').value);
       if (!localId) return;
       if (DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(localId)) {
@@ -971,6 +991,7 @@ const HOME = {
         }
         this.render();
       }
+      }); // fin _requireBonjour
     });
     document.getElementById('hsDeclLeaveBtn').addEventListener('click', async () => {
       const localId = parseInt(document.getElementById('hsDeclLocal').value);
@@ -2022,7 +2043,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // ─── Nouvelle réservation ──────────────────────────────────────
   document.getElementById('btnNew').addEventListener('click', () => {
-    MODAL.openNew({ date: isoDate(CAL.date) });
+    HOME._requireBonjour(() => MODAL.openNew({ date: isoDate(CAL.date) }));
   });
 
   // ─── Dropdown Vue Publique ─────────────────────────────────────
