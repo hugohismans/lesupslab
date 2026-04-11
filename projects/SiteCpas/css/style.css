@@ -533,6 +533,22 @@ body {
 .tab.active { background: #fff; color: #1a3a5c; }
 .tab:hover:not(.active) { background: rgba(255,255,255,.18); color: #fff; }
 
+/* ── Boutons flottants fin de journée ────────────────────────── */
+.eod-fab {
+  position: fixed; bottom: 1.5rem; left: 1.5rem;
+  display: flex; flex-direction: column; gap: .5rem; z-index: 800;
+}
+.eod-fab-btn {
+  width: 48px; height: 48px; border-radius: 50%; border: none;
+  font-size: 1.35rem; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s, box-shadow .15s;
+}
+.eod-fab-btn:hover { transform: scale(1.12); box-shadow: 0 6px 22px rgba(0,0,0,.45); }
+.eod-fab-broom { background: #334155; }
+.eod-fab-bye   { background: #1e3a5c; }
+
 /* ── Barre de lieux ───────────────────────────────────────────── */
 /* ── Message du jour ─────────────────────────────────────────── */
 .msg-bubble {
@@ -1406,7 +1422,7 @@ body {
   /* ── Masquer tout sauf le calendrier ─────────────────────────── */
   .hd, .lieu-bar, .sb, .legend, .msg-bubble, .live-overlay,
   .overlay, #btnNew, #btnLive, #btnSettings, #btnLogout,
-  .btn-nav, .btn-today, .btn-pub, .now-line { display: none !important; }
+  .btn-nav, .btn-today, .btn-pub, .now-line, .eod-fab { display: none !important; }
 
   /* ── En-tête d'impression généré en CSS ──────────────────────── */
   .cal::before {

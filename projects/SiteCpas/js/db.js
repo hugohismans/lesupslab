@@ -1120,6 +1120,21 @@ const DB = {
     if (Object.keys(updates).length) await this._update(updates);
   },
 
+  // Fin de journée — marquer tous les agents connectés comme "Au revoir"
+  async goodbyeAllAgents() {
+    const today   = isoDate(new Date());
+    const updates = {};
+    Object.entries(this._agentStatus).forEach(([agentKey, status]) => {
+      if (!status?.connectedAt) return;          // pas connecté aujourd'hui
+      if (status?.status === 'done') return;     // déjà parti
+      const keep = { status: 'done', logoutAt: Date.now() };
+      if (status.connectedAt) keep.connectedAt = status.connectedAt;
+      if (status.dnd)         keep.dnd         = true;
+      updates[`agentStatus/${today}/${agentKey}`] = keep;
+    });
+    if (Object.keys(updates).length) await this._update(updates);
+  },
+
   async addAgent(name, publicName) {
     const ref = await this._ref('appConfig/agents').push(name);
     if (publicName && publicName !== name) {

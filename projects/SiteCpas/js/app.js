@@ -2389,6 +2389,35 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Bouton ajout écran → géré dans modal.js (_initSettings)
 
+  // ── Boutons flottants fin de journée (admin only) ─────────────────
+  function _updateEodFab() {
+    const fab = document.getElementById('eodFab');
+    if (fab) fab.classList.toggle('hidden', !DB.hasPermission('manageAgentStatus'));
+  }
+  DB.onConfigChange(_updateEodFab);
+  _updateEodFab();
+
+  document.getElementById('btnFabClearLocals')?.addEventListener('click', async () => {
+    if (!DB.hasPermission('manageAgentStatus')) return;
+    const nb = Object.keys(DB._bureauState).filter(id => DB.isBureauOpen(id)).length;
+    if (!nb) { showToast('Aucun bureau ouvert.', 'info'); return; }
+    if (!confirm(`Fermer ${nb} bureau${nb > 1 ? 'x' : ''} ouvert${nb > 1 ? 's' : ''} ?\n\nLes agents restent marqués comme présents.`)) return;
+    await DB.clearAllLocals();
+    showToast('Tous les bureaux ont été fermés ✓');
+  });
+
+  document.getElementById('btnFabGoodbyeAll')?.addEventListener('click', async () => {
+    if (!DB.hasPermission('manageAgentStatus')) return;
+    const connected = DB.getConnectedTodayAgents().filter(k => DB.getAgentStatus(k)?.status !== 'done');
+    if (!connected.length) { showToast('Aucun agent encore connecté.', 'info'); return; }
+    const names = connected
+      .map(k => DB.getAgentsWithKeys().find(a => a.key === k)?.name || k)
+      .join(', ');
+    if (!confirm(`Marquer ${connected.length} agent${connected.length > 1 ? 's' : ''} comme "Au revoir" ?\n\n${names}`)) return;
+    await DB.goodbyeAllAgents();
+    showToast('Bonne fin de journée à tous 👋');
+  });
+
   // ═══════════════════════════════════════════════════════════════
   // ─── "Ne veut voir qu'un agent" — circuit préférentiel ────────
   // ═══════════════════════════════════════════════════════════════
