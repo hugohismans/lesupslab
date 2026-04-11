@@ -365,6 +365,7 @@ const DB = {
       const data = status === 'late'
         ? { status, arrivalTime: arrivalTime || '' }
         : { status };
+      if (status === 'done')   data.logoutAt    = Date.now();
       if (current.dnd)         data.dnd         = true;
       if (current.connectedAt) data.connectedAt  = current.connectedAt;
       await this._ref(`agentStatus/${today}/${agentKey}`).set(data);
@@ -391,6 +392,10 @@ const DB = {
     if (this.isConnectedToday(agentKey)) return; // déjà marqué
     const today = isoDate(new Date());
     await this._ref(`agentStatus/${today}/${agentKey}/connectedAt`).set(Date.now());
+  },
+  async fetchPresenceLog(date) {
+    const snap = await this._ref(`agentStatus/${date}`).once('value');
+    return snap.val() || {};
   },
 
   // ── Absences ──────────────────────────────────────────────────

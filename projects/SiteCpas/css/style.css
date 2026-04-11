@@ -2627,6 +2627,54 @@ body {
   color: #94a3b8; padding: 3rem; font-size: .9rem;
 }
 
+/* ── Widget Présences du jour ─────────────────────────────────────── */
+.an-pl-header {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: .75rem; margin-bottom: .75rem;
+}
+.an-pl-date-label {
+  font-size: .82rem; color: #64748b; display: flex;
+  align-items: center; gap: .5rem;
+}
+.an-pl-date {
+  border: 1.5px solid #e2e8f0; border-radius: 6px;
+  padding: .2rem .5rem; font-size: .82rem; color: #1e293b;
+  background: #fff; cursor: pointer;
+}
+.an-pl-legend {
+  display: flex; gap: .5rem; flex-wrap: wrap; margin-left: auto;
+}
+.an-pl-summary {
+  display: flex; gap: 1.25rem; flex-wrap: wrap;
+  font-size: .82rem; color: #475569;
+  padding: .5rem .25rem .75rem; border-bottom: 1px solid #f1f5f9;
+  margin-bottom: .5rem;
+}
+.an-pl-summary strong { color: #1e293b; }
+.an-pl-table {
+  width: 100%; border-collapse: collapse; font-size: .83rem;
+}
+.an-pl-table thead th {
+  text-align: left; font-size: .75rem; font-weight: 600;
+  color: #94a3b8; padding: .3rem .5rem;
+  border-bottom: 1.5px solid #f1f5f9; text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.an-pl-table tbody tr:hover { background: #f8fafc; }
+.an-pl-table td { padding: .45rem .5rem; border-bottom: 1px solid #f8fafc; }
+.an-pl-name { font-weight: 500; color: #1e293b; }
+.an-pl-time { color: #475569; font-variant-numeric: tabular-nums; }
+.an-pl-badge {
+  display: inline-block; font-size: .72rem; font-weight: 600;
+  padding: .15rem .5rem; border-radius: 99px;
+}
+.an-pl-ok     { background: #dcfce7; color: #15803d; }
+.an-pl-late   { background: #fef9c3; color: #92400e; }
+.an-pl-absent { background: #f1f5f9; color: #94a3b8; }
+.an-pl-still  { color: #22c55e; font-weight: 600; font-size: .78rem; }
+.an-pl-gone   { color: #94a3b8; font-size: .78rem; }
+.an-pl-table-wrap { overflow-x: auto; }
+
 /* ═══════════════════════════════════════════════════════════════════
    RÔLES & PERMISSIONS
 ═══════════════════════════════════════════════════════════════════ */
