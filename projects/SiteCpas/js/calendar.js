@@ -542,6 +542,7 @@ const LIVE = {
     const agent    = occ ? (occ.agent   === 'Autre' ? occ.agentCustom  : occ.agent)   : null;
     const pubAgent = agent ? DB.getAgentPublicName(agent) : null;
     this._lastCalled[localId] = { ticket, ticketLabel, ticketName, svc, pubAgent, localLabel: DB.getLocalLabel(localId), time: new Date() };
+    try { localStorage.setItem(`cpas_lastCall_${localId}`, JSON.stringify(this._lastCalled[localId])); } catch(_) {}
   },
 
   // Imprime un ticket avec les données passées directement
@@ -749,6 +750,17 @@ const LIVE = {
     const isAccueil = role === 'accueil';
     const bureauLocal = isAccueil ? null : parseInt(role.replace('bureau_', ''));
 
+    // Restaurer _lastCalled depuis localStorage (survit aux rechargements de page)
+    for (let _i = 0; _i < localStorage.length; _i++) {
+      const _k = localStorage.key(_i);
+      if (_k?.startsWith('cpas_lastCall_')) {
+        const _lid = parseInt(_k.replace('cpas_lastCall_', ''));
+        if (!this._lastCalled[_lid]) {
+          try { this._lastCalled[_lid] = JSON.parse(localStorage.getItem(_k)); } catch(_) {}
+        }
+      }
+    }
+
     // ── Cartes de groupe (accueil uniquement) ─────────────────────
     const groups = DB.getQueueGroups();
     const groupCards = Object.entries(groups).map(([grpId, grp]) => {
@@ -905,13 +917,13 @@ const LIVE = {
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
         const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? this._lastCalled[l] : null;
         const lastCallAny     = !isAccueil ? this._lastCalled[l] : null;
-        // Toujours proposer "Bénéficiaire parti" si busyWithPref actif (évite de rester bloqué)
-        const dismissBtn = (lastCallOngoing || (!isAccueil && busyWithPref))
+        // Bouton "Bénéficiaire parti" : visible dès qu'on est en permanence (isBusyLocal)
+        const dismissBtn = (!isAccueil && isBusyLocal)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
         const infoHint  = lastCallOngoing
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}${dismissBtn}</div>`
-          : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
+          : (!isAccueil && isBusyLocal ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
           : '';
@@ -1190,10 +1202,6 @@ const LIVE = {
         const grp      = DB.getLocalGroup(localId);
         const queue    = grp ? DB.getGroupOverflowQueue(grp.id) : DB.getQueue(localId);
         const doReceive = async () => {
-          // Stocker en mémoire immédiatement — pas de latence Firebase
-          LIVE._storeCall(localId, dispName, null);
-          LIVE._renderGridMode();
-          showToast(`✅ ${dispName} reçu.`);
           const now2  = new Date();
           const dayS2 = new Date(now2); dayS2.setHours(0,0,0,0);
           const dayE2 = new Date(now2); dayE2.setHours(23,59,59,999);
@@ -1201,7 +1209,10 @@ const LIVE = {
             Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
           );
           const pubAgent = DB.getBureauAgentDisplayName(localId);
-          // Écriture Firebase en arrière-plan (le bouton est déjà affiché)
+          // _storeCall en mémoire AVANT les awaits : la render Firebase qui suit
+          // closePreferredRequest verra _lastCalled déjà peuplé → bouton immédiat
+          LIVE._storeCall(localId, dispName, occ2);
+          showToast(`✅ ${dispName} reçu.`);
           await DB.closePreferredRequest(reqId, localId);
           await DB.setBureauBusyWithPreferred(localId, true);
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
@@ -1453,8 +1464,10 @@ const LIVE = {
         e.stopPropagation();
         const localId = parseInt(btn.dataset.local);
         delete this._lastCalled[localId];
+        try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
         await DB.setBureauBusyWithPreferred(localId, false);
-        this._renderGridMode();
+        // Si un ticket était resté en queue locale, le vider aussi
+        if (DB.getQueue(localId) > 0) await DB.setQueue(localId, 0);
       });
     });
 
