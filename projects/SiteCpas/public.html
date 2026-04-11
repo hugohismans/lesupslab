@@ -346,9 +346,9 @@ function render() {
       const waiting  = Math.max(0, queue - 1);
       const cardClass  = reserved ? 'pub-reserved' : busy ? 'pub-busy' : 'pub-free';
       const statusIcon = reserved ? '🟡 Réservé' : busy ? '🔴 Occupé' : '🟢 Disponible';
-      // Agent affiché : celui réellement connecté si occupé, sinon celui de la réservation
+      // Agent affiché : celui réellement déclaré dans le bureau, sinon celui de la réservation
       const actualKey   = _bureauState[String(l)]?.agentKey || null;
-      const displayAgt  = busy && actualKey ? (getAgentPublicNameByKey(actualKey) || getAgentPublicName(agt)) : getAgentPublicName(agt);
+      const displayAgt  = actualKey ? (getAgentPublicNameByKey(actualKey) || getAgentPublicName(agt)) : getAgentPublicName(agt);
       return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">${statusIcon}</div>
