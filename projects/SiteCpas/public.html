@@ -221,8 +221,9 @@ function render() {
     // Seuls les bureaux explicitement ouverts comptent
     const lids = allLids.filter(l => _bureauState[String(l)]?.open);
     if (!lids.length) return '';
-    const occupied = lids.filter(l => getQueueForLocal(l) >= 1).length;
-    const paused   = lids.filter(l => !!_bureauState[String(l)]?.pause).length;
+    // Un bureau est occupé si : file locale, busyWithPreferred, ou préférence en attente (Réservé)
+    const occupied = lids.filter(l => isLocalBusy(l) || !!_preferredPending[String(l)]).length;
+    const paused   = lids.filter(l => !isLocalBusy(l) && !_preferredPending[String(l)] && !!_bureauState[String(l)]?.pause).length;
     const overflow = _prevQueue[`wait_${grpId}`] ?? 0;
     const total    = lids.length;
     const waiting  = overflow; // personnes en attente au-delà de la capacité
@@ -241,8 +242,9 @@ function render() {
     }
 
     const dots = lids.map(l => {
-      const isPaused = !!_bureauState[String(l)]?.pause;
-      const busy     = !isPaused && getQueueForLocal(l) >= 1;
+      const reserved = !!_preferredPending[String(l)];
+      const busy     = isLocalBusy(l) || reserved;
+      const isPaused = !busy && !!_bureauState[String(l)]?.pause;
       return `<span class="pub-grp-dot${isPaused ? ' paused' : busy ? ' busy' : ''}"></span>`;
     }).join('');
 
