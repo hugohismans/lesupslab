@@ -878,7 +878,8 @@ const LIVE = {
 
       // Boutons de file
       let queueHtml;
-      const pauseBtn  = isOpen && !isAccueil
+      // Pause/retirer/fermer bloqués pendant permanence en cours
+      const pauseBtn  = isOpen && !isAccueil && !busyWithPref
         ? `<button class="lv-pause-btn" data-local="${l}">⏸ Pause</button>`
         : '';
 
@@ -893,17 +894,19 @@ const LIVE = {
           ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${grp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
-        const fermerBtn   = `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
-        // Bouton "Se retirer / Rejoindre" : visible uniquement pour les agents bureau (pas accueil)
-        const leaveBtn = !isAccueil
+        // Fermer/Se retirer bloqués pendant permanence en cours (sauf accueil)
+        const fermerBtn   = (!isAccueil && busyWithPref) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
+        // Bouton "Se retirer / Rejoindre" : visible uniquement pour les agents bureau (pas accueil), bloqué pendant permanence
+        const leaveBtn = !isAccueil && !busyWithPref
           ? `<button class="lv-q-leave${optedOut ? ' lv-q-rejoindre' : ''}" data-local="${l}" data-opted="${optedOut ? '1' : '0'}" title="${optedOut ? 'Rejoindre la file partagée' : 'Ne plus recevoir de tickets de la file partagée'}">
                ${optedOut ? '🔄 Rejoindre' : '🚪 Se retirer'}
              </button>`
           : '';
-        // Bénéficiaire en cours (queue = 0 → dernier appelé)
-        const lastCallOngoing = !isAccueil && queue === 0 ? this._lastCalled[l] : null;
+        // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
+        const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? this._lastCalled[l] : null;
         const lastCallAny     = !isAccueil ? this._lastCalled[l] : null;
-        const dismissBtn = lastCallOngoing
+        // Toujours proposer "Bénéficiaire parti" si busyWithPref actif (évite de rester bloqué)
+        const dismissBtn = (lastCallOngoing || (!isAccueil && busyWithPref))
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
         const infoHint  = lastCallOngoing
@@ -930,14 +933,14 @@ const LIVE = {
           ${grpHint}
           ${preferredBtn}
           ${preferredRecallBtn}
-          ${queue > 0 && !pendingPref && !busyWithPref ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${!busyWithPref && ((queue > 0 && !pendingPref) || (overflow > 0 && pendingPref)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
           <div class="lv-queue-actions">${leaveBtn}${printBtnHtml}${pauseBtn}${fermerBtn}</div>
         </div>`;
       } else {
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
-        const fermerBtn   = `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
+        const fermerBtn   = (!isAccueil && busyWithPref) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
         const noQueueWarn = !isAccueil && isOpen && l === currentAgentOpenLocal
           ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — préviens l'agent d'accueil pour qu'il t'envoie des bénéficiaires.</div>`
           : '';
