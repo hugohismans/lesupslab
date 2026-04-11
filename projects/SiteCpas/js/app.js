@@ -1262,23 +1262,46 @@ const HOME = {
         })
         .sort((a, b) => (a._start||0) - (b._start||0));
 
+      // ─ Détection chevauchements ──────────────────────────────────
+      const warnSet = new Set();
+      for (let i = 0; i < todays.length - 1; i++) {
+        const a = todays[i], b = todays[i + 1];
+        if (a._end && b._start && a._end > b._start) {
+          warnSet.add(i);
+          warnSet.add(i + 1);
+        }
+      }
+      const hasOverlap = warnSet.size > 0;
+      if (hasOverlap) {
+        const todayKey = `cpas_overlap_notif_${new Date().toISOString().slice(0,10)}_${agentKey}`;
+        if (!sessionStorage.getItem(todayKey)) {
+          sessionStorage.setItem(todayKey, '1');
+          DB.sendNotif(
+            '⚠️ Chevauchement dans votre agenda du jour — vérifiez vos réservations.',
+            'info', agentKey
+          );
+        }
+      }
+
       // ─ Bulle mascotte ────────────────────────────────────────────
       this._updateBubble(agentName, todays);
       if (todays.length === 0) {
         agendaEl.innerHTML = '<div class="hs-agenda-empty">Aucune réservation aujourd\'hui</div>';
       } else {
-        agendaEl.innerHTML = todays.map(r => {
+        agendaEl.innerHTML = todays.map((r, i) => {
           const svc = r.service === 'Autre' ? r.serviceCustom : r.service;
           const loc = DB.getLocalLabel(r.localId);
           const hm  = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
           const hme = r._end?.toLocaleTimeString('fr-BE',   { hour:'2-digit', minute:'2-digit' }) || '';
           const now = new Date();
           const active = r._start <= now && (r._end === null || r._end >= now);
-          return `<div class="hs-agenda-item${active ? ' hs-agenda-active' : ''}">
+          const warn   = warnSet.has(i);
+          return `<div class="hs-agenda-item${active ? ' hs-agenda-active' : ''}${warn ? ' hs-agenda-warn' : ''}">
             <div class="hs-agenda-time">${hm}${hme ? ` – ${hme}` : ''}</div>
             <div class="hs-agenda-info">
               <span class="hs-agenda-svc">${escapeHtml(svc)}</span>
               <span class="hs-agenda-loc">📍 ${escapeHtml(loc)}</span>
+              ${warn ? '<span class="hs-agenda-overlap-badge">⚠️ Chevauchement</span>' : ''}
             </div>
           </div>`;
         }).join('');
