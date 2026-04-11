@@ -284,11 +284,12 @@ const CAL = {
           const localsSet = new Set(CONFIG.LOCALS.map(Number));
           const booked = new Set();
           occs.forEach(r => {
-            if (!localsSet.has(parseInt(r.localId))) return;
-            if (r.isPermanent) { booked.add(r.localId); return; }
-            if (r._start && sameDay(r._start, cursor)) booked.add(r.localId);
+            const lid = parseInt(r.localId);
+            if (!localsSet.has(lid)) return;
+            if (r.isPermanent) { booked.add(lid); return; }
+            if (r._start && sameDay(r._start, cursor)) booked.add(lid);
           });
-          free = CONFIG.LOCALS.length - booked.size;
+          free = Math.max(0, CONFIG.LOCALS.length - booked.size);
         }
 
         const color = inMonth ? availColor(free, CONFIG.LOCALS.length) : 'transparent';
