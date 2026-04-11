@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>moncompagnon — L'accueil public, réinventé 🐙</title>
+  <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand: #7c3aed; --brand2: #2563eb;
+    --bg: #0f172a; --surface: rgba(255,255,255,.08);
+    --border: rgba(255,255,255,.14); --text: #e2e8f0; --muted: rgba(255,255,255,.5);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #0c1a2e 100%);
+    min-height: 100dvh; color: var(--text); overflow-x: hidden;
+  }
+
+  /* ── Stars ── */
+  #lpStars { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .lp-star { position: absolute; border-radius: 50%; background: #fff;
+    animation: lp-twinkle var(--d) var(--dl) ease-in-out infinite alternate; }
+  @keyframes lp-twinkle { from{opacity:.04;transform:scale(.6)} to{opacity:.7;transform:scale(1.3)} }
+
+  /* ── Mascot SVG animations ── */
+  .mc-pupil { animation: mc-blink 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes mc-blink { 0%,86%,100%{transform:scaleY(1)} 92%{transform:scaleY(.06)} }
+  .mc-t { transform-box: fill-box; transform-origin: top center; }
+  .mc-t1,.mc-t5 { animation: mc-sway 3.2s ease-in-out infinite 0s; }
+  .mc-t2,.mc-t4 { animation: mc-sway 3.2s ease-in-out infinite .18s; }
+  .mc-t3         { animation: mc-sway 3.2s ease-in-out infinite .36s; }
+  @keyframes mc-sway { 0%,100%{transform:rotate(0)} 50%{transform:rotate(3.5deg)} }
+
+  /* ── Float ── */
+  .lp-float { animation: lp-float var(--fd,4s) var(--fdl,0s) ease-in-out infinite; }
+  @keyframes lp-float { 0%,100%{transform:translateY(0) rotate(-.4deg)} 50%{transform:translateY(-11px) rotate(.4deg)} }
+  .lp-card:hover .lp-float { animation: lp-excited .65s ease-in-out infinite; }
+  @keyframes lp-excited { 0%,100%{transform:translateY(0) rotate(-1deg) scale(1.05)} 50%{transform:translateY(-9px) rotate(1deg) scale(1.07)} }
+
+  /* ── Wrap ── */
+  .lp-wrap { position: relative; z-index: 1; }
+
+  /* ── NAV ── */
+  .lp-nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 2.5rem;
+    background: rgba(15,23,42,.8); backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+  }
+  .lp-logo { display: flex; align-items: center; gap: .6rem; font-size: 1.1rem; font-weight: 900; color: #fff; text-decoration: none; }
+  .lp-nav-links { display: flex; align-items: center; gap: 1rem; }
+  .lp-nav-link { font-size: .86rem; color: var(--muted); text-decoration: none; font-weight: 600; transition: color .12s; }
+  .lp-nav-link:hover { color: #fff; }
+  .lp-nav-cta {
+    background: linear-gradient(135deg,var(--brand),var(--brand2)); border: none; border-radius: 2rem;
+    color: #fff; font-size: .84rem; font-weight: 700; padding: .5rem 1.2rem;
+    cursor: pointer; text-decoration: none; display: inline-block;
+    box-shadow: 0 4px 14px rgba(124,58,237,.38); transition: transform .12s, box-shadow .12s;
+  }
+  .lp-nav-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(124,58,237,.5); }
+
+  /* ── HERO ── */
+  .lp-hero {
+    min-height: 92dvh; display: grid; grid-template-columns: 1fr 1fr;
+    align-items: center; padding: 5rem 2.5rem 3rem;
+    max-width: 1200px; margin: 0 auto; gap: 3rem;
+  }
+  @media(max-width:768px) { .lp-hero { grid-template-columns:1fr; text-align:center; padding:3rem 1.5rem; min-height:auto; } .lp-hero-visual { order:-1; } .lp-hero-actions { justify-content:center; } }
+  .lp-tag {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: rgba(124,58,237,.18); border: 1px solid rgba(167,139,250,.3);
+    border-radius: 99px; font-size: .75rem; font-weight: 700; color: #c4b5fd;
+    padding: .3rem .85rem; margin-bottom: 1.2rem; letter-spacing: .04em;
+  }
+  .lp-h1 {
+    font-size: clamp(2.2rem,5vw,3.6rem); font-weight: 900;
+    line-height: 1.08; letter-spacing: -.025em; margin-bottom: 1.2rem;
+  }
+  .lp-h1 .grad {
+    background: linear-gradient(135deg,#a78bfa 0%,#60a5fa 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .lp-sub { font-size: 1.05rem; color: var(--muted); line-height: 1.75; max-width: 460px; margin-bottom: 2rem; }
+  .lp-hero-actions { display: flex; gap: .75rem; flex-wrap: wrap; }
+  .lp-btn-primary {
+    background: linear-gradient(135deg,var(--brand),var(--brand2)); border: none; border-radius: 3rem;
+    color: #fff; font-size: 1rem; font-weight: 800; padding: .85rem 2rem; cursor: pointer;
+    box-shadow: 0 6px 22px rgba(124,58,237,.45); transition: transform .15s, box-shadow .15s;
+    text-decoration: none; display: inline-block; letter-spacing: .01em;
+  }
+  .lp-btn-primary:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(124,58,237,.6); }
+  .lp-btn-ghost {
+    background: rgba(255,255,255,.08); border: 1.5px solid var(--border);
+    border-radius: 3rem; color: var(--text); font-size: 1rem; font-weight: 700;
+    padding: .85rem 2rem; cursor: pointer; transition: background .12s;
+    text-decoration: none; display: inline-block;
+  }
+  .lp-btn-ghost:hover { background: rgba(255,255,255,.14); }
+
+  /* ── Hero visual ── */
+  .lp-hero-visual { display: flex; align-items: center; justify-content: center; }
+  .lp-hero-mascot-wrap { position: relative; cursor: pointer; user-select: none; }
+  .lp-hero-mascot { width: 170px; height: auto; filter: drop-shadow(0 0 44px rgba(124,58,237,.55)); }
+  .lp-hero-bubble {
+    position: absolute; bottom: calc(100% + 16px); left: 50%; transform: translateX(-50%);
+    background: #fff; color: #1e293b; border-radius: 1.2rem;
+    padding: .85rem 1.15rem; font-size: .88rem; line-height: 1.6;
+    min-width: 230px; max-width: 300px; text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,.3); white-space: pre-line;
+  }
+  .lp-hero-bubble::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border-left:10px solid transparent; border-right:10px solid transparent; border-top:10px solid #fff; }
+  .lp-bcur { display:inline-block; width:2px; height:.9em; background:var(--brand); margin-left:1px; vertical-align:middle; animation:lp-blink .55s step-end infinite; }
+  @keyframes lp-blink { 50%{opacity:0} }
+
+  /* Orbiting chips */
+  .lp-orbit { position: absolute; inset: -50px; pointer-events: none; }
+  .lp-chip {
+    position: absolute; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+    backdrop-filter: blur(8px); border-radius: 99px; font-size: .73rem; font-weight: 700;
+    color: rgba(255,255,255,.78); padding: .28rem .72rem; white-space: nowrap;
+    animation: lp-chipfloat var(--d,3s) var(--dl,0s) ease-in-out infinite alternate;
+  }
+  @keyframes lp-chipfloat { from{transform:translateY(0)} to{transform:translateY(-9px)} }
+  .c1{top:8%;left:-18%;--d:3.1s;--dl:0s}
+  .c2{top:3%;right:-8%;--d:3.8s;--dl:.4s}
+  .c3{bottom:28%;left:-32%;--d:2.9s;--dl:.7s}
+  .c4{bottom:12%;right:-14%;--d:3.5s;--dl:.2s}
+  .c5{top:42%;right:-26%;--d:3.2s;--dl:.9s}
+
+  /* ── Section ── */
+  .lp-section { max-width: 1200px; margin: 0 auto; padding: 4rem 2.5rem; }
+  .lp-section-hd { text-align: center; margin-bottom: 3rem; }
+  .lp-section-lbl { font-size: .75rem; font-weight: 700; letter-spacing: .1em; color: #a78bfa; text-transform: uppercase; margin-bottom: .7rem; }
+  .lp-section-h2 { font-size: clamp(1.6rem,3.5vw,2.4rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.15; margin-bottom: .7rem; }
+  .lp-section-sub { font-size: .95rem; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.7; }
+
+  /* ── Feature grid ── */
+  .lp-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap: 1.2rem; }
+  .lp-card {
+    background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(14px);
+    border-radius: 1.5rem; padding: 1.75rem 1.4rem 1.4rem;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: .55rem;
+    cursor: pointer; transition: background .2s, transform .2s, box-shadow .2s; position: relative;
+  }
+  .lp-card:hover { background: rgba(255,255,255,.13); transform: translateY(-6px); box-shadow: 0 18px 44px rgba(0,0,0,.32); }
+  .lp-card-mascot-area { position: relative; width: 96px; height: 108px; display: flex; align-items: flex-end; justify-content: center; }
+  .lp-card-svg { width: 86px; height: auto; }
+
+  /* Hint bubble on hover */
+  .lp-hint {
+    position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%) scale(.85); transform-origin: bottom center;
+    background: #fff; color: #1e293b; border-radius: .9rem;
+    padding: .5rem .8rem; font-size: .75rem; font-weight: 600; line-height: 1.4;
+    white-space: normal; max-width: 190px; text-align: center;
+    box-shadow: 0 5px 18px rgba(0,0,0,.22);
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 10;
+  }
+  .lp-hint::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border-left:7px solid transparent; border-right:7px solid transparent; border-top:7px solid #fff; }
+  .lp-card:hover .lp-hint { opacity:1; transform:translateX(-50%) scale(1); }
+
+  .lp-card-name { font-size: .68rem; font-weight: 700; letter-spacing: .09em; color: rgba(255,255,255,.38); text-transform: uppercase; }
+  .lp-card-feat { font-size: .98rem; font-weight: 800; color: #fff; }
+  .lp-card-desc { font-size: .8rem; color: var(--muted); line-height: 1.55; flex: 1; }
+  .lp-disc-btn {
+    margin-top: .4rem; background: rgba(124,58,237,.22); border: 1px solid rgba(167,139,250,.32);
+    border-radius: 99px; color: #c4b5fd; font-size: .78rem; font-weight: 700;
+    padding: .38rem .95rem; cursor: pointer; transition: background .12s, color .12s; font-family: inherit;
+  }
+  .lp-disc-btn:hover { background: rgba(124,58,237,.5); color: #fff; }
+
+  /* ── Divider ── */
+  .lp-hr { border: none; border-top: 1px solid var(--border); max-width: 1200px; margin: 0 auto; }
+
+  /* ── CTA footer ── */
+  .lp-cta { max-width: 680px; margin: 0 auto; padding: 5rem 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.25rem; }
+  .lp-cta h2 { font-size: clamp(1.8rem,4vw,2.7rem); font-weight: 900; letter-spacing: -.02em; line-height: 1.1; }
+  .lp-cta p { font-size: 1rem; color: var(--muted); line-height: 1.7; }
+  .lp-cta-mascots { display: flex; gap: 1rem; align-items: flex-end; justify-content: center; margin: .5rem 0; }
+  .lp-cta-actions { display: flex; gap: .75rem; flex-wrap: wrap; justify-content: center; }
+
+  /* ── MODAL ── */
+  .lp-overlay {
+    position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.62);
+    backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity .22s;
+  }
+  .lp-overlay.open { opacity: 1; pointer-events: all; }
+  .lp-modal {
+    background: linear-gradient(160deg,#1e1b4b 0%,#0f172a 100%);
+    border: 1px solid rgba(167,139,250,.22); border-radius: 1.75rem;
+    padding: 2.25rem; max-width: 540px; width: 100%;
+    max-height: 90dvh; overflow-y: auto; position: relative;
+    display: flex; flex-direction: column; gap: 1.2rem;
+    transform: scale(.93) translateY(22px); transition: transform .26s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: 0 28px 64px rgba(0,0,0,.55);
+  }
+  .lp-overlay.open .lp-modal { transform: scale(1) translateY(0); }
+  .lp-modal-hd { display: flex; align-items: flex-start; gap: 1.2rem; }
+  .lp-modal-mascot { width: 78px; height: auto; flex-shrink: 0; animation: lp-float 4s ease-in-out infinite; }
+  .lp-modal-titles { flex: 1; }
+  .lp-modal-badge { font-size: .68rem; font-weight: 700; letter-spacing: .1em; color: rgba(167,139,250,.65); text-transform: uppercase; margin-bottom: .22rem; }
+  .lp-modal-h { font-size: 1.4rem; font-weight: 900; line-height: 1.2; }
+  .lp-modal-tagline { font-size: .88rem; color: rgba(255,255,255,.5); margin-top: .28rem; line-height: 1.5; }
+  .lp-modal-desc { font-size: .88rem; color: rgba(255,255,255,.72); line-height: 1.78; background: rgba(255,255,255,.05); border-radius: .9rem; padding: 1rem 1.2rem; border-left: 3px solid rgba(167,139,250,.38); }
+  .lp-modal-perks { display: flex; flex-direction: column; gap: .55rem; }
+  .lp-modal-perk { display: flex; align-items: flex-start; gap: .7rem; font-size: .86rem; color: rgba(255,255,255,.8); line-height: 1.5; }
+  .lp-perk-check { width: 20px; height: 20px; border-radius: 50%; background: rgba(124,58,237,.3); border: 1.5px solid rgba(167,139,250,.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: .7rem; color: #c4b5fd; margin-top: .08rem; }
+  .lp-modal-close { position: absolute; top: 1.2rem; right: 1.2rem; background: rgba(255,255,255,.1); border: none; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; color: var(--muted); transition: background .12s, color .12s; }
+  .lp-modal-close:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+  /* ── Responsive ── */
+  @media(max-width:600px) {
+    .lp-nav { padding: .85rem 1.25rem; }
+    .lp-nav-link { display: none; }
+    .lp-section { padding: 3rem 1.25rem; }
+    .lp-grid { grid-template-columns: 1fr 1fr; gap: .85rem; }
+    .lp-card { padding: 1.2rem 1rem 1rem; }
+    .lp-card-svg { width: 68px; }
+    .lp-modal { padding: 1.75rem 1.25rem; }
+  }
+  @media(max-width:400px) { .lp-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<div id="lpStars"></div>
+<div class="lp-wrap">
+
+  <!-- NAV -->
+  <nav class="lp-nav">
+    <a class="lp-logo" href="#">🐙 moncompagnon</a>
+    <div class="lp-nav-links">
+      <a href="#features" class="lp-nav-link">Les outils</a>
+      <a href="mailto:hugo@moncompagnon.be" class="lp-nav-link">Contact</a>
+      <a href="onboarding.html" class="lp-nav-cta">Configurer mon espace →</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="lp-hero">
+    <div>
+      <div class="lp-tag">✨ Pour les services publics belges</div>
+      <h1 class="lp-h1">L'accueil public,<br><span class="grad">réinventé.</span></h1>
+      <p class="lp-sub">moncompagnon accompagne vos équipes au quotidien — files d'attente, présences, agendas et bien plus. Simple. Humain. Et un peu magique.</p>
+      <div class="lp-hero-actions">
+        <a href="#features" class="lp-btn-primary">Découvrir les outils ↓</a>
+        <a href="mailto:hugo@moncompagnon.be" class="lp-btn-ghost">Nous contacter</a>
+      </div>
+    </div>
+    <div class="lp-hero-visual">
+      <div class="lp-hero-mascot-wrap" id="heroWrap">
+        <div class="lp-orbit">
+          <span class="lp-chip c1">🎫 Files d'attente</span>
+          <span class="lp-chip c2">📅 Agendas</span>
+          <span class="lp-chip c3">🟢 Présences</span>
+          <span class="lp-chip c4">📊 Statistiques</span>
+          <span class="lp-chip c5">📺 Écran public</span>
+        </div>
+        <svg class="lp-hero-mascot lp-float" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+          <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+          <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+          <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+          <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+          <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+          <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+          <ellipse cx="37" cy="20" rx="13" ry="8" fill="#a78bfa" opacity=".35" transform="rotate(-18 37 20)"/>
+          <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+          <ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+          <circle cx="37" cy="38" r="10.5" fill="white"/><circle cx="63" cy="38" r="10.5" fill="white"/>
+          <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+          <circle cx="41" cy="37" r="2.5" fill="white"/><circle cx="67" cy="37" r="2.5" fill="white"/>
+          <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        </svg>
+        <div class="lp-hero-bubble"><span id="heroBubbleTxt"></span><span class="lp-bcur" id="heroBubbleCur"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="lp-section" id="features">
+    <div class="lp-section-hd">
+      <div class="lp-section-lbl">Ce que mes amis proposent</div>
+      <h2 class="lp-section-h2">Une équipe pour chaque besoin 🐾</h2>
+      <p class="lp-section-sub">Cliquez sur un outil pour en savoir plus — chaque mascotte a sa spécialité !</p>
+    </div>
+    <div class="lp-grid">
+
+      <!-- Bulbi — Files d'attente -->
+      <div class="lp-card" onclick="openModal('queue')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">J'appelle tout le monde par son prénom ! 🎫</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 118" style="filter:drop-shadow(0 4px 14px rgba(124,58,237,.4))">
+            <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+            <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+            <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/><ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+            <circle cx="37" cy="38" r="10.5" fill="white"/><circle cx="63" cy="38" r="10.5" fill="white"/>
+            <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="41" cy="37" r="2.5" fill="white"/><circle cx="67" cy="37" r="2.5" fill="white"/>
+            <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Bulbi</div>
+        <div class="lp-card-feat">Files d'attente</div>
+        <div class="lp-card-desc">Vos visiteurs accueillis par leur prénom, dans l'ordre, sans bousculade.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+      <!-- Mochi — Écran public -->
+      <div class="lp-card" onclick="openModal('screen')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">Tout le monde sait où il en est ! 📺</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 108" style="--fdl:.3s;filter:drop-shadow(0 4px 14px rgba(245,158,11,.35))">
+            <polygon points="16,48 6,10 36,36" fill="#f59e0b"/><polygon points="84,48 94,10 64,36" fill="#f59e0b"/>
+            <polygon points="18,46 11,16 33,35" fill="#fde68a"/><polygon points="82,46 89,16 67,35" fill="#fde68a"/>
+            <ellipse cx="50" cy="62" rx="34" ry="35" fill="#f59e0b"/>
+            <circle cx="37" cy="57" r="9.5" fill="white"/><circle cx="63" cy="57" r="9.5" fill="white"/>
+            <circle cx="38" cy="58" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="58" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="40" cy="56" r="2.2" fill="white"/><circle cx="66" cy="56" r="2.2" fill="white"/>
+            <ellipse cx="50" cy="69" rx="4.5" ry="3" fill="#92400e"/>
+            <line x1="16" y1="66" x2="43" y2="70" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="16" y1="72" x2="43" y2="72" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="57" y1="70" x2="84" y2="66" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="57" y1="72" x2="84" y2="72" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M44 77 Q50 84 56 77" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t1" d="M54 93 Q72 98 76 106" stroke="#f59e0b" stroke-width="7" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Mochi</div>
+        <div class="lp-card-feat">Écran salle d'attente</div>
+        <div class="lp-card-desc">Affichage en temps réel pour que chaque visiteur suive son tour sans s'impatienter.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+      <!-- Pixo — Présences -->
+      <div class="lp-card" onclick="openModal('presence')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">Je sais qui est là, dans quel bureau ! 🟢</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 118" style="--fdl:.6s;filter:drop-shadow(0 4px 14px rgba(37,99,235,.4))">
+            <line x1="50" y1="5" x2="50" y2="17" stroke="#64748b" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="50" cy="4" r="4.5" fill="#94a3b8"/>
+            <rect x="11" y="17" width="78" height="62" rx="13" fill="#3b82f6"/>
+            <rect x="17" y="23" width="66" height="50" rx="10" fill="#2563eb"/>
+            <rect x="17" y="23" width="32" height="22" rx="8" fill="white"/>
+            <rect x="51" y="23" width="32" height="22" rx="8" fill="white"/>
+            <circle cx="33" cy="34" r="8" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="67" cy="34" r="8" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="36" cy="31" r="3" fill="white"/><circle cx="70" cy="31" r="3" fill="white"/>
+            <rect x="27" y="52" width="46" height="14" rx="7" fill="#1d4ed8"/>
+            <circle cx="38" cy="59" r="3.5" fill="#60a5fa"/><circle cx="50" cy="59" r="3.5" fill="#34d399"/><circle cx="62" cy="59" r="3.5" fill="#f87171"/>
+            <path class="mc-t mc-t1" d="M12 62 Q2 72 6 86 Q8 94 4 100" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M88 62 Q98 72 94 86 Q92 94 96 100" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t3" d="M34 79 Q30 93 32 108 Q33 114 30 118" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t4" d="M66 79 Q70 93 68 108 Q67 114 70 118" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Pixo</div>
+        <div class="lp-card-feat">Présences en direct</div>
+        <div class="lp-card-desc">Qui est au bureau ? Dans quel local ? Depuis quand ? Pixo tient tout à jour.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+      <!-- Roux — Réservation bureaux -->
+      <div class="lp-card" onclick="openModal('booking')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">Plus jamais deux agents dans le même local ! 🦊</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 108" style="--fdl:.9s;filter:drop-shadow(0 4px 14px rgba(234,88,12,.35))">
+            <polygon points="22,52 4,8 40,38" fill="#ea580c"/><polygon points="78,52 96,8 60,38" fill="#ea580c"/>
+            <polygon points="24,50 11,16 37,37" fill="#fed7aa"/><polygon points="76,50 89,16 63,37" fill="#fed7aa"/>
+            <ellipse cx="50" cy="62" rx="35" ry="36" fill="#ea580c"/>
+            <ellipse cx="50" cy="70" rx="20" ry="18" fill="#fef3c7"/>
+            <circle cx="36" cy="56" r="9.5" fill="white"/><circle cx="64" cy="56" r="9.5" fill="white"/>
+            <circle cx="37" cy="57" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="57" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="39" cy="55" r="2.2" fill="white"/><circle cx="67" cy="55" r="2.2" fill="white"/>
+            <ellipse cx="50" cy="71" rx="5.5" ry="4" fill="#1c1917"/>
+            <path d="M44 79 Q50 86 56 79" stroke="#1c1917" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t1" d="M28 94 Q18 101 22 108" stroke="#ea580c" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M72 94 Q82 101 78 108" stroke="#ea580c" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Roux</div>
+        <div class="lp-card-feat">Réservation de bureaux</div>
+        <div class="lp-card-desc">Chaque agent réserve son local pour la matinée. En 3 clics, sans conflit.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+      <!-- Cori — Agenda -->
+      <div class="lp-card" onclick="openModal('agenda')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">Des RDV nommés, partagés, intégrés ! ❤️</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 118" style="--fdl:1.2s;filter:drop-shadow(0 4px 14px rgba(220,38,38,.38))">
+            <path d="M18 36 Q50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+            <path d="M50 28 C45 13 11 14 11 40 C11 62 34 73 50 91 C66 73 89 62 89 40 C89 14 55 13 50 28Z" fill="#ef4444"/>
+            <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+            <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+            <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+            <path d="M43 65 Q50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+            <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+            <path class="mc-t mc-t3" d="M13 51 Q3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t4" d="M87 51 Q97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t1" d="M41 89 Q35 101 37 113 Q38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M59 89 Q65 101 63 113 Q62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Cori</div>
+        <div class="lp-card-feat">Agenda & rendez-vous</div>
+        <div class="lp-card-desc">Planifiez des rendez-vous nominatifs, partagés, intégrés à la file d'attente.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+      <!-- Coco — Stats -->
+      <div class="lp-card" onclick="openModal('stats')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">J'ai tous les chiffres qui comptent ! 📊</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 108" style="--fdl:1.5s;filter:drop-shadow(0 4px 14px rgba(120,53,15,.38))">
+            <circle cx="16" cy="50" r="17" fill="#78350f"/><circle cx="84" cy="50" r="17" fill="#78350f"/>
+            <circle cx="16" cy="50" r="10" fill="#d97706"/><circle cx="84" cy="50" r="10" fill="#d97706"/>
+            <ellipse cx="50" cy="56" rx="34" ry="38" fill="#78350f"/>
+            <ellipse cx="50" cy="70" rx="18" ry="14" fill="#fde68a"/>
+            <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+            <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+            <ellipse cx="46" cy="69" rx="3" ry="2.5" fill="#92400e"/><ellipse cx="54" cy="69" rx="3" ry="2.5" fill="#92400e"/>
+            <path d="M42 77 Q50 85 58 77" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t1" d="M22 88 Q12 97 16 107" stroke="#78350f" stroke-width="9" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M78 88 Q88 97 84 107" stroke="#78350f" stroke-width="9" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Coco</div>
+        <div class="lp-card-feat">Tableau de bord</div>
+        <div class="lp-card-desc">Les chiffres d'activité de votre service, clairs et lisibles par tous.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+      <!-- Nounours — Planning -->
+      <div class="lp-card" onclick="openModal('planning')">
+        <div class="lp-card-mascot-area">
+          <div class="lp-hint">L'équipe de terrain bien organisée ! 🐻</div>
+          <svg class="lp-card-svg lp-float" viewBox="0 0 100 108" style="--fdl:1.8s;filter:drop-shadow(0 4px 14px rgba(146,64,14,.38))">
+            <circle cx="23" cy="28" r="20" fill="#92400e"/><circle cx="77" cy="28" r="20" fill="#92400e"/>
+            <circle cx="23" cy="28" r="13" fill="#b45309"/><circle cx="77" cy="28" r="13" fill="#b45309"/>
+            <ellipse cx="50" cy="63" rx="35" ry="36" fill="#92400e"/>
+            <ellipse cx="50" cy="72" rx="20" ry="17" fill="#d97706"/>
+            <circle cx="36" cy="57" r="10" fill="white"/><circle cx="64" cy="57" r="10" fill="white"/>
+            <circle cx="37" cy="58" r="6.5" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="58" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="39" cy="56" r="2.5" fill="white"/><circle cx="67" cy="56" r="2.5" fill="white"/>
+            <ellipse cx="50" cy="71" rx="7" ry="5" fill="#1c1917"/>
+            <path d="M43 80 Q50 88 57 80" stroke="#1c1917" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t1" d="M20 88 Q10 97 14 107" stroke="#92400e" stroke-width="9" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M80 88 Q90 97 86 107" stroke="#92400e" stroke-width="9" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="lp-card-name">Nounours</div>
+        <div class="lp-card-feat">Planning technique</div>
+        <div class="lp-card-desc">Interventions, entretien, terrain — un planning hebdomadaire pour toute l'équipe.</div>
+        <button class="lp-disc-btn">Découvrir →</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <hr class="lp-hr">
+  <section class="lp-cta">
+    <div class="lp-cta-mascots">
+      <svg class="lp-float" width="55" viewBox="0 0 100 108" style="--fdl:.2s;filter:drop-shadow(0 4px 12px rgba(245,158,11,.3))">
+        <polygon points="16,48 6,10 36,36" fill="#f59e0b"/><polygon points="84,48 94,10 64,36" fill="#f59e0b"/>
+        <ellipse cx="50" cy="62" rx="34" ry="35" fill="#f59e0b"/>
+        <circle cx="37" cy="57" r="9.5" fill="white"/><circle cx="63" cy="57" r="9.5" fill="white"/>
+        <circle cx="38" cy="58" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="58" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="56" r="2.2" fill="white"/><circle cx="66" cy="56" r="2.2" fill="white"/>
+        <ellipse cx="50" cy="69" rx="4.5" ry="3" fill="#92400e"/>
+        <path d="M44 77 Q50 84 56 77" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <svg class="lp-float" width="76" viewBox="0 0 100 118" style="filter:drop-shadow(0 4px 22px rgba(124,58,237,.55))">
+        <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+        <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/><ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+        <circle cx="37" cy="38" r="10.5" fill="white"/><circle cx="63" cy="38" r="10.5" fill="white"/>
+        <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="41" cy="37" r="2.5" fill="white"/><circle cx="67" cy="37" r="2.5" fill="white"/>
+        <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <svg class="lp-float" width="55" viewBox="0 0 100 108" style="--fdl:.5s;filter:drop-shadow(0 4px 12px rgba(220,38,38,.3))">
+        <path d="M18 36 Q50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M50 28 C45 13 11 14 11 40 C11 62 34 73 50 91 C66 73 89 62 89 40 C89 14 55 13 50 28Z" fill="#ef4444"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M43 65 Q50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <h2>Rejoignez la famille moncompagnon 🐙</h2>
+    <p>Contactez-nous pour une démonstration — nous configurons votre espace ensemble, selon vos besoins réels.</p>
+    <div class="lp-cta-actions">
+      <a href="onboarding.html" class="lp-btn-primary">Démarrer la configuration →</a>
+      <a href="mailto:hugo@moncompagnon.be" class="lp-btn-ghost">Contacter Hugo</a>
+    </div>
+    <div style="font-size:.75rem;color:rgba(255,255,255,.22);margin-top:.5rem">moncompagnon.be · Développé en Belgique 🇧🇪</div>
+  </section>
+
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Files d'attente -->
+<div class="lp-overlay" id="modal-queue" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('queue')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 118" style="filter:drop-shadow(0 4px 18px rgba(124,58,237,.5))">
+        <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+        <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/><ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+        <circle cx="37" cy="38" r="10.5" fill="white"/><circle cx="63" cy="38" r="10.5" fill="white"/>
+        <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="41" cy="37" r="2.5" fill="white"/><circle cx="67" cy="37" r="2.5" fill="white"/>
+        <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Bulbi · Files d'attente</div>
+        <div class="lp-modal-h">Plus de chaos à l'accueil</div>
+        <div class="lp-modal-tagline">Un numéro, un prénom, un service. Simple.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Dès qu'un visiteur arrive, il reçoit un numéro associé à son prénom et au service qu'il cherche. Bulbi l'appelle personnellement quand c'est son tour — à l'écran et en son. Fini les bousculades et les malentendus.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Chaque visiteur accueilli par son <strong>prénom</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>L'agent voit en temps réel <strong>qui attend et pourquoi</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>La file s'organise toute seule, <strong>sans manipulation</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Fonctionne avec ou sans <strong>borne de prise de ticket</strong></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Écran public -->
+<div class="lp-overlay" id="modal-screen" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('screen')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 108" style="filter:drop-shadow(0 4px 18px rgba(245,158,11,.42))">
+        <polygon points="16,48 6,10 36,36" fill="#f59e0b"/><polygon points="84,48 94,10 64,36" fill="#f59e0b"/>
+        <polygon points="18,46 11,16 33,35" fill="#fde68a"/><polygon points="82,46 89,16 67,35" fill="#fde68a"/>
+        <ellipse cx="50" cy="62" rx="34" ry="35" fill="#f59e0b"/>
+        <circle cx="37" cy="57" r="9.5" fill="white"/><circle cx="63" cy="57" r="9.5" fill="white"/>
+        <circle cx="38" cy="58" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="58" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="56" r="2.2" fill="white"/><circle cx="66" cy="56" r="2.2" fill="white"/>
+        <ellipse cx="50" cy="69" rx="4.5" ry="3" fill="#92400e"/>
+        <line x1="16" y1="66" x2="43" y2="70" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="57" y1="70" x2="84" y2="66" stroke="#92400e" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M44 77 Q50 84 56 77" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M54 93 Q72 98 76 106" stroke="#f59e0b" stroke-width="7" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Mochi · Écran salle d'attente</div>
+        <div class="lp-modal-h">Vos visiteurs suivent leur tour en direct</div>
+        <div class="lp-modal-tagline">L'attente devient sereine quand on sait où on en est.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Un écran dans la salle d'attente affiche en temps réel qui est appelé, dans quel bureau, et combien de personnes attendent encore. Une annonce sonore accompagne chaque appel.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Ambiance apaisée : tout le monde sait <strong>où il en est</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Appel <strong>sonore + visuel</strong> à chaque nouveau numéro</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Fonctionne sur <strong>n'importe quel écran</strong> ou télévision</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Mise à jour <strong>automatique</strong>, aucune manipulation</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Présences -->
+<div class="lp-overlay" id="modal-presence" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('presence')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 118" style="filter:drop-shadow(0 4px 18px rgba(37,99,235,.5))">
+        <line x1="50" y1="5" x2="50" y2="17" stroke="#64748b" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="50" cy="4" r="4.5" fill="#94a3b8"/>
+        <rect x="11" y="17" width="78" height="62" rx="13" fill="#3b82f6"/>
+        <rect x="17" y="23" width="66" height="50" rx="10" fill="#2563eb"/>
+        <rect x="17" y="23" width="32" height="22" rx="8" fill="white"/><rect x="51" y="23" width="32" height="22" rx="8" fill="white"/>
+        <circle cx="33" cy="34" r="8" fill="#1e1b4b" class="mc-pupil"/><circle cx="67" cy="34" r="8" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="36" cy="31" r="3" fill="white"/><circle cx="70" cy="31" r="3" fill="white"/>
+        <rect x="27" y="52" width="46" height="14" rx="7" fill="#1d4ed8"/>
+        <circle cx="38" cy="59" r="3.5" fill="#60a5fa"/><circle cx="50" cy="59" r="3.5" fill="#34d399"/><circle cx="62" cy="59" r="3.5" fill="#f87171"/>
+        <path class="mc-t mc-t1" d="M12 62 Q2 72 6 86 Q8 94 4 100" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M88 62 Q98 72 94 86 Q92 94 96 100" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t3" d="M34 79 Q30 93 32 108 Q33 114 30 118" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M66 79 Q70 93 68 108 Q67 114 70 118" stroke="#3b82f6" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Pixo · Présences en direct</div>
+        <div class="lp-modal-h">Qui est là ce matin ?</div>
+        <div class="lp-modal-tagline">Un coup d'œil suffit pour tout savoir.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Chaque matin, vos collaborateurs signalent leur arrivée en disant bonjour à leur mascotte. La direction voit instantanément qui est au bureau, dans quel local, et depuis quand.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Tableau de présence mis à jour <strong>en temps réel</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Historique des <strong>arrivées et départs</strong> par journée</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Vue réservée aux <strong>chefs de service et à la direction</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Chaque agent signale sa présence en <strong>disant bonjour à sa mascotte</strong> 🐙</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Réservation bureaux -->
+<div class="lp-overlay" id="modal-booking" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('booking')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 108" style="filter:drop-shadow(0 4px 18px rgba(234,88,12,.42))">
+        <polygon points="22,52 4,8 40,38" fill="#ea580c"/><polygon points="78,52 96,8 60,38" fill="#ea580c"/>
+        <polygon points="24,50 11,16 37,37" fill="#fed7aa"/><polygon points="76,50 89,16 63,37" fill="#fed7aa"/>
+        <ellipse cx="50" cy="62" rx="35" ry="36" fill="#ea580c"/>
+        <ellipse cx="50" cy="70" rx="20" ry="18" fill="#fef3c7"/>
+        <circle cx="36" cy="56" r="9.5" fill="white"/><circle cx="64" cy="56" r="9.5" fill="white"/>
+        <circle cx="37" cy="57" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="57" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="39" cy="55" r="2.2" fill="white"/><circle cx="67" cy="55" r="2.2" fill="white"/>
+        <ellipse cx="50" cy="71" rx="5.5" ry="4" fill="#1c1917"/>
+        <path d="M44 79 Q50 86 56 79" stroke="#1c1917" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M28 94 Q18 101 22 108" stroke="#ea580c" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M72 94 Q82 101 78 108" stroke="#ea580c" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Roux · Réservation de bureaux</div>
+        <div class="lp-modal-h">Le bon agent dans le bon bureau</div>
+        <div class="lp-modal-tagline">En 3 clics, depuis n'importe où.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Chaque agent réserve son bureau pour la matinée ou l'après-midi. Roux vérifie les disponibilités et évite les conflits. Plus jamais deux collègues dans le même local sans le savoir.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Réservation en <strong>3 clics</strong> depuis n'importe où</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Vue d'ensemble de tous les <strong>bureaux disponibles</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Adapté aux <strong>tournantes, mi-temps et multi-sites</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Les visiteurs voient <strong>quel bureau les accueille</strong> sur l'écran</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Agenda -->
+<div class="lp-overlay" id="modal-agenda" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('agenda')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 118" style="filter:drop-shadow(0 4px 18px rgba(220,38,38,.48))">
+        <path d="M18 36 Q50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M50 28 C45 13 11 14 11 40 C11 62 34 73 50 91 C66 73 89 62 89 40 C89 14 55 13 50 28Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M43 65 Q50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M13 51 Q3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M87 51 Q97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M41 89 Q35 101 37 113 Q38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M59 89 Q65 101 63 113 Q62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Cori · Agenda & rendez-vous</div>
+        <div class="lp-modal-h">Des rendez-vous qui n'oublient personne</div>
+        <div class="lp-modal-tagline">Nominatifs, partagés, intégrés à la file.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Planifiez des rendez-vous nominatifs — avec le prénom du visiteur, le motif, l'agent et le bureau. Cori garde tout en ordre et affiche le planning de la journée d'un coup d'œil.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Agenda <strong>partagé</strong> entre tous les agents concernés</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Le visiteur reçoit un <strong>créneau précis</strong>, pas juste une plage horaire</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Intégré à la <strong>file d'attente</strong> automatiquement</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Visible sur l'<strong>écran public</strong> quand c'est l'heure du rendez-vous</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="lp-overlay" id="modal-stats" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('stats')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 108" style="filter:drop-shadow(0 4px 18px rgba(120,53,15,.42))">
+        <circle cx="16" cy="50" r="17" fill="#78350f"/><circle cx="84" cy="50" r="17" fill="#78350f"/>
+        <circle cx="16" cy="50" r="10" fill="#d97706"/><circle cx="84" cy="50" r="10" fill="#d97706"/>
+        <ellipse cx="50" cy="56" rx="34" ry="38" fill="#78350f"/>
+        <ellipse cx="50" cy="70" rx="18" ry="14" fill="#fde68a"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <ellipse cx="46" cy="69" rx="3" ry="2.5" fill="#92400e"/><ellipse cx="54" cy="69" rx="3" ry="2.5" fill="#92400e"/>
+        <path d="M42 77 Q50 85 58 77" stroke="#92400e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M22 88 Q12 97 16 107" stroke="#78350f" stroke-width="9" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M78 88 Q88 97 84 107" stroke="#78350f" stroke-width="9" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Coco · Tableau de bord</div>
+        <div class="lp-modal-h">Les chiffres qui comptent vraiment</div>
+        <div class="lp-modal-tagline">Simples, lisibles, sans jargon.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Combien de personnes accueillies ce mois-ci ? Quels services sont les plus sollicités ? À quelle heure la file est-elle la plus longue ? Coco analyse et présente les données clairement.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Vue <strong>mensuelle, hebdomadaire ou journalière</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Graphiques simples <strong>lisibles par tous</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Accès réservé à la <strong>direction et aux chefs de service</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Suivi des <strong>présences, tickets et réservations</strong> en un coup d'œil</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Planning -->
+<div class="lp-overlay" id="modal-planning" onclick="closeBg(event,this)">
+  <div class="lp-modal">
+    <button class="lp-modal-close" onclick="closeModal('planning')">✕</button>
+    <div class="lp-modal-hd">
+      <svg class="lp-modal-mascot" viewBox="0 0 100 108" style="filter:drop-shadow(0 4px 18px rgba(146,64,14,.42))">
+        <circle cx="23" cy="28" r="20" fill="#92400e"/><circle cx="77" cy="28" r="20" fill="#92400e"/>
+        <circle cx="23" cy="28" r="13" fill="#b45309"/><circle cx="77" cy="28" r="13" fill="#b45309"/>
+        <ellipse cx="50" cy="63" rx="35" ry="36" fill="#92400e"/>
+        <ellipse cx="50" cy="72" rx="20" ry="17" fill="#d97706"/>
+        <circle cx="36" cy="57" r="10" fill="white"/><circle cx="64" cy="57" r="10" fill="white"/>
+        <circle cx="37" cy="58" r="6.5" fill="#1e1b4b" class="mc-pupil"/><circle cx="65" cy="58" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="39" cy="56" r="2.5" fill="white"/><circle cx="67" cy="56" r="2.5" fill="white"/>
+        <ellipse cx="50" cy="71" rx="7" ry="5" fill="#1c1917"/>
+        <path d="M43 80 Q50 88 57 80" stroke="#1c1917" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M20 88 Q10 97 14 107" stroke="#92400e" stroke-width="9" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M80 88 Q90 97 86 107" stroke="#92400e" stroke-width="9" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="lp-modal-titles">
+        <div class="lp-modal-badge">Nounours · Planning technique</div>
+        <div class="lp-modal-h">L'équipe de terrain, bien organisée</div>
+        <div class="lp-modal-tagline">Du nettoyage aux interventions, tout est planifié.</div>
+      </div>
+    </div>
+    <div class="lp-modal-desc">Vos agents d'entretien et techniciens ont leur propre planning hebdomadaire — interventions, locaux à nettoyer, tâches récurrentes. Nounours note les check-ins sur place pour garder une trace fiable.</div>
+    <div class="lp-modal-perks">
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Planning visuel <strong>semaine par semaine</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Check-in sur place depuis le <strong>téléphone</strong></span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Visible par le <strong>responsable technique</strong> en temps réel</span></div>
+      <div class="lp-modal-perk"><div class="lp-perk-check">✓</div><span>Adapté à <strong>toute l'équipe terrain</strong>, pas seulement les bureaux</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Stars ──────────────────────────────────────────────────────────
+const starsEl = document.getElementById('lpStars');
+for (let i = 0; i < 120; i++) {
+  const s = document.createElement('div');
+  s.className = 'lp-star';
+  const sz = Math.random() * 2.5 + .7;
+  s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;--d:${2+Math.random()*5}s;--dl:${Math.random()*6}s`;
+  starsEl.appendChild(s);
+}
+
+// ── Hero Bulbi — typewriter phrases ───────────────────────────────
+const PHRASES = [
+  'Bonjour ! Je suis Bulbi 🐙\nJe gère les files d\'attente de votre service.',
+  'Cliquez sur mes amis pour découvrir tous nos outils !',
+  'Depuis 2024, nous aidons les services publics belges à mieux accueillir 💙',
+  'Chaque visiteur mérite d\'être accueilli par son prénom. C\'est ma spécialité !',
+  'De l\'agent d\'accueil à la direction — un outil pour chaque rôle 🌟',
+  'Vous avez des besoins spécifiques ? Nous adorons les défis ! 😊',
+];
+let phraseIdx = 0, _tw = null;
+
+function typewrite(text, elTxt, elCur) {
+  clearTimeout(_tw);
+  elTxt.textContent = '';
+  if (elCur) elCur.style.display = 'inline-block';
+  const chars = [...text]; let i = 0;
+  function tick() {
+    if (i < chars.length) {
+      elTxt.textContent += chars[i];
+      const c = chars[i];
+      const d = c==='\n'?80:(c==='.'||c==='!'||c==='?')?50:16;
+      i++; _tw = setTimeout(tick, d);
+    } else { if (elCur) elCur.style.display = 'none'; }
+  }
+  tick();
+}
+
+const bTxt = document.getElementById('heroBubbleTxt');
+const bCur = document.getElementById('heroBubbleCur');
+setTimeout(() => typewrite(PHRASES[0], bTxt, bCur), 900);
+setInterval(() => { phraseIdx = (phraseIdx+1)%PHRASES.length; typewrite(PHRASES[phraseIdx], bTxt, bCur); }, 6000);
+document.getElementById('heroWrap')?.addEventListener('click', () => {
+  phraseIdx = (phraseIdx+1)%PHRASES.length;
+  typewrite(PHRASES[phraseIdx], bTxt, bCur);
+});
+
+// ── Modals ─────────────────────────────────────────────────────────
+function openModal(id) {
+  const el = document.getElementById('modal-'+id);
+  if (!el) return;
+  el.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  const el = document.getElementById('modal-'+id);
+  if (!el) return;
+  el.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function closeBg(e, overlay) {
+  if (e.target === overlay) { overlay.classList.remove('open'); document.body.style.overflow = ''; }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.lp-overlay.open').forEach(el => el.classList.remove('open'));
+    document.body.style.overflow = '';
+  }
+});
+</script>
+</body>
+</html>
