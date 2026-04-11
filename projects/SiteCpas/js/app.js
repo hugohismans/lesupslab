@@ -1044,6 +1044,18 @@ const HOME = {
           });
           return;
         }
+        // Vérifier aussi la présence backoffice en cours
+        if (DB.getFeature('enableBackoffice')) {
+          const boLocal = DB.getAgentCurrentBackofficeLocal();
+          if (boLocal !== null) {
+            showBureauConfirm({
+              icon: '⚠️', title: 'Présence backoffice active',
+              info: `<div class="lv-bm-empty" style="color:#fbbf24">Vous êtes actuellement déclaré(e) dans <strong>${escapeHtml(DB.getLocalLabel(boLocal))}</strong> (back office).<br>Quittez ce bureau avant d'en ouvrir un autre.</div>`,
+              okLabel: null
+            });
+            return;
+          }
+        }
         await DB.openBureau(localId);
         // Notif accueil
         if (DB.getFeature('enableNotif')) {
