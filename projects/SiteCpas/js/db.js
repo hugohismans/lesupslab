@@ -1414,7 +1414,8 @@ const DB = {
     // Fusionner les rôles built-in avec ceux stockés dans Firebase
     const merged = { ...this._defaultPermRoles };
     Object.entries(stored).forEach(([id, r]) => {
-      merged[id] = { ...r, isBuiltin: false };
+      // Fusionner avec les valeurs par défaut existantes pour ne pas perdre name/color des built-ins
+      merged[id] = { ...(merged[id] || {}), ...r, isBuiltin: !!this._defaultPermRoles[id] };
     });
     return merged;
   },

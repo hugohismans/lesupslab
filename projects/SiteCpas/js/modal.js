@@ -891,8 +891,7 @@ const MODAL = {
       const permChecks = PERMS.map(p => `
         <label class="perm-check-label">
           <input type="checkbox" class="perm-check" data-role="${roleId}" data-perm="${p.key}"
-                 ${role.perms?.[p.key] ? 'checked' : ''}
-                 ${role.isBuiltin ? 'disabled' : ''}>
+                 ${role.perms?.[p.key] ? 'checked' : ''}>
           <span>${p.label}</span>
         </label>`).join('');
 
@@ -962,8 +961,8 @@ const MODAL = {
       }));
     });
 
-    // Toggle d'une permission (rôles custom seulement)
-    container.querySelectorAll('.perm-check:not([disabled])').forEach(cb => {
+    // Toggle d'une permission
+    container.querySelectorAll('.perm-check').forEach(cb => {
       cb.addEventListener('change', () => this._requireAdmin(async () => {
         const roleId = cb.dataset.role;
         const permKey = cb.dataset.perm;
