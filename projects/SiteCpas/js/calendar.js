@@ -916,10 +916,10 @@ const LIVE = {
              </button>`
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
-        // "En cours" et "Rappeler" : uniquement depuis la session en mémoire/localStorage
+        // "En cours" et "Rappeler" : seulement quand le bureau est effectivement occupé
         // (false = sentinelle "effacé volontairement" → traiter comme null)
-        const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? (this._lastCalled[l] || null) : null;
-        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
+        const lastCallOngoing = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
+        const lastCallAny     = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
         const dismissBtn = (!isAccueil && busyWithPref)

@@ -1757,6 +1757,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.initAgentStatus();
   DB.initBureauState();
   DB.initPreferredPending();
+  DB.initLastCallPerLocal();
   DB.initAbsences();
   DB.initPlanning();
   DB.listenRequests();
