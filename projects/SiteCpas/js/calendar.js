@@ -18,7 +18,11 @@ const CAL = {
         d.setDate(d.getDate() + (dir >= 0 ? 1 : -1));
       }
     }
-    if (this.view === 'week')  d.setDate(d.getDate() + 7 * dir);
+    if (this.view === 'week') {
+      // Sur mobile (< 768px) : vue 3 jours → avancer de 3 jours
+      const isMobile = window.innerWidth < 768;
+      d.setDate(d.getDate() + (isMobile ? 3 * dir : 7 * dir));
+    }
     if (this.view === 'month') d.setMonth(d.getMonth() + dir);
     this.date = d;
     this.render();
@@ -161,26 +165,38 @@ const CAL = {
   // ─────────────────────────────────────────────────────────────────
   _renderWeek(el) {
     const { openHour: wOpenHour, closeHour: wCloseHour, slotMin: slotMinWk } = DB.getLieuConfig();
-    const wS     = weekStart(this.date);
-    const wE     = addDays(wS, 6); wE.setHours(wCloseHour, 0, 0, 0);
+    const isMobile  = window.innerWidth < 768;
+    const nbDays    = isMobile ? 3 : 5;
+
+    // Sur mobile : partir de this.date (3 jours depuis la date courante)
+    // Sur desktop : partir du lundi de la semaine
+    const wS = isMobile ? new Date(this.date) : weekStart(this.date);
+    wS.setHours(0, 0, 0, 0);
+
+    const wEnd = addDays(wS, isMobile ? 2 : 6);
+    wEnd.setHours(wCloseHour, 0, 0, 0);
     const wSfull = new Date(wS); wSfull.setHours(wOpenHour, 0, 0, 0);
-    const occs   = DB.getInRange(wSfull, wE);
+    const occs   = DB.getInRange(wSfull, wEnd);
     const slots  = getSlots();
     const today  = new Date();
 
-    // Titre : "Semaine du X au Y mois AAAA" (Lun → Ven)
-    const wE2 = addDays(wS, 4);
+    // Titre
+    const wE2 = isMobile ? wEnd : addDays(wS, 4);
     const sameMonth = wS.getMonth() === wE2.getMonth();
     const weekTitle = sameMonth
       ? `${wS.getDate()} – ${wE2.toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`
       : `${wS.toLocaleDateString('fr-BE', { day: 'numeric', month: 'short' })} – ${wE2.toLocaleDateString('fr-BE', { day: 'numeric', month: 'long', year: 'numeric' })}`;
 
+    // Sur mobile : ajouter .mob-wk-3 pour passer à 3 colonnes via CSS
+    const hdClass  = isMobile ? 'cv-week-hd mob-wk-3' : 'cv-week-hd';
+    const rowClass = isMobile ? 'cv-row mob-wk-3' : 'cv-row';
+
     let h = '<div class="cv-week">';
     h += `<div class="cv-period-bar">${weekTitle}</div>`;
 
-    // En-tête : 5 jours Lun-Ven
-    h += '<div class="cv-week-hd cv-week-hd-5"><div class="tc-hd"></div>';
-    for (let i = 0; i < 5; i++) {
+    // En-tête jours
+    h += `<div class="${hdClass}"><div class="tc-hd"></div>`;
+    for (let i = 0; i < nbDays; i++) {
       const day = addDays(wS, i);
       const isTd = sameDay(day, today);
       h += `<div class="wkd-hd${isTd ? ' is-today' : ''}" data-date="${isoDate(day)}" data-act="go-day">
@@ -190,11 +206,12 @@ const CAL = {
     }
     h += '</div>';
 
-    // Lignes de créneaux — 5 jours
+    // Lignes de créneaux
     slots.forEach((slot, i) => {
-      h += `<div class="cv-row cv-row-5${i % 2 ? ' alt' : ''}"><div class="tc">${slot.label}</div>`;
+      h += `<div class="${rowClass}${i % 2 ? ' alt' : ''}"><div class="tc">${slot.label}</div>`;
 
-      for (let d = 0; d < 5; d++) {
+
+      for (let d = 0; d < nbDays; d++) {
         const day  = addDays(wS, d);
         const sS   = new Date(day); sS.setHours(slot.h, slot.m, 0, 0);
         const sE   = new Date(sS.getTime() + slotMinWk * 60000);

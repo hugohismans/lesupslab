@@ -3603,3 +3603,196 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   color: #94a3b8; text-transform: uppercase; letter-spacing: .05em;
   margin: .25rem 0 .1rem;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE UI — Éléments exclusifs (cachés sur desktop)
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── Hamburger button ── */
+.btn-mobile-menu {
+  display: none; /* affiché uniquement via media query mobile */
+  flex-direction: column; justify-content: center; align-items: center;
+  gap: 5px; width: 40px; height: 40px; flex-shrink: 0;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  border-radius: 8px; cursor: pointer;
+}
+.btn-mobile-menu span {
+  display: block; width: 18px; height: 2px;
+  background: #fff; border-radius: 2px; transition: all .2s;
+}
+
+/* ── Cal nav strip ── */
+.mob-cal-nav {
+  display: none; /* affiché via media query + géré par .hidden JS */
+  align-items: center; gap: .5rem;
+  padding: .4rem .75rem; flex-shrink: 0;
+  background: #1a3a5c; border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.mob-cal-btn {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  color: #fff; width: 40px; height: 40px; border-radius: 8px;
+  font-size: 1.5rem; line-height: 1; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: background .12s;
+}
+.mob-cal-btn:hover { background: rgba(255,255,255,.22); }
+.mob-cal-title {
+  flex: 1; text-align: center; color: #fff;
+  font-size: .88rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mob-cal-today {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  color: #fff; width: 40px; height: 40px; border-radius: 8px;
+  font-size: 1rem; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; font-weight: 700; transition: background .12s;
+}
+.mob-cal-today:hover { background: rgba(255,255,255,.22); }
+
+/* ── Bottom navigation bar ── */
+.mob-bottom-nav {
+  display: none; /* affiché via media query */
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+  background: #fff; border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.09);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mob-tab {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  border: none; background: transparent; cursor: pointer;
+  padding: .35rem .25rem; min-height: 56px;
+  color: #94a3b8; font-size: .68rem; font-weight: 700;
+  transition: color .12s; white-space: nowrap; position: relative;
+}
+.mob-tab.active { color: #1a3a5c; }
+.mob-tab-icon { font-size: 1.3rem; line-height: 1.2; }
+.mob-tab-label { font-size: .65rem; font-weight: 700; letter-spacing: .01em; }
+/* Indicateur point actif */
+.mob-tab.active::before {
+  content: ''; position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  width: 28px; height: 3px; border-radius: 99px;
+  background: #1a3a5c;
+}
+.mob-tab-new { color: #16a34a; }
+.mob-tab-new.active { color: #16a34a; }
+.mob-tab-new.active::before { background: #16a34a; }
+
+/* ── Drawer overlay ── */
+.mob-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,.45); backdrop-filter: blur(2px);
+}
+.mob-overlay.hidden { display: none; }
+
+/* ── Drawer ── */
+.mob-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 301;
+  width: 82vw; max-width: 320px;
+  background: #fff; overflow-y: auto;
+  display: flex; flex-direction: column;
+  box-shadow: -8px 0 40px rgba(0,0,0,.22);
+  transform: translateX(100%); transition: transform .26s cubic-bezier(.4,0,.2,1);
+}
+.mob-drawer:not(.hidden) { transform: translateX(0); }
+.mob-drawer.hidden { display: flex; transform: translateX(100%); pointer-events: none; }
+/* Le hidden est géré par transform, pas display, pour permettre l'animation */
+.mob-drawer-agent {
+  padding: 1.25rem 1rem .85rem;
+  font-size: .9rem; font-weight: 800; color: #1a3a5c;
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+  min-height: 56px; display: flex; align-items: center;
+}
+.mob-drawer-section {
+  padding: .65rem 1rem .2rem;
+  font-size: .67rem; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: .07em; flex-shrink: 0;
+}
+.mob-drawer-btn {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .8rem 1.1rem; font-size: .9rem; font-weight: 600;
+  color: #1e293b; background: transparent; border: none;
+  cursor: pointer; text-align: left; width: 100%;
+  transition: background .1s; flex-shrink: 0;
+}
+.mob-drawer-btn:active { background: #f1f5f9; }
+.mob-drawer-btn:hover  { background: #f8fafc; }
+.mob-drawer-logout {
+  color: #dc2626; border-top: 1px solid #f1f5f9; margin-top: auto;
+}
+.mob-drawer-spacer { flex: 1; min-height: 1rem; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE MOBILE — Layout (max-width: 767px)
+═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+  /* ── Header compact ── */
+  .hd { height: 52px; padding: 0 .75rem; gap: .5rem; }
+  .hd-tabs  { display: none; }   /* → bottom nav */
+  .hd-nav   { display: none; }   /* → drawer */
+  .hd-title { display: none; }
+  .btn-mobile-menu { display: flex; }
+
+  /* ── Éléments mobiles visibles ── */
+  .mob-bottom-nav { display: flex; }
+  /* mob-cal-nav : display géré par JS (.hidden / not .hidden), juste overrider le display:none base */
+  .mob-cal-nav:not(.hidden) { display: flex; }
+
+  /* ── Contenu principal : espace pour bottom nav ── */
+  .home-screen  { padding-bottom: 72px; overflow-y: auto; }
+  .cal          { padding-bottom: 72px; overflow: auto; }
+  .planning-panel { padding-bottom: 72px; }
+
+  /* ── Calendrier : scroll horizontal ── */
+  .cal table  { min-width: max-content; border-collapse: collapse; }
+  .cal td, .cal th { min-width: 62px; font-size: .78rem; }
+
+  /* Réduire colonnes du tableau calendrier */
+  .mo-header-cell { min-width: 62px; font-size: .75rem; padding: .3rem .2rem; }
+  .mo-time-col    { width: 38px; min-width: 38px; font-size: .68rem; }
+
+  /* ── Status bar ── */
+  .sb { padding-bottom: 72px; }
+
+  /* ── Lieu-bar : masquer scrollbar native ── */
+  .lieu-bar { scrollbar-width: none; }
+  .lieu-bar::-webkit-scrollbar { display: none; }
+
+  /* ── Home screen ── */
+  .hs-grid { grid-template-columns: 1fr; gap: .75rem; }
+
+  /* ── Modaux : bottom sheet + safe area ── */
+  .overlay { padding-bottom: 0; }
+  .modal {
+    border-radius: 16px 16px 0 0;
+    max-height: calc(90dvh - env(safe-area-inset-bottom, 0px));
+  }
+  .modal .modal-ft {
+    padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 4rem), 1rem);
+  }
+
+  /* ── Planning panel ── */
+  .pl-grid-wrap { overflow-x: auto; }
+  .pl-grid { min-width: max-content; }
+
+  /* ── Touch targets min 44px ── */
+  .lieu-tab { min-height: 36px; }
+  .btn-new, .btn-live, .btn-settings { min-height: 36px; }
+
+  /* ── Masquer hd-cal-only sur mobile (ils sont dans le mob-cal-nav) ── */
+  .hd-cal-only { display: none !important; }
+}
+
+/* ── Vue semaine 3 jours (mobile) ── */
+.cv-week-hd.mob-wk-3 { grid-template-columns: 44px repeat(3, 1fr); }
+.cv-week .cv-row.mob-wk-3 { grid-template-columns: 44px repeat(3, 1fr); }
+
+/* Extra small — 480px */
+@media (max-width: 480px) {
+  .hd { padding: 0 .6rem; gap: .4rem; }
+  .hd-logo-img { height: 28px; }
+  .mob-tab-label { display: none; } /* icons only sur très petit */
+  .mob-tab { min-height: 52px; }
+  .mob-tab.active::before { top: 2px; }
+}

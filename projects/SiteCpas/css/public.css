@@ -382,6 +382,25 @@ body {
   .pub-card      { padding: 1.25rem 1rem; }
 }
 
+/* ── Extra small — téléphone ───────────────────────────────────── */
+@media (max-width: 480px) {
+  .pub-header {
+    flex-wrap: wrap;
+    padding: .75rem 1rem;
+    gap: .5rem;
+  }
+  .pub-brand { gap: .6rem; }
+  .pub-logo  { height: 36px; }
+  .pub-title { font-size: 1rem; }
+  .pub-subtitle { font-size: .72rem; }
+  .pub-clock-wrap { margin-left: auto; text-align: right; }
+  .pub-date  { font-size: .75rem; }
+  .pub-clock { font-size: 1.5rem; }
+  .pub-main  { grid-template-columns: 1fr; padding: .75rem; gap: .75rem; }
+  .pub-card  { padding: 1rem .85rem; }
+  .pub-grp-card { padding: .85rem; }
+}
+
 /* ── Mode kiosque (plein écran) ────────────────────────────────── */
 @media (display-mode: fullscreen) {
   .pub-main { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }

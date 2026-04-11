@@ -52,6 +52,11 @@
     <span class="hd-title" id="appOrgName">moncompagnon</span>
   </div>
 
+  <!-- Hamburger — mobile uniquement -->
+  <button class="btn-mobile-menu" id="btnMobileMenu" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+
   <nav class="hd-tabs">
     <button class="tab tab-home active" data-view="home">🏠 Accueil</button>
     <button class="tab" data-view="day">Jour</button>
@@ -92,6 +97,14 @@
     <button class="btn-logout" id="btnLogout" title="Se déconnecter">✕</button>
   </div>
 </header>
+
+<!-- ── Navigation calendrier mobile ─────────────────────────────── -->
+<div class="mob-cal-nav hidden" id="mobCalNav">
+  <button class="mob-cal-btn" id="mobPrev">&#8249;</button>
+  <div class="mob-cal-title" id="mobCalTitle"></div>
+  <button class="mob-cal-btn" id="mobNext">&#8250;</button>
+  <button class="mob-cal-today" id="mobToday" title="Aujourd'hui">⊙</button>
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════
      PANNEAU NOTIFICATIONS
@@ -1264,6 +1277,216 @@
 
 <!-- Zone d'impression de ticket (Phase 5.5 — masquée sauf @media print) -->
 <div id="ticketPrintArea" style="display:none"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MOBILE — Bottom nav + Drawer
+══════════════════════════════════════════════════════════════ -->
+
+<!-- Bottom navigation bar -->
+<nav class="mob-bottom-nav" id="mobBottomNav" aria-label="Navigation principale">
+  <button class="mob-tab tab tab-home active" data-view="home">
+    <span class="mob-tab-icon">🏠</span>
+    <span class="mob-tab-label">Accueil</span>
+  </button>
+  <button class="mob-tab tab" data-view="day">
+    <span class="mob-tab-icon">📅</span>
+    <span class="mob-tab-label">Jour</span>
+  </button>
+  <button class="mob-tab tab" data-view="week">
+    <span class="mob-tab-icon">📆</span>
+    <span class="mob-tab-label">Sem.</span>
+  </button>
+  <button class="mob-tab tab" data-view="month">
+    <span class="mob-tab-icon">🗓</span>
+    <span class="mob-tab-label">Mois</span>
+  </button>
+  <button class="mob-tab mob-tab-new" id="mobBtnNew">
+    <span class="mob-tab-icon">➕</span>
+    <span class="mob-tab-label">Réserver</span>
+  </button>
+</nav>
+
+<!-- Drawer overlay -->
+<div class="mob-overlay hidden" id="mobOverlay"></div>
+
+<!-- Drawer -->
+<aside class="mob-drawer hidden" id="mobDrawer" aria-label="Menu">
+  <div class="mob-drawer-agent" id="mobDrawerAgent">moncompagnon</div>
+
+  <div class="mob-drawer-section">Navigation</div>
+  <button class="mob-drawer-btn" data-target="btnLive">📋 Direct</button>
+  <button class="mob-drawer-btn" data-target="btnPublic">🖥 Public</button>
+
+  <div class="mob-drawer-section">Mon espace</div>
+  <button class="mob-drawer-btn" data-target="btnPresenceHd">👤 Mon statut</button>
+  <button class="mob-drawer-btn" data-target="btnMyAbsences">📅 Absences</button>
+
+  <div class="mob-drawer-section">Outils</div>
+  <button class="mob-drawer-btn" data-target="btnAnalytics">📊 Stats</button>
+  <button class="mob-drawer-btn" data-target="btnBroadcast">📢 Diffuser</button>
+  <button class="mob-drawer-btn" data-target="btnTechIssue">📤 Requête</button>
+  <button class="mob-drawer-btn" data-target="btnInterventions">🛠️ Interventions</button>
+
+  <div class="mob-drawer-section">Paramètres</div>
+  <button class="mob-drawer-btn" data-target="btnSettings">⚙️ Paramètres</button>
+  <button class="mob-drawer-btn" data-target="btnCalendarExport">📅 Agenda (.ics)</button>
+  <button class="mob-drawer-btn" data-target="btnDnd">🔔 Mode absent (DND)</button>
+  <button class="mob-drawer-btn" data-target="notifBell">🔔 Notifications</button>
+
+  <div class="mob-drawer-spacer"></div>
+  <button class="mob-drawer-btn mob-drawer-logout" data-target="btnLogout">✕ Déconnexion</button>
+</aside>
+
+<!-- ── Script mobile ── -->
+<script>
+(function initMobile() {
+  'use strict';
+
+  const drawer  = document.getElementById('mobDrawer');
+  const overlay = document.getElementById('mobOverlay');
+  const calNav  = document.getElementById('mobCalNav');
+
+  /* ── Drawer ────────────────────────────────────────────────── */
+  function openDrawer() {
+    // Sync agent badge
+    const badge = document.getElementById('hdAgentBadge');
+    const agentEl = document.getElementById('mobDrawerAgent');
+    if (badge && agentEl) agentEl.textContent = badge.textContent || 'moncompagnon';
+
+    // Masquer les boutons dont la feature est désactivée (style.display=none sur le target)
+    drawer.querySelectorAll('.mob-drawer-btn[data-target]').forEach(btn => {
+      const target = document.getElementById(btn.dataset.target);
+      // Visible si l'élément cible existe ET n'est pas explicitement caché
+      const targetVisible = target && target.style.display !== 'none' &&
+                            !target.closest('[style*="display: none"]') &&
+                            !target.classList.contains('hidden');
+      btn.style.display = targetVisible ? '' : 'none';
+    });
+
+    drawer.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrawer() {
+    drawer.classList.add('hidden');
+    overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('btnMobileMenu')?.addEventListener('click', openDrawer);
+  overlay.addEventListener('click', closeDrawer);
+
+  // Swipe right to close (≥50px)
+  let touchStartX = 0;
+  drawer.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, {passive:true});
+  drawer.addEventListener('touchend', e => {
+    if (e.changedTouches[0].clientX - touchStartX > 50) closeDrawer();
+  }, {passive:true});
+
+  // Chaque bouton du drawer déclenche le bouton cible original puis ferme
+  drawer.querySelectorAll('.mob-drawer-btn[data-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      closeDrawer();
+      const target = document.getElementById(btn.dataset.target);
+      if (target) target.click();
+    });
+  });
+
+  /* ── Bottom nav Réserver ───────────────────────────────────── */
+  document.getElementById('mobBtnNew')?.addEventListener('click', () => {
+    document.getElementById('btnNew')?.click();
+  });
+
+  /* ── Mise à jour du titre dans la barre calendrier ─────────── */
+  function updateMobCalTitle() {
+    const el = document.getElementById('mobCalTitle');
+    if (!el || !window.CAL) return;
+    const d = CAL.date instanceof Date ? CAL.date : new Date();
+    const v = CAL.view || 'day';
+    const locale = 'fr-BE';
+    try {
+      if (v === 'day') {
+        el.textContent = d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long' });
+      } else if (v === 'week') {
+        const start = new Date(d);
+        const dow   = start.getDay() === 0 ? 7 : start.getDay();
+        start.setDate(d.getDate() - dow + 1);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        el.textContent = start.toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+          + ' – ' + end.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+      } else {
+        el.textContent = d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+      }
+    } catch(e) { el.textContent = ''; }
+  }
+
+  /* Hook sur CAL.render — attendre que CAL soit disponible ── */
+  function hookCal() {
+    if (!window.CAL || typeof CAL.render !== 'function') {
+      setTimeout(hookCal, 200);
+      return;
+    }
+    const origRender = CAL.render.bind(CAL);
+    CAL.render = function() {
+      origRender.call(this);
+      updateMobCalTitle();
+    };
+  }
+  hookCal();
+
+  /* ── Boutons cal nav mobile ────────────────────────────────── */
+  document.getElementById('mobPrev')?.addEventListener('click', () => {
+    if (window.CAL) CAL.navigate(-1);
+  });
+  document.getElementById('mobNext')?.addEventListener('click', () => {
+    if (window.CAL) CAL.navigate(1);
+  });
+  document.getElementById('mobToday')?.addEventListener('click', () => {
+    if (window.CAL) { CAL.goToday(); if (window.updateStatusBar) updateStatusBar(); }
+  });
+
+  /* ── Afficher/masquer la barre cal selon la vue ─────────────── */
+  function syncCalNav(view) {
+    const isCalView = view === 'day' || view === 'week' || view === 'month';
+    if (calNav) calNav.classList.toggle('hidden', !isCalView);
+    if (isCalView) setTimeout(updateMobCalTitle, 80);
+  }
+
+  // Écouter tous les .tab (desktop + mobile bottom nav)
+  document.querySelectorAll('.tab[data-view]').forEach(tab => {
+    tab.addEventListener('click', function() {
+      syncCalNav(this.dataset.view);
+    });
+  });
+
+  // Sync état actif du bottom nav si vue changée programmatiquement
+  // (wrap les fonctions globales _showCalView, _showHomeView, _showPlanningView)
+  function patchViewFn(name, view) {
+    if (typeof window[name] !== 'function') return;
+    const orig = window[name];
+    window[name] = function() {
+      orig.apply(this, arguments);
+      syncCalNav(view || 'home');
+      syncMobTabActive(view || 'home');
+    };
+  }
+  patchViewFn('_showHomeView', 'home');
+  patchViewFn('_showPlanningView', 'planning');
+
+  function syncMobTabActive(view) {
+    document.querySelectorAll('.mob-tab.tab').forEach(t => t.classList.remove('active'));
+    const active = document.querySelector(`.mob-tab.tab[data-view="${view}"]`);
+    if (active) active.classList.add('active');
+  }
+
+  // Keyboard: Escape ferme le drawer
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !drawer.classList.contains('hidden')) closeDrawer();
+  });
+})();
+</script>
 
 </body>
 </html>
