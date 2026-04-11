@@ -1757,6 +1757,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.initAgentStatus();
   DB.initBureauState();
   DB.initPreferredPending();
+  DB.initPreferredQueue();
   DB.initLastCallPerLocal();
   DB.initAbsences();
   DB.initPlanning();
@@ -2458,16 +2459,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Trouver le bureau ouvert (non-backoffice) de l'agent
     const localId = DB.getBureauByAgent(targetAgentKey);
 
-    // Vérifier si le bureau est déjà occupé (preferred en attente OU agent en cours avec quelqu'un)
-    if (localId !== null) {
-      const existingPending = DB.getPreferredPending(localId);
-      const busyWithPref    = DB.isBureauBusyWithPreferred(localId);
-      if (existingPending || busyWithPref) {
-        showToast(`${agentName} est déjà occupé(e) — impossible d'envoyer une demande pour l'instant.`);
-        return;
-      }
-    }
-
     // Vérifier le statut DND
     const agentStatus = DB.getAgentStatus(targetAgentKey);
     const isDnd        = agentStatus?.status === 'dnd';
@@ -2477,6 +2468,28 @@ document.addEventListener('DOMContentLoaded', async function () {
     const displayName = enableNamed ? (benefName.split(' ')[0] || benefName) : 'Bénéficiaire';
 
     const agentPublicName = DB.getAgentPublicName(targetAgentKey);
+
+    // Vérifier si le bureau est déjà occupé (preferred en attente OU agent en cours avec quelqu'un)
+    if (localId !== null) {
+      const existingPending = DB.getPreferredPending(localId);
+      const busyWithPref    = DB.isBureauBusyWithPreferred(localId);
+      if (existingPending || busyWithPref) {
+        // Bureau occupé → mettre en file d'attente preferred
+        const { requestId } = await DB.createPreferredRequest(
+          benefName, targetAgentKey, myKey, placeId, placeName, localId
+        );
+        await DB.pushToPreferredQueue(localId, { displayName, agentPublicName, requestId, ts: Date.now() });
+        const queueLen = DB.getPreferredQueue(localId).length + 1; // +1 car le push n'est pas encore reflété localement
+        const localLabel = DB.getLocalLabel(localId);
+        await DB.sendNotif(
+          `${agentName} est occupé(e) — ${displayName} est en file d'attente (position ${queueLen}).`,
+          'info', myKey,
+          { requestId, localId }
+        );
+        showToast(`${agentName} est occupé(e) — ${displayName} mis en file d'attente.`);
+        return;
+      }
+    }
 
     // Créer la demande en Firebase
     const { requestId } = await DB.createPreferredRequest(

@@ -927,8 +927,12 @@ const LIVE = {
         const infoHint  = lastCallAny
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallAny.ticket ? `<strong>n°${escapeHtml(lastCallAny.ticket)}</strong>` : 'ticket en cours'}${lastCallAny.svc ? ` · ${escapeHtml(lastCallAny.svc)}` : ''}${dismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
+        const prefQueueLen = !isAccueil ? DB.getPreferredQueue(l).length : 0;
+        const prefQueueHint = prefQueueLen > 0
+          ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
+          : '';
         const grpHint = !isAccueil
-          ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
+          ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}${prefQueueHint}`
           : '';
         // Rappel disponible dès qu'un ticket a été appelé, même si quelqu'un est en salle
         const recallBtn = lastCallAny
@@ -974,9 +978,14 @@ const LIVE = {
         const noGrpInfoHint = noGrpLastCall
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${noGrpLastCall.ticket ? `<strong>n°${escapeHtml(noGrpLastCall.ticket)}</strong>` : 'ticket en cours'}${noGrpLastCall.svc ? ` · ${escapeHtml(noGrpLastCall.svc)}` : ''}${noGrpDismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${noGrpDismissBtn}</div>` : '');
+        const noGrpPrefQueueLen = !isAccueil ? DB.getPreferredQueue(l).length : 0;
+        const noGrpPrefQueueHint = noGrpPrefQueueLen > 0
+          ? `<div class="lv-pref-queue-hint">👥 ${noGrpPrefQueueLen} personne${noGrpPrefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
+          : '';
         queueHtml = `<div class="lv-queue lv-queue-agent">
           ${noQueueWarn}
           ${noGrpInfoHint}
+          ${noGrpPrefQueueHint}
           ${noGrpPrefBtn}
           ${noGrpPrefRecallBtn}
           ${queue > 0 && !noGrpPreferred && !noGrpPrefRecall ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
@@ -1493,6 +1502,8 @@ const LIVE = {
           DB.clearLastCallForLocal(localId),
           DB.getQueue(localId) > 0 ? DB.setQueue(localId, 0) : Promise.resolve(),
         ]);
+        // Promouvoir la personne suivante en file preferred (si présente)
+        await DB.shiftPreferredQueue(localId);
       });
     });
 

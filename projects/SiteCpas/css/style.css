@@ -2472,6 +2472,10 @@ body {
 }
 .lv-queue-group-hint em { font-style: italic; color: #94a3b8; }
 
+.lv-pref-queue-hint {
+  font-size: .72rem; color: #f59e0b; padding: .15rem 0 .1rem;
+}
+
 /* ── Déclaration service sans réservation ────────────────────── */
 .lv-no-svc { font-size: .78rem; }
 .lv-declare-svc {

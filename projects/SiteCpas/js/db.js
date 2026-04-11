@@ -817,6 +817,41 @@ const DB = {
     return this._preferredPending[String(localId)] || this._preferredPending[localId] || null;
   },
 
+  // ── File d'attente preferred par local (plusieurs personnes qui veulent le même agent) ──
+  _preferredQueue: {},
+
+  initPreferredQueue() {
+    this._ref('appState/preferredQueue').on('value', snap => {
+      this._preferredQueue = snap.val() || {};
+    });
+  },
+
+  getPreferredQueue(localId) {
+    const entries = this._preferredQueue[String(localId)] || {};
+    return Object.entries(entries)
+      .map(([key, val]) => ({ _key: key, ...val }))
+      .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  },
+
+  async pushToPreferredQueue(localId, item) {
+    await this._ref(`appState/preferredQueue/${localId}`).push(item);
+  },
+
+  // Retire le premier de la queue et le promeut en preferredPending. Retourne l'item promu ou null.
+  async shiftPreferredQueue(localId) {
+    const queue = this.getPreferredQueue(localId);
+    if (!queue.length) return null;
+    const next = queue[0];
+    await this._ref(`appState/preferredQueue/${localId}/${next._key}`).remove();
+    await this._ref(`appState/preferredPending/${localId}`).set({
+      displayName:     next.displayName     || '—',
+      agentPublicName: next.agentPublicName || null,
+      requestId:       next.requestId,
+      ts:              Date.now(),
+    });
+    return next;
+  },
+
   async createPreferredRequest(benefName, targetAgentKey, accueilAgentKey, publicPlaceId, publicPlaceName, localId) {
     const ref = await this._ref('appState/preferredRequests').push({
       benefName,
