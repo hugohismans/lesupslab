@@ -1223,8 +1223,11 @@ const LIVE = {
           await DB.setBureauBusyWithPreferred(localId, true);
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
         };
-        if (queue > 0) {
-          // D'autres personnes attendent — demander si bypass
+        // Bypass seulement si des gens en overflow sont arrivés AVANT la demande preferred
+        const prefTs       = DB.getPreferredPending(localId)?.ts || 0;
+        const overflowSince = grp ? DB.getGroupOverflowSince(grp.id) : null;
+        const overflowFirst = queue > 0 && overflowSince && overflowSince < prefTs;
+        if (overflowFirst) {
           window._openPreferredBypassModal?.(reqId, localId, dispName, doReceive);
         } else {
           await doReceive();

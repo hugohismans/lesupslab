@@ -575,11 +575,18 @@ const DB = {
   getGroupOverflowQueue(groupId) {
     return this._queueData[`wait_${groupId}`] || 0;
   },
+  // Timestamp du premier ticket entré dans l'overflow (pour comparer avec preferredPending.ts)
+  getGroupOverflowSince(groupId) {
+    return this._queueData[`waitSince_${groupId}`] || null;
+  },
 
   async incrementGroupOverflow(groupId) {
     const today = isoDate(new Date());
     const n = this.getGroupOverflowQueue(groupId) + 1;
-    await this._ref(`queues/${today}/wait_${groupId}`).set(n);
+    const writes = { [`wait_${groupId}`]: n };
+    // Premier ticket dans l'overflow : enregistrer le timestamp d'arrivée
+    if (n === 1) writes[`waitSince_${groupId}`] = Date.now();
+    await this._ref(`queues/${today}`).update(writes);
   },
 
   async absorbGroupOverflow(groupId) {
@@ -588,8 +595,10 @@ const DB = {
     const today = isoDate(new Date());
     const n = this.getGroupOverflowQueue(groupId);
     if (n <= 0) return false;
-    await this._ref(`queues/${today}/wait_${groupId}`).set(n - 1 || null);
-    // Le local reste à 1 (déjà occupé par le nouveau bénéficiaire)
+    const writes = { [`wait_${groupId}`]: n - 1 || null };
+    // Plus personne en overflow : effacer le timestamp
+    if (n - 1 <= 0) writes[`waitSince_${groupId}`] = null;
+    await this._ref(`queues/${today}`).update(writes);
     return true;
   },
 
