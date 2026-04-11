@@ -891,8 +891,8 @@ const LIVE = {
 
       // Boutons de file
       let queueHtml;
-      // Pause/retirer/fermer bloqués pendant permanence en cours
-      const pauseBtn  = isOpen && !isAccueil && !busyWithPref
+      // Pause/retirer/fermer bloqués dès qu'on est en permanence (queue ou busyWithPref)
+      const pauseBtn  = isOpen && !isAccueil && !isBusyLocal
         ? `<button class="lv-pause-btn" data-local="${l}">⏸ Pause</button>`
         : '';
 
@@ -908,17 +908,19 @@ const LIVE = {
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
         // Fermer/Se retirer bloqués pendant permanence en cours (sauf accueil)
-        const fermerBtn   = (!isAccueil && busyWithPref) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
+        const fermerBtn   = (!isAccueil && isBusyLocal) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
         // Bouton "Se retirer / Rejoindre" : visible uniquement pour les agents bureau (pas accueil), bloqué pendant permanence
-        const leaveBtn = !isAccueil && !busyWithPref
+        const leaveBtn = !isAccueil && !isBusyLocal
           ? `<button class="lv-q-leave${optedOut ? ' lv-q-rejoindre' : ''}" data-local="${l}" data-opted="${optedOut ? '1' : '0'}" title="${optedOut ? 'Rejoindre la file partagée' : 'Ne plus recevoir de tickets de la file partagée'}">
                ${optedOut ? '🔄 Rejoindre' : '🚪 Se retirer'}
              </button>`
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
-        // "En cours" et "Rappeler" : seulement quand le bureau est effectivement occupé
+        // "En cours" : seulement pendant busyWithPref (quelqu'un est physiquement dans le bureau)
+        // queue >= 1 seul ne suffit pas — c'est juste "quelqu'un attend", pas "quelqu'un est là"
+        // "Rappeler" : dès que isBusyLocal (utile pour ré-annoncer)
         // (false = sentinelle "effacé volontairement" → traiter comme null)
-        const lastCallOngoing = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
+        const lastCallOngoing = !isAccueil && busyWithPref ? (this._lastCalled[l] || null) : null;
         const lastCallAny     = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
@@ -956,7 +958,7 @@ const LIVE = {
         </div>`;
       } else {
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
-        const fermerBtn   = (!isAccueil && busyWithPref) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
+        const fermerBtn   = (!isAccueil && isBusyLocal) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
         const noQueueWarn = !isAccueil && isOpen && l === currentAgentOpenLocal
           ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — préviens l'agent d'accueil pour qu'il t'envoie des bénéficiaires.</div>`
           : '';
@@ -1243,6 +1245,10 @@ const LIVE = {
           const absorbed = await DB.absorbGroupOverflow(grp.id);
           if (!absorbed) {
             await DB.setQueue(localId, 0);
+            // Plus personne en attente : effacer le lastCall pour éviter le fantôme "En cours"
+            this._lastCalled[localId] = false;
+            try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
+            await DB.clearLastCallForLocal(localId);
           } else {
             const _now = new Date();
             const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
