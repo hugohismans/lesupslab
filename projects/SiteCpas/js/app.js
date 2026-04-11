@@ -1017,14 +1017,34 @@ const HOME = {
       const localId = parseInt(document.getElementById('hsDeclLocal').value);
       if (!localId) return;
       if (DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(localId)) {
+        // Déjà dans un autre backoffice ?
         const prevLocal = DB.getAgentCurrentBackofficeLocal();
         if (prevLocal !== null && prevLocal !== localId) {
+          const prevLabel = DB.getLocalLabel(prevLocal);
+          const prevLieu  = DB.getLocalLieuName(prevLocal);
           showBureauConfirm({
-            title: 'Changement de bureau',
-            info:  `Vous étiez dans <strong>${escapeHtml(DB.getLocalLabel(prevLocal))}</strong>. Vous avez quitté ce bureau ?`,
-            okLabel: 'Oui, je suis parti',
+            icon: '🔄', title: 'Changer de local',
+            info:  `Vous êtes indiqué(e) présent(e) à <strong>${escapeHtml(prevLabel)}</strong>${prevLieu ? ` (${escapeHtml(prevLieu)})` : ''}.<br>Voulez-vous changer de local ?`,
+            okLabel: 'Oui, changer', okClass: 'ok-open',
             onOk: async () => {
               await DB.setAgentPresence(prevLocal, false);
+              await DB.setAgentPresence(localId, true);
+              this.render();
+            },
+          });
+          return;
+        }
+        // Bureau normal déjà ouvert ?
+        const openBureau = DB.getOpenBureauForCurrentAgent();
+        if (openBureau !== null) {
+          const openLabel = DB.getLocalLabel(openBureau);
+          const openLieu  = DB.getLocalLieuName(openBureau);
+          showBureauConfirm({
+            icon: '🔄', title: 'Changer de local',
+            info: `Vous êtes indiqué(e) présent(e) à <strong>${escapeHtml(openLabel)}</strong>${openLieu ? ` (${escapeHtml(openLieu)})` : ''}.<br>Voulez-vous changer de local ?`,
+            okLabel: 'Oui, changer', okClass: 'ok-open',
+            onOk: async () => {
+              await DB.closeBureau(openBureau);
               await DB.setAgentPresence(localId, true);
               this.render();
             },
