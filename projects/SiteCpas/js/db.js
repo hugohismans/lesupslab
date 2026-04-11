@@ -584,6 +584,13 @@ const DB = {
     await ref.child(`wait_${groupId}`).remove();
   },
 
+  // Remet à zéro TOUTES les files (locaux + groupes) ET les demandes agent spécifique
+  async resetAllQueues() {
+    const today = isoDate(new Date());
+    await this._ref(`queues/${today}`).remove();
+    await this._ref('appState/preferredPending').remove();
+  },
+
   // Lit les données de file d'attente pour une plage de dates (historique)
   async fetchQueueRange(from, to) {
     const fromStr = isoDate(from);

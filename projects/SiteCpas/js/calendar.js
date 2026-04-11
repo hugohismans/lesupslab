@@ -1921,6 +1921,20 @@ const LIVE = {
       if (!panel.classList.contains('hidden')) this._renderQueueGroupPanel();
     });
 
+    g('btnResetAllQueues').addEventListener('click', () => {
+      showBureauConfirm({
+        icon: '⚠️',
+        title: 'Vider tout les tickets',
+        info: '<div class="lv-bm-empty" style="color:#fbbf24">Toutes les files d\'attente, tous les tickets et toutes les demandes agent spécifique en cours seront remis à zéro.<br><strong>À utiliser uniquement en cas de blocage.</strong></div>',
+        okLabel: 'Tout vider', okClass: 'ok-close',
+        onOk: async () => {
+          await DB.resetAllQueues();
+          this._renderQueueGroupPanel();
+          showToast('✅ Toutes les files ont été vidées.');
+        }
+      });
+    });
+
     g('btnQgroupAdd').addEventListener('click', async () => {
       const sel = g('qgroupNameSelect');
       const name = sel.value === '__autre__'
