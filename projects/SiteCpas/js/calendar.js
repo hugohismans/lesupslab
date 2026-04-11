@@ -1199,14 +1199,29 @@ const LIVE = {
           });
           return;
         }
-        // Bloquer si l'agent est présent dans un backoffice
+        // Si l'agent est présent dans un backoffice → proposer de changer
         if (DB.getFeature('enableBackoffice')) {
           const boLocal = DB.getAgentCurrentBackofficeLocal();
           if (boLocal !== null) {
+            const boLabel  = DB.getLocalLabel(boLocal);
+            const boLieu   = DB.getLocalLieuName(boLocal);
             showBureauConfirm({
-              icon: '⚠️', title: 'Présence backoffice active',
-              info: `<div class="lv-bm-empty" style="color:#fbbf24">Vous êtes dans <strong>${escapeHtml(DB.getLocalLabel(boLocal))}</strong> (back office).<br>Quittez ce bureau avant d'en ouvrir un autre.</div>`,
-              okLabel: null
+              icon: '🔄', title: 'Changer de local',
+              info: `<div class="lv-bm-empty">Vous êtes indiqué(e) présent(e) à <strong>${escapeHtml(boLabel)}</strong>${boLieu ? ` (${escapeHtml(boLieu)})` : ''}.<br>Voulez-vous changer de local ?</div>`,
+              okLabel: 'Oui, changer', okClass: 'ok-open',
+              onOk: async () => {
+                await DB.setAgentPresence(boLocal, false);
+                // Continuer l'ouverture du bureau normalement
+                await DB.openBureau(localId);
+                if (DB.getFeature('enableNotif')) {
+                  const _lieuName  = DB.getLocalLieuName(localId);
+                  const _localName = DB.getLocalLabel(localId);
+                  const _grp       = DB.getLocalGroup(localId);
+                  let _msg = `🟢 ${_localName}${_lieuName ? ` (${_lieuName})` : ''} vient d'ouvrir.`;
+                  if (!_grp) _msg += ` ⚠️ Pas de file partagée.`;
+                  await Promise.all(DB.getAccueilAgentKeys().map(k => DB.sendNotif(_msg, 'info', k)));
+                }
+              }
             });
             return;
           }

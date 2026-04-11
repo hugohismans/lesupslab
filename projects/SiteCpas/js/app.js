@@ -1048,10 +1048,18 @@ const HOME = {
         if (DB.getFeature('enableBackoffice')) {
           const boLocal = DB.getAgentCurrentBackofficeLocal();
           if (boLocal !== null) {
+            const boLabel   = DB.getLocalLabel(boLocal);
+            const boLieu    = DB.getLocalLieuName(boLocal);
+            const doSwitch  = async () => {
+              await DB.setAgentPresence(boLocal, false);
+              await DB.openBureau(localId);
+              this.render();
+            };
             showBureauConfirm({
-              icon: '⚠️', title: 'Présence backoffice active',
-              info: `<div class="lv-bm-empty" style="color:#fbbf24">Vous êtes actuellement déclaré(e) dans <strong>${escapeHtml(DB.getLocalLabel(boLocal))}</strong> (back office).<br>Quittez ce bureau avant d'en ouvrir un autre.</div>`,
-              okLabel: null
+              icon: '🔄', title: 'Changer de local',
+              info: `<div class="lv-bm-empty">Vous êtes indiqué(e) présent(e) à <strong>${escapeHtml(boLabel)}</strong>${boLieu ? ` (${escapeHtml(boLieu)})` : ''}.<br>Voulez-vous changer de local ?</div>`,
+              okLabel: 'Oui, changer', okClass: 'ok-open',
+              onOk: doSwitch
             });
             return;
           }
