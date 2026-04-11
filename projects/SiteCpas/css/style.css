@@ -482,6 +482,29 @@ body {
 /* ═══════════════════════════════════════════════════════════════════
    HEADER
 ═══════════════════════════════════════════════════════════════════ */
+/* Bannière permission notifications navigateur */
+.notif-perm-banner {
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+  background: #1e3a5f; border-bottom: 2px solid #3b82f6;
+  padding: .6rem 1.2rem; font-size: .85rem; color: #e2e8f0;
+}
+.notif-perm-banner.hidden { display: none; }
+.notif-perm-icon { font-size: 1.3rem; flex-shrink: 0; }
+.notif-perm-body { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: .1rem; }
+.notif-perm-body strong { font-size: .88rem; color: #fff; }
+.notif-perm-body span   { font-size: .8rem; color: #93c5fd; }
+.notif-perm-btn {
+  padding: .35rem .9rem; border-radius: 7px; border: none;
+  background: #2563eb; color: #fff; font-size: .82rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.notif-perm-btn:hover { background: #1d4ed8; }
+.notif-perm-dismiss {
+  background: none; border: none; color: #64748b; font-size: 1rem;
+  cursor: pointer; padding: .2rem .4rem; flex-shrink: 0;
+}
+.notif-perm-dismiss:hover { color: #e2e8f0; }
+
 .hd {
   background: linear-gradient(90deg, #1a3a5c 0%, #2a6496 100%);
   color: #fff;

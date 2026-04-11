@@ -37,11 +37,8 @@ const NOTIF = {
       this._agentName = found?.name || null;
     });
 
-    // ── Couche D.1 — Demander la permission notif navigateur ────────
-    if ('Notification' in window && Notification.permission === 'default') {
-      // Délai pour ne pas bloquer le chargement initial
-      setTimeout(() => Notification.requestPermission(), 3000);
-    }
+    // ── Couche D.1 — Permission notif navigateur ─────────────────────
+    this._initNotifPermBanner();
 
     // ── Couche A — Écoute Firebase ──────────────────────────────────
     if (this._agentKey) {
@@ -196,6 +193,55 @@ const NOTIF = {
         tone(880, 0, 0.28, 0.22);
       }
     } catch (_) { /* AudioContext non supporté */ }
+  },
+
+  // ── Bannière demande de permission ───────────────────────────────
+  _initNotifPermBanner() {
+    if (!('Notification' in window)) return;
+    const banner   = document.getElementById('notifPermBanner');
+    const btn      = document.getElementById('notifPermBtn');
+    const dismiss  = document.getElementById('notifPermDismiss');
+    if (!banner || !btn) return;
+
+    const _check = () => {
+      const featureOn = DB.getFeature('enableNotifBrowser');
+      const perm = Notification.permission;
+      // Afficher si feature activée ET permission pas encore accordée/refusée
+      const show = featureOn && perm === 'default';
+      banner.classList.toggle('hidden', !show);
+      // Si refusée → montrer un message différent
+      if (featureOn && perm === 'denied') {
+        banner.classList.remove('hidden');
+        btn.textContent   = 'Comment autoriser ?';
+        btn.onclick = () => window.open('https://support.google.com/chrome/answer/3220216', '_blank');
+        banner.querySelector('.notif-perm-body strong').textContent = 'Notifications bloquées par le navigateur';
+        banner.querySelector('.notif-perm-body span').textContent   = 'Autorisez manuellement depuis les paramètres du navigateur (icône 🔒 dans la barre d\'adresse).';
+      }
+    };
+
+    btn.addEventListener('click', async () => {
+      if (Notification.permission === 'default') {
+        const result = await Notification.requestPermission();
+        if (result === 'granted') {
+          banner.classList.add('hidden');
+          new Notification('✅ Notifications activées', { body: 'Vous recevrez les alertes SiteCpas dans ce navigateur.' });
+        } else {
+          _check(); // afficher message "bloqué"
+        }
+      }
+    });
+
+    dismiss?.addEventListener('click', () => {
+      banner.classList.add('hidden');
+      sessionStorage.setItem('notifPermDismissed', '1');
+    });
+
+    // Ne pas re-afficher si l'utilisateur a déjà ignoré dans cette session
+    if (sessionStorage.getItem('notifPermDismissed')) return;
+
+    // Vérifier au chargement et à chaque changement de config
+    setTimeout(_check, 1500);
+    DB.onConfigChange(_check);
   },
 
   // ── Couche D.1 — Notification navigateur ─────────────────────────
