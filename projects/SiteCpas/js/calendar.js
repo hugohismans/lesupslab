@@ -1199,6 +1199,7 @@ const LIVE = {
           await DB.setBureauBusyWithPreferred(localId, true);
           await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
           LIVE._storeCall(localId, dispName, occ2);
+          LIVE._renderGridMode(); // re-render immédiat pour afficher "Bénéficiaire parti"
           showToast(`✅ ${dispName} reçu.`);
         };
         if (queue > 0) {
