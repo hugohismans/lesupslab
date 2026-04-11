@@ -808,6 +808,26 @@
             <div id="stModulesAdvList"></div>
           </div>
 
+          <!-- Diagnostic notifications navigateur -->
+          <div class="st-admin-section" id="stNotifDiag">
+            <h3 class="st-title" style="margin-top:1.25rem">🔔 Diagnostic — Notifications navigateur</h3>
+            <div class="st-notif-diag-row">
+              <span class="st-notif-diag-label">Permission navigateur :</span>
+              <span class="st-notif-diag-val" id="stNotifPermState">—</span>
+            </div>
+            <div class="st-notif-diag-row">
+              <span class="st-notif-diag-label">Feature activée :</span>
+              <span class="st-notif-diag-val" id="stNotifFeatState">—</span>
+            </div>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem">
+              <button class="btn-primary" id="stNotifTestBtn">🔔 Envoyer une notification test</button>
+              <button class="btn-secondary" id="stNotifRequestBtn" style="display:none">Demander la permission</button>
+            </div>
+            <p class="st-notif-diag-hint hidden" id="stNotifDeniedHint">
+              ⚠️ Notifications bloquées. Cliquez sur l'icône 🔒 dans la barre d'adresse → Notifications → Autoriser, puis rechargez la page.
+            </p>
+          </div>
+
           <!-- Bureau d'accueil (local caché) -->
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">🪟 Bureau d'accueil</h3>

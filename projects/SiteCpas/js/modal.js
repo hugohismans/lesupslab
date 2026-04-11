@@ -524,6 +524,53 @@ const MODAL = {
       }));
     }
 
+    // ── Diagnostic notifications navigateur ──────────────────────
+    const _refreshNotifDiag = () => {
+      const permEl  = g('stNotifPermState');
+      const featEl  = g('stNotifFeatState');
+      const reqBtn  = g('stNotifRequestBtn');
+      const hint    = g('stNotifDeniedHint');
+      if (!permEl) return;
+
+      const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+      const feat = DB.getFeature('enableNotifBrowser');
+
+      const permLabels = { granted: '✅ Autorisée', denied: '❌ Bloquée', default: '⏳ Non demandée', unsupported: '⚠️ Non supporté' };
+      permEl.textContent = permLabels[perm] || perm;
+      permEl.style.color = perm === 'granted' ? '#4ade80' : perm === 'denied' ? '#f87171' : '#fbbf24';
+
+      featEl.textContent = feat ? '✅ Activée' : '❌ Désactivée — activer "Notif navigateur (PC)" ci-dessus';
+      featEl.style.color = feat ? '#4ade80' : '#f87171';
+
+      if (reqBtn) reqBtn.style.display = perm === 'default' ? '' : 'none';
+      if (hint)   hint.classList.toggle('hidden', perm !== 'denied');
+    };
+    _refreshNotifDiag();
+
+    g('stNotifTestBtn')?.addEventListener('click', () => {
+      if (!('Notification' in window)) { showToast('Notifications non supportées par ce navigateur'); return; }
+      if (Notification.permission !== 'granted') {
+        showToast('Permission non accordée — autorisez d\'abord les notifications');
+        _refreshNotifDiag();
+        return;
+      }
+      if (!DB.getFeature('enableNotifBrowser')) {
+        showToast('Feature "Notif navigateur" non activée dans les paramètres');
+        return;
+      }
+      new Notification('🔔 Test SiteCpas', {
+        body: 'Les notifications fonctionnent correctement !',
+        icon: document.getElementById('appLogo')?.src || undefined,
+      });
+      showToast('Notification test envoyée ✓');
+    });
+
+    g('stNotifRequestBtn')?.addEventListener('click', async () => {
+      const result = await Notification.requestPermission();
+      _refreshNotifDiag();
+      if (result === 'granted') showToast('Permission accordée ✓');
+    });
+
     // ── Lieux publics ─────────────────────────────────────────────
     const renderPublicPlaces = () => {
       const list = g('stPublicPlacesList');
