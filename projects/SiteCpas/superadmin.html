@@ -140,8 +140,10 @@
     .sa-sub-item {
       background: #0f172a; border-radius: 10px; padding: 1rem;
       display: flex; flex-direction: column; gap: .5rem;
+      transition: box-shadow .2s;
     }
-    .sa-sub-hd { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+    .sa-sub-item.deployed { border: 1px solid rgba(74,222,128,.25); }
+    .sa-sub-hd { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
     .sa-sub-org { font-size: .95rem; font-weight: 800; color: #e2e8f0; }
     .sa-sub-date { font-size: .75rem; color: #64748b; }
     .sa-sub-badges { display: flex; flex-wrap: wrap; gap: .35rem; }
@@ -150,6 +152,37 @@
       border-radius: 99px; font-size: .72rem; color: #7dd3fc; padding: .15rem .55rem;
     }
     .sa-sub-notes { font-size: .78rem; color: #94a3b8; font-style: italic; padding: .4rem .6rem; background: rgba(255,255,255,.03); border-radius: 6px; border-left: 2px solid #334155; }
+    .sa-deploy-btn {
+      background: linear-gradient(135deg,#7c3aed,#2563eb); border: none; border-radius: 8px;
+      color: #fff; font-size: .82rem; font-weight: 700; padding: .45rem 1rem;
+      cursor: pointer; white-space: nowrap; transition: opacity .12s; flex-shrink: 0;
+    }
+    .sa-deploy-btn:hover { opacity: .85; }
+    .sa-deploy-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .sa-deployed-badge {
+      display: inline-flex; align-items: center; gap: .35rem;
+      background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.3);
+      border-radius: 8px; color: #4ade80; font-size: .78rem; font-weight: 700;
+      padding: .4rem .85rem; flex-shrink: 0;
+    }
+    /* ── Deploy log modal ── */
+    .sa-deploy-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 600;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .sa-deploy-modal {
+      background: #1e293b; border-radius: 16px; padding: 1.75rem;
+      max-width: 500px; width: 100%; display: flex; flex-direction: column; gap: 1rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .sa-deploy-log {
+      background: #0f172a; border-radius: 8px; padding: .75rem 1rem;
+      font-family: monospace; font-size: .78rem; max-height: 220px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: .2rem;
+    }
+    .sa-deploy-log .ok   { color: #4ade80; }
+    .sa-deploy-log .err  { color: #f87171; }
+    .sa-deploy-log .info { color: #94a3b8; }
   </style>
 </head>
 <body>
@@ -269,6 +302,17 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Deploy log modal ── -->
+<div class="sa-deploy-overlay hidden" id="saDeployOverlay">
+  <div class="sa-deploy-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+      <div style="font-size:1.05rem;font-weight:800;color:#e2e8f0" id="saDeployModalTitle">Déploiement</div>
+      <button class="sa-btn sa-btn-ghost sa-btn-sm" id="saDeployModalClose">Fermer</button>
+    </div>
+    <div class="sa-deploy-log" id="saDeployLog"></div>
   </div>
 </div>
 
@@ -706,13 +750,19 @@ function loadSubmissions() {
       }[k]||k)).join(', ') : '—';
       const notes = sub.notes ? `<div class="sa-sub-notes">${esc(sub.notes.slice(0, 300))}${sub.notes.length > 300 ? '…' : ''}</div>` : '';
       const email = sub.meta?.adminEmail || '';
+      const deployed = !!sub.deployedAt;
+      const deployedDate = sub.deployedAt ? new Date(sub.deployedAt).toLocaleString('fr-BE') : '';
+      const actionBtn = deployed
+        ? `<div class="sa-deployed-badge">✓ Déployé le ${deployedDate}</div>`
+        : `<button class="sa-deploy-btn" onclick="deploySubmission('${id}')">🚀 Déployer</button>`;
       return `
-        <div class="sa-sub-item">
+        <div class="sa-sub-item${deployed ? ' deployed' : ''}" id="sub-${id}">
           <div class="sa-sub-hd">
             <div>
               <div class="sa-sub-org">${esc(sub.meta?.orgName || sub.orgName || '—')}</div>
               <div class="sa-sub-date">${esc(sub.meta?.orgId || id)} · ${date}${email ? ` · <a href="mailto:${esc(email)}" style="color:#38bdf8">${esc(email)}</a>` : ''}</div>
             </div>
+            ${actionBtn}
           </div>
           <div class="sa-sub-badges">
             <span class="sa-sub-badge">👥 ${agents} agent${agents!==1?'s':''}</span>
@@ -728,6 +778,156 @@ function loadSubmissions() {
 
 function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Deploy log helpers ────────────────────────────────────────────
+function openDeployLog(title) {
+  document.getElementById('saDeployModalTitle').textContent = title;
+  document.getElementById('saDeployLog').innerHTML = '';
+  document.getElementById('saDeployOverlay').classList.remove('hidden');
+}
+
+function logDeploy(msg, cls = 'info') {
+  const log = document.getElementById('saDeployLog');
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+document.getElementById('saDeployModalClose')?.addEventListener('click', () => {
+  document.getElementById('saDeployOverlay').classList.add('hidden');
+});
+
+// ── 1-clic déploiement d'une configuration soumise ───────────────
+async function deploySubmission(subKey) {
+  // Lire la soumission depuis Firebase
+  const snap = await db.ref(`superadmin/onboardingSubmissions/${subKey}`).once('value');
+  const sub  = snap.val();
+  if (!sub) { alert('Configuration introuvable.'); return; }
+
+  const orgId   = sub.meta?.orgId || '';
+  const orgName = sub.meta?.orgName || orgId;
+
+  if (!orgId) { alert('Identifiant d\'organisation manquant dans la configuration.'); return; }
+  if (!confirm(`Déployer "${orgName}" (${orgId}) comme nouvelle organisation ?`)) return;
+
+  openDeployLog(`🚀 Déploiement de ${orgName}`);
+
+  // Vérifier si l'org existe déjà
+  const existing = await db.ref(`orgs/${orgId}`).once('value');
+  if (existing.val() !== null) {
+    logDeploy(`⚠ L'organisation "${orgId}" existe déjà dans Firebase.`, 'err');
+    logDeploy('Supprimez-la manuellement ou choisissez un autre identifiant.', 'err');
+    return;
+  }
+
+  logDeploy(`Création de l'organisation "${orgId}"…`);
+
+  try {
+    const updates = {};
+
+    // ── Méta ─────────────────────────────────────────────────────
+    updates[`orgs/${orgId}/appConfig/meta/name`]       = orgName;
+    updates[`orgs/${orgId}/appConfig/meta/orgId`]      = orgId;
+    updates[`orgs/${orgId}/appConfig/meta/createdAt`]  = Date.now();
+    if (sub.meta?.adminEmail) updates[`orgs/${orgId}/appConfig/meta/adminEmail`] = sub.meta.adminEmail;
+    if (sub.logoUrl)          updates[`orgs/${orgId}/appConfig/meta/logoUrl`]    = sub.logoUrl;
+    if (sub.notes)            updates[`orgs/${orgId}/appConfig/meta/notes`]      = sub.notes;
+    logDeploy('✓ Méta configurée', 'ok');
+
+    // ── Feature flags ─────────────────────────────────────────────
+    if (sub.features && typeof sub.features === 'object') {
+      Object.entries(sub.features).forEach(([key, val]) => {
+        if (val) updates[`orgs/${orgId}/appConfig/features/${key}`] = true;
+      });
+    }
+    logDeploy('✓ Fonctionnalités configurées', 'ok');
+
+    // ── Agents ───────────────────────────────────────────────────
+    const agents = Array.isArray(sub.agents) ? sub.agents : [];
+    if (agents.length) {
+      agents.forEach(a => {
+        const aid = genId();
+        updates[`orgs/${orgId}/appConfig/agents/${aid}`] = a.name || a;
+      });
+      logDeploy(`✓ ${agents.length} agent(s) ajouté(s)`, 'ok');
+    } else {
+      DEFAULT_AGENTS.forEach(a => { updates[`orgs/${orgId}/appConfig/agents/${genId()}`] = a; });
+      logDeploy('✓ Agents par défaut ajoutés (liste vide dans la config)', 'ok');
+    }
+
+    // ── Services ─────────────────────────────────────────────────
+    const services = Array.isArray(sub.services) ? sub.services : [];
+    if (services.length) {
+      services.forEach(s => { updates[`orgs/${orgId}/appConfig/services/${genId()}`] = s; });
+      logDeploy(`✓ ${services.length} service(s) configuré(s)`, 'ok');
+    } else {
+      DEFAULT_SERVICES.forEach(s => { updates[`orgs/${orgId}/appConfig/services/${genId()}`] = s; });
+      logDeploy('✓ Services par défaut ajoutés (liste vide dans la config)', 'ok');
+    }
+
+    // ── Lieux ────────────────────────────────────────────────────
+    const lieux = Array.isArray(sub.lieux) ? sub.lieux : [];
+    if (lieux.length) {
+      // Chaque lieu du formulaire devient un lieu Firebase avec localIds + localLabels
+      // Les IDs de locaux sont globaux (shared across lieux), on les génère séquentiellement
+      let globalLocalCounter = 1;
+
+      lieux.forEach((lieu, lieuIdx) => {
+        const lieuId   = genId();
+        const localIds = {};
+        const locals   = Array.isArray(lieu.locals) ? lieu.locals : [];
+
+        locals.forEach(localName => {
+          const lid = globalLocalCounter++;
+          localIds[lid] = true;
+          updates[`orgs/${orgId}/appConfig/localLabels/${lid}`] = localName;
+        });
+
+        updates[`orgs/${orgId}/appConfig/lieux/${lieuId}`] = {
+          name:       lieu.name || `Lieu ${lieuIdx + 1}`,
+          order:      lieuIdx,
+          localIds,
+          openHour:   lieu.openHour  ?? 8,
+          closeHour:  lieu.closeHour ?? 17,
+          slotMin:    lieu.slotMin   ?? 30,
+          activeDays: lieu.activeDays || { '1':true,'2':true,'3':true,'4':true,'5':true },
+        };
+      });
+
+      logDeploy(`✓ ${lieux.length} lieu(x) + locaux configurés`, 'ok');
+    } else {
+      // Lieu par défaut
+      const lieuId = genId();
+      updates[`orgs/${orgId}/appConfig/lieux/${lieuId}`] = {
+        name: orgName, order: 0,
+        localIds: { 1: true, 2: true, 3: true },
+        openHour: 8, closeHour: 17, slotMin: 30,
+        activeDays: { '1':true,'2':true,'3':true,'4':true,'5':true },
+      };
+      updates[`orgs/${orgId}/appConfig/localLabels/1`] = 'Bureau 1';
+      updates[`orgs/${orgId}/appConfig/localLabels/2`] = 'Bureau 2';
+      updates[`orgs/${orgId}/appConfig/localLabels/3`] = 'Bureau 3';
+      logDeploy('✓ Lieu par défaut créé (liste vide dans la config)', 'ok');
+    }
+
+    // ── Écriture atomique ─────────────────────────────────────────
+    logDeploy('Écriture dans Firebase…');
+    await db.ref().update(updates);
+
+    // ── Marquer comme déployé ─────────────────────────────────────
+    await db.ref(`superadmin/onboardingSubmissions/${subKey}/deployedAt`).set(Date.now());
+
+    logDeploy(`✅ Organisation "${orgId}" déployée avec succès !`, 'ok');
+    logDeploy(`🔗 Lien : index.html?org=${orgId}`, 'ok');
+
+    loadOrgs();
+
+  } catch (e) {
+    logDeploy(`❌ Erreur : ${e.message}`, 'err');
+  }
 }
 
 </script>
