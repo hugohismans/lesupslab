@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuration — moncompagnon 🐙</title>
+  <style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+    transition: background 1s ease;
+  }
+
+  /* ── Starfield ───────────────────────────────────────────── */
+  #obStars { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+  .ob-star {
+    position: absolute; border-radius: 50%; background: white;
+    animation: ob-twinkle var(--d) var(--dl) ease-in-out infinite alternate;
+  }
+  @keyframes ob-twinkle {
+    from { opacity: .05; transform: scale(.7); }
+    to   { opacity: .75; transform: scale(1.3); }
+  }
+
+  /* ── Wrapper ─────────────────────────────────────────────── */
+  .ob-wrap {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center;
+    width: 100%; max-width: 520px;
+    padding: 1.5rem 1.5rem 2.5rem;
+    gap: .9rem;
+    min-height: 100dvh;
+    justify-content: center;
+  }
+
+  /* ── Mascot ──────────────────────────────────────────────── */
+  .ob-mascot-wrap {
+    display: flex; align-items: center; justify-content: center;
+    filter: drop-shadow(0 0 28px rgba(167,139,250,.55));
+    animation: ob-float 4.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes ob-float {
+    0%, 100% { transform: translateY(0) rotate(-.5deg); }
+    50%       { transform: translateY(-12px) rotate(.5deg); }
+  }
+  .ob-mascot { width: 105px; height: auto; display: block; }
+
+  /* ── Mascot animations (SVG) ─────────────────────────────── */
+  .mc-pupil { animation: mascot-blink 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes mascot-blink { 0%, 87%, 100% { transform: scaleY(1); } 92% { transform: scaleY(.08); } }
+  .mc-t { transform-box: fill-box; transform-origin: top center; }
+  .mc-t1, .mc-t5 { animation: tent-sway 3.2s ease-in-out infinite 0s; }
+  .mc-t2, .mc-t4 { animation: tent-sway 3.2s ease-in-out infinite .18s; }
+  .mc-t3          { animation: tent-sway 3.2s ease-in-out infinite .36s; }
+  @keyframes tent-sway { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(3.5deg); } }
+
+  /* ── Bubble ──────────────────────────────────────────────── */
+  .ob-bubble {
+    background: #fff;
+    border-radius: 1.3rem;
+    padding: .85rem 1.1rem;
+    font-size: .875rem;
+    color: #1e293b;
+    max-width: 380px; width: 100%;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 6px 24px rgba(0,0,0,.28);
+    line-height: 1.6;
+    white-space: pre-line;
+    min-height: 58px;
+  }
+  .ob-bubble::before {
+    content: '';
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #fff;
+  }
+  .ob-cursor {
+    display: inline-block; width: 2px; height: 1em;
+    background: #7c3aed; margin-left: 1px;
+    vertical-align: middle;
+    animation: ob-blink .55s step-end infinite;
+  }
+  @keyframes ob-blink { 50% { opacity: 0; } }
+
+  /* ── Glass card ──────────────────────────────────────────── */
+  .ob-card {
+    background: rgba(255,255,255,.09);
+    border: 1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 1.4rem;
+    padding: 1.25rem 1.5rem 1.5rem;
+    color: white;
+    width: 100%;
+    display: flex; flex-direction: column;
+    gap: .85rem;
+    animation: ob-card-in .45s cubic-bezier(.22,.68,0,1.2) both;
+  }
+  @keyframes ob-card-in {
+    from { opacity: 0; transform: translateY(24px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .ob-card-hd { display: flex; align-items: center; gap: .75rem; }
+  .ob-card-icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+  .ob-card-title { font-size: 1.05rem; font-weight: 800; letter-spacing: .01em; }
+  .ob-card-desc { font-size: .82rem; color: rgba(255,255,255,.72); line-height: 1.55; }
+
+  /* ── Form elements inside card ───────────────────────────── */
+  .ob-field { display: flex; flex-direction: column; gap: .35rem; }
+  .ob-label {
+    font-size: .78rem; font-weight: 600; color: rgba(255,255,255,.65);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .ob-hint { font-size: .75rem; color: rgba(255,255,255,.45); line-height: 1.45; margin-top: -.15rem; }
+  .ob-input, .ob-textarea, .ob-select {
+    background: rgba(255,255,255,.1);
+    border: 1.5px solid rgba(255,255,255,.2);
+    border-radius: .75rem;
+    color: #fff; font-family: inherit; font-size: .88rem;
+    padding: .65rem .9rem; outline: none; width: 100%;
+    transition: border-color .15s, background .15s;
+  }
+  .ob-input::placeholder, .ob-textarea::placeholder { color: rgba(255,255,255,.3); }
+  .ob-input:focus, .ob-textarea:focus, .ob-select:focus {
+    border-color: #a78bfa; background: rgba(255,255,255,.15);
+  }
+  .ob-textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
+  .ob-select option { background: #1e1b4b; color: #fff; }
+  .ob-input-sub {
+    font-size: .72rem; color: rgba(255,255,255,.4);
+    font-family: monospace; margin-top: .1rem;
+  }
+
+  /* ── Tags ────────────────────────────────────────────────── */
+  .ob-tags { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .ob-tag {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: rgba(124,58,237,.45); border: 1px solid rgba(167,139,250,.5);
+    border-radius: 99px; padding: .25rem .7rem;
+    font-size: .78rem; color: #ddd6fe; font-weight: 600;
+    cursor: default;
+  }
+  .ob-tag-x {
+    background: none; border: none; color: #c4b5fd; cursor: pointer;
+    font-size: .85rem; line-height: 1; padding: 0; margin-left: .1rem;
+    transition: color .12s;
+  }
+  .ob-tag-x:hover { color: #fff; }
+  .ob-tag-add {
+    display: flex; gap: .4rem; align-items: center;
+  }
+  .ob-tag-input {
+    flex: 1;
+    background: rgba(255,255,255,.1);
+    border: 1.5px solid rgba(255,255,255,.2);
+    border-radius: .65rem;
+    color: #fff; font-family: inherit; font-size: .82rem;
+    padding: .45rem .75rem; outline: none;
+    transition: border-color .15s;
+  }
+  .ob-tag-input:focus { border-color: #a78bfa; }
+  .ob-tag-input::placeholder { color: rgba(255,255,255,.3); }
+  .ob-tag-btn {
+    background: rgba(124,58,237,.5); border: 1px solid rgba(167,139,250,.4);
+    border-radius: .65rem; color: white; font-weight: 700; font-size: 1rem;
+    padding: .4rem .75rem; cursor: pointer; transition: background .12s; flex-shrink: 0;
+    line-height: 1;
+  }
+  .ob-tag-btn:hover { background: rgba(124,58,237,.8); }
+
+  /* ── Suggestions chips ───────────────────────────────────── */
+  .ob-suggestions { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .ob-sugg {
+    font-size: .74rem; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.18); border-radius: 99px;
+    color: rgba(255,255,255,.6); padding: .2rem .65rem;
+    cursor: pointer; transition: background .12s, color .12s;
+  }
+  .ob-sugg:hover { background: rgba(255,255,255,.18); color: #fff; }
+  .ob-sugg.used  { opacity: .3; pointer-events: none; }
+
+  /* ── Lieux builder ───────────────────────────────────────── */
+  .ob-lieu-list { display: flex; flex-direction: column; gap: .75rem; }
+  .ob-lieu-item {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 1rem; padding: 1rem;
+    display: flex; flex-direction: column; gap: .6rem;
+  }
+  .ob-lieu-hd { display: flex; align-items: center; gap: .5rem; }
+  .ob-lieu-name {
+    flex: 1; background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.2);
+    border-radius: .65rem; color: #fff; font-family: inherit; font-size: .88rem;
+    padding: .5rem .75rem; outline: none;
+  }
+  .ob-lieu-name:focus { border-color: #a78bfa; }
+  .ob-lieu-name::placeholder { color: rgba(255,255,255,.3); }
+  .ob-lieu-del {
+    background: rgba(220,38,38,.25); border: 1px solid rgba(220,38,38,.4);
+    border-radius: .5rem; color: #fca5a5; font-size: .8rem;
+    padding: .35rem .55rem; cursor: pointer; transition: background .12s;
+  }
+  .ob-lieu-del:hover { background: rgba(220,38,38,.5); }
+  .ob-add-lieu {
+    background: rgba(255,255,255,.07); border: 1.5px dashed rgba(255,255,255,.2);
+    border-radius: .75rem; color: rgba(255,255,255,.5); font-size: .85rem;
+    padding: .6rem 1rem; cursor: pointer; font-family: inherit;
+    transition: background .12s, color .12s; text-align: center;
+  }
+  .ob-add-lieu:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+  /* ── Days picker ─────────────────────────────────────────── */
+  .ob-days { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .ob-day-lbl {
+    display: flex; align-items: center;
+    cursor: pointer;
+  }
+  .ob-day-lbl input { display: none; }
+  .ob-day-chip {
+    background: rgba(255,255,255,.08); border: 1.5px solid rgba(255,255,255,.18);
+    border-radius: .55rem; color: rgba(255,255,255,.55); font-size: .8rem; font-weight: 700;
+    padding: .3rem .65rem; transition: all .12s; user-select: none;
+  }
+  .ob-day-lbl input:checked + .ob-day-chip {
+    background: rgba(124,58,237,.5); border-color: #a78bfa; color: #e9d5ff;
+  }
+
+  /* ── Horaires ────────────────────────────────────────────── */
+  .ob-time-row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; }
+  .ob-time-row .ob-field { flex: 1; min-width: 120px; }
+
+  /* ── Feature toggles ─────────────────────────────────────── */
+  .ob-features { display: flex; flex-direction: column; gap: .5rem; }
+  .ob-feat {
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+    border-radius: .9rem; padding: .75rem 1rem;
+    cursor: pointer; transition: background .12s;
+  }
+  .ob-feat:hover { background: rgba(255,255,255,.11); }
+  .ob-feat.on { background: rgba(124,58,237,.2); border-color: rgba(167,139,250,.35); }
+  .ob-feat-left { display: flex; align-items: center; gap: .65rem; }
+  .ob-feat-icon { font-size: 1.4rem; flex-shrink: 0; }
+  .ob-feat-name { font-size: .88rem; font-weight: 700; color: #fff; }
+  .ob-feat-desc { font-size: .74rem; color: rgba(255,255,255,.5); margin-top: .1rem; }
+  .ob-feat-toggle {
+    width: 40px; height: 22px; background: rgba(255,255,255,.2); border-radius: 99px;
+    position: relative; flex-shrink: 0; transition: background .2s;
+  }
+  .ob-feat.on .ob-feat-toggle { background: #7c3aed; }
+  .ob-feat-toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+    transition: left .2s; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  }
+  .ob-feat.on .ob-feat-toggle::after { left: 21px; }
+
+  /* ── Logo preview ────────────────────────────────────────── */
+  .ob-logo-preview {
+    margin-top: .5rem; max-height: 60px; max-width: 200px;
+    border-radius: .5rem; display: none;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,.4));
+  }
+
+  /* ── Agent counter ───────────────────────────────────────── */
+  .ob-count { font-size: .75rem; color: rgba(167,139,250,.8); font-weight: 700; margin-top: .2rem; }
+
+  /* ── JSON block ──────────────────────────────────────────── */
+  .ob-json-wrap {
+    background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.12);
+    border-radius: .85rem; padding: .9rem 1rem;
+    max-height: 180px; overflow-y: auto;
+    font-family: monospace; font-size: .72rem; color: #a5b4fc;
+    white-space: pre; line-height: 1.6; text-align: left;
+  }
+  .ob-json-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+  .ob-json-btn {
+    flex: 1; min-width: 120px;
+    background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.22);
+    border-radius: .75rem; color: #fff; font-family: inherit; font-size: .85rem;
+    font-weight: 700; padding: .6rem .9rem; cursor: pointer;
+    transition: background .15s; text-align: center;
+  }
+  .ob-json-btn:hover { background: rgba(255,255,255,.2); }
+  .ob-json-btn.primary {
+    background: linear-gradient(135deg, #7c3aed, #2563eb);
+    border: none; box-shadow: 0 4px 14px rgba(124,58,237,.4);
+  }
+  .ob-send-hint {
+    font-size: .78rem; color: rgba(255,255,255,.45);
+    text-align: center; line-height: 1.5;
+  }
+  .ob-send-hint strong { color: rgba(255,255,255,.7); }
+
+  /* ── Summary badges ──────────────────────────────────────── */
+  .ob-summary { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .ob-summ-badge {
+    background: rgba(124,58,237,.3); border: 1px solid rgba(167,139,250,.35);
+    border-radius: 99px; font-size: .75rem; color: #ddd6fe;
+    padding: .2rem .65rem; font-weight: 600;
+  }
+
+  /* ── Progress dots ───────────────────────────────────────── */
+  .ob-dots { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .ob-dot {
+    border-radius: 50%;
+    background: rgba(255,255,255,.22);
+    transition: background .3s, transform .3s, width .3s;
+    width: 7px; height: 7px;
+  }
+  .ob-dot.active { background: #a78bfa; transform: scale(1.3); width: 20px; border-radius: 4px; }
+  .ob-dot.done   { background: rgba(167,139,250,.45); }
+
+  /* ── Next/Submit button ──────────────────────────────────── */
+  .ob-btn {
+    background: linear-gradient(135deg, #7c3aed, #2563eb);
+    border: none; border-radius: 3rem;
+    color: white; font-size: 1rem; font-weight: 700;
+    font-family: inherit;
+    padding: .9rem 2.5rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(124,58,237,.42);
+    transition: transform .15s, box-shadow .15s;
+    letter-spacing: .025em;
+    min-width: 200px;
+    width: 100%;
+  }
+  .ob-btn:hover  { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(124,58,237,.55); }
+  .ob-btn:active { transform: translateY(0); }
+  .ob-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  /* ── Password screen ─────────────────────────────────────── */
+  .ob-pwd-screen {
+    position: fixed; inset: 0; z-index: 100;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1rem; padding: 2rem;
+  }
+  .ob-pwd-card {
+    background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.18);
+    backdrop-filter: blur(14px); border-radius: 1.4rem;
+    padding: 1.5rem; width: 100%; max-width: 380px;
+    display: flex; flex-direction: column; gap: .85rem;
+  }
+  .ob-pwd-title { font-size: 1rem; font-weight: 800; color: #fff; text-align: center; }
+  .ob-pwd-err {
+    background: rgba(220,38,38,.2); border: 1px solid rgba(220,38,38,.4);
+    border-radius: .65rem; color: #fca5a5; font-size: .82rem;
+    padding: .5rem .75rem; text-align: center; display: none;
+  }
+  .ob-pwd-used {
+    background: rgba(251,191,36,.15); border: 1px solid rgba(251,191,36,.35);
+    border-radius: .65rem; color: #fcd34d; font-size: .82rem;
+    padding: .6rem .75rem; text-align: center; display: none;
+    line-height: 1.5;
+  }
+
+  /* ── Confetti ────────────────────────────────────────────── */
+  #obConfetti { position: fixed; inset: 0; pointer-events: none; z-index: 200; }
+  .ob-conf {
+    position: absolute; top: -20px; opacity: 0;
+    animation: ob-fall var(--dur) var(--dl) ease-in both;
+  }
+  @keyframes ob-fall {
+    0%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    100% { opacity: 0; transform: translateY(110vh) rotate(720deg) scale(.5); }
+  }
+
+  /* ── Page transitions ────────────────────────────────────── */
+  body { animation: ob-page-in .5s ease both; }
+  @keyframes ob-page-in { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ── Scrollable wrap on small screens ───────────────────── */
+  @media (max-height: 700px) {
+    .ob-wrap { justify-content: flex-start; padding-top: 2rem; }
+  }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div id="obStars"></div>
+<!-- Confetti -->
+<div id="obConfetti"></div>
+
+<!-- ── Password screen ──────────────────────────────────────── -->
+<div class="ob-pwd-screen" id="obPwdScreen">
+  <!-- Mascot inside pwd screen -->
+  <div class="ob-mascot-wrap">
+    <svg class="ob-mascot" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+      <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+      <ellipse cx="37" cy="20" rx="13" ry="8" fill="#a78bfa" opacity=".35" transform="rotate(-18 37 20)"/>
+      <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+      <ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+      <circle cx="37" cy="38" r="10.5" fill="white"/>
+      <circle cx="63" cy="38" r="10.5" fill="white"/>
+      <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+      <circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+      <circle cx="41" cy="37" r="2.5" fill="white"/>
+      <circle cx="67" cy="37" r="2.5" fill="white"/>
+      <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    </svg>
+  </div>
+
+  <div class="ob-bubble" style="max-width:340px">
+    <span id="obPwdBubble">Salut ! Je suis Bulbi 🐙\nPour commencer, entre le mot de passe qu'on t'a communiqué par email.</span>
+  </div>
+
+  <div class="ob-pwd-card">
+    <div class="ob-pwd-title">🔑 Accès sécurisé</div>
+    <div class="ob-pwd-used" id="obPwdUsed">
+      ⚠️ Ce lien a déjà été utilisé.<br>
+      Contactez votre référent moncompagnon pour obtenir un nouveau lien.
+    </div>
+    <div class="ob-pwd-err" id="obPwdErr">
+      Hmm… ce mot de passe ne correspond pas. Vérifie ta boîte mail ! 🙈
+    </div>
+    <input type="password" class="ob-input" id="obPwdInput" placeholder="MC-XXXX" autocomplete="off">
+    <button class="ob-btn" id="obPwdBtn">Valider →</button>
+    <div style="font-size:.72rem;color:rgba(255,255,255,.3);text-align:center">
+      Mot de passe fourni par votre contact moncompagnon
+    </div>
+  </div>
+</div>
+
+<!-- ── Main form ─────────────────────────────────────────────── -->
+<div class="ob-wrap hidden" id="obMain">
+
+  <div class="ob-mascot-wrap">
+    <svg class="ob-mascot" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+      <path class="mc-t mc-t1" d="M24 74 Q16 89 22 104 Q26 112 20 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t2" d="M37 80 Q32 95 36 110 Q38 116 34 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t3" d="M50 83 Q50 98 52 111 Q53 116 50 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t4" d="M63 80 Q68 95 64 110 Q62 116 66 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t5" d="M76 74 Q84 89 78 104 Q74 112 80 118" stroke="#5b21b6" stroke-width="8.5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="50" cy="40" rx="34" ry="38" fill="#7c3aed"/>
+      <ellipse cx="37" cy="20" rx="13" ry="8" fill="#a78bfa" opacity=".35" transform="rotate(-18 37 20)"/>
+      <ellipse cx="21" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+      <ellipse cx="79" cy="50" rx="8" ry="5" fill="#c4b5fd" opacity=".6"/>
+      <circle cx="37" cy="38" r="10.5" fill="white"/>
+      <circle cx="63" cy="38" r="10.5" fill="white"/>
+      <circle cx="39" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+      <circle cx="65" cy="40" r="6.5" fill="#1e1b4b" class="mc-pupil"/>
+      <circle cx="41" cy="37" r="2.5" fill="white"/>
+      <circle cx="67" cy="37" r="2.5" fill="white"/>
+      <path d="M41 55 Q50 63 59 55" stroke="#5b21b6" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    </svg>
+  </div>
+
+  <div class="ob-bubble">
+    <span id="obBubbleText"></span><span class="ob-cursor" id="obCursor"></span>
+  </div>
+
+  <div class="ob-card" id="obCard">
+    <!-- Filled by JS -->
+  </div>
+
+  <div class="ob-dots" id="obDots"></div>
+
+  <button class="ob-btn" id="obBtn">Suivant →</button>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script>
+'use strict';
+
+// ── Firebase ──────────────────────────────────────────────────────
+firebase.initializeApp(CONFIG.FIREBASE);
+const db = firebase.database();
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── Stars ─────────────────────────────────────────────────────────
+const starsEl = document.getElementById('obStars');
+for (let i = 0; i < 90; i++) {
+  const s = document.createElement('div');
+  s.className = 'ob-star';
+  const sz = Math.random() * 3 + 1;
+  s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${sz}px;height:${sz}px;--d:${2+Math.random()*4}s;--dl:${Math.random()*5}s`;
+  starsEl.appendChild(s);
+}
+
+// ── Draft (localStorage) ─────────────────────────────────────────
+const DRAFT_KEY = 'mc_onboarding_draft';
+function saveDraft(data) { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); }
+function loadDraft()     { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch(_) { return null; } }
+function clearDraft()    { localStorage.removeItem(DRAFT_KEY); }
+
+// ── Form state ────────────────────────────────────────────────────
+let formData = {
+  orgName: '', orgId: '', adminEmail: '',
+  agents: '',
+  services: ['Aide générale', 'Permanence Énergie', 'Médiation de dettes'],
+  lieux: [{ name: 'Siège principal', locals: ['Bureau 1', 'Bureau 2'] }],
+  openHour: '08:00', closeHour: '17:00', slotMin: 30,
+  activeDays: { 1:true, 2:true, 3:true, 4:true, 5:true },
+  features: {
+    enableTickets: true, enablePublicView: true, enablePresence: true,
+    rdvMode: false, enableAnalytics: false, enablePlanning: false,
+  },
+  logoUrl: '', notes: '',
+};
+
+// ── Typewriter ────────────────────────────────────────────────────
+let _typeTimer = null;
+function typewrite(text, targetId, cursorId, onDone) {
+  const elTxt = document.getElementById(targetId);
+  const elCur = document.getElementById(cursorId);
+  clearTimeout(_typeTimer);
+  if (!elTxt) return;
+  elTxt.textContent = '';
+  if (elCur) elCur.style.display = 'inline-block';
+  const chars = [...text];
+  let i = 0;
+  function tick() {
+    if (i < chars.length) {
+      elTxt.textContent += chars[i];
+      const c = chars[i];
+      const delay = c === '\n' ? 90 : (c === '.' || c === '!' || c === '?') ? 55 : 18;
+      i++;
+      _typeTimer = setTimeout(tick, delay);
+    } else {
+      if (elCur) elCur.style.display = 'none';
+      if (onDone) onDone();
+    }
+  }
+  tick();
+}
+
+// ── Confetti ──────────────────────────────────────────────────────
+function launchConfetti() {
+  const ct = document.getElementById('obConfetti');
+  const cols = ['#7c3aed','#2563eb','#059669','#f59e0b','#ec4899','#a78bfa','#34d399','#60a5fa','#fb7185','#fbbf24'];
+  for (let i = 0; i < 90; i++) {
+    const d = document.createElement('div');
+    d.className = 'ob-conf';
+    const sz = 7 + Math.random() * 9;
+    const isCircle = Math.random() > .45;
+    d.style.cssText = `left:${Math.random()*100}%;width:${sz}px;height:${sz}px;background:${cols[i%cols.length]};border-radius:${isCircle?'50%':'3px'};--dur:${1.4+Math.random()*1.8}s;--dl:${Math.random()*.9}s`;
+    ct.appendChild(d);
+  }
+  setTimeout(() => { ct.innerHTML = ''; }, 4500);
+}
+
+// ── Progress dots ─────────────────────────────────────────────────
+function setDots(current, total) {
+  const el = document.getElementById('obDots');
+  if (!el) return;
+  el.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'ob-dot' + (i === current ? ' active' : i < current ? ' done' : '');
+    el.appendChild(d);
+  }
+}
+
+// ── orgId auto-gen ────────────────────────────────────────────────
+function toOrgId(name) {
+  return name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// ── Tag helpers ───────────────────────────────────────────────────
+function renderTags(containerId, arr, onRemove) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = arr.map((t, i) => `
+    <span class="ob-tag">
+      ${t}
+      <button class="ob-tag-x" data-idx="${i}" aria-label="Supprimer">×</button>
+    </span>`).join('');
+  el.querySelectorAll('.ob-tag-x').forEach(btn => {
+    btn.addEventListener('click', () => onRemove(parseInt(btn.dataset.idx)));
+  });
+}
+
+// ── Steps definition ──────────────────────────────────────────────
+const TOTAL_STEPS = 8; // steps 0..7 + final (8)
+
+const STEPS = [
+  // 0 — Intro
+  {
+    bubble: 'Bonjour ! Je suis Bulbi 🐙\nJe vais vous accompagner pour configurer votre espace moncompagnon. Quelques questions simples, et votre service sera prêt !',
+    render() {
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">🌟</span>
+          <span class="ob-card-title">Bienvenue !</span>
+        </div>
+        <div class="ob-card-desc">Ce formulaire prend environ 10 minutes. Vos réponses sont sauvegardées automatiquement — vous pouvez reprendre à tout moment.</div>
+        <div class="ob-card-desc" style="color:rgba(255,255,255,.45);font-size:.74rem">À la fin, votre configuration sera transmise directement à l'administrateur. Votre espace sera prêt en quelques heures !</div>`;
+    },
+    onNext() {},
+    validate() { return true; },
+  },
+
+  // 1 — Organisation
+  {
+    bubble: 'moncompagnon centralise files d\'attente, présences et agendas dans votre service 🏢\nCommençons par l\'essentiel : comment s\'appelle votre organisation ?',
+    render() {
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">🏢</span>
+          <span class="ob-card-title">Votre organisation</span>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Nom de l'organisation</label>
+          <input class="ob-input" id="fOrgName" type="text" placeholder="CPAS de Jemappes" value="${esc(formData.orgName)}">
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Identifiant unique <span style="font-size:.7rem;color:rgba(255,255,255,.35);text-transform:none;font-weight:400">(généré automatiquement)</span></label>
+          <input class="ob-input" id="fOrgId" type="text" placeholder="cpas-jemappes" value="${esc(formData.orgId)}">
+          <div class="ob-input-sub" id="fOrgIdPreview">Sera utilisé dans l'URL de votre espace</div>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Email du responsable principal</label>
+          <input class="ob-input" id="fAdminEmail" type="email" placeholder="direction@cpas-jemappes.be" value="${esc(formData.adminEmail)}">
+        </div>`;
+    },
+    onMount() {
+      const nameEl = document.getElementById('fOrgName');
+      const idEl   = document.getElementById('fOrgId');
+      const prev   = document.getElementById('fOrgIdPreview');
+      nameEl.addEventListener('input', () => {
+        const gen = toOrgId(nameEl.value);
+        if (!idEl._manuallyEdited) idEl.value = gen;
+        prev.textContent = idEl.value ? `URL : moncompagnon.be/${idEl.value}/` : 'Sera utilisé dans l\'URL de votre espace';
+      });
+      idEl.addEventListener('input', () => {
+        idEl._manuallyEdited = true;
+        prev.textContent = idEl.value ? `URL : moncompagnon.be/${idEl.value}/` : '';
+      });
+    },
+    onNext() {
+      formData.orgName    = document.getElementById('fOrgName')?.value.trim() || '';
+      formData.orgId      = document.getElementById('fOrgId')?.value.trim() || '';
+      formData.adminEmail = document.getElementById('fAdminEmail')?.value.trim() || '';
+    },
+    validate() {
+      const name = document.getElementById('fOrgName')?.value.trim();
+      const id   = document.getElementById('fOrgId')?.value.trim();
+      if (!name) { shakeBubble('Il me faut le nom de votre organisation 😊'); return false; }
+      if (!id)   { shakeBubble('L\'identifiant est nécessaire — il sera utilisé dans l\'URL !'); return false; }
+      return true;
+    },
+  },
+
+  // 2 — Équipe
+  {
+    bubble: 'De l\'agent d\'accueil à la direction, moncompagnon a des outils adaptés à chaque rôle — personne n\'est laissé de côté 😊\nQui fait partie de votre équipe ?',
+    render() {
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">👥</span>
+          <span class="ob-card-title">Votre équipe</span>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Liste des collaborateurs</label>
+          <div class="ob-hint">Un collaborateur par ligne — format : <strong style="color:rgba(255,255,255,.6)">Prénom Nom ; Nom public</strong></div>
+          <textarea class="ob-textarea" id="fAgents" placeholder="Sophie Martin ; Sophie&#10;Marc Dubois ; Marc&#10;Julie Renard ; Julie">${esc(formData.agents)}</textarea>
+          <div class="ob-count" id="fAgentCount"></div>
+        </div>
+        <div class="ob-hint" style="margin-top:-.3rem">
+          💡 Le <strong>nom affiché</strong> est utilisé pour la connexion. Le <strong>nom public</strong> apparaît dans la salle d'attente (ex: "Sophie" plutôt que "Sophie Martin").
+        </div>`;
+    },
+    onMount() {
+      const ta = document.getElementById('fAgents');
+      const ct = document.getElementById('fAgentCount');
+      function update() {
+        const n = ta.value.split('\n').filter(l => l.trim()).length;
+        ct.textContent = n ? `${n} collaborateur${n>1?'s':''} détecté${n>1?'s':''}` : '';
+      }
+      ta.addEventListener('input', update);
+      update();
+    },
+    onNext() { formData.agents = document.getElementById('fAgents')?.value || ''; },
+    validate() { return true; },
+  },
+
+  // 3 — Services
+  {
+    bubble: 'Les services orientent chaque demande : au guichet, sur l\'écran et dans les statistiques, chaque visiteur est lié à un type d\'accompagnement.\nQuels services proposez-vous ?',
+    render() {
+      const SUGG = ['Aide générale','Logement','Emploi','Permanence Énergie','Médiation de dettes','Étrangers','Accueil','Insertion socio-pro','Urgence','Aide alimentaire','CPAS jeunes'];
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">🗂️</span>
+          <span class="ob-card-title">Vos services</span>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Services proposés</label>
+          <div class="ob-tags" id="fServiceTags"></div>
+          <div class="ob-tag-add" style="margin-top:.4rem">
+            <input class="ob-tag-input" id="fServiceInput" placeholder="Ajouter un service…">
+            <button class="ob-tag-btn" id="fServiceAdd">+</button>
+          </div>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" style="font-size:.7rem">Suggestions — cliquez pour ajouter</label>
+          <div class="ob-suggestions" id="fServiceSugg">
+            ${SUGG.map(s => `<span class="ob-sugg${formData.services.includes(s)?' used':''}" data-val="${esc(s)}">${esc(s)}</span>`).join('')}
+          </div>
+        </div>`;
+    },
+    onMount() {
+      renderServiceTags();
+      document.getElementById('fServiceAdd').addEventListener('click', addService);
+      document.getElementById('fServiceInput').addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); addService(); } });
+      document.getElementById('fServiceSugg').addEventListener('click', e => {
+        const chip = e.target.closest('.ob-sugg');
+        if (!chip || chip.classList.contains('used')) return;
+        formData.services.push(chip.dataset.val);
+        chip.classList.add('used');
+        renderServiceTags();
+      });
+      function addService() {
+        const inp = document.getElementById('fServiceInput');
+        const val = inp.value.trim();
+        if (!val || formData.services.includes(val)) return;
+        formData.services.push(val);
+        inp.value = '';
+        renderServiceTags();
+        // mark suggestion as used
+        document.querySelectorAll('#fServiceSugg .ob-sugg').forEach(c => {
+          if (c.dataset.val === val) c.classList.add('used');
+        });
+      }
+      function renderServiceTags() {
+        renderTags('fServiceTags', formData.services, idx => {
+          const removed = formData.services[idx];
+          formData.services.splice(idx, 1);
+          document.querySelectorAll('#fServiceSugg .ob-sugg').forEach(c => {
+            if (c.dataset.val === removed) c.classList.remove('used');
+          });
+          renderServiceTags();
+        });
+      }
+    },
+    onNext() {},
+    validate() {
+      if (!formData.services.length) { shakeBubble('Ajoutez au moins un service proposé 😊'); return false; }
+      return true;
+    },
+  },
+
+  // 4 — Lieux
+  {
+    bubble: 'Chaque lieu regroupe ses propres bureaux. Les agents réservent un local pour leur permanence — l\'application gère la disponibilité en temps réel.\nOù accueillez-vous le public ?',
+    render() {
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">📍</span>
+          <span class="ob-card-title">Vos lieux d'accueil</span>
+        </div>
+        <div class="ob-lieu-list" id="fLieuList"></div>
+        <button class="ob-add-lieu" id="fAddLieu">➕ Ajouter un lieu</button>`;
+    },
+    onMount() {
+      renderLieux();
+      document.getElementById('fAddLieu').addEventListener('click', () => {
+        formData.lieux.push({ name: '', locals: ['Bureau 1'] });
+        renderLieux();
+      });
+      function renderLieux() {
+        const list = document.getElementById('fLieuList');
+        if (!list) return;
+        list.innerHTML = formData.lieux.map((lieu, li) => `
+          <div class="ob-lieu-item" data-li="${li}">
+            <div class="ob-lieu-hd">
+              <span style="font-size:.8rem;color:rgba(255,255,255,.45);font-weight:700;min-width:22px">${li+1}.</span>
+              <input class="ob-lieu-name" placeholder="Ex: Siège principal, Annexe Nord…" value="${esc(lieu.name)}" data-li="${li}">
+              ${formData.lieux.length > 1 ? `<button class="ob-lieu-del" data-li="${li}">✕</button>` : ''}
+            </div>
+            <div style="font-size:.75rem;color:rgba(255,255,255,.45);padding-left:28px">Bureaux / locaux :</div>
+            <div style="padding-left:28px">
+              <div class="ob-tags" id="fLocalTags${li}"></div>
+              <div class="ob-tag-add" style="margin-top:.4rem">
+                <input class="ob-tag-input ob-local-input" placeholder="Ajouter un local…" data-li="${li}">
+                <button class="ob-tag-btn ob-local-add" data-li="${li}">+</button>
+              </div>
+            </div>
+          </div>`).join('');
+
+        // Render local tags for each lieu
+        formData.lieux.forEach((lieu, li) => {
+          renderTags(`fLocalTags${li}`, lieu.locals, idx => {
+            formData.lieux[li].locals.splice(idx, 1);
+            renderLieux();
+          });
+        });
+
+        // Lieu name changes
+        list.querySelectorAll('.ob-lieu-name').forEach(inp => {
+          inp.addEventListener('input', () => { formData.lieux[parseInt(inp.dataset.li)].name = inp.value; });
+        });
+
+        // Delete lieu
+        list.querySelectorAll('.ob-lieu-del').forEach(btn => {
+          btn.addEventListener('click', () => { formData.lieux.splice(parseInt(btn.dataset.li), 1); renderLieux(); });
+        });
+
+        // Add local
+        list.querySelectorAll('.ob-local-add').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const li = parseInt(btn.dataset.li);
+            const inp = list.querySelector(`.ob-local-input[data-li="${li}"]`);
+            const val = inp?.value.trim();
+            if (!val) return;
+            formData.lieux[li].locals.push(val);
+            inp.value = '';
+            renderLieux();
+          });
+        });
+        list.querySelectorAll('.ob-local-input').forEach(inp => {
+          inp.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              list.querySelector(`.ob-local-add[data-li="${inp.dataset.li}"]`)?.click();
+            }
+          });
+        });
+      }
+    },
+    onNext() {},
+    validate() {
+      for (const l of formData.lieux) {
+        if (!l.name.trim()) { shakeBubble('Donnez un nom à chaque lieu d\'accueil 📍'); return false; }
+        if (!l.locals.length) { shakeBubble(`"${l.name}" n'a aucun bureau — ajoutez-en au moins un !`); return false; }
+      }
+      return true;
+    },
+  },
+
+  // 5 — Horaires
+  {
+    bubble: 'Ces horaires définissent quand les files s\'ouvrent et la durée de chaque créneau. L\'application s\'adapte automatiquement.\nÀ quelle heure ouvrez-vous vos portes ?',
+    render() {
+      const days = [
+        {key:1,label:'Lu'},{key:2,label:'Ma'},{key:3,label:'Me'},
+        {key:4,label:'Je'},{key:5,label:'Ve'},{key:6,label:'Sa'},
+      ];
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">🕐</span>
+          <span class="ob-card-title">Horaires d'ouverture</span>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Jours d'accueil</label>
+          <div class="ob-days">
+            ${days.map(d => `
+              <label class="ob-day-lbl">
+                <input type="checkbox" name="day" value="${d.key}" ${formData.activeDays[d.key]?'checked':''}>
+                <span class="ob-day-chip">${d.label}</span>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="ob-time-row">
+          <div class="ob-field">
+            <label class="ob-label">Ouverture</label>
+            <input class="ob-input" id="fOpenHour" type="time" value="${formData.openHour}">
+          </div>
+          <div class="ob-field">
+            <label class="ob-label">Fermeture</label>
+            <input class="ob-input" id="fCloseHour" type="time" value="${formData.closeHour}">
+          </div>
+          <div class="ob-field">
+            <label class="ob-label">Durée d'un créneau</label>
+            <select class="ob-select" id="fSlotMin">
+              ${[15,20,30,45,60].map(m => `<option value="${m}" ${formData.slotMin===m?'selected':''}>${m} min</option>`).join('')}
+            </select>
+          </div>
+        </div>`;
+    },
+    onNext() {
+      const checked = {};
+      document.querySelectorAll('input[name="day"]:checked').forEach(cb => { checked[parseInt(cb.value)] = true; });
+      formData.activeDays = checked;
+      formData.openHour   = document.getElementById('fOpenHour')?.value  || '08:00';
+      formData.closeHour  = document.getElementById('fCloseHour')?.value || '17:00';
+      formData.slotMin    = parseInt(document.getElementById('fSlotMin')?.value || '30');
+    },
+    validate() {
+      const checked = document.querySelectorAll('input[name="day"]:checked');
+      if (!checked.length) { shakeBubble('Cochez au moins un jour d\'accueil 📅'); return false; }
+      return true;
+    },
+  },
+
+  // 6 — Fonctionnalités
+  {
+    bubble: 'Activez uniquement ce dont vous avez besoin. Votre administrateur pourra modifier ces réglages à tout moment, sans passer par nous 😊\nQuelles fonctions souhaitez-vous activer ?',
+    render() {
+      const FEATS = [
+        { key:'enableTickets',    icon:'🎫', name:'Files d\'attente nominatives',    desc:'Émettre des tickets avec le prénom du visiteur pour l\'appeler par son nom', def:true  },
+        { key:'enablePublicView', icon:'📺', name:'Écran d\'affichage public',        desc:'Un écran dans la salle d\'attente qui affiche et appelle les visiteurs',      def:true  },
+        { key:'enablePresence',   icon:'🟢', name:'Présences agents',                 desc:'Voir qui est au bureau et dans quel local en temps réel',                     def:true  },
+        { key:'rdvMode',          icon:'📅', name:'Agenda & rendez-vous nommés',      desc:'Gérer un agenda avec des rendez-vous nominatifs pour les agents',             def:false },
+        { key:'enableAnalytics',  icon:'📊', name:'Tableau de bord statistiques',     desc:'Graphiques et chiffres d\'utilisation — présences, réservations, tickets',   def:false },
+        { key:'enablePlanning',   icon:'📋', name:'Planning entretien & technique',   desc:'Planning hebdomadaire pour l\'équipe de terrain, avec check-in sur place',   def:false },
+      ];
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">⚙️</span>
+          <span class="ob-card-title">Fonctionnalités</span>
+        </div>
+        <div class="ob-features">
+          ${FEATS.map(f => `
+            <div class="ob-feat${formData.features[f.key]?' on':''}" data-key="${f.key}">
+              <div class="ob-feat-left">
+                <span class="ob-feat-icon">${f.icon}</span>
+                <div>
+                  <div class="ob-feat-name">${f.name}</div>
+                  <div class="ob-feat-desc">${f.desc}</div>
+                </div>
+              </div>
+              <div class="ob-feat-toggle"></div>
+            </div>`).join('')}
+        </div>`;
+    },
+    onMount() {
+      document.querySelectorAll('.ob-feat').forEach(el => {
+        el.addEventListener('click', () => {
+          const key = el.dataset.key;
+          formData.features[key] = !formData.features[key];
+          el.classList.toggle('on', formData.features[key]);
+        });
+      });
+    },
+    onNext() {},
+    validate() { return true; },
+  },
+
+  // 7 — Finitions
+  {
+    bubble: 'Dernière étape ! Si une fonctionnalité vous manque ou n\'existe pas encore, notez-la ici — tout est envisageable 💡\nAvez-vous aussi un logo à afficher ?',
+    render() {
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">✨</span>
+          <span class="ob-card-title">Finitions</span>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">URL du logo <span style="font-size:.7rem;color:rgba(255,255,255,.35);text-transform:none;font-weight:400">— optionnel</span></label>
+          <input class="ob-input" id="fLogoUrl" type="url" placeholder="https://exemple.com/logo.png" value="${esc(formData.logoUrl)}">
+          <img class="ob-logo-preview" id="fLogoPreview" alt="Aperçu logo">
+          <div class="ob-hint">PNG ou JPG, fond transparent de préférence</div>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label">Remarques & demandes particulières</label>
+          <textarea class="ob-textarea" id="fNotes" placeholder="Des idées spécifiques à votre organisation ? Une fonctionnalité que vous aimeriez voir et qui n'existe pas encore ? Notez tout ici — nous en tiendrons compte lors de la mise en place.">${esc(formData.notes)}</textarea>
+          <div class="ob-hint">moncompagnon est en développement actif. Les demandes particulières sont bienvenues et souvent réalisables ✨</div>
+        </div>`;
+    },
+    onMount() {
+      const logoInput = document.getElementById('fLogoUrl');
+      const logoPreview = document.getElementById('fLogoPreview');
+      function updateLogoPreview() {
+        const url = logoInput.value.trim();
+        if (url) {
+          logoPreview.src = url;
+          logoPreview.style.display = 'block';
+          logoPreview.onerror = () => { logoPreview.style.display = 'none'; };
+        } else {
+          logoPreview.style.display = 'none';
+        }
+      }
+      logoInput.addEventListener('input', updateLogoPreview);
+      updateLogoPreview();
+    },
+    onNext() {
+      formData.logoUrl = document.getElementById('fLogoUrl')?.value.trim() || '';
+      formData.notes   = document.getElementById('fNotes')?.value.trim() || '';
+    },
+    validate() { return true; },
+  },
+
+  // 8 — Soumission finale
+  {
+    bubble: 'Parfait 🎉 Votre configuration est complète !\nCliquez sur "Soumettre" pour l\'envoyer directement à l\'administrateur — votre espace sera prêt en quelques heures.',
+    render() {
+      const agentLines = formData.agents.split('\n').filter(l=>l.trim());
+      const activeFeatNames = {
+        enableTickets:'Files d\'attente', enablePublicView:'Écran public',
+        enablePresence:'Présences', rdvMode:'Agenda RDV',
+        enableAnalytics:'Statistiques', enablePlanning:'Planning',
+      };
+      const activeFeats = Object.entries(formData.features).filter(([,v])=>v).map(([k])=>activeFeatNames[k]||k);
+
+      return `
+        <div class="ob-card-hd">
+          <span class="ob-card-icon">🎉</span>
+          <span class="ob-card-title">Prêt à soumettre !</span>
+        </div>
+        <div class="ob-summary">
+          <span class="ob-summ-badge">🏢 ${esc(formData.orgName||'—')}</span>
+          <span class="ob-summ-badge">👥 ${agentLines.length} collaborateur${agentLines.length!==1?'s':''}</span>
+          <span class="ob-summ-badge">🗂️ ${formData.services.length} service${formData.services.length!==1?'s':''}</span>
+          <span class="ob-summ-badge">📍 ${formData.lieux.length} lieu${formData.lieux.length!==1?'x':''}</span>
+          ${activeFeats.map(f=>`<span class="ob-summ-badge">✓ ${f}</span>`).join('')}
+        </div>
+        <div id="obSubmitArea">
+          <button class="ob-json-btn primary" id="obBtnSubmit" style="width:100%;margin-top:.25rem">📤 Soumettre à l'administrateur</button>
+        </div>
+        <div class="ob-send-hint" id="obSubmitHint">
+          Vos informations seront transmises en toute sécurité à l'équipe moncompagnon.<br>
+          Vous recevrez une confirmation à <strong>${esc(formData.adminEmail||'votre adresse email')}</strong>.
+        </div>`;
+    },
+    onMount() {
+      launchConfetti();
+
+      document.getElementById('obBtnSubmit')?.addEventListener('click', async () => {
+        const btn = document.getElementById('obBtnSubmit');
+        if (!btn) return;
+        btn.disabled = true;
+        btn.textContent = 'Envoi en cours…';
+        try {
+          const json = buildJson();
+          const submissionRef = db.ref('superadmin/onboardingSubmissions').push();
+          await submissionRef.set({
+            ...json,
+            submittedAt: Date.now(),
+          });
+          // Success UI
+          btn.textContent = '✓ Configuration envoyée !';
+          btn.style.background = 'linear-gradient(135deg,#059669,#0d9488)';
+          const hint = document.getElementById('obSubmitHint');
+          if (hint) {
+            hint.innerHTML = '✅ Votre configuration a bien été reçue par l\'équipe moncompagnon.<br>Nous vous contacterons prochainement pour finaliser la mise en place.<br><br><strong>Merci et bienvenue dans la famille moncompagnon 🐙</strong>';
+            hint.style.color = 'rgba(255,255,255,.75)';
+          }
+          clearDraft();
+          // Mascot celebration message
+          const bub = document.getElementById('obBubbleText');
+          const cur = document.getElementById('obCursor');
+          clearTimeout(_typeTimer);
+          if (bub) bub.textContent = 'C\'est envoyé ! 🎊 Bienvenue dans la famille moncompagnon — à très bientôt !';
+          if (cur) cur.style.display = 'none';
+        } catch(e) {
+          btn.disabled = false;
+          btn.textContent = '📤 Soumettre à l\'administrateur';
+          const hint = document.getElementById('obSubmitHint');
+          if (hint) {
+            hint.innerHTML = '⚠️ Une erreur est survenue lors de l\'envoi. Veuillez réessayer ou contacter <strong>hugo@moncompagnon.be</strong>.';
+            hint.style.color = '#fca5a5';
+          }
+        }
+      });
+    },
+    onNext() {},
+    validate() { return true; },
+    isFinal: true,
+  },
+];
+
+function buildJson() {
+  const openH  = parseInt((formData.openHour  || '08:00').split(':')[0]);
+  const closeH = parseInt((formData.closeHour || '17:00').split(':')[0]);
+  const agents = formData.agents.split('\n')
+    .map(l => l.trim()).filter(Boolean)
+    .map(l => {
+      const parts = l.split(';').map(s => s.trim());
+      return { name: parts[0] || '', publicName: parts[1] || parts[0] || '' };
+    });
+  return {
+    meta: {
+      orgId: formData.orgId,
+      orgName: formData.orgName,
+      adminEmail: formData.adminEmail,
+      generatedAt: new Date().toISOString(),
+      formVersion: '1.0',
+    },
+    agents,
+    services: formData.services,
+    lieux: formData.lieux.map(l => ({
+      name: l.name,
+      locals: l.locals,
+      openHour: openH,
+      closeHour: closeH,
+      slotMin: formData.slotMin,
+      activeDays: formData.activeDays,
+    })),
+    features: formData.features,
+    logoUrl: formData.logoUrl,
+    notes: formData.notes,
+  };
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Shake bubble feedback ─────────────────────────────────────────
+function shakeBubble(msg) {
+  const bub = document.getElementById('obBubbleText');
+  const cur = document.getElementById('obCursor');
+  if (!bub) return;
+  clearTimeout(_typeTimer);
+  bub.textContent = msg;
+  if (cur) cur.style.display = 'none';
+  const wrap = bub.closest('.ob-bubble');
+  if (wrap) {
+    wrap.style.animation = 'none'; void wrap.offsetWidth;
+    wrap.style.background = '#fef2f2';
+    setTimeout(() => { wrap.style.background = ''; }, 600);
+  }
+}
+
+// ── Main navigation ───────────────────────────────────────────────
+let currentStep = 0;
+
+function showStep(idx) {
+  const step = STEPS[idx];
+  if (!step) return;
+
+  // Re-animate card
+  const card = document.getElementById('obCard');
+  if (card) {
+    card.style.animation = 'none'; void card.offsetWidth; card.style.animation = '';
+    card.innerHTML = step.render ? step.render() : '';
+    if (step.onMount) setTimeout(() => step.onMount(), 30);
+  }
+
+  // Typewrite bubble
+  typewrite(step.bubble, 'obBubbleText', 'obCursor');
+
+  // Dots (skip final step from dots count)
+  const dotsTotal = STEPS.length - 1; // exclude final
+  setDots(Math.min(idx, dotsTotal - 1), dotsTotal);
+
+  // Button
+  const btn = document.getElementById('obBtn');
+  if (btn) {
+    if (step.isFinal) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = '';
+      btn.textContent = idx === STEPS.length - 2 ? '🎉 Finaliser ma configuration' : 'Suivant →';
+    }
+  }
+
+  // Save draft
+  saveDraft({ step: idx, formData });
+}
+
+document.getElementById('obBtn')?.addEventListener('click', () => {
+  const step = STEPS[currentStep];
+  if (step.onNext) step.onNext();
+  if (step.validate && !step.validate()) return;
+  saveDraft({ step: currentStep, formData });
+  currentStep++;
+  if (currentStep >= STEPS.length) return;
+  showStep(currentStep);
+});
+
+// ── Password validation ───────────────────────────────────────────
+const TOKEN_PATH = 'superadmin/onboardingToken';
+
+async function validateToken(pwd) {
+  const hash = await sha256(pwd.trim().toUpperCase());
+  const snap = await db.ref(TOKEN_PATH).once('value');
+  const token = snap.val();
+  if (!token) return { ok: false, reason: 'notoken' };
+  if (token.usedAt) return { ok: false, reason: 'used' };
+  if (token.hash !== hash) return { ok: false, reason: 'wrong' };
+  return { ok: true };
+}
+
+async function markTokenUsed() {
+  await db.ref(`${TOKEN_PATH}/usedAt`).set(Date.now());
+}
+
+document.getElementById('obPwdBtn')?.addEventListener('click', async () => {
+  const btn  = document.getElementById('obPwdBtn');
+  const pwd  = document.getElementById('obPwdInput')?.value || '';
+  const err  = document.getElementById('obPwdErr');
+  const used = document.getElementById('obPwdUsed');
+  if (!pwd) return;
+  btn.disabled = true; btn.textContent = 'Vérification…';
+  try {
+    const result = await validateToken(pwd);
+    if (result.ok) {
+      await markTokenUsed();
+      startForm();
+    } else if (result.reason === 'used') {
+      err.style.display = 'none';
+      used.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Valider →';
+    } else {
+      err.style.display = 'block';
+      used.style.display = 'none';
+      btn.disabled = false; btn.textContent = 'Valider →';
+      document.getElementById('obPwdInput').value = '';
+      document.getElementById('obPwdInput').focus();
+    }
+  } catch(_) {
+    err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Valider →';
+  }
+});
+
+document.getElementById('obPwdInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('obPwdBtn')?.click();
+});
+
+function startForm() {
+  document.getElementById('obPwdScreen').style.display = 'none';
+  const main = document.getElementById('obMain');
+  main.classList.remove('hidden');
+
+  // Check for draft
+  const draft = loadDraft();
+  let hasDraft = false;
+  if (draft && draft.formData) {
+    formData = Object.assign(formData, draft.formData);
+    if (draft.step > 0) {
+      hasDraft = true;
+      currentStep = draft.step;
+    }
+  }
+
+  showStep(currentStep);
+
+  if (hasDraft) {
+    setTimeout(() => {
+      const bub = document.getElementById('obBubbleText');
+      const cur = document.getElementById('obCursor');
+      clearTimeout(_typeTimer);
+      if (bub) bub.textContent = 'Oh ! Je vois que tu avais déjà commencé — je reprends où tu t\'étais arrêté·e 😊';
+      if (cur) cur.style.display = 'none';
+    }, 600);
+  }
+}
+
+// ── Init bubble on password screen ───────────────────────────────
+// Simple display without typewriter on pwd screen
+document.getElementById('obPwdBubble').textContent = 'Salut ! Je suis Bulbi 🐙\nPour commencer, entre le mot de passe qu\'on t\'a communiqué par email.';
+
+// hidden class
+document.querySelector('.hidden') && (document.querySelector('.hidden').style.display = 'none');
+document.querySelectorAll('.hidden').forEach(el => el.style.display = 'none');
+</script>
+</body>
+</html>

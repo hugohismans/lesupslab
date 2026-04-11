@@ -101,6 +101,55 @@
     .sa-log .ok   { color: #4ade80; }
     .sa-log .err  { color: #f87171; }
     .sa-log .info { color: #94a3b8; }
+
+    /* ── Token status ── */
+    .sa-token-box {
+      background: #0f172a; border-radius: 10px; padding: .85rem 1rem;
+      display: flex; flex-direction: column; gap: .4rem;
+    }
+    .sa-token-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .sa-token-val {
+      font-family: monospace; font-size: 1.3rem; font-weight: 900;
+      letter-spacing: .18em; color: #38bdf8; user-select: all;
+    }
+    .sa-token-meta { font-size: .75rem; color: #64748b; line-height: 1.5; }
+    .sa-token-used { color: #4ade80; font-size: .78rem; font-weight: 700; }
+    .sa-token-unused { color: #fbbf24; font-size: .78rem; font-weight: 700; }
+
+    /* ── Modal overlay ── */
+    .sa-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 500;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .sa-modal {
+      background: #1e293b; border-radius: 16px; padding: 2rem;
+      max-width: 400px; width: 100%; display: flex; flex-direction: column; gap: 1.25rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    .sa-modal-title { font-size: 1.1rem; font-weight: 800; color: #e2e8f0; }
+    .sa-modal-pwd {
+      font-family: monospace; font-size: 2.2rem; font-weight: 900;
+      letter-spacing: .22em; color: #38bdf8; text-align: center;
+      background: #0f172a; border-radius: 10px; padding: 1rem;
+    }
+    .sa-modal-hint { font-size: .8rem; color: #64748b; line-height: 1.5; }
+    .sa-modal-actions { display: flex; gap: .75rem; }
+
+    /* ── Submissions ── */
+    .sa-sub-list { display: flex; flex-direction: column; gap: .75rem; }
+    .sa-sub-item {
+      background: #0f172a; border-radius: 10px; padding: 1rem;
+      display: flex; flex-direction: column; gap: .5rem;
+    }
+    .sa-sub-hd { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+    .sa-sub-org { font-size: .95rem; font-weight: 800; color: #e2e8f0; }
+    .sa-sub-date { font-size: .75rem; color: #64748b; }
+    .sa-sub-badges { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .sa-sub-badge {
+      background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.25);
+      border-radius: 99px; font-size: .72rem; color: #7dd3fc; padding: .15rem .55rem;
+    }
+    .sa-sub-notes { font-size: .78rem; color: #94a3b8; font-style: italic; padding: .4rem .6rem; background: rgba(255,255,255,.03); border-radius: 6px; border-left: 2px solid #334155; }
   </style>
 </head>
 <body>
@@ -176,6 +225,28 @@
       </div>
     </div>
 
+    <!-- Accès formulaire client -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>🔑</span> Accès formulaire d'initialisation client</div>
+      <div style="font-size:.82rem;color:#64748b">Génère un mot de passe à usage unique permettant à un nouveau client d'accéder au formulaire de configuration.</div>
+      <div class="sa-token-box" id="saTokenBox">
+        <div style="color:#64748b;font-size:.82rem">Chargement…</div>
+      </div>
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap">
+        <button class="sa-btn sa-btn-primary" id="saGenToken">🔑 Générer un nouveau mot de passe</button>
+        <a href="onboarding.html" target="_blank" class="sa-btn sa-btn-ghost sa-btn-sm" style="text-decoration:none;display:inline-flex;align-items:center">↗ Voir le formulaire</a>
+      </div>
+    </div>
+
+    <!-- Configurations soumises -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>📥</span> Configurations soumises par les clients</div>
+      <div style="font-size:.82rem;color:#64748b">Formulaires complétés et envoyés depuis le formulaire d'initialisation.</div>
+      <div class="sa-sub-list" id="saSubList">
+        <div style="color:#64748b;font-size:.82rem">Chargement…</div>
+      </div>
+    </div>
+
     <!-- Outils de test -->
     <div class="sa-section">
       <div class="sa-section-title"><span>🎭</span> Outils de test</div>
@@ -198,6 +269,23 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Token modal ── -->
+<div class="sa-modal-overlay hidden" id="saTokenModal">
+  <div class="sa-modal">
+    <div class="sa-modal-title">🔑 Nouveau mot de passe généré</div>
+    <div class="sa-modal-pwd" id="saModalPwd">—</div>
+    <div class="sa-modal-hint">
+      Ce mot de passe est valable pour <strong>une seule utilisation</strong>.<br>
+      Communiquez-le à votre contact, accompagné du lien vers le formulaire.<br><br>
+      <strong>Lien :</strong> <span style="font-family:monospace;font-size:.78rem;color:#38bdf8">onboarding.html</span>
+    </div>
+    <div class="sa-modal-actions">
+      <button class="sa-btn sa-btn-primary" id="saModalCopy" style="flex:1">📋 Copier</button>
+      <button class="sa-btn sa-btn-ghost" id="saModalClose" style="flex:1">Fermer</button>
+    </div>
   </div>
 </div>
 
@@ -246,6 +334,8 @@ async function showApp() {
   saApp.style.display   = 'flex';
   loadOrgs();
   buildFlagToggles();
+  loadTokenStatus();
+  loadSubmissions();
 }
 
 // Vérifier session
@@ -526,6 +616,120 @@ document.getElementById('saTestIntroBtn')?.addEventListener('click', () => {
   localStorage.setItem('mc_welcome_test_intro', type);
   window.open('welcome.html', '_blank');
 });
+
+// ── Onboarding token ──────────────────────────────────────────────
+const TOKEN_PATH = 'superadmin/onboardingToken';
+
+function renderTokenBox(token) {
+  const box = document.getElementById('saTokenBox');
+  if (!box) return;
+  if (!token) {
+    box.innerHTML = `<div class="sa-token-meta">Aucun mot de passe généré pour l'instant.</div>`;
+    return;
+  }
+  const created = token.createdAt ? new Date(token.createdAt).toLocaleString('fr-BE') : '—';
+  const usedAt  = token.usedAt    ? new Date(token.usedAt).toLocaleString('fr-BE')    : null;
+  box.innerHTML = `
+    <div class="sa-token-row">
+      <div class="sa-token-meta">
+        Créé le : <strong>${created}</strong><br>
+        Statut : ${usedAt
+          ? `<span class="sa-token-used">✓ Utilisé le ${usedAt}</span>`
+          : `<span class="sa-token-unused">⏳ Non encore utilisé</span>`}
+      </div>
+    </div>`;
+}
+
+function loadTokenStatus() {
+  db.ref(TOKEN_PATH).on('value', snap => {
+    renderTokenBox(snap.val());
+  });
+}
+
+function generateToken() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let raw = 'MC-';
+  for (let i = 0; i < 4; i++) raw += chars[Math.floor(Math.random() * chars.length)];
+  return raw;
+}
+
+document.getElementById('saGenToken')?.addEventListener('click', async () => {
+  const btn = document.getElementById('saGenToken');
+  btn.disabled = true; btn.textContent = 'Génération…';
+  try {
+    const raw  = generateToken();
+    const hash = await sha256(raw.trim().toUpperCase());
+    await db.ref(TOKEN_PATH).set({ hash, createdAt: Date.now(), usedAt: null });
+    // Show modal
+    document.getElementById('saModalPwd').textContent = raw;
+    document.getElementById('saTokenModal').classList.remove('hidden');
+  } catch(e) {
+    alert('Erreur lors de la génération : ' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '🔑 Générer un nouveau mot de passe';
+});
+
+document.getElementById('saModalCopy')?.addEventListener('click', async () => {
+  const pwd = document.getElementById('saModalPwd').textContent;
+  try { await navigator.clipboard.writeText(pwd); } catch(_) {}
+  const btn = document.getElementById('saModalCopy');
+  btn.textContent = '✓ Copié !';
+  setTimeout(() => { btn.textContent = '📋 Copier'; }, 2000);
+});
+
+document.getElementById('saModalClose')?.addEventListener('click', () => {
+  document.getElementById('saTokenModal').classList.add('hidden');
+});
+
+// ── Submissions viewer ────────────────────────────────────────────
+function loadSubmissions() {
+  db.ref('superadmin/onboardingSubmissions').on('value', snap => {
+    const list  = document.getElementById('saSubList');
+    if (!list) return;
+    const data  = snap.val();
+    if (!data) {
+      list.innerHTML = `<div style="color:#64748b;font-size:.82rem">Aucune configuration soumise pour l'instant.</div>`;
+      return;
+    }
+    const items = Object.entries(data)
+      .sort((a, b) => (b[1].submittedAt || 0) - (a[1].submittedAt || 0));
+
+    list.innerHTML = items.map(([id, sub]) => {
+      const date   = sub.submittedAt ? new Date(sub.submittedAt).toLocaleString('fr-BE') : '—';
+      const agents = Array.isArray(sub.agents) ? sub.agents.length : 0;
+      const svcs   = Array.isArray(sub.services) ? sub.services.length : 0;
+      const lieux  = Array.isArray(sub.lieux) ? sub.lieux.length : 0;
+      const activeFeats = sub.features ? Object.entries(sub.features).filter(([,v])=>v).map(([k])=>({
+        enableTickets:'Files d\'attente', enablePublicView:'Écran public',
+        enablePresence:'Présences', rdvMode:'Agenda RDV',
+        enableAnalytics:'Statistiques', enablePlanning:'Planning',
+      }[k]||k)).join(', ') : '—';
+      const notes = sub.notes ? `<div class="sa-sub-notes">${esc(sub.notes.slice(0, 300))}${sub.notes.length > 300 ? '…' : ''}</div>` : '';
+      const email = sub.meta?.adminEmail || '';
+      return `
+        <div class="sa-sub-item">
+          <div class="sa-sub-hd">
+            <div>
+              <div class="sa-sub-org">${esc(sub.meta?.orgName || sub.orgName || '—')}</div>
+              <div class="sa-sub-date">${esc(sub.meta?.orgId || id)} · ${date}${email ? ` · <a href="mailto:${esc(email)}" style="color:#38bdf8">${esc(email)}</a>` : ''}</div>
+            </div>
+          </div>
+          <div class="sa-sub-badges">
+            <span class="sa-sub-badge">👥 ${agents} agent${agents!==1?'s':''}</span>
+            <span class="sa-sub-badge">🗂️ ${svcs} service${svcs!==1?'s':''}</span>
+            <span class="sa-sub-badge">📍 ${lieux} lieu${lieux!==1?'x':''}</span>
+            ${activeFeats !== '—' ? `<span class="sa-sub-badge">⚙️ ${esc(activeFeats)}</span>` : ''}
+          </div>
+          ${notes}
+        </div>`;
+    }).join('');
+  });
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 </script>
 </body>
 </html>
