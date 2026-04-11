@@ -444,6 +444,9 @@
         await db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${key}`).set('__admin__');
       }
 
+      // Réinitialiser le flag "tutorial vu" pour que le tuto repasse
+      localStorage.removeItem(`mc_welcomed_${key}`);
+
       // Ouvrir l'onboarding de personnalisation
       _openOnboarding(key, name, isFirstAdmin);
     });

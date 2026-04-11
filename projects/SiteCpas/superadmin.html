@@ -32,6 +32,7 @@
     .sa-btn-primary { background: #0ea5e9; color: #fff; }
     .sa-btn-success { background: #16a34a; color: #fff; }
     .sa-btn-danger  { background: #dc2626; color: #fff; font-size: .8rem; padding: .4rem .9rem; }
+    .sa-btn-warn    { background: #d97706; color: #fff; }
     .sa-btn-sm      { font-size: .8rem; padding: .4rem .9rem; }
     .sa-btn-ghost   { background: #1e293b; border: 1.5px solid #334155; color: #94a3b8; }
     .sa-err { color: #f87171; font-size: .82rem; }
@@ -484,6 +485,18 @@ async function loadOrgs() {
       .map(f => `<span style="font-size:.68rem;background:#1e3a5f;color:#38bdf8;padding:.1rem .4rem;border-radius:4px">${f.label}</span>`)
       .join('');
 
+    // Agents sans mot de passe = jamais connectés (faille de sécurité)
+    const agentsMap  = data?.appConfig?.agents     || {};
+    const passwords  = data?.appConfig?.agentPasswords || {};
+    const noPassword = Object.entries(agentsMap)
+      .filter(([k]) => !passwords[k])
+      .map(([, n]) => n);
+    const noPwdBanner = noPassword.length ? `
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;background:#451a03;border:1.5px solid #d97706;border-radius:7px;padding:.4rem .7rem;margin-top:.35rem">
+        <span style="color:#fbbf24;font-size:.75rem;font-weight:700">⚠ Jamais connectés :</span>
+        ${noPassword.map(n => `<span style="font-size:.72rem;background:#78350f;color:#fde68a;padding:.1rem .45rem;border-radius:4px">${n}</span>`).join('')}
+      </div>` : '';
+
     return `<div class="sa-org-item" id="org-item-${orgId}">
       <div style="display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
@@ -493,10 +506,12 @@ async function loadOrgs() {
         </div>
         ${flagBadges ? `<div style="display:flex;flex-wrap:wrap;gap:.25rem">${flagBadges}</div>` : ''}
         <div class="sa-org-url">?org=${orgId}</div>
+        ${noPwdBanner}
       </div>
       <div class="sa-org-actions">
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleFlagsPanel('${orgId}')">⚙ Flags</button>
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleMetaPanel('${orgId}')">✏️ Infos</button>
+        <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="resetPostTest('${orgId}', '${name}')">🔄 Reset accueil</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
       </div>
     </div>
@@ -689,6 +704,26 @@ document.getElementById('saBtnCreateOrg').addEventListener('click', async () => 
 
   document.getElementById('saBtnCreateOrg').disabled = false;
 });
+
+// ── Reset post-test : rôles + mots de passe ──────────────────────
+async function resetPostTest(orgId, orgName) {
+  const msg = `⚠️ Reset "${orgName}" ?\n\n` +
+    `• Tous les rôles (agentRoles) seront effacés\n` +
+    `• Tous les mots de passe (agentPasswords) seront effacés\n` +
+    `• Le prochain à se connecter deviendra automatiquement admin\n` +
+    `• Chaque agent devra recréer son mot de passe → le tutorial repassera\n\n` +
+    `Les réservations, agents et configuration restent intacts.`;
+  if (!confirm(msg)) return;
+
+  try {
+    await db.ref(`orgs/${orgId}/appConfig/agentRoles`).remove();
+    await db.ref(`orgs/${orgId}/appConfig/agentPasswords`).remove();
+    alert(`✅ Reset effectué pour "${orgName}".\nLe prochain connecté sera admin.`);
+    loadOrgs();
+  } catch (e) {
+    alert(`❌ Erreur : ${e.message}`);
+  }
+}
 
 // ── Tester une intro mascotte ─────────────────────────────────────
 document.getElementById('saTestIntroBtn')?.addEventListener('click', () => {
