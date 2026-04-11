@@ -888,7 +888,7 @@ const DB = {
   },
 
   getAgentPublicName(key) {
-    return this._cache()?.appConfig?.agentPublicNames?.[key] || null;
+    return this._config.agentPublicNames?.[key] || null;
   },
   async removeAgentByKey(key) {
     await this._ref(`appConfig/agents/${key}`).remove();
