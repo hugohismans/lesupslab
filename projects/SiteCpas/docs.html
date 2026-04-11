@@ -107,6 +107,20 @@
       .docs-content { padding: 2rem 1.25rem; max-width: 100%; }
       .docs-features { grid-template-columns: 1fr; }
     }
+
+    /* ── Print ─────────────────────────────────────────── */
+    .docs-print-btn {
+      position: fixed; top: 1.25rem; right: 1.5rem;
+      background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px;
+      padding: .45rem .9rem; font-size: .85rem; cursor: pointer; color: #475569; z-index: 100;
+    }
+    @media print {
+      .docs-sidebar, .docs-print-btn { display: none !important; }
+      .docs-content { padding: 1cm 1.5cm; max-width: 100%; }
+      .docs-section { page-break-inside: avoid; margin-bottom: 2rem; }
+      h2 { page-break-after: avoid; }
+      a[href]::after { content: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -139,6 +153,9 @@
 
     <a href="#mod-materiel">🖨️ Matériel</a>
 
+    <h3>Administrateurs</h3>
+    <a href="docs-admin.html" style="background:rgba(245,158,11,.15);color:#92400e;font-weight:700">⚙️ Documentation admin →</a>
+
     <h3>Modules</h3>
     <a href="#mod-agenda">Agenda</a>
     <a href="#mod-queue">Files d'attente</a>
@@ -151,6 +168,8 @@
        CONTENU PRINCIPAL
   ═══════════════════════════════════════════ -->
   <main class="docs-content">
+
+    <button onclick="window.print()" class="docs-print-btn">🖨️ Imprimer</button>
 
     <div class="docs-page-header">
       <h1>Documentation moncompagnon</h1>

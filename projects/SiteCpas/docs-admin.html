@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation Admin — moncompagnon</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; }
+
+    /* ── Layout ─────────────────────────────────── */
+    .docs-layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ────────────────────────────────── */
+    .docs-sidebar {
+      width: 270px; min-width: 270px; background: #1e293b; color: #e2e8f0;
+      padding: 2rem 1.25rem; position: sticky; top: 0; height: 100vh;
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .docs-sidebar-logo { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.25rem; }
+    .docs-sidebar-logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+    .docs-sidebar-logo span { font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .docs-sidebar-badge {
+      display: inline-block; background: #f59e0b; color: #1e293b;
+      font-size: .65rem; font-weight: 800; letter-spacing: .05em;
+      padding: .1rem .45rem; border-radius: 4px; text-transform: uppercase; margin-left: .25rem;
+    }
+    .docs-sidebar h3 {
+      font-size: .68rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: #94a3b8; margin: 1.4rem 0 .4rem; padding-left: .5rem;
+    }
+    .docs-sidebar a {
+      display: block; padding: .38rem .75rem; border-radius: 8px; color: #cbd5e1;
+      text-decoration: none; font-size: .845rem; transition: all .15s;
+    }
+    .docs-sidebar a:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .docs-sidebar a.active { background: #f59e0b; color: #1e293b; font-weight: 700; }
+    .docs-sidebar a.back-link {
+      color: #94a3b8; font-size: .8rem; margin-bottom: .5rem;
+      border: 1px solid rgba(255,255,255,.1); padding: .4rem .75rem;
+    }
+    .docs-sidebar a.back-link:hover { color: #cbd5e1; background: rgba(255,255,255,.05); }
+    .docs-sidebar a.sub { padding-left: 1.4rem; font-size: .8rem; color: #94a3b8; }
+    .docs-sidebar a.sub:hover { color: #cbd5e1; }
+
+    /* ── Content ────────────────────────────────── */
+    .docs-content { flex: 1; padding: 3rem 4rem; max-width: 980px; }
+
+    /* ── Page header ────────────────────────────── */
+    .docs-page-header {
+      border-bottom: 2px solid #fde68a; padding-bottom: 1.5rem; margin-bottom: 2.5rem;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+    }
+    .docs-page-header h1 { font-size: 2rem; font-weight: 800; color: #0f172a; }
+    .docs-page-header p  { color: #64748b; margin-top: .4rem; font-size: 1rem; }
+    .docs-admin-badge {
+      background: #f59e0b; color: #1e293b; font-size: .72rem; font-weight: 800;
+      padding: .2rem .6rem; border-radius: 6px; text-transform: uppercase;
+      letter-spacing: .08em; white-space: nowrap; margin-top: .35rem; display: inline-block;
+    }
+
+    /* ── Bouton imprimer ────────────────────────── */
+    .docs-print-btn {
+      position: fixed; top: 1.25rem; right: 1.5rem;
+      background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px;
+      padding: .45rem .9rem; font-size: .85rem; cursor: pointer; color: #475569; z-index: 100;
+      transition: background .12s;
+    }
+    .docs-print-btn:hover { background: #e2e8f0; }
+
+    /* ── Sections ───────────────────────────────── */
+    .docs-section { margin-bottom: 4rem; scroll-margin-top: 2rem; }
+    .docs-section-header {
+      display: flex; align-items: center; gap: .75rem;
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1px solid #fde68a; border-radius: 16px;
+      padding: 1.25rem 1.5rem; margin-bottom: 1.75rem;
+    }
+    .docs-section-icon { font-size: 2rem; }
+    .docs-section-header h2 { font-size: 1.4rem; font-weight: 700; color: #1e293b; }
+    .docs-section-header p  { font-size: .9rem; color: #78716c; margin-top: .1rem; }
+
+    /* ── Sous-section ───────────────────────────── */
+    .docs-subsection { margin-bottom: 2.5rem; }
+    .docs-subsection h3 {
+      font-size: 1.1rem; font-weight: 700; color: #1e293b;
+      padding-bottom: .5rem; border-bottom: 2px solid #fde68a;
+      margin-bottom: 1rem; display: flex; align-items: center; gap: .5rem;
+    }
+
+    /* ── Step list ──────────────────────────────── */
+    .docs-steps { list-style: none; counter-reset: steps; }
+    .docs-steps li {
+      counter-increment: steps; display: flex; gap: 1rem;
+      padding: .85rem 0; border-bottom: 1px solid #f1f5f9;
+    }
+    .docs-steps li::before {
+      content: counter(steps); display: flex; align-items: center; justify-content: center;
+      min-width: 28px; height: 28px; border-radius: 50%; background: #f59e0b;
+      color: #1e293b; font-size: .8rem; font-weight: 800; flex-shrink: 0; margin-top: .1rem;
+    }
+    .docs-steps li strong { display: block; font-weight: 600; color: #1e293b; margin-bottom: .1rem; }
+    .docs-steps li span   { font-size: .875rem; color: #64748b; }
+
+    /* ── Info / Tip / Alert boxes ───────────────── */
+    .docs-tip {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px;
+      padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #92400e;
+    }
+    .docs-tip strong { color: #b45309; }
+    .docs-info {
+      background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;
+      padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #1e40af;
+    }
+    .docs-alert {
+      background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px;
+      padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #991b1b;
+    }
+    .docs-success {
+      background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;
+      padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #166534;
+    }
+
+    /* ── Tables génériques ──────────────────────── */
+    .docs-table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .875rem; }
+    .docs-table th {
+      background: #1e293b; color: #e2e8f0; padding: .6rem .75rem;
+      text-align: left; font-size: .8rem; font-weight: 600;
+    }
+    .docs-table td { padding: .55rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .docs-table tr:nth-child(even) td { background: #f8fafc; }
+    .docs-table tr:hover td { background: #fef9e7; }
+    .docs-table code { background: #f1f5f9; padding: .1rem .35rem; border-radius: 4px; font-size: .8rem; color: #7c3aed; }
+
+    /* ── Tableau permissions ────────────────────── */
+    .perm-wrap { overflow-x: auto; margin: 1rem 0; border-radius: 12px; border: 1px solid #e2e8f0; }
+    .perm-table { width: 100%; border-collapse: collapse; font-size: .78rem; min-width: 900px; }
+    .perm-table th {
+      background: #1e293b; color: #e2e8f0; padding: .55rem .4rem;
+      white-space: nowrap; font-size: .7rem; font-weight: 600; text-align: center;
+    }
+    .perm-table th:first-child { text-align: left; padding-left: .8rem; }
+    .perm-table td { padding: .45rem .4rem; text-align: center; border-bottom: 1px solid #f1f5f9; }
+    .perm-table td:first-child { text-align: left; padding-left: .8rem; white-space: nowrap; }
+    .perm-table tr:nth-child(even) td { background: #f8fafc; }
+    .perm-yes { color: #16a34a; font-weight: 900; font-size: 1.05rem; }
+    .perm-no  { color: #e2e8f0; font-size: .9rem; }
+
+    /* ── Badge rôle ─────────────────────────────── */
+    .role-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      border-radius: 6px; padding: .2rem .6rem;
+      font-size: .78rem; font-weight: 700; color: #fff; white-space: nowrap;
+    }
+
+    /* ── Feature table ──────────────────────────── */
+    .feat-group { margin-bottom: 1.5rem; }
+    .feat-group-title {
+      font-size: .75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: #94a3b8; margin-bottom: .5rem;
+    }
+    .feat-table { width: 100%; border-collapse: collapse; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; }
+    .feat-table th { background: #f8fafc; font-size: .78rem; text-align: left; padding: .5rem .75rem; border-bottom: 2px solid #e2e8f0; color: #64748b; }
+    .feat-table td { padding: .5rem .75rem; border-bottom: 1px solid #f1f5f9; font-size: .85rem; vertical-align: top; }
+    .feat-table td:first-child { font-family: monospace; font-size: .78rem; color: #7c3aed; white-space: nowrap; }
+    .feat-table td:nth-child(2) { font-weight: 600; color: #1e293b; }
+    .feat-table tr:last-child td { border-bottom: none; }
+
+    /* ── Firebase tree ──────────────────────────── */
+    .firebase-tree {
+      background: #0f172a; color: #e2e8f0; border-radius: 14px; padding: 1.75rem 2rem;
+      font-family: 'Cascadia Code', 'Consolas', monospace; font-size: .8rem;
+      line-height: 2; overflow-x: auto; margin: 1rem 0;
+    }
+    .fb-path  { color: #93c5fd; }
+    .fb-key   { color: #6ee7b7; }
+    .fb-type  { color: #fde68a; font-style: italic; }
+    .fb-note  { color: #64748b; font-style: italic; }
+    .fb-comment { color: #64748b; }
+
+    /* ── Code inline ────────────────────────────── */
+    code { background: #f1f5f9; padding: .1rem .4rem; border-radius: 4px; font-size: .82rem; color: #7c3aed; font-family: monospace; }
+
+    /* ── Kbd ────────────────────────────────────── */
+    .kbd { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px;
+      padding: .1rem .4rem; font-family: monospace; font-size: .8rem; color: #374151; }
+
+    /* ── Divider ────────────────────────────────── */
+    .docs-divider { border: none; border-top: 2px dashed #fde68a; margin: 3rem 0; }
+
+    /* ── Paragraphe ─────────────────────────────── */
+    p { margin-bottom: .75rem; color: #374151; }
+    p:last-child { margin-bottom: 0; }
+    ul { padding-left: 1.3rem; margin: .5rem 0 .75rem; }
+    ul li { margin-bottom: .3rem; font-size: .9rem; color: #374151; }
+    strong { color: #1e293b; }
+
+    /* ── Workflow box ───────────────────────────── */
+    .workflow-box {
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+      padding: 1.25rem 1.5rem; margin: 1rem 0;
+    }
+    .workflow-step {
+      display: flex; align-items: flex-start; gap: .9rem; padding: .6rem 0;
+      border-bottom: 1px solid #f8fafc;
+    }
+    .workflow-step:last-child { border-bottom: none; }
+    .ws-num {
+      min-width: 26px; height: 26px; border-radius: 50%;
+      background: #f59e0b; color: #1e293b; font-size: .78rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: .1rem;
+    }
+    .ws-text strong { display: block; font-size: .9rem; color: #1e293b; }
+    .ws-text span   { font-size: .82rem; color: #64748b; }
+
+    /* ── Mascot grid ────────────────────────────── */
+    .mascot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: .75rem; margin: 1rem 0; }
+    .mascot-card {
+      background: #fff; border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: .85rem .75rem; text-align: center; transition: border-color .15s;
+    }
+    .mascot-card:hover { border-color: #f59e0b; }
+    .mascot-card .mc-emoji { font-size: 1.8rem; display: block; margin-bottom: .35rem; }
+    .mascot-card .mc-id   { font-family: monospace; font-size: .7rem; color: #7c3aed; }
+    .mascot-card .mc-name { font-weight: 700; font-size: .85rem; color: #1e293b; }
+
+    /* ── State table ────────────────────────────── */
+    .state-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    .state-table th { background: #1e293b; color: #e2e8f0; padding: .55rem .75rem; text-align: left; font-size: .78rem; }
+    .state-table td { padding: .5rem .75rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .state-table tr:nth-child(even) td { background: #f8fafc; }
+    .state-p0  { background: #fef2f2 !important; }
+    .state-p1  { background: #fff7ed !important; }
+    .state-p-hi{ background: #fffbeb !important; }
+
+    /* ── Responsive ─────────────────────────────── */
+    @media (max-width: 768px) {
+      .docs-layout { flex-direction: column; }
+      .docs-sidebar { width: 100%; height: auto; position: static; }
+      .docs-content { padding: 2rem 1.25rem; max-width: 100%; }
+      .docs-print-btn { position: static; margin-bottom: 1rem; }
+    }
+
+    /* ── Print ──────────────────────────────────── */
+    @media print {
+      .docs-sidebar, .docs-print-btn { display: none !important; }
+      .docs-content { padding: 1cm 1.5cm; max-width: 100%; }
+      .docs-section { page-break-inside: avoid; margin-bottom: 2.5rem; }
+      .docs-subsection { page-break-inside: avoid; }
+      h2, h3 { page-break-after: avoid; }
+      a[href]::after { content: none !important; }
+      .perm-table { font-size: .6rem; }
+      .firebase-tree { background: #f8fafc !important; color: #1e293b !important; border: 1px solid #e2e8f0; }
+      .fb-path, .fb-key, .fb-type { color: #1e293b !important; }
+      .fb-note, .fb-comment { color: #64748b !important; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="docs-print-btn" onclick="window.print()">🖨️ Imprimer</button>
+
+<div class="docs-layout">
+
+  <!-- ═══════════════════════════════════════════
+       SIDEBAR
+  ════════════════════════════════════════════ -->
+  <aside class="docs-sidebar">
+    <div class="docs-sidebar-logo">
+      <img src="assets/logo.jpg" alt="Logo" onerror="this.style.display='none'">
+      <span>moncompagnon <span class="docs-sidebar-badge">Admin</span></span>
+    </div>
+
+    <a href="docs.html" class="back-link">← Doc utilisateurs</a>
+
+    <h3>Introduction</h3>
+    <a href="#intro">À propos de ce guide</a>
+    <a href="#prerequis">Prérequis techniques</a>
+
+    <h3>Configuration initiale</h3>
+    <a href="#creer-org">Créer une organisation</a>
+    <a href="#agents">Agents &amp; services</a>
+    <a href="#lieux">Lieux &amp; locaux</a>
+    <a href="#horaires">Horaires &amp; créneaux</a>
+    <a href="#mdp">Mots de passe &amp; accès</a>
+
+    <h3>Rôles &amp; permissions</h3>
+    <a href="#roles">9 rôles intégrés</a>
+    <a href="#permissions">16 permissions</a>
+    <a href="#roles-custom">Rôles personnalisés</a>
+    <a href="#admin-temp">Admin temporaire</a>
+
+    <h3>Modules</h3>
+    <a href="#features-essentiels">Essentiels</a>
+    <a href="#features-notifs">Notifications</a>
+    <a href="#features-avances">Avancés</a>
+
+    <h3>Files d'attente</h3>
+    <a href="#queue-groupes">Groupes de queue</a>
+    <a href="#queue-tickets">Tickets nominatifs</a>
+    <a href="#queue-ecrans">Écrans publics</a>
+
+    <h3>Notifications</h3>
+    <a href="#notif-config">Configuration</a>
+
+    <h3>Mascotte</h3>
+    <a href="#mascot-choix">Choix &amp; configuration</a>
+    <a href="#mascot-etats">États réactifs</a>
+    <a href="#mascot-visites">Visites inter-org</a>
+
+    <h3>Intégrations</h3>
+    <a href="#int-firebase">Firebase</a>
+    <a href="#int-meteo">Météo Open-Meteo</a>
+    <a href="#int-ical">Export iCal</a>
+    <a href="#int-public">Écran public</a>
+
+    <h3>Référence</h3>
+    <a href="#firebase-ref">Structure Firebase</a>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════
+       CONTENU
+  ════════════════════════════════════════════ -->
+  <main class="docs-content">
+
+    <div class="docs-page-header">
+      <div>
+        <span class="docs-admin-badge">⚙️ Documentation intégrateur</span>
+        <h1>Documentation Admin</h1>
+        <p>Guide complet pour configurer, déployer et administrer moncompagnon dans une organisation.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         INTRODUCTION
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="intro">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">📖</div>
+        <div>
+          <h2>À propos de ce guide</h2>
+          <p>Ce document est destiné aux intégrateurs et administrateurs système</p>
+        </div>
+      </div>
+
+      <p>Ce guide couvre l'intégralité des paramètres de <strong>moncompagnon</strong> — de la création d'une organisation aux détails de chaque fonctionnalité, en passant par la structure Firebase et les rôles de chaque poste.</p>
+
+      <div class="docs-info">
+        <strong>Pour les agents du quotidien</strong> — la documentation utilisateur par poste est disponible sur <a href="docs.html">docs.html</a>. Ce guide-ci est réservé à la configuration et à l'administration technique.
+      </div>
+
+      <div class="docs-subsection" id="prerequis" style="margin-top:2rem">
+        <h3>🔧 Prérequis techniques</h3>
+        <ul>
+          <li><strong>Compte Firebase</strong> — projet Realtime Database configuré avec les règles de sécurité appropriées</li>
+          <li><strong>Accès superadmin</strong> — mot de passe global (distinct des mots de passe des organisations)</li>
+          <li><strong>Navigateur moderne</strong> — Chrome ou Firefox à jour (ES2020+ requis)</li>
+          <li><strong>Hébergement statique</strong> — GitHub Pages, Netlify, Firebase Hosting ou équivalent</li>
+          <li><strong>config.js complété</strong> — <code>ORG_ID</code>, <code>FIREBASE_CONFIG</code>, <code>VAPID_KEY</code> (optionnel, pour push)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         CONFIGURATION INITIALE
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="creer-org">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🏗️</div>
+        <div>
+          <h2>Configuration initiale</h2>
+          <p>Mettre en place une nouvelle organisation de A à Z</p>
+        </div>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>🏢 Créer une organisation (superadmin.html)</h3>
+        <p>Chaque organisation est identifiée par un <strong>orgId</strong> unique (slug), préfixe de toutes ses données Firebase.</p>
+
+        <ol class="docs-steps">
+          <li>
+            <div>
+              <strong>Accéder à superadmin.html</strong>
+              <span>Entrez le mot de passe global (distinct des mots de passe des organisations clientes).</span>
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Créer l'organisation</strong>
+              <span>Renseignez l'<code>orgId</code> (ex: <code>cpas-quaregnon</code>), le nom affiché, la mascotte par défaut et les modules à activer d'emblée.</span>
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Générer un token d'onboarding</strong>
+              <span>Ce token permet au client de remplir <code>onboarding.html</code> une seule fois pour pré-configurer agents, locaux et services.</span>
+            </div>
+          </li>
+          <li>
+            <div>
+              <strong>Configurer config.js</strong>
+              <span>Renseignez <code>ORG_ID</code>, les clés Firebase et optionnellement <code>VAPID_KEY</code> pour les notifications push.</span>
+            </div>
+          </li>
+        </ol>
+
+        <div class="docs-tip">
+          <strong>Convention orgId :</strong> utilisez un slug kebab-case sans accents ni espaces (<code>cpas-quaregnon</code>, <code>cpas-boussu</code>). Il ne peut pas être modifié après création sans migrer les données.
+        </div>
+      </div>
+
+      <!-- AGENTS -->
+      <div class="docs-subsection" id="agents">
+        <h3>👥 Agents &amp; services</h3>
+
+        <p><strong>Ajouter un agent</strong> — Paramètres → Agents → + Ajouter</p>
+        <table class="docs-table">
+          <thead><tr><th>Champ</th><th>Description</th><th>Obligatoire</th></tr></thead>
+          <tbody>
+            <tr><td>Nom affiché</td><td>Nom visible dans l'application (ex: "Marie Dupont")</td><td>✅</td></tr>
+            <tr><td>Nom public</td><td>Nom sur l'écran public salle d'attente — peut être anonymisé (ex: "Agent A")</td><td>—</td></tr>
+            <tr><td>Couleur</td><td>Couleur personnelle en #hex, utilisée dans le calendrier</td><td>—</td></tr>
+            <tr><td>Emoji</td><td>Emoji affiché à côté du nom (si le module <code>agentEmoji</code> est actif)</td><td>—</td></tr>
+            <tr><td>Mot de passe</td><td>Code personnel SHA-256 — optionnel, si absent connexion libre</td><td>—</td></tr>
+          </tbody>
+        </table>
+
+        <p><strong>Import CSV</strong> — Paramètres → Agents → Importer CSV</p>
+        <div class="docs-tip">
+          Format : <code>nom_affiché;nom_public</code> (un agent par ligne). Le nom public peut être omis (colonne vide ou absente).
+        </div>
+
+        <p style="margin-top:1rem"><strong>Ajouter un service</strong> — Paramètres → Services → + Ajouter</p>
+        <p>Simple liste de noms apparaissant dans le sélecteur de réservation. L'option <strong>"Autre"</strong> est toujours disponible (texte libre). L'ordre est modifiable par glisser-déposer.</p>
+      </div>
+
+      <!-- LIEUX & LOCAUX -->
+      <div class="docs-subsection" id="lieux">
+        <h3>🏛️ Lieux &amp; locaux</h3>
+
+        <p>La hiérarchie est : <strong>Lieu</strong> → <strong>Locaux</strong>. Un lieu regroupe plusieurs locaux physiques partageant les mêmes horaires.</p>
+
+        <table class="docs-table">
+          <thead><tr><th>Propriété lieu</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>string</td><td>Nom du lieu (ex: "Accueil RDC", "Service social 2e étage")</td></tr>
+            <tr><td><code>order</code></td><td>number</td><td>Ordre d'affichage dans les onglets</td></tr>
+            <tr><td><code>localIds[]</code></td><td>number[]</td><td>IDs des locaux appartenant à ce lieu</td></tr>
+            <tr><td><code>openHour</code></td><td>0–23</td><td>Heure d'ouverture (ex: 8 = 08:00)</td></tr>
+            <tr><td><code>closeHour</code></td><td>1–24</td><td>Heure de fermeture (ex: 17 = 17:00)</td></tr>
+            <tr><td><code>slotMin</code></td><td>15, 30 ou 60</td><td>Durée d'un créneau en minutes</td></tr>
+            <tr><td><code>activeDays</code></td><td>object ou null</td><td><code>{1:true, 2:true, 3:true, 4:true, 5:true}</code> = lun–ven. <code>null</code> = lun–ven par défaut.</td></tr>
+            <tr><td><code>isBackoffice</code></td><td>boolean</td><td>Si <code>true</code> : lieu interne, invisible sur écran public, sans réservation publique</td></tr>
+          </tbody>
+        </table>
+
+        <table class="docs-table" style="margin-top:1.25rem">
+          <thead><tr><th>Propriété local</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>ID</td><td>entier</td><td>Identifiant numérique unique (ex: 1, 2, 3…) — immuable</td></tr>
+            <tr><td><code>localLabels</code></td><td>string</td><td>Étiquette interne (ex: "Bureau 3 – Juriste")</td></tr>
+            <tr><td><code>publicLabels</code></td><td>string</td><td>Étiquette sur l'écran public (ex: "Guichet C")</td></tr>
+            <tr><td><code>localDescriptions</code></td><td>string</td><td>Description détaillée (affichée en info-bulle dans l'app)</td></tr>
+            <tr><td><code>hiddenLocals</code></td><td>boolean</td><td>Si <code>true</code> : masqué partout sauf depuis l'Accueil Desk</td></tr>
+          </tbody>
+        </table>
+
+        <div class="docs-info">
+          <strong>Accueil Desk</strong> (<code>accueilDeskLocalId</code>) — local spécial qui voit tous les locaux non masqués, quelle que soit la vue active. Utile pour un poste d'accueil central qui gère l'ensemble des bureaux.
+        </div>
+      </div>
+
+      <!-- MOTS DE PASSE -->
+      <div class="docs-subsection" id="mdp">
+        <h3>🔒 Mots de passe &amp; accès</h3>
+
+        <table class="docs-table">
+          <thead><tr><th>Élément</th><th>Stockage</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>Mot de passe agent</td><td><code>appConfig/agentPasswords/{agentKey}</code></td><td>Hash SHA-256 du code personnel. Si absent → connexion libre (sélection du nom suffit).</td></tr>
+            <tr><td>Mot de passe admin</td><td>Hors Firebase (config.js)</td><td>Protège l'accès aux Paramètres admin dans l'application.</td></tr>
+            <tr><td>Mot de passe superadmin</td><td>Hors Firebase</td><td>Accès exclusif à superadmin.html — gestion multi-org.</td></tr>
+          </tbody>
+        </table>
+
+        <ul style="margin-top:.75rem">
+          <li><strong>Réinitialiser</strong> un code agent : Paramètres → Agents → bouton Réinitialiser → supprime le hash, connexion redevient libre</li>
+          <li><strong>Modifier</strong> son propre code : page de connexion → "Changer mon code"</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         RÔLES & PERMISSIONS
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="roles">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🎭</div>
+        <div>
+          <h2>Rôles &amp; permissions</h2>
+          <p>9 rôles intégrés, 16 permissions granulaires, rôles personnalisables</p>
+        </div>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>🎯 9 rôles intégrés</h3>
+        <p>Chaque agent se voit assigner un rôle via <strong>Paramètres → Rôles → Assigner</strong>. Un agent sans rôle hérite de <code>__agent__</code> (permissions de base).</p>
+
+        <div class="perm-wrap">
+          <table class="perm-table">
+            <thead>
+              <tr>
+                <th>Rôle</th>
+                <th>creerRDV</th>
+                <th>modifRDV</th>
+                <th>suppRDV</th>
+                <th>inviterAgents</th>
+                <th>gererStatuts</th>
+                <th>ouvrirBureau</th>
+                <th>fermerBureau</th>
+                <th>gererPause</th>
+                <th>gererFile</th>
+                <th>msgPublic</th>
+                <th>envNotif</th>
+                <th>notifUrgente</th>
+                <th>voirStats</th>
+                <th>paramAdmin</th>
+                <th>gererPlanning</th>
+                <th>voirPlanning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="role-badge" style="background:#ef4444">⚙️ Admin</span></td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#0369a1">🏛️ Direction</span></td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-yes">✓</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#0f766e">💼 Chef service</span></td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-no">—</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#2563eb">💙 Ass. social</span></td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-no">—</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#8b5cf6">🌟 Accueil</span></td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#3b82f6">🟦 Agent</span></td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-yes">✓</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#475569">🔧 Technicien</span></td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-yes">✓</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#15803d">🧹 Entretien</span></td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-yes">✓</td>
+                <td class="perm-no">—</td>
+              </tr>
+              <tr>
+                <td><span class="role-badge" style="background:#4338ca">⚖️ Juriste</span></td>
+                <td class="perm-yes">✓</td><td class="perm-yes">✓</td><td class="perm-no">—</td>
+                <td class="perm-yes">✓</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td><td class="perm-no">—</td><td class="perm-no">—</td>
+                <td class="perm-no">—</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PERMISSIONS -->
+      <div class="docs-subsection" id="permissions">
+        <h3>🔑 Détail des 16 permissions</h3>
+        <table class="docs-table">
+          <thead><tr><th>#</th><th>Clé Firebase</th><th>Ce qu'elle autorise</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>createReservation</code></td><td>Créer une réservation dans le calendrier (créneau, local, service, récurrence)</td></tr>
+            <tr><td>2</td><td><code>editReservation</code></td><td>Modifier une réservation existante — les agents modifient généralement leurs propres RDV</td></tr>
+            <tr><td>3</td><td><code>deleteReservation</code></td><td>Supprimer une réservation ou toute une série récurrente</td></tr>
+            <tr><td>4</td><td><code>inviteAgents</code></td><td>Ajouter des collègues co-participants à un RDV (module <code>enableInviteAgents</code> requis)</td></tr>
+            <tr><td>5</td><td><code>manageAgentStatus</code></td><td>Changer le statut de présence d'un autre agent (retard, absent, présent…)</td></tr>
+            <tr><td>6</td><td><code>openBureau</code></td><td>Ouvrir un bureau : marquer un local comme occupé/en service</td></tr>
+            <tr><td>7</td><td><code>closeBureau</code></td><td>Fermer un bureau : libérer le local</td></tr>
+            <tr><td>8</td><td><code>managePause</code></td><td>Mettre un bureau en pause temporaire (délai configurable)</td></tr>
+            <tr><td>9</td><td><code>manageQueue</code></td><td>Gérer la file d'attente : émettre, appeler, retirer des tickets</td></tr>
+            <tr><td>10</td><td><code>sendPublicMessage</code></td><td>Modifier le message du jour affiché sur l'écran public salle d'attente</td></tr>
+            <tr><td>11</td><td><code>sendNotif</code></td><td>Envoyer une notification manuelle à l'équipe ou à un agent spécifique</td></tr>
+            <tr><td>12</td><td><code>sendUrgentNotif</code></td><td>Envoyer une notification 🚨 urgente (son distinct, passe en priorité)</td></tr>
+            <tr><td>13</td><td><code>viewAnalytics</code></td><td>Accéder au tableau de bord statistiques (tickets, présences, services)</td></tr>
+            <tr><td>14</td><td><code>editSettings</code></td><td>Accéder aux paramètres admin : agents, locaux, rôles, modules, messages…</td></tr>
+            <tr><td>15</td><td><code>managePlanning</code></td><td>Créer et modifier les tâches du planning entretien/technicien</td></tr>
+            <tr><td>16</td><td><code>viewAllPlanning</code></td><td>Voir le planning de tous les agents (pas uniquement le sien)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RÔLES PERSONNALISÉS -->
+      <div class="docs-subsection" id="roles-custom">
+        <h3>✏️ Rôles personnalisés</h3>
+        <p>En plus des 9 rôles intégrés, vous pouvez créer des rôles sur mesure.</p>
+        <p><strong>Chemin :</strong> Paramètres → Options avancées → Rôles → + Nouveau rôle</p>
+        <table class="docs-table">
+          <thead><tr><th>Champ</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>Nom</td><td>Nom affiché du rôle dans l'interface</td></tr>
+            <tr><td>Couleur</td><td>Couleur de la pastille dans le calendrier (#hex)</td></tr>
+            <tr><td>introType</td><td>Quel type d'intro la mascotte utilise (hérite d'un rôle standard)</td></tr>
+            <tr><td>Permissions</td><td>Cocher/décocher les 16 permissions individuellement</td></tr>
+          </tbody>
+        </table>
+        <div class="docs-tip">Les rôles personnalisés sont stockés dans <code>appConfig/permRoles/{roleId}</code>. L'ID est généré automatiquement.</div>
+      </div>
+
+      <!-- ADMIN TEMPORAIRE -->
+      <div class="docs-subsection" id="admin-temp">
+        <h3>🔄 Administrateur temporaire</h3>
+        <p>Lorsqu'un administrateur doit s'absenter, il peut déléguer ses droits à un collègue le temps de son absence.</p>
+
+        <div class="workflow-box">
+          <div class="workflow-step">
+            <div class="ws-num">1</div>
+            <div class="ws-text">
+              <strong>Déclencheur</strong>
+              <span>L'admin clique "Au revoir" (fin de journée) <em>ou</em> se déclare "Absent" via le modal de statut.</span>
+            </div>
+          </div>
+          <div class="workflow-step">
+            <div class="ws-num">2</div>
+            <div class="ws-text">
+              <strong>Modal de délégation</strong>
+              <span>Un modal s'ouvre : "Souhaitez-vous désigner un administrateur temporaire ?" avec liste de tous les agents.</span>
+            </div>
+          </div>
+          <div class="workflow-step">
+            <div class="ws-num">3</div>
+            <div class="ws-text">
+              <strong>Désignation</strong>
+              <span>L'agent choisi obtient immédiatement les droits <code>__admin__</code> et reçoit une notification.</span>
+            </div>
+          </div>
+          <div class="workflow-step">
+            <div class="ws-num">4</div>
+            <div class="ws-text">
+              <strong>Révocation automatique</strong>
+              <span>Dès que l'admin originel revient (statut présent ou "Rebonjour"), les droits temporaires sont révoqués. L'admin temporaire en est notifié.</span>
+            </div>
+          </div>
+        </div>
+
+        <table class="docs-table" style="margin-top:1rem">
+          <thead><tr><th>Donnée Firebase</th><th>Valeur</th></tr></thead>
+          <tbody>
+            <tr><td><code>appConfig/tempAdminGrant/grantedTo</code></td><td>Clé de l'agent désigné</td></tr>
+            <tr><td><code>appConfig/tempAdminGrant/grantedBy</code></td><td>Clé de l'admin absent</td></tr>
+            <tr><td><code>appConfig/tempAdminGrant/grantedAt</code></td><td>Timestamp de la délégation</td></tr>
+          </tbody>
+        </table>
+        <div class="docs-info">Un seul grant actif à la fois. L'admin temporaire conserve son rôle d'origine comme rôle permanent — seul le grant est ajouté par-dessus.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         MODULES
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="features-essentiels">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🧩</div>
+        <div>
+          <h2>Modules (feature flags)</h2>
+          <p>Activer ou désactiver chaque fonctionnalité — Paramètres → Modules</p>
+        </div>
+      </div>
+
+      <p>Chaque module est un booléen stocké dans <code>appConfig/features/{featureKey}</code>. Leur activation/désactivation est immédiate et affecte tous les utilisateurs connectés.</p>
+
+      <div class="feat-group" id="features-essentiels-content">
+        <div class="feat-group-title">Essentiels</div>
+        <table class="feat-table">
+          <thead><tr><th>Clé</th><th>Label</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>enableTickets</td><td>Files d'attente</td><td>Active la vue Direct, l'émission et l'appel de tickets en temps réel</td></tr>
+            <tr><td>enablePublicView</td><td>Vue publique</td><td>Affiche le lien vers <code>public.html</code> (écran salle d'attente)</td></tr>
+            <tr><td>enablePresence</td><td>Statuts présence</td><td>Bouton "Mon statut" : déclarer présent, en retard, absent ou en pause</td></tr>
+            <tr><td>enableNotif</td><td>Centre notifications</td><td>Cloche dans le header, panneau notifications, sons d'alerte</td></tr>
+            <tr><td>agentEmoji</td><td>Emojis agents</td><td>Affichage des emojis personnels dans le calendrier et l'accueil</td></tr>
+            <tr><td>enableBackoffice</td><td>BackOffice</td><td>Lieux internes sans réservation publique (zones de travail internes)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="feat-group">
+        <div class="feat-group-title">Réservations</div>
+        <table class="feat-table">
+          <thead><tr><th>Clé</th><th>Label</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>confirmPublicMessage</td><td>Confirmer msg public</td><td>Demande une confirmation avant de diffuser un message sur l'écran public</td></tr>
+            <tr><td>enableInviteAgents</td><td>Agents invités sur RDV</td><td>Permet d'associer plusieurs agents à une même réservation</td></tr>
+            <tr><td>enableCalendarSync</td><td>Export iCal</td><td>Bouton d'export <code>.ics</code> pour Google Calendar, Apple Calendar, Outlook</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="feat-group">
+        <div class="feat-group-title">Files d'attente</div>
+        <table class="feat-table">
+          <thead><tr><th>Clé</th><th>Label</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>enableNamedTickets</td><td>Tickets nominatifs</td><td>Nom du bénéficiaire saisi à l'émission, affiché sur l'écran public au lieu du numéro seul</td></tr>
+            <tr><td>enableTicketPrint</td><td>Impression ticket</td><td>Bouton imprimer dans la vue Direct pour remettre un ticket physique au bénéficiaire</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="feat-group" id="features-notifs">
+        <div class="feat-group-title">Notifications avancées</div>
+        <table class="feat-table">
+          <thead><tr><th>Clé</th><th>Label</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>enableNotifReminder</td><td>Rappel 5 min avant RDV</td><td>Notification automatique envoyée 5 minutes avant chaque rendez-vous</td></tr>
+            <tr><td>enableNotifAuto</td><td>Notifs automatiques</td><td>Alertes automatiques : retard agent, file longue (≥10), message du jour modifié</td></tr>
+            <tr><td>enableNotifAdmin</td><td>Envoi notif admin</td><td>Permet à l'admin d'envoyer manuellement une notification ciblée (agent ou groupe)</td></tr>
+            <tr><td>enableNotifBrowser</td><td>Notif navigateur</td><td>Toast système Windows / macOS / Android — nécessite permission navigateur</td></tr>
+            <tr><td>enableNotifBrowserUrgentOnly</td><td>PC — urgences seult.</td><td>Les toasts PC sont réservés aux notifications 🚨 urgentes uniquement</td></tr>
+            <tr><td>enableNotifPush</td><td>Push mobile PWA</td><td>Notification envoyée même si le navigateur est fermé — nécessite <code>VAPID_KEY</code> dans config.js</td></tr>
+            <tr><td>enableNotifPushUrgentOnly</td><td>Mobile — urgences seult.</td><td>Les push mobiles sont réservés aux urgences uniquement</td></tr>
+            <tr><td>enableNotifReadBy</td><td>Accusé de lecture</td><td>L'admin peut voir qui a lu une notification critique</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="feat-group" id="features-avances">
+        <div class="feat-group-title">Modules optionnels</div>
+        <table class="feat-table">
+          <thead><tr><th>Clé</th><th>Label</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>enableWeather</td><td>Point météo</td><td>Intégration météo Open-Meteo — bouton 🌤️ dans l'accueil. Nécessite <code>meta.lat</code> et <code>meta.lon</code>.</td></tr>
+            <tr><td>enableAnalytics</td><td>Statistiques</td><td>Tableau de bord : tickets traités, taux de présence, services les plus demandés</td></tr>
+            <tr><td>enablePlanning</td><td>Planning</td><td>Module planning hebdomadaire pour les équipes entretien et technique</td></tr>
+            <tr><td>isCpas</td><td>Mode CPAS</td><td>Active des textes, conseils et formulations spécifiques aux CPAS belges</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         FILES D'ATTENTE
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="queue-groupes">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🎫</div>
+        <div>
+          <h2>Files d'attente</h2>
+          <p>Configuration des groupes, tickets et écrans d'affichage</p>
+        </div>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>🗂️ Groupes de queue</h3>
+        <p>Un <strong>groupe de queue</strong> réunit plusieurs locaux partageant une même file. Les tickets sont distribués automatiquement vers le premier local disponible du groupe.</p>
+
+        <table class="docs-table">
+          <thead><tr><th>Propriété</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>string</td><td>Label affiché dans la vue Direct (ex: "Accueil – Service général")</td></tr>
+            <tr><td><code>localIds[]</code></td><td>number[]</td><td>Locaux qui partagent cette file — rotation automatique entre eux</td></tr>
+            <tr><td><code>services[]</code></td><td>string[]</td><td>Services associés à ce groupe (optionnel — pour filtrage)</td></tr>
+          </tbody>
+        </table>
+
+        <div class="docs-tip">
+          <strong>Débordement :</strong> si tous les locaux du groupe sont occupés, le ticket entre dans la file de débordement du groupe (<code>wait_{groupId}</code>). La mascotte signale automatiquement l'état de la file.
+        </div>
+
+        <p style="margin-top:.75rem"><strong>Données Firebase par jour</strong> (<code>queues/YYYY-MM-DD/</code>) :</p>
+        <table class="docs-table">
+          <thead><tr><th>Clé</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>{localId}</code></td><td>Nombre de tickets en attente dans ce local</td></tr>
+            <tr><td><code>wait_{groupId}</code></td><td>Tickets en overflow (tous locaux occupés)</td></tr>
+            <tr><td><code>tick_{groupId}</code></td><td>Dernier numéro de ticket émis (ex: 7 → "A07")</td></tr>
+            <tr><td><code>tcall_{groupId}</code></td><td>Dernier numéro appelé</td></tr>
+            <tr><td><code>names_{groupId}/{n}</code></td><td>Nom du bénéficiaire pour le ticket n° n (si nominatifs activés)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="docs-subsection" id="queue-tickets">
+        <h3>🏷️ Tickets nominatifs</h3>
+        <p>Activé par le module <code>enableNamedTickets</code>. À l'émission du ticket, l'agent accueil saisit le nom du bénéficiaire. Ce nom s'affiche sur l'écran public au lieu (ou en plus) du numéro.</p>
+
+        <div class="workflow-box">
+          <div class="workflow-step"><div class="ws-num">1</div><div class="ws-text"><strong>Émission</strong><span>Accueil → Vue Direct → "Émettre ticket" → sélection groupe → saisie nom → numéro généré (ex: A01)</span></div></div>
+          <div class="workflow-step"><div class="ws-num">2</div><div class="ws-text"><strong>Affichage public</strong><span>Mise à jour immédiate sur public.html — numéro + nom ou numéro seul selon config</span></div></div>
+          <div class="workflow-step"><div class="ws-num">3</div><div class="ws-text"><strong>Appel suivant</strong><span>Agent → "Appel suivant" → son + popup → écran public mis à jour avec le ticket appelé</span></div></div>
+          <div class="workflow-step"><div class="ws-num">4</div><div class="ws-text"><strong>Impression</strong><span>Si <code>enableTicketPrint</code> actif → bouton imprimer le ticket (PDF A6)</span></div></div>
+        </div>
+      </div>
+
+      <div class="docs-subsection" id="queue-ecrans">
+        <h3>📺 Écrans publics</h3>
+        <p>Vous pouvez configurer plusieurs écrans d'affichage filtrant des locaux différents — utile pour plusieurs TVs dans différents couloirs.</p>
+
+        <table class="docs-table">
+          <thead><tr><th>Propriété</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>screens/{screenId}/name</code></td><td>Nom de l'écran (ex: "TV Couloir Accueil")</td></tr>
+            <tr><td><code>screens/{screenId}/localIds[]</code></td><td>Locaux affichés sur cet écran</td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top:.75rem"><strong>URLs d'accès :</strong></p>
+        <ul>
+          <li>Tous les locaux : <code>public.html?org={ORG_ID}</code></li>
+          <li>Écran filtré : <code>public.html?org={ORG_ID}&amp;screen={screenId}</code></li>
+        </ul>
+        <div class="docs-info">L'écran public ne nécessite aucune authentification et se rafraîchit en temps réel via Firebase.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         NOTIFICATIONS
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="notif-config">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🔔</div>
+        <div>
+          <h2>Notifications — configuration</h2>
+          <p>Types, canaux de diffusion, groupes et durée de vie</p>
+        </div>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>📋 Types de notifications</h3>
+        <table class="docs-table">
+          <thead><tr><th>Type</th><th>Icône</th><th>Usage</th></tr></thead>
+          <tbody>
+            <tr><td><code>info</code></td><td>🔵</td><td>Information courante — message du jour, mise à jour statut</td></tr>
+            <tr><td><code>warn</code></td><td>🟡</td><td>Avertissement — retard agent, file qui s'allonge</td></tr>
+            <tr><td><code>alert</code></td><td>🔴</td><td>Alerte importante — absence, situation critique</td></tr>
+            <tr><td><code>tech_request</code></td><td>🔧</td><td>Demande d'intervention technique/entretien</td></tr>
+            <tr><td><code>tech_reply</code></td><td>✅</td><td>Réponse d'un technicien à une demande d'intervention</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>📡 Canaux de diffusion</h3>
+        <table class="docs-table">
+          <thead><tr><th>Canal</th><th>Condition d'activation</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>In-app</td><td>Module <code>enableNotif</code></td><td>Panneau notification (cloche) + son selon urgence</td></tr>
+            <tr><td>Toast navigateur</td><td><code>enableNotifBrowser</code> + permission accordée</td><td>Toast système Windows / macOS / Android</td></tr>
+            <tr><td>Push PWA</td><td><code>enableNotifPush</code> + <code>VAPID_KEY</code> dans config.js</td><td>Notification même navigateur fermé</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>🎯 Groupes de diffusion</h3>
+        <table class="docs-table">
+          <thead><tr><th>Groupe</th><th>Cible</th></tr></thead>
+          <tbody>
+            <tr><td><code>all</code></td><td>Tous les agents connectés à l'organisation</td></tr>
+            <tr><td><code>role:{roleId}</code></td><td>Tous les agents ayant ce rôle (ex: <code>role:__admin__</code>)</td></tr>
+            <tr><td>Agent individuel</td><td><code>targetAgentKey</code> spécifique — notification personnelle</td></tr>
+          </tbody>
+        </table>
+        <div class="docs-tip"><strong>Auto-expiration :</strong> les notifications sont automatiquement nettoyées après 7 jours côté client.</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         MASCOTTE
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="mascot-choix">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🐙</div>
+        <div>
+          <h2>Mascotte</h2>
+          <p>Choix, configuration, états réactifs et visites inter-organisations</p>
+        </div>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>🎨 Choix &amp; configuration</h3>
+        <p>La mascotte est choisie via <strong>Paramètres → Mascotte</strong> (admin uniquement). Elle est commune à toute l'organisation et stockée dans <code>appConfig/mascotId</code>.</p>
+
+        <div class="mascot-grid">
+          <div class="mascot-card"><span class="mc-emoji">🐙</span><div class="mc-id">poulpe</div><div class="mc-name">Bulbi</div></div>
+          <div class="mascot-card"><span class="mc-emoji">🐱</span><div class="mc-id">chat</div><div class="mc-name">Mochi</div></div>
+          <div class="mascot-card"><span class="mc-emoji">🤖</span><div class="mc-id">robot</div><div class="mc-name">Pixo</div></div>
+          <div class="mascot-card"><span class="mc-emoji">🦊</span><div class="mc-id">renard</div><div class="mc-name">Roux</div></div>
+          <div class="mascot-card"><span class="mc-emoji">🐒</span><div class="mc-id">singe</div><div class="mc-name">Coco</div></div>
+          <div class="mascot-card"><span class="mc-emoji">🐻</span><div class="mc-id">ourson</div><div class="mc-name">Nounours</div></div>
+          <div class="mascot-card"><span class="mc-emoji">❤️</span><div class="mc-id">cori</div><div class="mc-name">Cori</div></div>
+        </div>
+      </div>
+
+      <div class="docs-subsection" id="mascot-etats">
+        <h3>🎭 États réactifs (machine à états)</h3>
+        <p>La mascotte analyse le contexte toutes les 30 secondes et adopte l'état de plus haute priorité (0 = absolue, 99 = défaut). Les états contextuels retournent automatiquement à <strong>idle</strong> après 12 secondes.</p>
+
+        <table class="state-table">
+          <thead><tr><th>Priorité</th><th>État</th><th>Déclencheur</th><th>Accessoire</th></tr></thead>
+          <tbody>
+            <tr class="state-p0"><td>0</td><td><strong>concentrating</strong></td><td>Bouton 🎯 Focus activé — silence complet</td><td>🌙 moon</td></tr>
+            <tr class="state-p1"><td>1</td><td><strong>visitor</strong></td><td>Visite inter-org en cours</td><td>⭐ stars</td></tr>
+            <tr class="state-p-hi"><td>2</td><td><strong>alarmed</strong></td><td>File d'attente ≥ 15 tickets</td><td>💦 sweat</td></tr>
+            <tr class="state-p-hi"><td>3</td><td><strong>celebrating</strong></td><td>Réservation vient d'être créée</td><td>⭐ stars</td></tr>
+            <tr><td>4</td><td><strong>excited</strong></td><td>Un agent vient d'arriver (bonjour)</td><td>✨ sparkles</td></tr>
+            <tr><td>5</td><td><strong>stressed</strong></td><td>File d'attente entre 9 et 14 tickets</td><td>💦 sweat</td></tr>
+            <tr><td>6</td><td><strong>happy</strong></td><td>Équipe complète <em>ou</em> vendredi dès 15h <em>ou</em> décembre</td><td>💜 hearts / ⭐ stars</td></tr>
+            <tr><td>7</td><td><strong>coffee</strong></td><td>Lundi entre 7h et 10h</td><td>☕ coffee</td></tr>
+            <tr><td>8</td><td><strong>sleepy</strong></td><td>Avant 7h ou après 17h</td><td>🌙 moon</td></tr>
+            <tr><td>9</td><td><strong>cozy</strong></td><td>Aucune réservation ce jour (après 9h)</td><td>—</td></tr>
+            <tr><td>10</td><td><strong>bored</strong></td><td>Inactivité souris/clavier &gt; 2 min</td><td>💭 thought</td></tr>
+            <tr><td>11</td><td><strong>curious</strong></td><td>Inactivité 30s à 2 min</td><td>💭 thought</td></tr>
+            <tr><td>12</td><td><strong>waving</strong></td><td>Survol de la mascotte (hover)</td><td>—</td></tr>
+            <tr><td>99</td><td><strong>idle</strong></td><td>Défaut — aucune condition active</td><td>—</td></tr>
+          </tbody>
+        </table>
+
+        <div class="docs-info" style="margin-top:.75rem">
+          <strong>Boutons admin uniquement :</strong> 🎉 "Inviter mes amis" et 🎭 "Animations" (panneau de test de tous les états) ne sont visibles qu'aux rôles <code>__admin__</code>, <code>__direction__</code> et <code>__chef_service__</code>.
+        </div>
+      </div>
+
+      <div class="docs-subsection" id="mascot-visites">
+        <h3>🤝 Visites inter-organisations</h3>
+        <p>Les mascottes d'autres organisations du réseau moncompagnon peuvent rendre visite, créant des interactions conviviales sans partager aucune donnée sensible.</p>
+
+        <table class="docs-table">
+          <thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
+          <tbody>
+            <tr><td>Probabilité (hors week-end)</td><td>15% par session, après 2–5 min de navigation</td></tr>
+            <tr><td>Probabilité week-end</td><td>55% (vendredi dès 15h) — jusqu'à 3 mascottes simultanées</td></tr>
+            <tr><td>Fréquence</td><td>Maximum 1 visite par session navigateur</td></tr>
+            <tr><td>Données partagées</td><td>Nom de l'organisation + type de mascotte uniquement — aucune donnée agent</td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-top:.75rem"><strong>Configuration dans superadmin.html → Annuaire mascottes :</strong></p>
+        <table class="docs-table">
+          <thead><tr><th>Champ Firebase (<code>superadmin/orgDirectory/{orgId}</code>)</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>orgName</code></td><td>Nom de l'organisation (ex: "CPAS de Boussu")</td></tr>
+            <tr><td><code>mascotType</code></td><td>ID de la mascotte (ex: "chat")</td></tr>
+            <tr><td><code>mascotName</code></td><td>Nom de la mascotte (ex: "Mochi")</td></tr>
+            <tr><td><code>visitsEnabled</code></td><td>Si <code>false</code>, cette org n'envoie pas de visiteurs</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         INTÉGRATIONS
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="int-firebase">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🔗</div>
+        <div>
+          <h2>Intégrations externes</h2>
+          <p>Firebase, météo, iCal, écran public</p>
+        </div>
+      </div>
+
+      <div class="docs-subsection">
+        <h3>🔥 Firebase Realtime Database</h3>
+        <ul>
+          <li><strong>SDK version :</strong> 9.23.0 (mode compat)</li>
+          <li><strong>Préfixe :</strong> toutes les données sous <code>orgs/{ORG_ID}/</code></li>
+          <li><strong>Index recommandé :</strong> ajouter <code>".indexOn": ["createdAt"]</code> sur <code>notifications</code> pour éviter l'avertissement console Firebase</li>
+          <li><strong>Règles de sécurité :</strong> lecture/écriture authentifiée par orgId — l'isolation entre organisations est assurée par le préfixe de chemin</li>
+        </ul>
+      </div>
+
+      <div class="docs-subsection" id="int-meteo">
+        <h3>🌤️ Météo — Open-Meteo</h3>
+        <ul>
+          <li><strong>API :</strong> <a href="https://open-meteo.com" target="_blank">open-meteo.com</a> — gratuite, sans clé API</li>
+          <li><strong>Prérequis :</strong> <code>appConfig/meta/lat</code> + <code>appConfig/meta/lon</code> (Paramètres → Localisation)</li>
+          <li><strong>Module :</strong> <code>enableWeather</code> doit être activé</li>
+          <li><strong>Données :</strong> température (°C), code météo WMO, vitesse vent, précipitations</li>
+          <li><strong>Cache :</strong> rafraîchissement au maximum toutes les heures</li>
+        </ul>
+      </div>
+
+      <div class="docs-subsection" id="int-ical">
+        <h3>📅 Export iCal</h3>
+        <ul>
+          <li><strong>Module :</strong> <code>enableCalendarSync</code> doit être activé</li>
+          <li><strong>Contenu :</strong> réservations de l'agent connecté au format VEVENT standard</li>
+          <li><strong>Compatible :</strong> Google Calendar, Apple Calendar, Outlook, Thunderbird</li>
+          <li><strong>Utilisation :</strong> bouton "📅 iCal" dans la barre de navigation du calendrier</li>
+        </ul>
+      </div>
+
+      <div class="docs-subsection" id="int-public">
+        <h3>📺 Écran public (public.html)</h3>
+        <ul>
+          <li><strong>Authentification :</strong> aucune — accès totalement libre</li>
+          <li><strong>Rafraîchissement :</strong> temps réel via Firebase listeners</li>
+          <li><strong>Affiche :</strong> état des locaux (libre/occupé), ticket actuellement appelé, nombre en attente, heure, message du jour public</li>
+          <li><strong>URLs :</strong>
+            <ul>
+              <li>Tous locaux : <code>public.html?org={ORG_ID}</code></li>
+              <li>Écran filtré : <code>public.html?org={ORG_ID}&amp;screen={screenId}</code></li>
+            </ul>
+          </li>
+          <li><strong>Recommandation matériel :</strong> TV + mini-PC (Raspberry Pi, Chrome Box) en mode kiosk, résolution minimale 1280×720</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════
+         RÉFÉRENCE FIREBASE
+    ═══════════════════════════════════════════ -->
+    <section class="docs-section" id="firebase-ref">
+      <div class="docs-section-header">
+        <div class="docs-section-icon">🗄️</div>
+        <div>
+          <h2>Référence Firebase — Structure complète</h2>
+          <p>Arborescence complète de la base de données</p>
+        </div>
+      </div>
+
+      <div class="firebase-tree"><span class="fb-comment">// Toutes les données d'une organisation</span>
+<span class="fb-path">orgs/{ORG_ID}/</span>
+├── <span class="fb-path">appConfig/</span>                          <span class="fb-comment">// Configuration partagée</span>
+│   ├── <span class="fb-key">agents/</span>                          <span class="fb-type">{key: "Nom affiché"}</span>
+│   ├── <span class="fb-key">services/</span>                        <span class="fb-type">{key: "Nom service"}</span>
+│   ├── <span class="fb-key">lieux/</span>                           <span class="fb-type">{lieuId: {name, order, localIds[], openHour, closeHour, slotMin, activeDays, isBackoffice}}</span>
+│   ├── <span class="fb-key">localLabels/</span>                    <span class="fb-type">{localId: "Étiquette interne"}</span>
+│   ├── <span class="fb-key">publicLabels/</span>                   <span class="fb-type">{localId: "Étiquette publique"}</span>
+│   ├── <span class="fb-key">localDescriptions/</span>              <span class="fb-type">{localId: "Description détaillée"}</span>
+│   ├── <span class="fb-key">agentColors/</span>                    <span class="fb-type">{agentKey: "#hexcolor"}</span>
+│   ├── <span class="fb-key">agentEmojis/</span>                    <span class="fb-type">{agentKey: "emoji"}</span>
+│   ├── <span class="fb-key">agentPublicNames/</span>               <span class="fb-type">{agentKey: "Nom anonymisé"}</span>
+│   ├── <span class="fb-key">agentPasswords/</span>                 <span class="fb-type">{agentKey: "sha256hash"}</span>
+│   ├── <span class="fb-key">agentRoles/</span>                     <span class="fb-type">{agentKey: "roleId"}</span>
+│   ├── <span class="fb-key">permRoles/</span>                      <span class="fb-type">{roleId: {name, color, perms: {perm: true, ...}}}</span>
+│   ├── <span class="fb-key">queueGroups/</span>                    <span class="fb-type">{groupId: {name, localIds[], services[]}}</span>
+│   ├── <span class="fb-key">screens/</span>                        <span class="fb-type">{screenId: {name, localIds[]}}</span>
+│   ├── <span class="fb-key">features/</span>                       <span class="fb-type">{featureKey: true | false}</span>
+│   ├── <span class="fb-key">mascotId</span>                        <span class="fb-type">"poulpe" | "chat" | "robot" | "renard" | "singe" | "ourson" | "cori"</span>
+│   ├── <span class="fb-key">meta/</span>                           <span class="fb-type">{lat, lon, endOfDayHour}</span>
+│   ├── <span class="fb-key">messageJour</span>                     <span class="fb-type">"Texte message interne"</span>
+│   ├── <span class="fb-key">messageJourAt</span>                   <span class="fb-type">timestamp</span>
+│   ├── <span class="fb-key">messageJourPublic</span>               <span class="fb-type">"Texte affiché sur écran public"</span>
+│   ├── <span class="fb-key">messageJourPublicAt</span>             <span class="fb-type">timestamp</span>
+│   ├── <span class="fb-key">accueilDeskLocalId</span>              <span class="fb-type">localId (entier)</span>
+│   ├── <span class="fb-key">hiddenLocals/</span>                   <span class="fb-type">{localId: true}</span>
+│   └── <span class="fb-key">tempAdminGrant/</span>                 <span class="fb-type">{grantedTo, grantedBy, grantedAt}</span>
+│
+├── <span class="fb-path">reservations/</span>                          <span class="fb-comment">// Toutes les réservations</span>
+│   └── <span class="fb-key">{resId}/</span>
+│       ├── <span class="fb-key">localId</span>                      <span class="fb-type">number</span>
+│       ├── <span class="fb-key">service</span>                      <span class="fb-type">string</span>
+│       ├── <span class="fb-key">serviceCustom</span>                <span class="fb-type">string (si service === "Autre")</span>
+│       ├── <span class="fb-key">agent</span>                        <span class="fb-type">string</span>
+│       ├── <span class="fb-key">agentCustom</span>                  <span class="fb-type">string (si agent === "Autre")</span>
+│       ├── <span class="fb-key">startDateTime</span>               <span class="fb-type">"2026-04-15T09:00:00" (ISO 8601)</span>
+│       ├── <span class="fb-key">endDateTime</span>                  <span class="fb-type">"2026-04-15T10:00:00"</span>
+│       ├── <span class="fb-key">isPermanent</span>                  <span class="fb-type">boolean — bloque le local indéfiniment</span>
+│       ├── <span class="fb-key">recurrence/</span>                  <span class="fb-type">{type: "none|daily|weekly|monthly", interval, endDate, seriesId}</span>
+│       ├── <span class="fb-key">exceptions/</span>                  <span class="fb-type">{"YYYY-MM-DD": true} — dates exclues de la récurrence</span>
+│       ├── <span class="fb-key">comment</span>                      <span class="fb-type">string</span>
+│       ├── <span class="fb-key">invitedAgents/</span>               <span class="fb-type">{agentKey: true}</span>
+│       └── <span class="fb-key">createdAt</span>                    <span class="fb-type">timestamp</span>
+│
+├── <span class="fb-path">appState/bureaux/</span>                      <span class="fb-comment">// État temps réel des bureaux</span>
+│   └── <span class="fb-key">{localId}/</span>
+│       ├── <span class="fb-key">open</span>                         <span class="fb-type">boolean</span>
+│       ├── <span class="fb-key">ts</span>                           <span class="fb-type">timestamp</span>
+│       ├── <span class="fb-key">agentKey</span>                     <span class="fb-type">string — agent responsable</span>
+│       ├── <span class="fb-key">pause/</span>                       <span class="fb-type">{until: timestamp}</span>
+│       ├── <span class="fb-key">optedOut</span>                     <span class="fb-type">boolean — refuse les tickets du groupe</span>
+│       └── <span class="fb-key">declaredService</span>              <span class="fb-type">string</span>
+│
+├── <span class="fb-path">agentStatus/{YYYY-MM-DD}/</span>             <span class="fb-comment">// Présences par jour</span>
+│   └── <span class="fb-key">{agentKey}/</span>
+│       ├── <span class="fb-key">status</span>                       <span class="fb-type">"present" | "absent" | "late" | "done" | null</span>
+│       ├── <span class="fb-key">arrivalTime</span>                  <span class="fb-type">"HH:MM" (si late)</span>
+│       ├── <span class="fb-key">logoutAt</span>                     <span class="fb-type">timestamp (si done)</span>
+│       ├── <span class="fb-key">connectedAt</span>                  <span class="fb-type">timestamp — premier bonjour du jour</span>
+│       └── <span class="fb-key">dnd</span>                          <span class="fb-type">boolean — mode ne pas déranger</span>
+│
+├── <span class="fb-path">queues/{YYYY-MM-DD}/</span>                   <span class="fb-comment">// Files d'attente par jour</span>
+│   ├── <span class="fb-key">{localId}</span>                        <span class="fb-type">number — tickets en attente dans ce local</span>
+│   ├── <span class="fb-key">wait_{groupId}</span>                   <span class="fb-type">number — overflow (tous locaux occupés)</span>
+│   ├── <span class="fb-key">tick_{groupId}</span>                   <span class="fb-type">number — dernier numéro émis</span>
+│   ├── <span class="fb-key">tcall_{groupId}</span>                  <span class="fb-type">number — dernier numéro appelé</span>
+│   └── <span class="fb-key">names_{groupId}/{n}</span>              <span class="fb-type">string — nom du bénéficiaire (tickets nominatifs)</span>
+│
+├── <span class="fb-path">notifications/</span>                         <span class="fb-comment">// Centre de notifications</span>
+│   └── <span class="fb-key">{notifId}/</span>
+│       ├── <span class="fb-key">type</span>                         <span class="fb-type">"info" | "warn" | "alert" | "tech_request" | "tech_reply"</span>
+│       ├── <span class="fb-key">message</span>                      <span class="fb-type">string</span>
+│       ├── <span class="fb-key">urgent</span>                       <span class="fb-type">boolean 🚨</span>
+│       ├── <span class="fb-key">targetAgentKey</span>               <span class="fb-type">string | null (null = broadcast)</span>
+│       ├── <span class="fb-key">createdAt</span>                    <span class="fb-type">timestamp</span>
+│       └── <span class="fb-key">readBy/</span>                      <span class="fb-type">{agentKey: timestamp}</span>
+│
+├── <span class="fb-path">absences/</span>                              <span class="fb-comment">// Absences planifiées</span>
+│   └── <span class="fb-key">{absenceId}/</span>
+│       ├── <span class="fb-key">agentKey</span>                     <span class="fb-type">string</span>
+│       ├── <span class="fb-key">startDate</span>                    <span class="fb-type">"YYYY-MM-DD"</span>
+│       ├── <span class="fb-key">endDate</span>                      <span class="fb-type">"YYYY-MM-DD"</span>
+│       ├── <span class="fb-key">motif</span>                        <span class="fb-type">"maladie" | "conge" | "mission" | "formation" | "autre"</span>
+│       ├── <span class="fb-key">comment</span>                      <span class="fb-type">string</span>
+│       └── <span class="fb-key">createdBy</span>                    <span class="fb-type">agentKey de l'auteur de la saisie</span>
+│
+├── <span class="fb-path">planning/</span>                              <span class="fb-comment">// Planning entretien / technicien</span>
+│   └── <span class="fb-key">{taskId}/</span>
+│       ├── <span class="fb-key">name</span>                         <span class="fb-type">string</span>
+│       ├── <span class="fb-key">type</span>                         <span class="fb-type">"entretien" | "technique"</span>
+│       ├── <span class="fb-key">localIds[]</span>                   <span class="fb-type">number[] — locaux concernés</span>
+│       ├── <span class="fb-key">description</span>                  <span class="fb-type">string</span>
+│       ├── <span class="fb-key">recurrence/</span>                  <span class="fb-type">{type: "daily|weekly|workdays", interval, endDate}</span>
+│       └── <span class="fb-key">occurrences/</span>                 <span class="fb-type">{"YYYY-MM-DD": {doneAt, status: "pending|done"}}</span>
+│
+└── <span class="fb-path">requests/</span>                              <span class="fb-comment">// Demandes d'intervention technique</span>
+    └── <span class="fb-key">{reqId}/</span>
+        ├── <span class="fb-key">description</span>                  <span class="fb-type">string</span>
+        ├── <span class="fb-key">status</span>                       <span class="fb-type">"open" | "in_progress" | "done"</span>
+        ├── <span class="fb-key">assignedTo</span>                   <span class="fb-type">agentKey du technicien</span>
+        ├── <span class="fb-key">fromAgentKey</span>                 <span class="fb-type">agentKey du demandeur</span>
+        ├── <span class="fb-key">local</span>                        <span class="fb-type">string — local concerné</span>
+        ├── <span class="fb-key">createdAt</span>                    <span class="fb-type">timestamp</span>
+        └── <span class="fb-key">comments/</span>                    <span class="fb-type">{commentId: {agentKey, text, createdAt}}</span>
+</div>
+
+      <div class="docs-tip" style="margin-top:1rem">
+        <strong>Nettoyage automatique :</strong> les données de <code>agentStatus</code> et <code>queues</code> étant indexées par date, elles n'interfèrent pas entre journées. Une purge périodique des entrées anciennes (> 90 jours) est recommandée via Firebase Rules ou une Cloud Function.
+      </div>
+    </section>
+
+    <hr class="docs-divider">
+    <p style="text-align:center;color:#94a3b8;font-size:.85rem;padding-bottom:3rem">
+      Documentation moncompagnon — Version intégrateur — <a href="docs.html" style="color:#f59e0b">← Retour doc utilisateurs</a>
+    </p>
+
+  </main>
+</div>
+
+<script>
+  // Sidebar active link highlighting
+  const links = document.querySelectorAll('.docs-sidebar a[href^="#"]');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const match = document.querySelector(`.docs-sidebar a[href="#${e.target.id}"]`);
+        if (match) match.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('.docs-section[id], .docs-subsection[id]').forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
