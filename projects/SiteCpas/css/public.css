@@ -220,6 +220,12 @@ body {
   border-top-color: #f59e0b;
 }
 .pub-pause .pub-card-status { color: #d97706; }
+.pub-reserved {
+  background: #fefce8;
+  border-color: #fde68a;
+  border-top-color: #eab308;
+}
+.pub-reserved .pub-card-status { color: #ca8a04; }
 .pub-card-pause-timer {
   display: inline-block;
   font-size: .85rem; font-weight: 700; color: #92400e;
