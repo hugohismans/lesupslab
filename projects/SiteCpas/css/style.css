@@ -2435,7 +2435,15 @@ body {
   font-size: .82rem; color: #fbbf24; font-weight: 600;
   background: rgba(251,191,36,.08); border-radius: 7px;
   padding: .25rem .6rem; margin-top: .2rem;
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
 }
+.lv-q-done {
+  padding: .2rem .55rem; border-radius: 7px;
+  border: 1.5px solid #4ade80; background: rgba(74,222,128,.1);
+  color: #4ade80; font-size: .78rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap; transition: background .12s; margin-left: auto;
+}
+.lv-q-done:hover { background: rgba(74,222,128,.22); }
 .lv-q-recall {
   padding: .35rem .75rem; border-radius: 8px;
   border: 1.5px solid #fbbf24; background: rgba(251,191,36,.1);

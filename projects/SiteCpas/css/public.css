@@ -283,7 +283,8 @@ body {
 .pub-grp-dot {
   width: 14px; height: 14px; border-radius: 50%; background: #22c55e;
 }
-.pub-grp-dot.busy { background: #ef4444; }
+.pub-grp-dot.busy   { background: #ef4444; }
+.pub-grp-dot.paused { background: #f97316; }
 
 .pub-grp-cap { font-size: .78rem; color: #64748b; }
 

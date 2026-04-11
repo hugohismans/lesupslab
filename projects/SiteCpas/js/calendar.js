@@ -900,8 +900,11 @@ const LIVE = {
         // Bénéficiaire en cours (queue = 0 → dernier appelé)
         const lastCallOngoing = !isAccueil && queue === 0 ? this._lastCalled[l] : null;
         const lastCallAny     = !isAccueil ? this._lastCalled[l] : null;
+        const dismissBtn = lastCallOngoing
+          ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
+          : '';
         const infoHint  = lastCallOngoing
-          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}</div>`
+          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}${dismissBtn}</div>`
           : '';
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
@@ -1003,12 +1006,14 @@ const LIVE = {
       if (!isBusyLocal) {
         // Bureau ouvert sans réservation active → afficher service déclaré + bouton
         if (isOpen) {
-          const declSvc   = DB.getBureauDeclaredService(l);
+          const declSvc    = DB.getBureauDeclaredService(l);
+          const agentDisp  = DB.getBureauAgentDisplayName(l);
           const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
-          const amIHere   = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && myAgentKey;
+          const amIHere    = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && myAgentKey;
           return `<div class="lv-card lv-free">
             <div class="lv-num">${labelHtml}</div>
             <div class="lv-status">🟢 Bureau ouvert</div>
+            ${agentDisp ? `<div class="lv-agt">${escapeHtml(agentDisp)}</div>` : ''}
             ${declSvc
               ? `<div class="lv-svc">${escapeHtml(declSvc)}</div>`
               : '<div class="lv-svc lv-muted lv-no-svc">Aucun service déclaré</div>'}
@@ -1400,6 +1405,16 @@ const LIVE = {
         // Notif visuelle locale
         showAgentCallNotif(d.ticketLabel || d.ticket, d.ticketName || null);
         showToast(`📢 Rappel envoyé — ticket ${d.ticket || ''}`);
+      });
+    });
+
+    // Bouton "Bénéficiaire parti" — efface le dernier ticket en cours
+    g('liveGrid').querySelectorAll('.lv-q-done').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const localId = parseInt(btn.dataset.local);
+        delete this._lastCalled[localId];
+        this._renderGridMode();
       });
     });
 

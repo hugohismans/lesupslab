@@ -222,11 +222,12 @@ function render() {
     const lids = allLids.filter(l => _bureauState[String(l)]?.open);
     if (!lids.length) return '';
     const occupied = lids.filter(l => getQueueForLocal(l) >= 1).length;
+    const paused   = lids.filter(l => !!_bureauState[String(l)]?.pause).length;
     const overflow = _prevQueue[`wait_${grpId}`] ?? 0;
     const total    = lids.length;
     const waiting  = overflow; // personnes en attente au-delà de la capacité
 
-    const free = total - occupied;
+    const free = total - occupied - paused;
     let statusHtml, cardClass;
     if (waiting > 0) {
       cardClass  = 'pub-grp-busy';
@@ -240,8 +241,9 @@ function render() {
     }
 
     const dots = lids.map(l => {
-      const busy = getQueueForLocal(l) >= 1;
-      return `<span class="pub-grp-dot${busy ? ' busy' : ''}"></span>`;
+      const isPaused = !!_bureauState[String(l)]?.pause;
+      const busy     = !isPaused && getQueueForLocal(l) >= 1;
+      return `<span class="pub-grp-dot${isPaused ? ' paused' : busy ? ' busy' : ''}"></span>`;
     }).join('');
 
     const tickIssued = _prevQueue[`tick_${grpId}`] || 0;
