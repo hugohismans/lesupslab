@@ -1201,7 +1201,7 @@ const LIVE = {
         }
         // Si l'agent est présent dans un backoffice → proposer de changer
         if (DB.getFeature('enableBackoffice')) {
-          const boLocal = DB.getAgentCurrentBackofficeLocal();
+          const boLocal = DB.getAgentCurrentPresenceLocal();
           if (boLocal !== null) {
             const boLabel  = DB.getLocalLabel(boLocal);
             const boLieu   = DB.getLocalLieuName(boLocal);
@@ -1376,7 +1376,7 @@ const LIVE = {
         const isPresent = btn.dataset.present === '1';
         if (!isPresent) {
           // Déjà dans un autre backoffice ?
-          const prevLocal = DB.getAgentCurrentBackofficeLocal();
+          const prevLocal = DB.getAgentCurrentPresenceLocal();
           if (prevLocal !== null && prevLocal !== localId) {
             const prevLabel = DB.getLocalLabel(prevLocal);
             const prevLieu  = DB.getLocalLieuName(prevLocal);

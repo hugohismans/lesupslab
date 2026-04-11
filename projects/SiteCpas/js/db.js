@@ -163,6 +163,15 @@ const DB = {
     }
     return null;
   },
+  // Retourne le localId où l'agent est déclaré présent (backoffice OU bureau d'accueil)
+  getAgentCurrentPresenceLocal() {
+    const bo   = this.getAgentCurrentBackofficeLocal();
+    if (bo !== null) return bo;
+    const desk = this.getAccueilDeskLocalId();
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
+    if (desk !== null && agentKey && this.isAgentPresentInLocal(desk, agentKey)) return desk;
+    return null;
+  },
 
   // Retourne les agents ayant le rôle accueil
   getAccueilAgentKeys() {
