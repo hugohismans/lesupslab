@@ -751,11 +751,12 @@ const LIVE = {
     const bureauLocal = isAccueil ? null : parseInt(role.replace('bureau_', ''));
 
     // Restaurer _lastCalled depuis localStorage (survit aux rechargements de page)
+    // Seulement si === undefined : false = sentinelle "effacé volontairement"
     for (let _i = 0; _i < localStorage.length; _i++) {
       const _k = localStorage.key(_i);
       if (_k?.startsWith('cpas_lastCall_')) {
         const _lid = parseInt(_k.replace('cpas_lastCall_', ''));
-        if (!this._lastCalled[_lid]) {
+        if (this._lastCalled[_lid] === undefined) {
           try { this._lastCalled[_lid] = JSON.parse(localStorage.getItem(_k)); } catch(_) {}
         }
       }
@@ -916,8 +917,9 @@ const LIVE = {
           : '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
         // Fallback Firebase si _lastCalled n'est pas en mémoire (autre appareil ou rechargement)
+        // Seulement si === undefined : false = sentinelle "effacé volontairement, ne pas restaurer"
         const _fbLastCall = !isAccueil ? DB.getLastCallForLocal(l) : null;
-        if (!this._lastCalled[l] && _fbLastCall) {
+        if (this._lastCalled[l] === undefined && _fbLastCall) {
           this._lastCalled[l] = {
             ticket: _fbLastCall.ticketNum || _fbLastCall.ticketLabel || null,
             ticketLabel: _fbLastCall.ticketLabel || null,
@@ -928,8 +930,9 @@ const LIVE = {
             time:        new Date(_fbLastCall.ts || Date.now()),
           };
         }
-        const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? this._lastCalled[l] : null;
-        const lastCallAny     = !isAccueil ? this._lastCalled[l] : null;
+        // _lastCalled[l] peut être false (sentinelle effacé) → traiter comme null
+        const lastCallOngoing = !isAccueil && (queue === 0 || busyWithPref) ? (this._lastCalled[l] || null) : null;
+        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : visible dès qu'on est en permanence (isBusyLocal)
         const dismissBtn = (!isAccueil && isBusyLocal)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
@@ -1476,7 +1479,8 @@ const LIVE = {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         const localId = parseInt(btn.dataset.local);
-        delete this._lastCalled[localId];
+        // Sentinelle false : empêche les fallbacks Firebase/localStorage de restaurer l'ancien ticket
+        this._lastCalled[localId] = false;
         try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
         await Promise.all([
           DB.setBureauBusyWithPreferred(localId, false),
