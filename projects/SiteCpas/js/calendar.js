@@ -929,8 +929,8 @@ const LIVE = {
         const dismissBtn = (!isAccueil && busyWithPref)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
-        const infoHint  = lastCallOngoing
-          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallOngoing.ticket ? `<strong>n°${escapeHtml(lastCallOngoing.ticket)}</strong>` : 'ticket en cours'}${lastCallOngoing.svc ? ` · ${escapeHtml(lastCallOngoing.svc)}` : ''}${dismissBtn}</div>`
+        const infoHint  = lastCallAny
+          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallAny.ticket ? `<strong>n°${escapeHtml(lastCallAny.ticket)}</strong>` : 'ticket en cours'}${lastCallAny.svc ? ` · ${escapeHtml(lastCallAny.svc)}` : ''}${dismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}`
@@ -972,8 +972,16 @@ const LIVE = {
         const noGrpPrefRecallBtn = noGrpPrefRecall
           ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(noGrpPrefRecall.displayName || '?')}" data-agent="${escapeHtml(noGrpPrefRecall.agentPublicName || '')}">📢 Rappeler ${escapeHtml(noGrpPrefRecall.displayName || '?')}</button>`
           : '';
+        const noGrpDismissBtn = (!isAccueil && busyWithPref)
+          ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
+          : '';
+        const noGrpLastCall = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
+        const noGrpInfoHint = noGrpLastCall
+          ? `<div class="lv-current-beneficiary">🟡 En cours — ${noGrpLastCall.ticket ? `<strong>n°${escapeHtml(noGrpLastCall.ticket)}</strong>` : 'ticket en cours'}${noGrpLastCall.svc ? ` · ${escapeHtml(noGrpLastCall.svc)}` : ''}${noGrpDismissBtn}</div>`
+          : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${noGrpDismissBtn}</div>` : '');
         queueHtml = `<div class="lv-queue lv-queue-agent">
           ${noQueueWarn}
+          ${noGrpInfoHint}
           ${noGrpPrefBtn}
           ${noGrpPrefRecallBtn}
           ${queue > 0 && !noGrpPreferred && !noGrpPrefRecall ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
