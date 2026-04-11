@@ -468,6 +468,7 @@ const DB = {
   },
   onLastCallPerLocalChange(fn) { this._lastCallPerLocalCbs.push(fn); },
   getLastCallForLocal(localId) { return this._lastCallPerLocal[String(localId)] || this._lastCallPerLocal[localId] || null; },
+  async clearLastCallForLocal(localId) { await this._ref(`appState/lastCalls/${localId}`).remove(); },
   // ── État ouverture bureaux ───────────────────────────────────────
   _bureauState: {},
   _bureauCbs:   [],

@@ -1478,9 +1478,11 @@ const LIVE = {
         const localId = parseInt(btn.dataset.local);
         delete this._lastCalled[localId];
         try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
-        await DB.setBureauBusyWithPreferred(localId, false);
-        // Si un ticket était resté en queue locale, le vider aussi
-        if (DB.getQueue(localId) > 0) await DB.setQueue(localId, 0);
+        await Promise.all([
+          DB.setBureauBusyWithPreferred(localId, false),
+          DB.clearLastCallForLocal(localId),
+          DB.getQueue(localId) > 0 ? DB.setQueue(localId, 0) : Promise.resolve(),
+        ]);
       });
     });
 
