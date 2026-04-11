@@ -1800,6 +1800,35 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.onQueueChange(() => { LIVE.render(); HOME.render(); });
   DB.onAgentStatusChange(() => { LIVE.render(); HOME.render(); });
   DB.onBureauStateChange(() => { LIVE.render(); HOME.render(); });
+  // Sync cross-device : quand Firebase lastCalls/{localId} change (accueil a routé un ticket),
+  // mettre à jour _lastCalled sur l'appareil du bureau pour que "En cours/Rappeler" soit correct
+  DB.onLastCallPerLocalChange(() => {
+    const role = LIVE.getRole?.();
+    if (role && role !== 'accueil') {
+      const lid = parseInt(role.replace('bureau_', ''));
+      if (LIVE._lastCalled[lid] !== false) {  // respecter la sentinelle "effacé volontairement"
+        const fb = DB.getLastCallForLocal(lid);
+        if (fb) {
+          const obj = {
+            ticket:      fb.ticketNum   || fb.ticketLabel || null,
+            ticketLabel: fb.ticketLabel || null,
+            ticketName:  fb.ticketName  || null,
+            svc:         fb.groupName   || null,
+            pubAgent:    fb.agentName   || null,
+            localLabel:  DB.getLocalLabel(lid),
+            time:        new Date(fb.ts || Date.now()),
+          };
+          LIVE._lastCalled[lid] = obj;
+          try { localStorage.setItem(`cpas_lastCall_${lid}`, JSON.stringify(obj)); } catch(_) {}
+        } else if (LIVE._lastCalled[lid]) {
+          // Firebase a été vidé (clearLastCallForLocal) → vider aussi la mémoire
+          LIVE._lastCalled[lid] = false;
+          try { localStorage.removeItem(`cpas_lastCall_${lid}`); } catch(_) {}
+        }
+      }
+    }
+    LIVE.render();
+  });
   DB.onAbsenceChange(() => { LIVE.render(); HOME.render(); });
 
   // Météo — lire Firebase d'abord, puis rafraîchir l'API si besoin (1x/heure)
