@@ -351,6 +351,7 @@ const MODAL = {
       { key: 'enableNotif',      label: 'Centre de notifications',    desc: 'Cloche dans le header — panneau de notifications in-app' },
       { key: 'agentEmoji',       label: 'Emojis des agents',          desc: 'Afficher les emojis dans le calendrier' },
       { key: 'enableBackoffice', label: 'BackOffice',                 desc: 'Lieux internes non publics — présence des agents sans réservation ni queue' },
+      { key: 'enableMascot',    label: 'Assistant virtuel (Mascotte)', desc: 'Animation, conseils et personnalité de MonCompagnon au démarrage — désactiver pour une interface sobre avec boutons simples Bonjour / Au revoir' },
     ];
 
     // Modules avancés (dans le bloc <details>)

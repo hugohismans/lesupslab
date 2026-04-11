@@ -970,6 +970,32 @@ const HOME = {
       }
     });
 
+    // ─ Mode sobre — Bonjour / Au revoir ─────────────────────────────
+    document.getElementById('hsSimpleBonjour')?.addEventListener('click', async () => {
+      const agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+      const isDone    = DB.getAgentStatus(agentKey)?.status === 'done';
+      if (isDone) {
+        await DB.setAgentStatus(agentKey, null);
+        showToast('Bonjour, bienvenue ! ✓', 'ok');
+      } else {
+        showToast('Vous êtes déjà enregistré·e comme présent·e', 'info');
+      }
+    });
+    document.getElementById('hsSimpleAurevoir')?.addEventListener('click', async () => {
+      const agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+      const isDone    = DB.getAgentStatus(agentKey)?.status === 'done';
+      if (!isDone) {
+        await DB.setAgentStatus(agentKey, 'done');
+        const roleId = DB.getAgentPermRole(agentKey);
+        if (roleId === '__admin__') await _promptTempAdmin(agentKey, agentName);
+        showToast('Au revoir — bonne journée ! 👋', 'ok');
+      } else {
+        showToast('Vous avez déjà terminé votre journée', 'info');
+      }
+    });
+
     // ─ Bouton "Point météo" ──────────────────────────────────────────
     document.getElementById('hsAskWeather')?.addEventListener('click', () => {
       const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
@@ -1564,6 +1590,15 @@ function applyFeatureFlags() {
     const wxData = typeof WEATHER !== 'undefined' ? WEATHER.get() : null;
     wxBtn.classList.toggle('hidden', !DB.getFeature('enableWeather') || !wxData);
   }
+
+  // Mode mascotte — afficher/cacher la scène mascotte vs mode sobre
+  const mascotEnabled = DB.getFeature('enableMascot') !== false; // défaut true
+  const mascotStage   = document.querySelector('.hs-mascot-stage');
+  const simpleMode    = document.getElementById('hsSimpleMode');
+  if (mascotStage) mascotStage.style.display = mascotEnabled ? '' : 'none';
+  if (simpleMode)  simpleMode.classList.toggle('hidden', mascotEnabled);
+  // En mode sobre, la cloche de notif du header reste visible même si mascotte cachée
+  // (le bouton au-revoir est sur l'écran accueil uniquement)
 
   // Boutons mascotte réservés aux admins
   const _mascotAgentKey = sessionStorage.getItem('cpas_current_agent_key');

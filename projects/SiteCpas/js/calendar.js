@@ -742,29 +742,33 @@ const LIVE = {
     const groups = DB.getQueueGroups();
     const groupCards = Object.entries(groups).map(([grpId, grp]) => {
       const lids = (grp.localIds || []).map(Number);
-      // Seuls les locaux avec une réservation active comptent
+      if (!lids.length) return ''; // groupe sans locaux → masqué
       const activeLids = lids.filter(l => DB.isBureauOpen(l));
-      if (!activeLids.length) return ''; // aucun bureau ouvert → masqué
-      const occupied  = activeLids.filter(l => DB.getQueue(l) >= 1).length;
-      const overflow  = DB.getGroupOverflowQueue(grpId);
-      const total     = activeLids.length;
-      const allFull   = occupied >= total;
-      const statusTxt = occupied === 0
-        ? '🟢 Disponible'
-        : allFull
-          ? `🔴 Complet (${occupied}/${total})`
-          : `🟡 En cours (${occupied}/${total})`;
+      const hasOpen    = activeLids.length > 0;
+      const occupied   = activeLids.filter(l => DB.getQueue(l) >= 1).length;
+      const overflow   = DB.getGroupOverflowQueue(grpId);
+      const total      = activeLids.length;
+      const allFull    = hasOpen && occupied >= total;
+      const statusTxt  = !hasOpen
+        ? '⚪ Aucun bureau ouvert'
+        : occupied === 0
+          ? '🟢 Disponible'
+          : allFull
+            ? `🔴 Complet (${occupied}/${total})`
+            : `🟡 En cours (${occupied}/${total})`;
       const overflowTxt = overflow > 0
         ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente</div>` : '';
-      return `<div class="lv-card lv-grp-card">
+      const dotsHtml = hasOpen
+        ? `<div class="lv-grp-locals">${activeLids.map(l => {
+            const busy = DB.getQueue(l) >= 1;
+            return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
+          }).join('')}</div>` : '';
+      return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
         ${overflowTxt}
-        <div class="lv-grp-locals">${activeLids.map(l => {
-          const busy = DB.getQueue(l) >= 1;
-          return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
-        }).join('')}</div>
-        <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
+        ${dotsHtml}
+        <button class="lv-grp-add" data-grp="${grpId}"${!hasOpen ? ' disabled title="Aucun bureau ouvert dans ce groupe"' : ''}>+ Envoyer un bénéficiaire</button>
       </div>`;
     }).join('');
 

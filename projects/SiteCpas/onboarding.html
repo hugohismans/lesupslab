@@ -559,6 +559,7 @@ let formData = {
   features: {
     enableTickets: true, enablePublicView: true, enablePresence: true,
     rdvMode: false, enableAnalytics: false, enablePlanning: false,
+    enableMascot: true,
   },
   logoUrl: '', notes: '',
 };
@@ -955,9 +956,10 @@ const STEPS = [
 
   // 6 — Fonctionnalités
   {
-    bubble: 'Activez uniquement ce dont vous avez besoin. Votre administrateur pourra modifier ces réglages à tout moment, sans passer par nous 😊\nQuelles fonctions souhaitez-vous activer ?',
+    bubble: 'Activez uniquement ce dont vous avez besoin — tout peut être modifié à tout moment par votre administrateur 😊\nEt, d\'ailleurs : vous préférez une application avec une petite touche de fun et un assistant virtuel pour accueillir vos agents chaque matin, ou une interface sobre avec de simples boutons ? Les deux ont leur charme — et les deux restent réactivables !',
     render() {
       const FEATS = [
+        { key:'enableMascot',     icon:'🤖', name:'Assistant virtuel (Mascotte)',     desc:'Personnalité animée qui accueille les agents chaque matin avec des conseils et un peu de fun — désactiver pour une interface sobre avec boutons simples "Bonjour / Au revoir"', def:true  },
         { key:'enableTickets',    icon:'🎫', name:'Files d\'attente nominatives',    desc:'Émettre des tickets avec le prénom du visiteur pour l\'appeler par son nom', def:true  },
         { key:'enablePublicView', icon:'📺', name:'Écran d\'affichage public',        desc:'Un écran dans la salle d\'attente qui affiche et appelle les visiteurs',      def:true  },
         { key:'enablePresence',   icon:'🟢', name:'Présences agents',                 desc:'Voir qui est au bureau et dans quel local en temps réel',                     def:true  },

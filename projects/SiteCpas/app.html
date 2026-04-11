@@ -223,6 +223,12 @@
     </div>
   </div>
 
+  <!-- Mode sobre (mascotte désactivée) -->
+  <div class="hs-simple-mode hidden" id="hsSimpleMode">
+    <button class="hs-simple-btn hs-simple-bonjour" id="hsSimpleBonjour">👋 Bonjour</button>
+    <button class="hs-simple-btn hs-simple-aurevoir" id="hsSimpleAurevoir">🚪 Au revoir</button>
+  </div>
+
   <!-- Salutation + date -->
   <div class="hs-hero">
     <div class="hs-greeting" id="hsGreeting">Bonjour</div>
@@ -944,8 +950,14 @@
     <div class="live-clock" id="liveClock"></div>
     <button class="lv-toggle-bureaux hidden" id="btnToggleBureaux" title="Voir tous les bureaux">🏢 Voir tous les bureaux</button>
     <button class="live-qgroup-btn" id="btnQueueGroups" title="Gérer les files partagées">🔗 Files</button>
+    <button class="lv-notif-bell" id="liveNotifBell" title="Notifications">
+      🔔
+      <span class="lv-notif-badge hidden" id="liveNotifBadge"></span>
+    </button>
     <button class="live-close" id="btnLiveClose">✕ Fermer</button>
   </div>
+  <!-- Centre de notifications vue Direct -->
+  <div class="lv-notif-panel hidden" id="liveNotifPanel"></div>
   <!-- Panneau files partagées -->
   <div class="lv-qgroup-panel hidden" id="queueGroupPanel">
     <div class="lv-qgroup-list" id="queueGroupList"></div>

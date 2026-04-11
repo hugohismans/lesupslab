@@ -14,14 +14,21 @@ const NOTIF = {
   _badge:         null,
   _dndBtn:        null,
   _panelOpen:     false,
+  _livePanel:     null,
+  _liveBell:      null,
+  _liveBadge:     null,
+  _livePanelOpen: false,
   _localIdSeq:    0,
 
   init() {
     this._agentKey = sessionStorage.getItem('cpas_current_agent_key');
-    this._bell   = document.getElementById('notifBell');
-    this._badge  = document.getElementById('notifBadge');
-    this._panel  = document.getElementById('notifPanel');
-    this._dndBtn = document.getElementById('btnDnd');
+    this._bell      = document.getElementById('notifBell');
+    this._badge     = document.getElementById('notifBadge');
+    this._panel     = document.getElementById('notifPanel');
+    this._dndBtn    = document.getElementById('btnDnd');
+    this._livePanel = document.getElementById('liveNotifPanel');
+    this._liveBell  = document.getElementById('liveNotifBell');
+    this._liveBadge = document.getElementById('liveNotifBadge');
 
     // Résoudre le nom de l'agent une fois la config chargée
     DB.onConfigChange(() => {
@@ -61,21 +68,32 @@ const NOTIF = {
       }
     });
 
-    // ── UI — Bell ───────────────────────────────────────────────────
+    // ── UI — Bell (header standard) ────────────────────────────────
     this._bell?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.togglePanel();
     });
 
+    // ── UI — Bell (vue Direct) ──────────────────────────────────────
+    this._liveBell?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._toggleLivePanel();
+    });
+
     // DND button
     this._dndBtn?.addEventListener('click', () => this.toggleDnd());
 
-    // Fermer le panel en cliquant ailleurs
+    // Fermer les panels en cliquant ailleurs
     document.addEventListener('click', (e) => {
       if (this._panelOpen &&
           this._panel && !this._panel.contains(e.target) &&
           e.target !== this._bell && !this._bell?.contains(e.target)) {
         this._closePanel();
+      }
+      if (this._livePanelOpen &&
+          this._livePanel && !this._livePanel.contains(e.target) &&
+          e.target !== this._liveBell && !this._liveBell?.contains(e.target)) {
+        this._closeLivePanel();
       }
     });
 
@@ -90,10 +108,15 @@ const NOTIF = {
       !n.readBy?.[agentKey] && !n._local
     ).length + Object.values(this._notifs).filter(n => n._local && !n._read).length;
 
-    // Badge
+    // Badge (header standard + vue Direct)
+    const badgeTxt = unread > 9 ? '9+' : (unread || '');
     if (this._badge) {
-      this._badge.textContent = unread > 9 ? '9+' : (unread || '');
+      this._badge.textContent = badgeTxt;
       this._badge.classList.toggle('hidden', !unread);
+    }
+    if (this._liveBadge) {
+      this._liveBadge.textContent = badgeTxt;
+      this._liveBadge.classList.toggle('hidden', !unread);
     }
 
     // Notifs navigateur pour les nouvelles non-DND
@@ -114,8 +137,9 @@ const NOTIF = {
       });
     }
 
-    // Rafraîchir le panel si ouvert
+    // Rafraîchir les panels si ouverts
     if (this._panelOpen) this._render();
+    if (this._livePanelOpen) this._renderLive();
   },
 
   // ── Son — jouer un son selon le type de notif ───────────────────
@@ -271,7 +295,7 @@ const NOTIF = {
   _openPanel() {
     this._panelOpen = true;
     this._panel?.classList.remove('hidden');
-    this._render();
+    this._render(this._panel);
     // Marquer tout comme lu (Firebase)
     Object.entries(this._notifs).forEach(([id, n]) => {
       if (!n._local && !n.readBy?.[this._agentKey]) {
@@ -293,6 +317,41 @@ const NOTIF = {
     this._panel?.classList.add('hidden');
   },
 
+  // ── Panel vue Direct ─────────────────────────────────────────────
+  _toggleLivePanel() {
+    if (this._livePanelOpen) this._closeLivePanel();
+    else this._openLivePanel();
+  },
+
+  _openLivePanel() {
+    this._livePanelOpen = true;
+    this._livePanel?.classList.remove('hidden');
+    this._renderLive();
+    // Marquer tout comme lu
+    Object.entries(this._notifs).forEach(([id, n]) => {
+      if (!n._local && !n.readBy?.[this._agentKey]) {
+        DB.markNotifRead(id);
+        if (n.type === 'preferred_request' && n.requestId && !n.nameDeleteAt) {
+          const deleteMin = DB.getSensitivDataDeleteMin?.() ?? 30;
+          DB.markPreferredRequestNameRead(n.requestId, deleteMin);
+        }
+      }
+      if (n._local) n._read = true;
+    });
+    if (this._liveBadge) { this._liveBadge.textContent = ''; this._liveBadge.classList.add('hidden'); }
+    if (this._badge) { this._badge.textContent = ''; this._badge.classList.add('hidden'); }
+  },
+
+  _closeLivePanel() {
+    this._livePanelOpen = false;
+    this._livePanel?.classList.add('hidden');
+  },
+
+  _renderLive() {
+    if (!this._livePanel) return;
+    this._render(this._livePanel);
+  },
+
   // Countdown formatté pour données sensibles
   _formatCountdown(deleteAt) {
     const remaining = Math.max(0, deleteAt - Date.now());
@@ -306,26 +365,28 @@ const NOTIF = {
     return `${totalMin} min`;
   },
 
-  _render() {
-    if (!this._panel) return;
+  _render(target) {
+    target = target || this._panel;
+    if (!target) return;
     const agentKey = this._agentKey;
     const entries = Object.entries(this._notifs)
       .sort(([, a], [, b]) => b.createdAt - a.createdAt)
       .slice(0, 40);
 
     if (!entries.length) {
-      this._panel.innerHTML = `
+      target.innerHTML = `
         <div class="notif-panel-hd"><span>Notifications</span></div>
         <div class="notif-empty">Aucune notification</div>`;
       return;
     }
 
     const icons = { alert: '🚨', warn: '⚠️', info: 'ℹ️' };
+    const isLive = target === this._livePanel;
 
-    this._panel.innerHTML = `
+    target.innerHTML = `
       <div class="notif-panel-hd">
         <span>Notifications</span>
-        <button class="notif-clear-btn" id="notifClearAll">Tout effacer</button>
+        <button class="notif-clear-btn" data-clear="1">Tout effacer</button>
       </div>
       <div class="notif-list">
         ${entries.map(([id, n]) => {
@@ -341,7 +402,6 @@ const NOTIF = {
           // Contenu spécifique preferred_request (agent ciblé)
           let prefHtml = '';
           if (isPref) {
-            const benefDisplay = n.benefName || '<em style="color:#94a3b8">[Données effacées]</em>';
             const hasDeleteAt  = !!n.nameDeleteAt;
             const countdown    = hasDeleteAt ? this._formatCountdown(n.nameDeleteAt) : null;
             const expired      = hasDeleteAt && n.nameDeleteAt <= Date.now();
@@ -380,64 +440,60 @@ const NOTIF = {
         }).join('')}
       </div>`;
 
-    this._panel.querySelectorAll('.notif-del').forEach(btn => {
+    target.querySelectorAll('.notif-del').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         DB.deleteNotif(btn.dataset.id);
       });
     });
 
-    this._panel.querySelectorAll('.notif-reply-btn').forEach(btn => {
+    target.querySelectorAll('.notif-reply-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._closePanel();
+        if (isLive) this._closeLivePanel(); else this._closePanel();
         this._openReplyModal(btn.dataset.id, btn.dataset.from, decodeURIComponent(btn.dataset.desc || ''));
       });
     });
 
     // Boutons réponse preferred_request
-    this._panel.querySelectorAll('.notif-pref-now').forEach(btn => {
+    target.querySelectorAll('.notif-pref-now').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._closePanel();
-        const notifId = btn.dataset.id;
-        const reqId   = btn.dataset.req;
-        window._openPreferredResponseModal?.(notifId, reqId, 'now');
+        if (isLive) this._closeLivePanel(); else this._closePanel();
+        window._openPreferredResponseModal?.(btn.dataset.id, btn.dataset.req, 'now');
       });
     });
-    this._panel.querySelectorAll('.notif-pref-eta').forEach(btn => {
+    target.querySelectorAll('.notif-pref-eta').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._closePanel();
+        if (isLive) this._closeLivePanel(); else this._closePanel();
         window._openPreferredResponseModal?.(btn.dataset.id, btn.dataset.req, 'eta');
       });
     });
-    this._panel.querySelectorAll('.notif-pref-decline').forEach(btn => {
+    target.querySelectorAll('.notif-pref-decline').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this._closePanel();
+        if (isLive) this._closeLivePanel(); else this._closePanel();
         window._openPreferredResponseModal?.(btn.dataset.id, btn.dataset.req, 'decline');
       });
     });
 
     // Bouton annuler demande (côté accueil)
-    this._panel.querySelectorAll('.notif-pref-cancel-btn').forEach(btn => {
+    target.querySelectorAll('.notif-pref-cancel-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         if (!confirm('Annuler cette demande bénéficiaire ?')) return;
         await DB.cancelPreferredRequest(btn.dataset.req, btn.dataset.lid ? parseInt(btn.dataset.lid) : null);
-        // Marquer la notif de retour comme "annulée" visuellement
         const item = btn.closest('.notif-item');
         if (item) item.querySelector('.notif-pref-cancel-btn')?.remove();
       });
     });
 
-    document.getElementById('notifClearAll')?.addEventListener('click', (e) => {
+    target.querySelector('[data-clear="1"]')?.addEventListener('click', (e) => {
       e.stopPropagation();
       Object.entries(this._notifs).forEach(([id, n]) => {
         if (!n._local) DB.deleteNotif(id);
       });
-      // Vider les locales
       Object.keys(this._notifs).forEach(id => {
         if (this._notifs[id]._local) delete this._notifs[id];
       });
@@ -445,23 +501,24 @@ const NOTIF = {
     });
 
     // Démarrer les countdowns temps réel
-    this._startCountdowns();
+    this._startCountdowns(target);
   },
 
   _countdownInterval: null,
-  _startCountdowns() {
+  _startCountdowns(panelEl) {
     clearInterval(this._countdownInterval);
-    const hasCountdowns = this._panel?.querySelectorAll('.notif-countdown[data-delete-at]').length > 0;
-    if (!hasCountdowns) return;
+    // Chercher les countdowns dans tous les panels visibles
+    const getPanels = () => [this._panel, this._livePanel].filter(p => p && !p.classList.contains('hidden'));
+    const allEls = () => getPanels().flatMap(p => [...(p.querySelectorAll('.notif-countdown[data-delete-at]') || [])]);
+    if (!allEls().length) return;
     this._countdownInterval = setInterval(() => {
-      const els = this._panel?.querySelectorAll('.notif-countdown[data-delete-at]');
-      if (!els?.length) { clearInterval(this._countdownInterval); return; }
+      const els = allEls();
+      if (!els.length) { clearInterval(this._countdownInterval); return; }
       els.forEach(el => {
         const deleteAt = parseInt(el.dataset.deleteAt);
         if (!deleteAt) return;
         if (Date.now() >= deleteAt) {
           el.textContent = 'effacé';
-          // Déclencher suppression réelle (via app.js handler)
           window._onPreferredDataExpired?.(deleteAt);
         } else {
           el.textContent = this._formatCountdown(deleteAt);

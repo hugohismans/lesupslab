@@ -925,13 +925,28 @@
         const savedGender = genderSnap.val();
         if (savedGender && typeof setGender === 'function') setGender(savedGender);
 
-        if (rawRole === null) {
-          // Aucun rôle défini → afficher le sélecteur
-          _showRolePicker(agentName, mascotId, customRoles, db);
-        } else {
-          const introType = _resolveIntroType(rawRole, customRoles);
-          try { _launch(agentName, introType, mascotId); } catch(e) { finish(); }
-        }
+        // Si la feature mascotte est désactivée → skip directement vers app.html
+        // (on doit lire la config features)
+        db.ref(`orgs/${ORG_ID}/appConfig/features/enableMascot`).once('value').then(featSnap => {
+          const mascotEnabled = featSnap.val() !== false; // null = vrai par défaut
+          if (!mascotEnabled) { finish(); return; }
+
+          if (rawRole === null) {
+            // Aucun rôle défini → afficher le sélecteur
+            _showRolePicker(agentName, mascotId, customRoles, db);
+          } else {
+            const introType = _resolveIntroType(rawRole, customRoles);
+            try { _launch(agentName, introType, mascotId); } catch(e) { finish(); }
+          }
+        }).catch(() => {
+          // En cas d'erreur lecture feature → continuer normalement
+          if (rawRole === null) {
+            _showRolePicker(agentName, mascotId, customRoles, db);
+          } else {
+            const introType = _resolveIntroType(rawRole, customRoles);
+            try { _launch(agentName, introType, mascotId); } catch(e) { finish(); }
+          }
+        });
       }
 
       try {
