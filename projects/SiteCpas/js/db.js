@@ -1110,16 +1110,12 @@ const DB = {
     await this._ref(`requests/${requestId}`).remove();
   },
 
-  // Fin de journée — vider tous les bureaux et présences
+  // Fin de journée — vider tous les bureaux et présences backoffice
   async clearAllLocals() {
     const updates = {};
-    const bureaux = this.getAppState()?.bureaux || {};
-    Object.keys(bureaux).forEach(id => { updates[`appState/bureaux/${id}`] = null; });
-    this.getAgentsWithKeys().forEach(({ key }) => {
-      const presences = this.getAgentStatus(key)?.presences || {};
-      Object.keys(presences).forEach(lid => {
-        updates[`agentStatus/${key}/presences/${lid}`] = null;
-      });
+    // Fermer tous les bureaux (inclut les présences backoffice stockées sous appState/bureaux)
+    Object.keys(this._bureauState).forEach(id => {
+      updates[`appState/bureaux/${id}`] = null;
     });
     if (Object.keys(updates).length) await this._update(updates);
   },
