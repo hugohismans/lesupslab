@@ -198,7 +198,28 @@
       <button class="hs-ask-tip-btn hs-weather-btn hidden" id="hsAskWeather" title="Point météo">🌤️ Météo</button>
       <button class="hs-ask-tip-btn hs-focus-btn" id="hsFocusBtn" title="Mode concentration — la mascotte se tait">🎯 Focus</button>
       <button class="hs-ask-tip-btn hs-party-btn" id="hsPartyBtn" title="Inviter les mascottes amies">🎉 Inviter mes amis</button>
+      <button class="hs-ask-tip-btn hidden" id="hsMascotTestBtn" title="Tester les animations (admin)">🎭 Animations</button>
       <button class="hs-ask-tip-btn hs-goodbye-btn" id="hsGoodbye" title="Terminer ma journée">👋 Au revoir</button>
+    </div>
+    <!-- Panneau test animations (admin uniquement) -->
+    <div class="ms-test-panel hidden" id="msMascotTestPanel">
+      <div class="ms-test-title">🎭 Test animations mascotte</div>
+      <div class="ms-test-grid">
+        <button data-state="happy"       data-acc="hearts">😊 Happy</button>
+        <button data-state="excited"     data-acc="sparkles">🤩 Excited</button>
+        <button data-state="celebrating" data-acc="stars">🎉 Celebrating</button>
+        <button data-state="coffee"      data-acc="coffee">☕ Coffee</button>
+        <button data-state="sleepy"      data-acc="zzz">😴 Sleepy</button>
+        <button data-state="cozy"        data-acc="">🛋️ Cozy</button>
+        <button data-state="curious"     data-acc="thought">🧐 Curious</button>
+        <button data-state="bored"       data-acc="thought">😑 Bored</button>
+        <button data-state="stressed"    data-acc="sweat">😰 Stressed</button>
+        <button data-state="alarmed"     data-acc="sweat">🚨 Alarmed</button>
+        <button data-state="waving"      data-acc="">👋 Waving</button>
+        <button data-state="concentrating" data-acc="moon">🎯 Focus</button>
+        <button data-state="idle"        data-acc="">💤 Idle (reset)</button>
+        <button id="msTestVisitBtn"      style="grid-column:1/-1">🐙 Simuler une visite</button>
+      </div>
     </div>
   </div>
 

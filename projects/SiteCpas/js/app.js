@@ -874,8 +874,34 @@ const HOME = {
       else window.MascotBrain?.enterFocus?.();
     });
 
-    // ─ Bouton "🎉 Inviter mes amis" ──────────────────────────────────
+    // ─ Bouton "🎉 Inviter mes amis" (admin uniquement) ───────────────
     document.getElementById('hsPartyBtn')?.addEventListener('click', () => {
+      window.MascotBrain?.triggerParty?.();
+    });
+
+    // ─ Panneau test animations mascotte (admin uniquement) ───────────
+    const mascotTestBtn   = document.getElementById('hsMascotTestBtn');
+    const mascotTestPanel = document.getElementById('msMascotTestPanel');
+    mascotTestBtn?.addEventListener('click', () => {
+      mascotTestPanel?.classList.toggle('hidden');
+    });
+    mascotTestPanel?.querySelectorAll('[data-state]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const state = btn.dataset.state;
+        const acc   = btn.dataset.acc || null;
+        if (!window.MascotBrain) return;
+        // Forcer l'état directement
+        MascotBrain._state    = 'idle';
+        MascotBrain._priority = 99;
+        const texts = BRAIN_TEXTS?.[state] || [];
+        MascotBrain._applyState(state, 1, acc || null,
+          texts.length ? texts : [`[Test] État : ${state}`]);
+        // Mettre en surbrillance le bouton actif
+        mascotTestPanel.querySelectorAll('[data-state]').forEach(b => b.style.borderColor = '');
+        btn.style.borderColor = '#60a5fa';
+      });
+    });
+    document.getElementById('msTestVisitBtn')?.addEventListener('click', () => {
       window.MascotBrain?.triggerParty?.();
     });
 
@@ -1385,6 +1411,15 @@ function applyFeatureFlags() {
     const wxData = typeof WEATHER !== 'undefined' ? WEATHER.get() : null;
     wxBtn.classList.toggle('hidden', !DB.getFeature('enableWeather') || !wxData);
   }
+
+  // Boutons mascotte réservés aux admins
+  const _mascotAgentKey = sessionStorage.getItem('cpas_current_agent_key');
+  const _mascotRole     = _mascotAgentKey ? (DB.getAgentPermRole?.(_mascotAgentKey) || '__agent__') : null;
+  const _isMascotAdmin  = ['__admin__','__direction__','__chef_service__'].includes(_mascotRole);
+  const partyBtn2 = document.getElementById('hsPartyBtn');
+  if (partyBtn2) partyBtn2.style.display = _isMascotAdmin ? '' : 'none';
+  const testBtn2 = document.getElementById('hsMascotTestBtn');
+  if (testBtn2) testBtn2.style.display = _isMascotAdmin ? '' : 'none';
 
   // Onglet Planning — visible pour entretien/technicien ET les rôles avec viewAllPlanning
   const _planningAgentKey = sessionStorage.getItem('cpas_current_agent_key');

@@ -4155,3 +4155,33 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .ms-visitor-excited { animation: ms-excited 1s ease-in-out; }
+
+/* ── Panneau test animations (admin) ───────────────────────────── */
+.ms-test-panel {
+  background: #1e293b;
+  border: 1.5px solid #334155;
+  border-radius: 16px;
+  padding: .85rem 1rem;
+  margin-top: .5rem;
+  width: 100%;
+  max-width: 420px;
+}
+.ms-test-title {
+  font-size: .72rem; font-weight: 800; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: .6rem; text-align: center;
+}
+.ms-test-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .35rem;
+}
+.ms-test-grid button {
+  background: #0f172a; color: #e2e8f0;
+  border: 1.5px solid #334155; border-radius: 8px;
+  padding: .35rem .4rem; font-size: .72rem; font-weight: 600;
+  cursor: pointer; transition: background .12s, border-color .12s;
+  font-family: inherit;
+}
+.ms-test-grid button:hover { background: #1d4ed8; border-color: #3b82f6; color: #fff; }
+.ms-test-grid button:active { transform: scale(.96); }
