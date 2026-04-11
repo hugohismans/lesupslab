@@ -259,9 +259,31 @@
 </head>
 <body>
 
-<button class="docs-print-btn" onclick="window.print()">🖨️ Imprimer</button>
+<!-- ── Portail de connexion ── -->
+<div id="docsAdminGate" style="display:none;position:fixed;inset:0;background:#0f172a;z-index:999;align-items:center;justify-content:center;padding:1rem">
+  <div style="background:#1e293b;border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:360px;display:flex;flex-direction:column;gap:1.25rem;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+    <div style="text-align:center">
+      <div style="font-size:2rem;margin-bottom:.5rem">📄</div>
+      <div style="font-size:1.2rem;font-weight:800;color:#f59e0b">Documentation Admin</div>
+      <div style="font-size:.8rem;color:#64748b;margin-top:.25rem">moncompagnon — accès restreint</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <label style="font-size:.8rem;color:#94a3b8;font-weight:600">Mot de passe</label>
+      <input type="password" id="docsAdminPwdInput" placeholder="••••••••"
+        style="background:#0f172a;border:1.5px solid #334155;border-radius:8px;color:#e2e8f0;padding:.6rem .9rem;font-size:.95rem;outline:none;width:100%">
+      <div id="docsAdminErr" style="display:none;color:#f87171;font-size:.82rem">Mot de passe incorrect.</div>
+    </div>
+    <button id="docsAdminLoginBtn"
+      style="padding:.7rem;border-radius:10px;border:none;background:#f59e0b;color:#1e293b;font-size:.95rem;font-weight:700;cursor:pointer">
+      Accéder →
+    </button>
+    <a href="docs.html" style="text-align:center;font-size:.8rem;color:#64748b;text-decoration:none">← Retour à la documentation</a>
+  </div>
+</div>
 
-<div class="docs-layout">
+<button class="docs-print-btn" onclick="window.print()" style="display:none">🖨️ Imprimer</button>
+
+<div class="docs-layout" id="docsAdminContent" style="display:none">
 
   <!-- ═══════════════════════════════════════════
        SIDEBAR
@@ -1192,7 +1214,57 @@
   </main>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
 <script>
+/* ── Auth docs-admin ── */
+const DOCS_AUTH_KEY  = 'mc_docs_admin_auth';
+const DOCS_HASH_PATH = 'superadmin/docsAdminPasswordHash';
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+(async function initAuth() {
+  // Si déjà auth dans cette session
+  if (sessionStorage.getItem(DOCS_AUTH_KEY) === '1') return showContent();
+
+  firebase.initializeApp(CONFIG.FIREBASE);
+  const db = firebase.database();
+  const snap = await db.ref(DOCS_HASH_PATH).once('value');
+  const hash = snap.val();
+
+  // Aucun mot de passe configuré → accès libre
+  if (!hash) return showContent();
+
+  // Afficher le portail
+  const gate = document.getElementById('docsAdminGate');
+  gate.style.display = 'flex';
+
+  document.getElementById('docsAdminLoginBtn').addEventListener('click', async () => {
+    const pwd  = document.getElementById('docsAdminPwdInput').value;
+    const err  = document.getElementById('docsAdminErr');
+    if (!pwd) return;
+    const inputHash = await sha256(pwd);
+    if (inputHash === hash) {
+      sessionStorage.setItem(DOCS_AUTH_KEY, '1');
+      gate.style.display = 'none';
+      showContent();
+    } else {
+      err.style.display = 'block';
+      document.getElementById('docsAdminPwdInput').value = '';
+    }
+  });
+  document.getElementById('docsAdminPwdInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('docsAdminLoginBtn').click();
+  });
+})();
+
+function showContent() {
+  document.getElementById('docsAdminContent').style.display = '';
+  document.querySelector('.docs-print-btn').style.display   = '';
   // Sidebar active link highlighting
   const links = document.querySelectorAll('.docs-sidebar a[href^="#"]');
   const observer = new IntersectionObserver(entries => {
@@ -1205,6 +1277,7 @@
     });
   }, { rootMargin: '-20% 0px -70% 0px' });
   document.querySelectorAll('.docs-section[id], .docs-subsection[id]').forEach(s => observer.observe(s));
+}
 </script>
 </body>
 </html>

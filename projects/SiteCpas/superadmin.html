@@ -296,6 +296,25 @@
       </div>
     </div>
 
+    <!-- Documentation admin — accès -->
+    <div class="sa-section">
+      <div class="sa-section-title"><span>📄</span> Documentation admin — protection par mot de passe</div>
+      <div style="font-size:.82rem;color:#64748b">
+        Définissez un mot de passe pour accéder à <code style="color:#38bdf8">docs-admin.html</code>.
+        Si aucun mot de passe n'est configuré, la page est accessible sans restriction.
+      </div>
+      <div id="saDocsAdminStatus" style="font-size:.82rem;color:#94a3b8">Chargement…</div>
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;align-items:flex-end">
+        <div class="sa-field" style="flex:1;min-width:200px">
+          <label>Nouveau mot de passe</label>
+          <input type="password" class="sa-input" id="docsAdminPwd" placeholder="Choisir un mot de passe…" autocomplete="new-password">
+        </div>
+        <button class="sa-btn sa-btn-success sa-btn-sm" id="saDocsAdminSave">💾 Enregistrer</button>
+        <button class="sa-btn sa-btn-danger sa-btn-sm" id="saDocsAdminRemove">🗑 Supprimer le mdp</button>
+      </div>
+      <div class="sa-err hidden" id="saDocsAdminErr"></div>
+    </div>
+
     <!-- Outils de test -->
     <div class="sa-section">
       <div class="sa-section-title"><span>🎭</span> Outils de test</div>
@@ -397,6 +416,7 @@ async function showApp() {
   loadTokenStatus();
   loadSubmissions();
   loadOrgDirectory();
+  loadDocsAdminStatus();
 }
 
 // Vérifier session
@@ -1059,6 +1079,42 @@ document.getElementById('saAddOrgEntry')?.addEventListener('click', async () => 
 });
 
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ══════════════════════════════════════════════════════════════════
+   DOCUMENTATION ADMIN — mot de passe
+══════════════════════════════════════════════════════════════════ */
+const DOCS_ADMIN_HASH_PATH = 'superadmin/docsAdminPasswordHash';
+
+async function loadDocsAdminStatus() {
+  const snap = await db.ref(DOCS_ADMIN_HASH_PATH).once('value');
+  const el = document.getElementById('saDocsAdminStatus');
+  if (!el) return;
+  if (snap.val()) {
+    el.innerHTML = '<span style="color:#4ade80">✓ Mot de passe configuré</span>';
+  } else {
+    el.innerHTML = '<span style="color:#fbbf24">⚠ Aucun mot de passe — accès libre</span>';
+  }
+}
+
+document.getElementById('saDocsAdminSave')?.addEventListener('click', async () => {
+  const pwd = document.getElementById('docsAdminPwd').value.trim();
+  const err = document.getElementById('saDocsAdminErr');
+  if (!pwd) { err.textContent = 'Veuillez saisir un mot de passe.'; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
+  const hash = await sha256(pwd);
+  await db.ref(DOCS_ADMIN_HASH_PATH).set(hash);
+  document.getElementById('docsAdminPwd').value = '';
+  loadDocsAdminStatus();
+  const btn = document.getElementById('saDocsAdminSave');
+  btn.textContent = '✓ Enregistré';
+  setTimeout(() => btn.textContent = '💾 Enregistrer', 2000);
+});
+
+document.getElementById('saDocsAdminRemove')?.addEventListener('click', async () => {
+  if (!confirm('Supprimer le mot de passe ? La documentation admin sera accessible sans restriction.')) return;
+  await db.ref(DOCS_ADMIN_HASH_PATH).remove();
+  loadDocsAdminStatus();
+});
 
 
 </script>
