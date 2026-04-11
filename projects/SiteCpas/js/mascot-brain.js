@@ -197,6 +197,38 @@ const MascotBrain = {
     checkReady();
   },
 
+  // ── Afficher une ligne de dialogue inter-mascottes ─────────────
+  _showDialogueLine(line) {
+    if (line.speaker === 'host') {
+      // Bulle bleue au-dessus de la mascotte locale
+      const bubble = document.getElementById('msHostBubble');
+      const textEl = document.getElementById('msHostBubbleText');
+      if (textEl) textEl.textContent = line.text;
+      if (bubble) {
+        bubble.classList.remove('hidden');
+        // Relancer l'animation d'entrée
+        bubble.style.animation = 'none';
+        bubble.offsetHeight; // reflow
+        bubble.style.animation = '';
+      }
+      // Masquer la bulle visiteur quand l'hôte parle
+      document.getElementById('msVisitorBubble')?.classList.add('hidden');
+    } else {
+      // Bulle blanche au-dessus du visiteur
+      const bubble = document.getElementById('msVisitorBubble');
+      const textEl = document.getElementById('msVisitorBubbleText');
+      if (textEl) textEl.textContent = line.text;
+      if (bubble) {
+        bubble.classList.remove('hidden');
+        bubble.style.animation = 'none';
+        bubble.offsetHeight;
+        bubble.style.animation = '';
+      }
+      // Masquer la bulle hôte quand le visiteur parle
+      document.getElementById('msHostBubble')?.classList.add('hidden');
+    }
+  },
+
   // ── Helpers animation visiteur ─────────────────────────────────
   _showVisitor(el) {
     el.style.display = 'flex';
@@ -542,51 +574,65 @@ const MascotBrain = {
         .replace(/\{g2Name\}/g,  g2Name) .replace(/\{g2Org\}/g,  g2Org),
     }));
 
-    // Préparer le visiteur principal (g1)
-    const visitorEl = document.getElementById('msVisitor');
-    if (!visitorEl) return;
-    const svgEl = document.getElementById('msVisitorSvg');
-    if (svgEl) {
-      svgEl.setAttribute('viewBox', g1Mascot.viewBox);
-      svgEl.innerHTML = g1Mascot.svg;
+    // Préparer visiteur gauche (g1)
+    const visitor1El = document.getElementById('msVisitor');
+    if (!visitor1El) return;
+    const svg1El = document.getElementById('msVisitorSvg');
+    if (svg1El) { svg1El.setAttribute('viewBox', g1Mascot.viewBox); svg1El.innerHTML = g1Mascot.svg; }
+    const name1El = document.getElementById('msVisitorName');
+    if (name1El) name1El.textContent = `${g1Name} 🎉`;
+
+    // Préparer visiteur droite (g2) si disponible
+    const g2Mascot = g2 ? (MASCOTS[g2.mascotType] || MASCOTS.chat) : null;
+    const visitor2El = document.getElementById('msVisitor2');
+    if (visitor2El && g2Mascot) {
+      const svg2El = document.getElementById('msVisitor2Svg');
+      if (svg2El) { svg2El.setAttribute('viewBox', g2Mascot.viewBox); svg2El.innerHTML = g2Mascot.svg; }
+      const name2El = document.getElementById('msVisitor2Name');
+      if (name2El) name2El.textContent = `${g2Name} 🎉`;
     }
-    const nameEl = document.getElementById('msVisitorName');
-    if (nameEl) nameEl.textContent = `${g1Name}${g2Name ? ` & ${g2Name}` : ''} 🎉`;
 
     this._state    = 'visitor';
     this._priority = 1;
     clearInterval(this._scanInterval);
+    document.getElementById('hsMascotBubble')?.classList.add('hidden');
 
     // Entrée festive
-    this._showVisitor(visitorEl);
+    this._showVisitor(visitor1El);
     this._applyState('idle', 1, 'stars', []);
+    if (visitor2El && g2Mascot) {
+      setTimeout(() => this._showVisitor(visitor2El), 400); // g2 arrive 400ms après
+    }
 
-    let t = 600;
+    let t = 900;
+    // Dans les dialogues week-end, 'visitor' = g1 (gauche), 'visitor2' = g2 (droite)
     sequence.forEach((line, i) => {
       setTimeout(() => {
         if (line.speaker === 'host') {
-          window.HOME?._showBubble?.(line.text);
+          this._showDialogueLine(line);
         } else {
-          const bubble = document.getElementById('msVisitorBubble');
-          const textEl = document.getElementById('msVisitorBubbleText');
+          // Alterner g1 et g2 si deux visiteurs
+          const useG2 = g2Mascot && (i % 3 === 2); // g2 parle sur 3ème ligne, 6ème, etc.
+          const bubbleId = useG2 ? 'msVisitor2Bubble' : 'msVisitorBubble';
+          const textId   = useG2 ? 'msVisitor2BubbleText' : 'msVisitorBubbleText';
+          // Masquer l'autre bulle visiteur
+          document.getElementById(useG2 ? 'msVisitorBubble' : 'msVisitor2Bubble')?.classList.add('hidden');
+          document.getElementById('msHostBubble')?.classList.add('hidden');
+          const bubble = document.getElementById(bubbleId);
+          const textEl = document.getElementById(textId);
           if (textEl) textEl.textContent = line.text;
-          if (bubble) bubble.classList.remove('hidden');
+          if (bubble) { bubble.classList.remove('hidden'); bubble.style.animation='none'; bubble.offsetHeight; bubble.style.animation=''; }
         }
-        // Animations festives au pic du dialogue
+        // Animation festive collective
         if (i === 2 || i === Math.floor(sequence.length / 2)) {
           const stage = document.querySelector('.hs-mascot-stage');
-          stage?.classList.remove('ms-happy');
-          stage?.classList.add('ms-celebrating');
-          visitorEl.classList.add('ms-visitor-excited');
-          // Changer l'accessoire du visiteur (si g2)
-          if (g2Name && i === 2) {
-            const svgEl = document.getElementById('msVisitorSvg');
-            const g2Mascot = MASCOTS[g2?.mascotType] || MASCOTS.chat;
-            if (svgEl) { svgEl.setAttribute('viewBox', g2Mascot.viewBox); svgEl.innerHTML = g2Mascot.svg; }
-          }
+          stage?.classList.remove('ms-happy'); stage?.classList.add('ms-celebrating');
+          visitor1El.classList.add('ms-visitor-excited');
+          visitor2El?.classList.add('ms-visitor-excited');
           setTimeout(() => {
             stage?.classList.remove('ms-celebrating');
-            visitorEl.classList.remove('ms-visitor-excited');
+            visitor1El.classList.remove('ms-visitor-excited');
+            visitor2El?.classList.remove('ms-visitor-excited');
           }, 2400);
         }
       }, t);
@@ -595,8 +641,9 @@ const MascotBrain = {
 
     // Clôture de la fête
     setTimeout(() => {
-      this._hideVisitor(visitorEl);
-      // Mascotte encore festive un moment
+      document.getElementById('msHostBubble')?.classList.add('hidden');
+      this._hideVisitor(visitor1El);
+      if (visitor2El && g2Mascot) setTimeout(() => this._hideVisitor(visitor2El), 200);
       this._state    = 'idle';
       this._priority = 99;
       this._applyState('celebrating', 4, 'stars', ["Quel début de week-end ! On garde cette énergie ! 🥳"]);
@@ -638,6 +685,9 @@ const MascotBrain = {
     this._priority = 1;
     clearInterval(this._scanInterval);
 
+    // Masquer la bulle worker pendant la conversation
+    document.getElementById('hsMascotBubble')?.classList.add('hidden');
+
     // Animation d'entrée
     this._showVisitor(visitorEl);
 
@@ -645,20 +695,7 @@ const MascotBrain = {
     let t = 800;
     sequence.forEach((line, i) => {
       setTimeout(() => {
-        if (line.speaker === 'host') {
-          window.HOME?._showBubble?.(line.text);
-        } else {
-          const bubble = document.getElementById('msVisitorBubble');
-          const textEl = document.getElementById('msVisitorBubbleText');
-          if (textEl) textEl.textContent = line.text;
-          if (bubble) {
-            bubble.classList.remove('hidden');
-            // Petit reset animation
-            bubble.style.animation = 'none';
-            bubble.offsetHeight;
-            bubble.style.animation = '';
-          }
-        }
+        this._showDialogueLine(line);
 
         // Au milieu : animation joueur ensemble
         if (i === Math.floor(sequence.length / 2)) {
@@ -676,9 +713,10 @@ const MascotBrain = {
 
     // Départ du visiteur
     setTimeout(() => {
+      document.getElementById('msHostBubble')?.classList.add('hidden');
       this._hideVisitor(visitorEl);
 
-      // Mascotte hôte heureuse
+      // Mascotte hôte heureuse — reprend sa bulle normale
       this._state    = 'idle';
       this._priority = 99;
       this._applyState('happy', 6, 'hearts', [BRAIN_TEXTS.after_visit]);
