@@ -765,6 +765,7 @@ const LIVE = {
           return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
         }).join('')}</div>
         <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
+        <button class="lv-grp-preferred" data-grp="${grpId}">👤 Ne veut voir qu'un agent</button>
       </div>`;
     }).join('');
 
@@ -888,8 +889,14 @@ const LIVE = {
         const recallBtn = lastCall
           ? `<button class="lv-q-recall" data-local="${l}" title="Rappeler le ticket ${lastCall.ticket || ''}">📢 Rappeler ${lastCall.ticket ? `n°${lastCall.ticket}` : 'le dernier'}</button>`
           : '';
+        // Bouton "Recevoir X" si une personne attend spécifiquement cet agent
+        const preferred = !isAccueil ? DB.getPreferredPending(l) : null;
+        const preferredBtn = preferred
+          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(preferred.displayName || '?')} qui ne souhaite voir que moi</button>`
+          : '';
         queueHtml = `<div class="lv-queue lv-queue-agent${optedOut ? ' lv-queue-opted-out' : ''}">
           ${grpHint}
+          ${preferredBtn}
           ${queue > 0 ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
@@ -1059,6 +1066,46 @@ const LIVE = {
           await DB.incrementGroupOverflow(grpId);
           const overflow = DB.getGroupOverflowQueue(grpId);
           showWaitBanner(overflow, ticket);
+        }
+      });
+    });
+
+    // Bouton "Ne veut voir qu'un agent" (accueil uniquement)
+    g('liveGrid').querySelectorAll('.lv-grp-preferred').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const grpId = btn.dataset.grp;
+        window._openPreferredRequestModal?.(grpId);
+      });
+    });
+
+    // Bouton "Recevoir X qui ne souhaite voir que moi" (agent)
+    g('liveGrid').querySelectorAll('.lv-pref-receive').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId  = parseInt(btn.dataset.local);
+        const reqId    = btn.dataset.req;
+        const dispName = btn.dataset.name || '?';
+        const grp      = DB.getLocalGroup(localId);
+        const queue    = grp ? DB.getGroupOverflowQueue(grp.id) : DB.getQueue(localId);
+        const doReceive = async () => {
+          const now2  = new Date();
+          const dayS2 = new Date(now2); dayS2.setHours(0,0,0,0);
+          const dayE2 = new Date(now2); dayE2.setHours(23,59,59,999);
+          const occ2  = DB.getInRange(dayS2, dayE2).find(o =>
+            Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
+          );
+          const pubAgent = occ2?.agent ? DB.getAgentPublicName(occ2.agent) : null;
+          await DB.closePreferredRequest(reqId, localId);
+          await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
+          LIVE._storeCall(localId, dispName, occ2);
+          showToast(`✅ ${dispName} reçu.`);
+        };
+        if (queue > 0) {
+          // D'autres personnes attendent — demander si bypass
+          window._openPreferredBypassModal?.(reqId, localId, dispName, doReceive);
+        } else {
+          await doReceive();
         }
       });
     });
@@ -1349,6 +1396,12 @@ const LIVE = {
           okLabel: 'Je pars, fermer le bureau', okClass: 'ok-close',
           onOk: async () => {
             await DB.clearBureauPause(localId); // nettoyer la pause si elle était active
+            // Si un bénéficiaire préférentiel attendait ce bureau, annuler + notifier accueil
+            const pref = DB.getPreferredPending(localId);
+            if (pref?.requestId) {
+              await DB.cancelPreferredRequest(pref.requestId, localId);
+              window._notifyPreferredCancelledOnClose?.(pref, label);
+            }
             await DB.closeBureau(localId);
           }
         });

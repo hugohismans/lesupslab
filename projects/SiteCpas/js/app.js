@@ -2239,6 +2239,342 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Bouton ajout écran → géré dans modal.js (_initSettings)
 
+  // ═══════════════════════════════════════════════════════════════
+  // ─── "Ne veut voir qu'un agent" — circuit préférentiel ────────
+  // ═══════════════════════════════════════════════════════════════
+
+  // Initialiser les listeners preferredPending pour les locaux visibles
+  DB.onConfigChange(() => {
+    const lieux  = DB.getLieux();
+    const locals = Object.values(lieux).flatMap(l => l.localIds || []).map(Number);
+    if (locals.length) DB.initPreferredPending(locals);
+  });
+
+  // Nettoyer les données sensibles expirées au démarrage
+  DB.cleanExpiredPreferredData?.();
+
+  // ── Modal A : Accueil — créer une demande préférentielle ────────
+  window._openPreferredRequestModal = (grpId) => {
+    const overlay  = document.getElementById('preferredRequestOverlay');
+    const agentSel = document.getElementById('prefAgentSelect');
+    const placeSel = document.getElementById('prefPublicPlaceSelect');
+    const benefIn  = document.getElementById('prefBenefName');
+    if (!overlay || !agentSel || !placeSel) return;
+
+    // Peupler agents connectés aujourd'hui (hors accueil)
+    const myKey   = sessionStorage.getItem('cpas_current_agent_key');
+    const agents  = DB.getConnectedTodayAgents().filter(k => k !== myKey);
+    agentSel.innerHTML = '<option value="">— Choisir un agent —</option>' +
+      agents.map(k => {
+        const info = DB.getAgentsWithKeys().find(a => a.key === k);
+        return `<option value="${escapeHtml(k)}">${escapeHtml(info?.name || k)}</option>`;
+      }).join('');
+
+    // Peupler lieux publics
+    const places = DB.getPublicPlaces();
+    placeSel.innerHTML = '<option value="">— Aucun lieu précis —</option>' +
+      places.map(p =>
+        `<option value="${escapeHtml(p.id)}" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}${p.description ? ' — ' + p.description : ''}</option>`
+      ).join('');
+
+    if (benefIn) benefIn.value = '';
+    overlay.dataset.grp = grpId || '';
+    overlay.classList.remove('hidden');
+    setTimeout(() => benefIn?.focus(), 80);
+  };
+
+  document.getElementById('prefRequestConfirm')?.addEventListener('click', async () => {
+    const overlay   = document.getElementById('preferredRequestOverlay');
+    const benefName = (document.getElementById('prefBenefName')?.value || '').trim();
+    const agentKey  = document.getElementById('prefAgentSelect')?.value;
+    const placeOpt  = document.getElementById('prefPublicPlaceSelect');
+    const placeId   = placeOpt?.value || null;
+    const placeName = placeId ? (placeOpt?.selectedOptions[0]?.dataset?.name || '') : null;
+
+    if (!benefName) { showToast('Veuillez saisir le nom du bénéficiaire.'); return; }
+    if (!agentKey)  { showToast('Veuillez sélectionner un agent.'); return; }
+
+    // Vérifier si cible est chef_service / direction → confirmer d'abord (Modal D)
+    const targetRole = DB.getAgentPermRole(agentKey);
+    if (targetRole === '__chef_service__' || targetRole === '__direction__') {
+      _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName);
+      overlay.classList.add('hidden');
+      return;
+    }
+    overlay.classList.add('hidden');
+    await _handlePreferredRequest(benefName, agentKey, placeId, placeName);
+  });
+
+  document.getElementById('prefRequestCancel')?.addEventListener('click', () => {
+    document.getElementById('preferredRequestOverlay')?.classList.add('hidden');
+  });
+
+  // Fermer en cliquant sur le fond
+  document.getElementById('preferredRequestOverlay')?.addEventListener('click', e => {
+    if (e.target.id === 'preferredRequestOverlay')
+      document.getElementById('preferredRequestOverlay').classList.add('hidden');
+  });
+
+  // ── Modal D : Confirmation chef/direction ────────────────────────
+  let _prefDirPending = null;
+  function _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName) {
+    const overlay = document.getElementById('preferredDirectionConfirmOverlay');
+    if (!overlay) return;
+    const agentName = DB.getAgentsWithKeys().find(a => a.key === agentKey)?.name || agentKey;
+    const roleMap   = { '__chef_service__': 'Chef de service', '__direction__': 'Direction' };
+    document.getElementById('prefDirAgentLabel').textContent = agentName;
+    document.getElementById('prefDirRoleLabel').textContent  = roleMap[DB.getAgentPermRole(agentKey)] || '';
+    _prefDirPending = { benefName, agentKey, placeId, placeName };
+    overlay.classList.remove('hidden');
+  }
+
+  document.getElementById('prefDirYes')?.addEventListener('click', async () => {
+    document.getElementById('preferredDirectionConfirmOverlay')?.classList.add('hidden');
+    if (_prefDirPending) {
+      const { benefName, agentKey, placeId, placeName } = _prefDirPending;
+      _prefDirPending = null;
+      await _handlePreferredRequest(benefName, agentKey, placeId, placeName);
+    }
+  });
+  document.getElementById('prefDirNo')?.addEventListener('click', () => {
+    document.getElementById('preferredDirectionConfirmOverlay')?.classList.add('hidden');
+    _prefDirPending = null;
+  });
+
+  // ── Logique de routage principal ─────────────────────────────────
+  async function _handlePreferredRequest(benefName, targetAgentKey, placeId, placeName) {
+    const myKey     = sessionStorage.getItem('cpas_current_agent_key');
+    const agentInfo = DB.getAgentsWithKeys().find(a => a.key === targetAgentKey);
+    const agentName = agentInfo?.name || targetAgentKey;
+
+    // Vérifier si l'agent est connecté aujourd'hui
+    const connectedToday = DB.getConnectedTodayAgents();
+    const isConnected    = connectedToday.includes(targetAgentKey);
+
+    if (!isConnected) {
+      // Absent / jamais connecté → notif accueil uniquement
+      await DB.sendNotif(
+        `${agentName} n'est pas au bureau aujourd'hui — le bénéficiaire n'a pas pu être orienté.`,
+        'info', myKey
+      );
+      showToast(`${agentName} n'est pas au bureau.`);
+      return;
+    }
+
+    // Trouver le bureau ouvert (non-backoffice) de l'agent
+    const localId = DB.getBureauByAgent(targetAgentKey);
+
+    // Vérifier si un preferredPending existe déjà pour ce bureau
+    if (localId !== null) {
+      const existingPending = DB.getPreferredPending(localId);
+      if (existingPending) {
+        showToast(`${agentName} a déjà un bénéficiaire en attente — impossible d'envoyer une 2ème demande.`);
+        return;
+      }
+    }
+
+    // Vérifier le statut DND
+    const agentStatus = DB.getAgentStatus(targetAgentKey);
+    const isDnd        = agentStatus?.status === 'dnd';
+
+    // Calculer displayName (prénom ou ticket# selon config)
+    const enableNamed = DB.getFeature('enableNamedTickets');
+    const displayName = enableNamed ? (benefName.split(' ')[0] || benefName) : 'Bénéficiaire';
+
+    // Déterminer le public name de l'agent cible
+    const now2  = new Date();
+    const dayS2 = new Date(now2); dayS2.setHours(0,0,0,0);
+    const dayE2 = new Date(now2); dayE2.setHours(23,59,59,999);
+    const occ   = DB.getInRange(dayS2, dayE2).find(o =>
+      Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
+    );
+    const agentPublicName = DB.getAgentPublicName(targetAgentKey);
+
+    // Créer la demande en Firebase
+    const { requestId } = await DB.createPreferredRequest(
+      benefName, targetAgentKey, myKey, placeId, placeName, localId
+    );
+
+    if (localId !== null) {
+      // Bureau ouvert → notif agent + notif accueil "diriger vers bureau"
+      const localLabel = DB.getLocalLabel(localId);
+      const dndNote    = isDnd ? ' (🔕 Ne pas déranger — notifié quand même)' : '';
+
+      await DB.sendNotif(
+        `${benefName} vous demande spécifiquement.${placeId ? ` En attente : ${placeName}.` : ''}`,
+        'preferred_request', targetAgentKey,
+        { requestId, benefName, publicPlaceName: placeName || null, accueilAgentKey: myKey, sensitiveData: true }
+      );
+
+      await DB.respondToPreferredRequest(requestId, 'accepted', null, null, localId, agentPublicName, displayName);
+
+      await DB.sendNotif(
+        `${agentName} est au ${localLabel}${dndNote} — dirigez le bénéficiaire directement vers ce bureau.`,
+        'info', myKey,
+        { requestId }
+      );
+    } else {
+      // Pas de bureau ouvert → notif agent avec boutons réponse + notif accueil "en attente"
+      const dndNote = isDnd ? ' (🔕 Ne pas déranger)' : '';
+      await DB.sendNotif(
+        `${benefName} vous demande spécifiquement.${placeId ? ` En attente : ${placeName}.` : ''}${dndNote}`,
+        'preferred_request', targetAgentKey,
+        { requestId, benefName, publicPlaceName: placeName || null, accueilAgentKey: myKey, sensitiveData: true }
+      );
+
+      await DB.sendNotif(
+        `En attente de réponse de ${agentName}${dndNote}…`,
+        'info', myKey,
+        { requestId, awaitingReply: true, targetAgentName: agentName }
+      );
+    }
+    showToast(`Demande envoyée à ${agentName}.`);
+  }
+
+  // ── Modal B : Agent — répondre à une demande ─────────────────────
+  let _prefResponseContext = null;
+
+  window._openPreferredResponseModal = (notifId, reqId, mode) => {
+    const overlay = document.getElementById('preferredResponseOverlay');
+    if (!overlay) return;
+    _prefResponseContext = { notifId, reqId, mode };
+
+    const etaWrap = document.getElementById('prefResponseEtaWrap');
+    const ctx     = document.getElementById('prefResponseContext');
+    if (etaWrap) etaWrap.classList.add('hidden');
+    if (ctx) ctx.textContent = 'Chargement…';
+    document.getElementById('prefResponseComment').value = '';
+
+    overlay.classList.remove('hidden');
+
+    // Charger les détails de la demande
+    DB.getPreferredRequest(reqId).then(req => {
+      if (!req) { if (ctx) ctx.textContent = 'Demande introuvable.'; return; }
+      const placeTxt = req.publicPlaceName ? ` — Attend : ${req.publicPlaceName}` : '';
+      if (ctx) ctx.textContent = `${req.benefName || '[données effacées]'} demande à vous voir${placeTxt}.`;
+
+      // Gestion countdown données sensibles
+      if (req.nameDeleteAt) {
+        const cdEl = document.getElementById('prefDeleteCountdownNote');
+        if (cdEl) {
+          const rem = Math.max(0, Math.round((req.nameDeleteAt - Date.now()) / 60000));
+          cdEl.textContent = rem > 0 ? `Données effacées dans ${rem} min` : 'Données déjà effacées';
+          cdEl.style.display = '';
+        }
+      }
+    });
+
+    if (mode === 'eta') {
+      if (etaWrap) etaWrap.classList.remove('hidden');
+      document.getElementById('prefResponseEtaMin')?.focus();
+    }
+  };
+
+  document.getElementById('preferredResponseOverlay')?.addEventListener('click', e => {
+    if (e.target.id === 'preferredResponseOverlay')
+      document.getElementById('preferredResponseOverlay').classList.add('hidden');
+  });
+
+  const _sendPreferredReply = async (response, etaMin) => {
+    if (!_prefResponseContext) return;
+    const { reqId } = _prefResponseContext;
+    const myKey     = sessionStorage.getItem('cpas_current_agent_key');
+    const comment   = document.getElementById('prefResponseComment')?.value.trim() || null;
+    document.getElementById('preferredResponseOverlay')?.classList.add('hidden');
+
+    const req = await DB.getPreferredRequest(reqId);
+    if (!req) return;
+
+    const localId = DB.getBureauByAgent(myKey);
+    const myPublicName = DB.getAgentPublicName(myKey);
+    const enableNamed  = DB.getFeature('enableNamedTickets');
+    const displayName  = enableNamed && req.benefName
+      ? (req.benefName.split(' ')[0] || req.benefName)
+      : 'Bénéficiaire';
+
+    await DB.respondToPreferredRequest(reqId, response, etaMin, comment, localId, myPublicName, displayName);
+
+    const myName   = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'L\'agent';
+    const localLbl = localId ? ` (${DB.getLocalLabel(localId)})` : '';
+    let replyMsg   = '';
+    if (response === 'accepted') {
+      replyMsg = `✅ ${myName}${localLbl} arrive tout de suite.`;
+    } else if (response === 'eta') {
+      replyMsg = `🕐 ${myName}${localLbl} arrive dans environ ${etaMin} min.`;
+    } else {
+      replyMsg = `❌ ${myName} est indisponible.`;
+    }
+    if (comment) replyMsg += ` — ${comment}`;
+    if (localId && (response === 'accepted' || response === 'eta')) {
+      replyMsg += ` Diriger vers ${DB.getLocalLabel(localId)}.`;
+    }
+
+    await DB.sendNotif(replyMsg, 'preferred_reply_accueil', req.accueilAgentKey, { requestId: reqId });
+    _prefResponseContext = null;
+  };
+
+  document.getElementById('prefResponseNow')?.addEventListener('click', () => _sendPreferredReply('accepted', null));
+  document.getElementById('prefResponseDecline')?.addEventListener('click', () => _sendPreferredReply('declined', null));
+  document.getElementById('prefResponseEta')?.addEventListener('click', () => {
+    const etaWrap = document.getElementById('prefResponseEtaWrap');
+    if (etaWrap?.classList.contains('hidden')) {
+      etaWrap.classList.remove('hidden');
+      document.getElementById('prefResponseEtaMin')?.focus();
+    } else {
+      const min = parseInt(document.getElementById('prefResponseEtaMin')?.value) || 5;
+      _sendPreferredReply('eta', min);
+    }
+  });
+
+  // ── Modal C : Bypass queue ────────────────────────────────────────
+  let _prefBypassCallback = null;
+
+  window._openPreferredBypassModal = (reqId, localId, displayName, onYes) => {
+    const overlay = document.getElementById('preferredBypassOverlay');
+    if (!overlay) return;
+    const nameEl = document.getElementById('prefBypassName');
+    if (nameEl) nameEl.textContent = displayName;
+    _prefBypassCallback = onYes;
+    overlay.classList.remove('hidden');
+  };
+
+  document.getElementById('prefBypassYes')?.addEventListener('click', async () => {
+    document.getElementById('preferredBypassOverlay')?.classList.add('hidden');
+    if (_prefBypassCallback) { await _prefBypassCallback(); _prefBypassCallback = null; }
+  });
+  document.getElementById('prefBypassNo')?.addEventListener('click', () => {
+    document.getElementById('preferredBypassOverlay')?.classList.add('hidden');
+    showToast('La personne attend son tour.');
+    _prefBypassCallback = null;
+  });
+
+  // ── Hook expiration données sensibles ────────────────────────────
+  window._onPreferredDataExpired = async (reqId) => {
+    if (!reqId) return;
+    await DB.erasePreferredRequestSensitiveData(reqId);
+    const cdEl = document.getElementById('prefDeleteCountdownNote');
+    if (cdEl) cdEl.textContent = '[Données effacées]';
+  };
+
+  // ── Hook fermeture bureau avec preferredPending ──────────────────
+  window._notifyPreferredCancelledOnClose = async (pending, localLabel) => {
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'L\'agent';
+    for (const accKey of DB.getAccueilAgentKeys()) {
+      await DB.sendNotif(
+        `${myName} a fermé son bureau (${localLabel}) — le bénéficiaire ${pending.displayName || ''} n'a pas encore été reçu.`,
+        'warn', accKey, { requestId: pending.requestId }
+      );
+    }
+  };
+
+  // Re-render vue Direct quand preferredPending change
+  DB.onConfigChange(() => {
+    const lieux  = DB.getLieux();
+    const locals = Object.values(lieux).flatMap(l => l.localIds || []).map(Number);
+    locals.forEach(localId => DB.onPreferredPending(localId, () => LIVE.render()));
+  });
+
   // ─── Push PWA (Couche D.2) ─────────────────────────────────────
   // Actif seulement si : service worker supporté + VAPID_KEY configuré + feature enablePushNotif
   (function initPushPWA() {

@@ -66,10 +66,16 @@ const DB = {
         hiddenLocals:      d.hiddenLocals      || {},
         accueilDeskLocalId: d.accueilDeskLocalId || null,
         mascotId:          d.mascotId           || 'poulpe',
-        orgLat:            d.meta?.lat          || null,
-        orgLon:            d.meta?.lon          || null,
-        endOfDayHour:      d.meta?.endOfDayHour ?? 17,
-        tempAdminGrant:    d.tempAdminGrant     || null,
+        orgLat:               d.meta?.lat                  || null,
+        orgLon:               d.meta?.lon                  || null,
+        endOfDayHour:         d.meta?.endOfDayHour         ?? 17,
+        sensitivDataDeleteMin: d.meta?.sensitivDataDeleteMin ?? 30,
+        tempAdminGrant:       d.tempAdminGrant             || null,
+        publicPlaces:         d.publicPlaces
+          ? Object.entries(d.publicPlaces)
+              .map(([id, p]) => ({ id, name: p.name || '', description: p.description || '', order: p.order ?? 999 }))
+              .sort((a, b) => a.order - b.order)
+          : [],
       };
 
       // Charger les lieux triés par order
@@ -622,8 +628,9 @@ const DB = {
     return this._queueData[`names_${groupId}`]?.[String(number)] || null;
   },
   // Retourne le label à afficher : nom du bénéficiaire si dispo, sinon numéro formaté
-  formatTicketDisplay(groupId, number) {
-    const name = this.getTicketName(groupId, number);
+  // nameOverride permet de passer le nom déjà lu (quand il vient d'être supprimé de Firebase)
+  formatTicketDisplay(groupId, number, nameOverride) {
+    const name = nameOverride !== undefined ? nameOverride : this.getTicketName(groupId, number);
     if (name) return name;
     return this.formatTicket(groupId, number);
   },
@@ -635,9 +642,12 @@ const DB = {
   async callNextTicket(groupId) {
     const today  = isoDate(new Date());
     const called = this.getTicketCalled(groupId) + 1;
+    // Lire le nom AVANT suppression pour pouvoir l'afficher
+    const name = this.getTicketName(groupId, called);
     await this._ref(`queues/${today}/tcall_${groupId}`).set(called);
-    // Retourne le nom si disponible, sinon le numéro formaté
-    return this.formatTicketDisplay(groupId, called);
+    // Supprimer le nom du bénéficiaire dès que le ticket est appelé (données sensibles)
+    if (name) await this._ref(`queues/${today}/names_${groupId}/${called}`).remove();
+    return this.formatTicketDisplay(groupId, called, name);
   },
 
   async dismissTicket(groupId, ticketNumber) {
@@ -645,6 +655,10 @@ const DB = {
     const today = isoDate(new Date());
     const current = this.getTicketCalled(groupId);
     if (ticketNumber <= current) return; // déjà traité
+    // Supprimer les noms de tous les tickets retirés (données sensibles)
+    for (let n = current + 1; n <= ticketNumber; n++) {
+      await this._ref(`queues/${today}/names_${groupId}/${n}`).remove();
+    }
     await this._ref(`queues/${today}/tcall_${groupId}`).set(ticketNumber);
     // Si le ticket était dans l'overflow, décrémenter l'overflow
     const overflow = this.getGroupOverflowQueue(groupId);
@@ -688,6 +702,139 @@ const DB = {
 
   async deleteQueueGroup(id) {
     await this._ref(`appConfig/queueGroups/${id}`).remove();
+  },
+
+  // ── Lieux publics ────────────────────────────────────────────────
+  getPublicPlaces() { return this._config.publicPlaces || []; },
+
+  async addPublicPlace(name, description) {
+    const maxOrder = (this._config.publicPlaces || []).reduce((m, p) => Math.max(m, p.order ?? 0), -1);
+    await this._ref('appConfig/publicPlaces').push({ name, description: description || null, order: maxOrder + 1 });
+  },
+
+  async updatePublicPlace(id, name, description) {
+    await this._ref(`appConfig/publicPlaces/${id}`).update({ name, description: description || null });
+  },
+
+  async deletePublicPlace(id) {
+    await this._ref(`appConfig/publicPlaces/${id}`).remove();
+  },
+
+  // ── Paramètre durée conservation données sensibles ───────────────
+  getSensitivDataDeleteMin() { return this._config.sensitivDataDeleteMin ?? 30; },
+  async setSensitivDataDeleteMin(min) {
+    await this._ref('appConfig/meta/sensitivDataDeleteMin').set(parseInt(min) || 30);
+  },
+
+  // ── Demandes "Ne veut voir qu'un agent" ─────────────────────────
+  // Retourne le localId ouvert par un agentKey donné (null si aucun)
+  getBureauByAgent(agentKey) {
+    const found = Object.entries(this._bureauState)
+      .find(([, state]) => state?.open && state?.agentKey === agentKey);
+    return found ? parseInt(found[0]) : null;
+  },
+
+  _preferredPending: {},
+  _preferredPendingCbs: {},
+
+  initPreferredPending(localIds) {
+    localIds.forEach(lid => {
+      this._ref(`appState/preferredPending/${lid}`).on('value', snap => {
+        const val = snap.val();
+        if (val) this._preferredPending[lid] = val;
+        else delete this._preferredPending[lid];
+        (this._preferredPendingCbs[lid] || []).forEach(fn => fn(val));
+      });
+    });
+  },
+
+  onPreferredPending(localId, fn) {
+    if (!this._preferredPendingCbs[localId]) this._preferredPendingCbs[localId] = [];
+    this._preferredPendingCbs[localId].push(fn);
+  },
+
+  getPreferredPending(localId) {
+    return this._preferredPending[localId] || null;
+  },
+
+  async createPreferredRequest(benefName, targetAgentKey, accueilAgentKey, publicPlaceId, publicPlaceName, localId) {
+    const ref = await this._ref('appState/preferredRequests').push({
+      benefName,
+      targetAgentKey,
+      accueilAgentKey,
+      publicPlaceId:   publicPlaceId   || null,
+      publicPlaceName: publicPlaceName || null,
+      localId:         localId         || null,
+      status:          'pending',
+      etaMin:          null,
+      agentComment:    null,
+      requestedAt:     Date.now(),
+      respondedAt:     null,
+      nameDeleteAt:    null,
+    });
+    return ref.key;
+  },
+
+  async respondToPreferredRequest(requestId, response, etaMin, comment, localId, agentPublicName, displayName) {
+    const updates = {
+      status:       response,
+      etaMin:       etaMin   || null,
+      agentComment: comment  || null,
+      respondedAt:  Date.now(),
+    };
+    await this._ref(`appState/preferredRequests/${requestId}`).update(updates);
+    // Créer preferredPending sur l'écran public si l'agent est dans un local
+    if ((response === 'accepted' || response === 'eta') && localId) {
+      await this._ref(`appState/preferredPending/${localId}`).set({
+        displayName:     displayName    || '—',
+        agentPublicName: agentPublicName || null,
+        requestId,
+        ts: Date.now(),
+      });
+    }
+  },
+
+  async closePreferredRequest(requestId, localId) {
+    await this._ref(`appState/preferredRequests/${requestId}`).update({
+      status:    'done',
+      benefName: null,    // suppression immédiate données sensibles
+    });
+    if (localId) await this._ref(`appState/preferredPending/${localId}`).remove();
+  },
+
+  async cancelPreferredRequest(requestId, localId) {
+    await this._ref(`appState/preferredRequests/${requestId}`).update({
+      status:    'cancelled',
+      benefName: null,
+    });
+    if (localId) await this._ref(`appState/preferredPending/${localId}`).remove();
+  },
+
+  async markPreferredRequestNameRead(requestId, deleteMin) {
+    const deleteAt = Date.now() + (deleteMin || 30) * 60000;
+    await this._ref(`appState/preferredRequests/${requestId}/nameDeleteAt`).set(deleteAt);
+  },
+
+  async erasePreferredRequestSensitiveData(requestId) {
+    await this._ref(`appState/preferredRequests/${requestId}/benefName`).remove();
+  },
+
+  // Lecture d'une demande preferred (one-time)
+  async getPreferredRequest(requestId) {
+    const snap = await this._ref(`appState/preferredRequests/${requestId}`).once('value');
+    return snap.val();
+  },
+
+  // Nettoyage au démarrage : effacer les benefName expirés
+  async cleanExpiredPreferredData() {
+    const snap = await this._ref('appState/preferredRequests').once('value');
+    const all = snap.val() || {};
+    const now = Date.now();
+    for (const [id, req] of Object.entries(all)) {
+      if (req.nameDeleteAt && req.nameDeleteAt <= now && req.benefName) {
+        await this._ref(`appState/preferredRequests/${id}/benefName`).remove();
+      }
+    }
   },
 
   // ── Notifications ────────────────────────────────────────────────

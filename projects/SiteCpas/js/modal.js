@@ -484,6 +484,69 @@ const MODAL = {
       }));
     }
 
+    // ── Données sensibles — durée de conservation ─────────────────
+    const sensitivInput = g('stSensitivDeleteMin');
+    const sensitivSave  = g('stSensitivDeleteSave');
+    if (sensitivInput && isAdmin) {
+      sensitivInput.value = DB.getSensitivDataDeleteMin();
+      sensitivSave?.addEventListener('click', () => this._requireAdmin(async () => {
+        const min = parseInt(sensitivInput.value);
+        if (isNaN(min) || min < 5) { showToast('Valeur invalide (min 5 minutes)'); return; }
+        await DB.setSensitivDataDeleteMin(min);
+        showToast(`Effacement données sensibles configuré à ${min} min ✓`);
+      }));
+    }
+
+    // ── Lieux publics ─────────────────────────────────────────────
+    const renderPublicPlaces = () => {
+      const list = g('stPublicPlacesList');
+      if (!list) return;
+      const places = DB.getPublicPlaces();
+      list.innerHTML = places.length ? places.map(p => `
+        <div class="st-screen-row" style="gap:.5rem;flex-wrap:wrap" data-place-id="${p.id}">
+          <input type="text" class="st-local-input st-pp-name" value="${escapeHtml(p.name)}" placeholder="Nom" style="flex:1;min-width:140px">
+          <input type="text" class="st-local-input st-pp-desc" value="${escapeHtml(p.description)}" placeholder="Description" style="flex:1;min-width:140px">
+          <button class="st-local-save st-pp-save" title="Enregistrer">✓</button>
+          <button class="st-screen-del st-pp-del" title="Supprimer">✕</button>
+        </div>`).join('')
+        : '<p class="st-empty" style="font-size:.83rem;color:#94a3b8">Aucun lieu public. Ajoutez-en un ci-dessous.</p>';
+
+      list.querySelectorAll('.st-pp-save').forEach(btn => {
+        btn.addEventListener('click', () => this._requireAdmin(async () => {
+          const row  = btn.closest('[data-place-id]');
+          const id   = row.dataset.placeId;
+          const name = row.querySelector('.st-pp-name')?.value.trim();
+          const desc = row.querySelector('.st-pp-desc')?.value.trim();
+          if (!name) return;
+          await DB.updatePublicPlace(id, name, desc);
+          showToast('Lieu public mis à jour ✓');
+        }));
+      });
+      list.querySelectorAll('.st-pp-del').forEach(btn => {
+        btn.addEventListener('click', () => this._requireAdmin(async () => {
+          const id = btn.closest('[data-place-id]').dataset.placeId;
+          if (!confirm('Supprimer ce lieu public ?')) return;
+          await DB.deletePublicPlace(id);
+          showToast('Lieu supprimé');
+        }));
+      });
+    };
+    renderPublicPlaces();
+
+    const ppAddBtn = g('stPublicPlaceAdd');
+    ppAddBtn?.addEventListener('click', () => this._requireAdmin(async () => {
+      const name = g('stPublicPlaceName')?.value.trim();
+      const desc = g('stPublicPlaceDesc')?.value.trim();
+      if (!name) { showToast('Le nom est requis'); return; }
+      await DB.addPublicPlace(name, desc);
+      if (g('stPublicPlaceName')) g('stPublicPlaceName').value = '';
+      if (g('stPublicPlaceDesc')) g('stPublicPlaceDesc').value = '';
+      showToast('Lieu public ajouté ✓');
+    }));
+
+    // Rafraîchir la liste quand la config change (DB listener)
+    DB.onConfigChange(() => { if (g('stPublicPlacesList')) renderPublicPlaces(); });
+
     // ── Mascotte ──────────────────────────────────────────────────
     const mascotGrid = g('stMascotGrid');
     if (mascotGrid) {

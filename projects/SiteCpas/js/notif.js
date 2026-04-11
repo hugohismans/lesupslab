@@ -131,7 +131,12 @@ const NOTIF = {
         osc.start(ctx.currentTime + t0);
         osc.stop(ctx.currentTime + t0 + dur + 0.05);
       };
-      if (type === 'alert' || type === 'urgent') {
+      if (type === 'preferred_request') {
+        // Sonnette douce 3 tons — quelqu'un demande cet agent spécifiquement
+        tone(523, 0,    0.18, 0.3, 'sine');
+        tone(659, 0.22, 0.18, 0.3, 'sine');
+        tone(784, 0.44, 0.28, 0.3, 'sine');
+      } else if (type === 'alert' || type === 'urgent') {
         // 3 bips aigus et courts — urgence
         tone(1046, 0,    0.12, 0.45);
         tone(1046, 0.18, 0.12, 0.45);
@@ -261,6 +266,11 @@ const NOTIF = {
     Object.entries(this._notifs).forEach(([id, n]) => {
       if (!n._local && !n.readBy?.[this._agentKey]) {
         DB.markNotifRead(id);
+        // Pour les preferred_request : démarrer le timer de suppression données sensibles
+        if (n.type === 'preferred_request' && n.requestId && !n.nameDeleteAt) {
+          const deleteMin = DB.getSensitivDataDeleteMin?.() ?? 30;
+          DB.markPreferredRequestNameRead(n.requestId, deleteMin);
+        }
       }
       if (n._local) n._read = true;
     });
@@ -271,6 +281,19 @@ const NOTIF = {
   _closePanel() {
     this._panelOpen = false;
     this._panel?.classList.add('hidden');
+  },
+
+  // Countdown formatté pour données sensibles
+  _formatCountdown(deleteAt) {
+    const remaining = Math.max(0, deleteAt - Date.now());
+    const totalMin  = Math.ceil(remaining / 60000);
+    if (totalMin <= 0) return 'effacé';
+    if (totalMin >= 60) {
+      const h = Math.floor(totalMin / 60);
+      const m = totalMin % 60;
+      return `${h}h${m > 0 ? String(m).padStart(2,'0') : ''}`;
+    }
+    return `${totalMin} min`;
   },
 
   _render() {
@@ -297,16 +320,48 @@ const NOTIF = {
       <div class="notif-list">
         ${entries.map(([id, n]) => {
           const isRead = n._local ? n._read : !!(n.readBy?.[agentKey]);
-          const icon   = n.type === 'tech_request' ? '🔧' : (n.type === 'tech_reply' ? '↩️' : (n.urgent ? '🚨' : (icons[n.type] || 'ℹ️')));
+          const isPref = n.type === 'preferred_request';
+          const isPrefReply = n.type === 'preferred_reply_accueil';
+          const icon   = isPref ? '👤' : (isPrefReply ? '↩️' : (n.type === 'tech_request' ? '🔧' : (n.type === 'tech_reply' ? '↩️' : (n.urgent ? '🚨' : (icons[n.type] || 'ℹ️')))));
           const d      = new Date(n.createdAt);
           const time   = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const canReply = n.type === 'tech_request' && n.replyable && !n.replied;
+
+          // Contenu spécifique preferred_request (agent ciblé)
+          let prefHtml = '';
+          if (isPref) {
+            const benefDisplay = n.benefName || '<em style="color:#94a3b8">[Données effacées]</em>';
+            const hasDeleteAt  = !!n.nameDeleteAt;
+            const countdown    = hasDeleteAt ? this._formatCountdown(n.nameDeleteAt) : null;
+            const expired      = hasDeleteAt && n.nameDeleteAt <= Date.now();
+            prefHtml = `
+              <div class="notif-sensitive-badge">⚠ Données sensibles${countdown && !expired ? ` — effacées dans <strong class="notif-countdown" data-delete-at="${n.nameDeleteAt}">${countdown}</strong>` : (expired ? ' — <strong>effacées</strong>' : '')}</div>
+              <div class="notif-pref-body">
+                <div class="notif-pref-row"><strong>Bénéficiaire :</strong> ${n.benefName ? escapeHtml(n.benefName) : '<em style="color:#94a3b8">[Données effacées]</em>'}</div>
+                ${n.publicPlaceName ? `<div class="notif-pref-row"><strong>En attente :</strong> ${escapeHtml(n.publicPlaceName)}</div>` : ''}
+              </div>
+              ${n.status !== 'done' && n.status !== 'cancelled' && !n.responded ? `
+              <div class="notif-pref-actions" data-request-id="${n.requestId || id}">
+                <button class="notif-pref-btn notif-pref-now" data-id="${id}" data-req="${n.requestId || id}">✅ J'arrive tout de suite</button>
+                <button class="notif-pref-btn notif-pref-eta" data-id="${id}" data-req="${n.requestId || id}">⏱ Dans X min…</button>
+                <button class="notif-pref-btn notif-pref-decline" data-id="${id}" data-req="${n.requestId || id}">❌ Pas disponible</button>
+              </div>` : (n.responded ? `<div style="font-size:.78rem;color:#4ade80;margin-top:.35rem">✓ Réponse envoyée</div>` : '')}`;
+          }
+
+          // Contenu spécifique preferred_reply_accueil
+          let prefReplyHtml = '';
+          if (isPrefReply && n.requestId && n.status !== 'done' && n.status !== 'cancelled') {
+            prefReplyHtml = `<button class="notif-pref-cancel-btn" data-req="${n.requestId}" data-lid="${n.localId || ''}">🗑 Annuler la demande</button>`;
+          }
+
           return `
-            <div class="notif-item notif-${n.type}${n.urgent ? ' notif-urgent' : ''}${isRead ? ' notif-read' : ''}">
+            <div class="notif-item notif-${n.type}${n.urgent ? ' notif-urgent' : ''}${isRead ? ' notif-read' : ''}${isPref ? ' notif-sensitive' : ''}" data-notif-id="${id}">
               <span class="notif-icon">${icon}</span>
               <div class="notif-body">
                 <div class="notif-msg">${escapeHtml(n.message)}</div>
                 <div class="notif-time">${time}${n.type === 'tech_request' && n.replied ? ' · <em>répondu</em>' : ''}</div>
+                ${prefHtml}
+                ${prefReplyHtml}
                 ${canReply ? `<button class="notif-reply-btn" data-id="${id}" data-from="${n.fromAgentKey || ''}" data-desc="${encodeURIComponent(n.description || n.message)}">↩ Répondre</button>` : ''}
               </div>
               ${!n._local ? `<button class="notif-del" data-id="${id}">✕</button>` : ''}
@@ -329,6 +384,43 @@ const NOTIF = {
       });
     });
 
+    // Boutons réponse preferred_request
+    this._panel.querySelectorAll('.notif-pref-now').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._closePanel();
+        const notifId = btn.dataset.id;
+        const reqId   = btn.dataset.req;
+        window._openPreferredResponseModal?.(notifId, reqId, 'now');
+      });
+    });
+    this._panel.querySelectorAll('.notif-pref-eta').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._closePanel();
+        window._openPreferredResponseModal?.(btn.dataset.id, btn.dataset.req, 'eta');
+      });
+    });
+    this._panel.querySelectorAll('.notif-pref-decline').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._closePanel();
+        window._openPreferredResponseModal?.(btn.dataset.id, btn.dataset.req, 'decline');
+      });
+    });
+
+    // Bouton annuler demande (côté accueil)
+    this._panel.querySelectorAll('.notif-pref-cancel-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Annuler cette demande bénéficiaire ?')) return;
+        await DB.cancelPreferredRequest(btn.dataset.req, btn.dataset.lid ? parseInt(btn.dataset.lid) : null);
+        // Marquer la notif de retour comme "annulée" visuellement
+        const item = btn.closest('.notif-item');
+        if (item) item.querySelector('.notif-pref-cancel-btn')?.remove();
+      });
+    });
+
     document.getElementById('notifClearAll')?.addEventListener('click', (e) => {
       e.stopPropagation();
       Object.entries(this._notifs).forEach(([id, n]) => {
@@ -340,6 +432,31 @@ const NOTIF = {
       });
       this._onUpdate();
     });
+
+    // Démarrer les countdowns temps réel
+    this._startCountdowns();
+  },
+
+  _countdownInterval: null,
+  _startCountdowns() {
+    clearInterval(this._countdownInterval);
+    const hasCountdowns = this._panel?.querySelectorAll('.notif-countdown[data-delete-at]').length > 0;
+    if (!hasCountdowns) return;
+    this._countdownInterval = setInterval(() => {
+      const els = this._panel?.querySelectorAll('.notif-countdown[data-delete-at]');
+      if (!els?.length) { clearInterval(this._countdownInterval); return; }
+      els.forEach(el => {
+        const deleteAt = parseInt(el.dataset.deleteAt);
+        if (!deleteAt) return;
+        if (Date.now() >= deleteAt) {
+          el.textContent = 'effacé';
+          // Déclencher suppression réelle (via app.js handler)
+          window._onPreferredDataExpired?.(deleteAt);
+        } else {
+          el.textContent = this._formatCountdown(deleteAt);
+        }
+      });
+    }, 30000);
   },
 
   // ── Réponse à une requête (tech_request) ────────────────────────

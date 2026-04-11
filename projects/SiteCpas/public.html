@@ -268,6 +268,10 @@ function render() {
   }).join('');
 
   const bureauCards = _locals.map(l => {
+    const pref = _preferredPending[String(l)];
+    const prefBanner = pref
+      ? `<div class="pub-pref-banner">👤 <strong>${escapeHtml(pref.displayName || '?')}</strong> sera reçu(e) par ${escapeHtml(pref.agentPublicName || '?')}</div>`
+      : '';
     const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
     const res  = occs.find(r => parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now);
     const next = !perm && !res
@@ -303,6 +307,7 @@ function render() {
         ${timerTxt ? `<div class="pub-card-pause-timer" data-started="${pause.startedAt}" data-dur="${pause.estimatedMin || 0}">${timerTxt}</div>` : ''}
         ${pause.comment ? `<div class="pub-card-pause-comment">${escapeHtml(pause.comment)}</div>` : ''}
         ${descHtml}
+        ${prefBanner}
       </div>`;
     }
 
@@ -315,6 +320,7 @@ function render() {
         <div class="pub-card-svc">${svc}</div>
         <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
         ${descHtml}
+        ${prefBanner}
       </div>`;
     }
 
@@ -335,6 +341,7 @@ function render() {
         <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
         ${waiting > 0 ? `<div class="pub-card-until">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>` : ''}
         ${descHtml}
+        ${prefBanner}
       </div>`;
     }
 
@@ -345,6 +352,7 @@ function render() {
       <div class="pub-card-status">🟢 Disponible</div>
       ${declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : ''}
       ${descHtml}
+      ${prefBanner}
     </div>`;
   }).join('');
 
@@ -463,6 +471,7 @@ window.addEventListener('load', () => {
 let _prevQueue = {};
 let _queueReady = false;
 let _callDismissTimer = null;
+let _preferredPending = {}; // { localId: { displayName, agentPublicName, requestId } }
 
 function showNextCall(localId, agentName, groupName, ticketNum) {
   const bureauLabel = getPublicLocalLabel(localId);
@@ -525,6 +534,12 @@ db.ref(`orgs/${ORG_ID}/appState/lastCall`).on('value', snap => {
   if (_locals.includes(Number(d.localId))) {
     showNextCall(Number(d.localId), d.agentName || null, d.groupName || null, d.ticketNum || null);
   }
+});
+
+// Écoute Firebase — bénéficiaires préférentiels en attente par bureau
+db.ref(`orgs/${ORG_ID}/appState/preferredPending`).on('value', snap => {
+  _preferredPending = snap.val() || {};
+  render();
 });
 
 // Horloge chaque seconde
