@@ -945,17 +945,8 @@ const HOME = {
       const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
       const isDone    = DB.getAgentStatus(agentKey)?.status === 'done';
       if (isDone) {
-        // Retour en présent → vérifier si cet admin avait accordé un grant temporaire
-        const grant = DB.getTempAdminGrant();
-        if (grant && grant.grantedBy === agentKey) {
-          await DB.revokeTempAdminGrant();
-          // Notifier le temp-admin que ses droits sont révoqués
-          const adminName = agentName ? agentName.split(' ')[0] : 'L\'admin';
-          await DB.sendNotif(
-            `⚙️ Tes droits administrateur temporaires ont été révoqués — ${adminName} est de retour.`,
-            'info', grant.grantedTo
-          );
-        }
+        // Retour en présent → révoquer le grant temporaire si applicable
+        await _revokeMyTempAdmin(agentKey, agentName);
         await DB.setAgentStatus(agentKey, null);
         const prenom = agentName ? agentName.split(' ')[0] : null;
         const n = prenom ? ` ${prenom}` : '';
@@ -1478,6 +1469,17 @@ async function _promptTempAdmin(adminKey, adminName) {
     skip.addEventListener('click', onSkip);
     closeX?.addEventListener('click', onSkip);
   });
+}
+
+async function _revokeMyTempAdmin(adminKey, adminName) {
+  const grant = DB.getTempAdminGrant();
+  if (!grant || grant.grantedBy !== adminKey) return;
+  await DB.revokeTempAdminGrant();
+  const adminPrenom = adminName ? adminName.split(' ')[0] : 'L\'admin';
+  await DB.sendNotif(
+    `⚙️ Tes droits administrateur·rice temporaires ont été révoqués — ${adminPrenom} est de retour.`,
+    'info', grant.grantedTo
+  );
 }
 
 function applyFeatureFlags() {
@@ -2137,7 +2139,13 @@ document.addEventListener('DOMContentLoaded', async function () {
           }
           await _sendPresenceNotifs(agentName, status, time, checkedGroups, comment, urgent);
           document.getElementById('presenceOverlay').classList.add('hidden');
-          if (!status || status === 'present') window.MascotBrain?.triggerAgentArrived?.(agentName);
+          if (!status || status === 'present') {
+            window.MascotBrain?.triggerAgentArrived?.(agentName);
+            await _revokeMyTempAdmin(myKey, agentName);
+          }
+          if (isMyOwn && status === 'absent' && DB._config.agentRoles[myKey] === '__admin__' && !DB.getTempAdminGrant()) {
+            await _promptTempAdmin(myKey, agentName);
+          }
           resolve();
         };
         const onCancel = () => { close(); resolve(); };
@@ -2152,7 +2160,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         await DB.sendNotif(`Votre statut a été mis à jour : ${lbl[status] || 'Présent(e)'}.`, 'info', key);
       }
       document.getElementById('presenceOverlay').classList.add('hidden');
-      if (!status || status === 'present') window.MascotBrain?.triggerAgentArrived?.(agentName);
+      if (!status || status === 'present') {
+        window.MascotBrain?.triggerAgentArrived?.(agentName);
+        await _revokeMyTempAdmin(myKey, agentName);
+      }
+      if (isMyOwn && status === 'absent' && DB._config.agentRoles[myKey] === '__admin__' && !DB.getTempAdminGrant()) {
+        await _promptTempAdmin(myKey, agentName);
+      }
     }
   });
   document.getElementById('presenceOverlay').addEventListener('click', e => {
