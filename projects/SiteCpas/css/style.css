@@ -3359,15 +3359,17 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 
 /* Bulle de dialogue — au-dessus de la mascotte */
 .hs-bubble {
-  max-width: 240px;
+  max-width: min(340px, 80vw);
+  width: max-content;
   text-align: center;
   background: #fff;
   border: 1.5px solid #e2e8f0;
   border-radius: 14px;
-  padding: .6rem 1rem;
-  font-size: .85rem;
+  padding: .65rem 1.1rem;
+  font-size: .88rem;
   color: #1e293b;
   line-height: 1.5;
+  word-break: break-word;
   box-shadow: 0 4px 18px rgba(0,0,0,.08);
   position: relative;
 }
