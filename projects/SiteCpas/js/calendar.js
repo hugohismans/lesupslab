@@ -995,12 +995,10 @@ const LIVE = {
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
         // "En cours" : seulement pendant busyWithPref (quelqu'un est physiquement dans le bureau)
         // queue >= 1 seul ne suffit pas — c'est juste "quelqu'un attend", pas "quelqu'un est là"
-        // "Rappeler" : dès que isBusyLocal (utile pour ré-annoncer)
+        // "Rappeler" : visible si quelqu'un est en salle (isBusyLocal) OU encore en overflow
         // (false = sentinelle "effacé volontairement" → traiter comme null)
         const lastCallOngoing = !isAccueil && busyWithPref ? (this._lastCalled[l] || null) : null;
-        // Rappeler visible tant que _lastCalled est non-null (pas le sentinel false) — indépendant de isBusyLocal
-        // Le sentinel false est posé par "Je suis disponible" (groupe) et "Bénéficiaire parti"
-        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
+        const lastCallAny     = !isAccueil && (isBusyLocal || overflow > 0) ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
         const dismissBtn = (!isAccueil && busyWithPref)
