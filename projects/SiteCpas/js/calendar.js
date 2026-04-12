@@ -1428,35 +1428,14 @@ const LIVE = {
         const grp     = DB.getLocalGroup(localId);
 
         if (delta === -1) {
-          // Agent libère son bureau
+          // Agent libère son bureau — le bénéficiaire est parti, bureau redevient disponible
+          // L'agent appelle le suivant manuellement via "🔔 Appeler le suivant"
           const newQ = grp ? 0 : Math.max(0, DB.getQueue(localId) - 1);
           await DB.setQueue(localId, newQ);
-          this._lastCalled[localId] = false;
-          try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
-          await DB.clearLastCallForLocal(localId);
-
-          // Si overflow en attente : appeler automatiquement le ticket le plus ancien
-          const nextGrp = grp ? DB.getOldestOverflowGroup(localId) : null;
-          if (nextGrp) {
-            const _now  = new Date();
-            const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
-            const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
-            const _occ  = DB.getInRange(_dayS, _dayE).find(o =>
-              Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
-            );
-            const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
-            await DB.setQueue(localId, 1);
-            await DB.absorbGroupOverflow(nextGrp.id);
-            const _ticket = await DB.callNextTicket(nextGrp.id);
-            const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
-            if (_prefMatch) {
-              await DB._ref(`appState/preferredRequests/${_prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
-              await DB._ref(`appState/preferredPending/${_prefMatch.localId}`).remove();
-              await DB.shiftPreferredQueue(_prefMatch.localId);
-            }
-            showAgentCallNotif(_ticket.label, _ticket.name);
-            await DB.writeLastCall(localId, _pubAgent, nextGrp.name, _ticket.display, _ticket.label, _ticket.name);
-            LIVE._storeCall(localId, _ticket, _occ);
+          if (newQ === 0) {
+            this._lastCalled[localId] = false;
+            try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
+            await DB.clearLastCallForLocal(localId);
           }
         } else {
           await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) + delta));
