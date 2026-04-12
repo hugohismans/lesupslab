@@ -873,7 +873,8 @@ const LIVE = {
         ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
         : '';
       // Bouton Rappeler : dernier ticket appelé dans le groupe (accueil) pour ré-annoncer sur l'écran public
-      const lastCalledInGrp = activeLids
+      // Cherche dans TOUS les lids (pas seulement activeLids) : évite la disparition lors d'une pause/fermeture
+      const lastCalledInGrp = lids
         .map(l => this._lastCalled[l])
         .filter(Boolean)
         .sort((a, b) => (new Date(b.time) - new Date(a.time)))[0] || null;

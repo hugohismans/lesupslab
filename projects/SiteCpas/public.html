@@ -117,6 +117,7 @@ function getAgentPublicNameByKey(key) {
 const _tdDefaults = {
   publicCall:       { showNum: true,  showName: true  },
   publicBureauCard: { showNum: true,  showName: false },
+  groupCard:        { showNum: true,  showName: true  },
 };
 function getTicketDisplay(loc) {
   const def    = _tdDefaults[loc] || { showNum: true, showName: true };
@@ -264,6 +265,7 @@ function render() {
       return `<span class="pub-grp-dot${isPaused ? ' paused' : busy ? ' busy' : ''}"></span>`;
     }).join('');
 
+    const gcCfg      = getTicketDisplay('groupCard');
     const tickIssued = _prevQueue[`tick_${grpId}`] || 0;
     const tickCalled = _prevQueue[`tcall_${grpId}`] || 0;
     const prefix     = (grp.name || 'T').trim()[0].toUpperCase();
@@ -271,7 +273,7 @@ function render() {
     const waitingTickets = [];
     for (let i = tickCalled + 1; i <= tickIssued; i++) waitingTickets.push(fmt(i));
 
-    const ticketsHtml = waitingTickets.length
+    const ticketsHtml = gcCfg.showNum && waitingTickets.length
       ? `<div class="pub-grp-tickets">
           <span class="pub-grp-tickets-label">En attente :</span>
           <div class="pub-grp-ticket-list">
