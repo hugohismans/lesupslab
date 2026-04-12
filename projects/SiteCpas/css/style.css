@@ -517,6 +517,7 @@ body {
   flex-shrink: 0;
   box-shadow: 0 2px 14px rgba(0,0,0,.2);
   z-index: 100;
+  overflow: hidden; /* empêche le débordement au niveau de la page */
 }
 .hd-version { font-size: .65rem; color: rgba(255,255,255,.45); flex-shrink: 0; user-select: none; }
 .hd-brand { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
@@ -615,7 +616,14 @@ body {
   border: 1.5px solid rgba(255,255,255,.5);
 }
 
-.hd-nav { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+.hd-nav {
+  display: flex; align-items: center; gap: .4rem;
+  flex-shrink: 1; min-width: 0;   /* peut rétrécir */
+  overflow-x: auto;               /* boutons toujours accessibles par scroll */
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.hd-nav::-webkit-scrollbar { display: none; }
 .btn-nav {
   background: transparent; border: 1.5px solid rgba(255,255,255,.35);
   color: #fff; width: 32px; height: 32px; border-radius: 7px;
@@ -1353,14 +1361,7 @@ body {
 /* ── Responsive header — écrans moyens (≤ 1200px) ───────────── */
 @media (max-width: 1200px) {
   .hd { gap: .4rem; padding: 0 .7rem; }
-  /* La nav peut scroller horizontalement sans montrer la scrollbar */
-  .hd-nav {
-    gap: .2rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-  .hd-nav::-webkit-scrollbar { display: none; }
+  .hd-nav { gap: .2rem; }
   .hd-tabs { gap: 1px; padding: 2px; }
   .tab { padding: .28rem .6rem; font-size: .79rem; }
   .btn-new  { padding: .3rem .7rem; font-size: .79rem; }
