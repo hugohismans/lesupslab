@@ -775,22 +775,36 @@ const DB = {
   },
 
   async dismissTicket(groupId, ticketNumber) {
-    // Avance tcall jusqu'à ce numéro (retire ce ticket et les éventuels précédents en attente)
-    const today = isoDate(new Date());
+    // Retire UN SEUL ticket via skip_ (ou avance tcall s'il est le suivant direct)
+    const today   = isoDate(new Date());
     const current = this.getTicketCalled(groupId);
     if (ticketNumber <= current) return; // déjà traité
-    // Supprimer les noms de tous les tickets retirés (données sensibles)
-    for (let n = current + 1; n <= ticketNumber; n++) {
-      await this._ref(`queues/${today}/names_${groupId}/${n}`).remove();
+
+    const writes = {};
+    if (ticketNumber === current + 1) {
+      // C'est le ticket suivant : avancer tcall, absorber les skip_ consécutifs
+      let newCall = ticketNumber;
+      const tick  = this.getTicketIssued(groupId);
+      while (newCall + 1 <= tick && this.isTicketSkipped(groupId, newCall + 1)) {
+        writes[`skip_${groupId}/${newCall + 1}`] = null;
+        newCall++;
+      }
+      writes[`tcall_${groupId}`] = newCall;
+    } else {
+      // Ticket en milieu de file : marquer skip_ sans toucher tcall
+      writes[`skip_${groupId}/${ticketNumber}`] = true;
     }
-    await this._ref(`queues/${today}/tcall_${groupId}`).set(ticketNumber);
-    // Si le ticket était dans l'overflow, décrémenter l'overflow
+
+    // Décrémenter l'overflow de 1 (un seul ticket retiré)
     const overflow = this.getGroupOverflowQueue(groupId);
     if (overflow > 0) {
-      const skipped = ticketNumber - current; // nombre de tickets retirés
-      const newOverflow = Math.max(0, overflow - skipped);
-      await this._ref(`queues/${today}/wait_${groupId}`).set(newOverflow || null);
+      const newOverflow = Math.max(0, overflow - 1);
+      writes[`wait_${groupId}`]     = newOverflow || null;
+      if (newOverflow <= 0) writes[`waitSince_${groupId}`] = null;
     }
+
+    await this._ref(`queues/${today}`).update(writes);
+    await this._ref(`queues/${today}/names_${groupId}/${ticketNumber}`).remove();
   },
 
   async writeLastCall(localId, agentName, groupName, ticketNum, ticketLabel, ticketName) {

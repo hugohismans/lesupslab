@@ -2061,9 +2061,12 @@ const LIVE = {
         for (let n = called + 1; n <= issued; n++) waitingNums.push(n);
         const ticketsHtml = waitingNums.length
           ? `<div class="lv-qg-ticket-row">
-               ${waitingNums.map(n =>
-                 `<button class="lv-qg-ticket-badge" data-grpid="${id}" data-num="${n}" title="Retirer ce ticket">${DB.formatTicketDisplay(id, n)} <span class="lv-qg-ticket-x">✕</span></button>`
-               ).join('')}
+               ${waitingNums.map(n => {
+                 const _num  = DB.formatTicket(id, n);
+                 const _name = DB.getTicketName(id, n);
+                 const _lbl  = _name ? `${_num} · ${_name}` : _num;
+                 return `<button class="lv-qg-ticket-badge" data-grpid="${id}" data-num="${n}" title="Retirer ce ticket">${escapeHtml(_lbl)} <span class="lv-qg-ticket-x">✕</span></button>`;
+               }).join('')}
              </div>`
           : '';
         return `<div class="lv-qg-item">
@@ -2084,12 +2087,8 @@ const LIVE = {
           const grpId = btn.dataset.grpid;
           const num   = parseInt(btn.dataset.num);
           const label = DB.formatTicket(grpId, num);
-          const grp   = DB.getQueueGroups()[grpId];
-          const called = DB.getTicketCalled(grpId);
-          const skipped = num - called;
-          const info = skipped > 1
-            ? `<div class="lv-bm-empty" style="color:#fbbf24">Les tickets ${DB.formatTicket(grpId, called + 1)} à ${label} seront retirés (${skipped} tickets).</div>`
-            : `<div class="lv-bm-empty">Le ticket <strong>${label}</strong> sera retiré de la file d'attente.</div>`;
+          const name  = DB.getTicketName(grpId, num);
+          const info  = `<div class="lv-bm-empty">Le ticket <strong>${label}</strong>${name ? ` (${escapeHtml(name)})` : ''} sera retiré de la file d'attente.</div>`;
           showBureauConfirm({
             icon: '🎫',
             title: `Retirer ${label}`,
