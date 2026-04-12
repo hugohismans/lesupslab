@@ -852,12 +852,12 @@ const LIVE = {
            </div>`
         : '';
 
-      // Chips file d'attente générale — tous les tickets (y compris demandes spécifiques)
+      // Chips file d'attente générale — tous les tickets sauf reçus hors-ordre (skip_)
       const issued = DB.getTicketIssued(grpId);
       const called = DB.getTicketCalled(grpId);
       const overflowNums = [];
       for (let n = called + 1; n <= issued; n++) {
-        overflowNums.push(n);
+        if (!DB.isTicketSkipped(grpId, n)) overflowNums.push(n);
       }
       const extraOverflow = Math.max(0, overflow - overflowNums.length);
       const overflowChipsHtml = (overflowNums.length || extraOverflow > 0)
@@ -1233,7 +1233,7 @@ const LIVE = {
           if (pend?.ticketLabel) { const m = pend.ticketLabel.match(/(\d+)$/); if (m) _prefNums.add(parseInt(m[1], 10)); }
         });
         const _ovfNums = [];
-        for (let n = _called + 1; n <= _issued; n++) { _ovfNums.push(n); }
+        for (let n = _called + 1; n <= _issued; n++) { if (!DB.isTicketSkipped(_bureauGrp.id, n)) _ovfNums.push(n); }
         const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length);
         const _ovfChips = (_ovfNums.length || _extraOvf > 0) && _gcCfg.showNum
           ? `<div class="lv-grp-queue-row">

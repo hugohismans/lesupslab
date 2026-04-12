@@ -271,8 +271,10 @@ function render() {
     const namesMap   = _prevQueue[`names_${grpId}`] || {};
     const prefix     = (grp.name || 'T').trim()[0].toUpperCase();
     const fmt        = n => `${prefix}${String(n).padStart(2, '0')}`;
+    const skipMap = _prevQueue[`skip_${grpId}`] || {};
     const waitingTickets = [];
     for (let i = tickCalled + 1; i <= tickIssued; i++) {
+      if (skipMap[String(i)]) continue; // ticket reçu hors-ordre, ne pas afficher
       const num  = fmt(i);
       const name = gcCfg.showName ? (namesMap[String(i)] || null) : null;
       waitingTickets.push({ num, name });

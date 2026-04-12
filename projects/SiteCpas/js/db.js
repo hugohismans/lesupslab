@@ -641,6 +641,7 @@ const DB = {
     await ref.child(`tick_${groupId}`).remove();
     await ref.child(`tcall_${groupId}`).remove();
     await ref.child(`wait_${groupId}`).remove();
+    await ref.child(`skip_${groupId}`).remove();
   },
 
   // Remet à zéro TOUTES les files (locaux + groupes) ET les demandes agent spécifique
@@ -739,14 +740,29 @@ const DB = {
     return this._queueData[`tcall_${groupId}`] || 0;
   },
 
+  // Tickets reçus hors-ordre (prioritaires) — exclus de l'affichage EN ATTENTE
+  isTicketSkipped(groupId, n) {
+    return !!(this._queueData[`skip_${groupId}`]?.[String(n)]);
+  },
+
   async callNextTicket(groupId) {
     const today  = isoDate(new Date());
-    const called = this.getTicketCalled(groupId) + 1;
-    // Lire le nom AVANT suppression pour pouvoir l'afficher
+    const issued = this.getTicketIssued(groupId);
+    let   called = this.getTicketCalled(groupId) + 1;
+
+    // Avancer automatiquement les tickets reçus hors-ordre (prioritaires déjà traités)
+    const writes = {};
+    while (called <= issued && this.isTicketSkipped(groupId, called)) {
+      writes[`skip_${groupId}/${called}`] = null; // supprimer le marqueur
+      called++;
+    }
+    writes[`tcall_${groupId}`] = called;
+
+    // Lire le nom AVANT suppression
     const name = this.getTicketName(groupId, called);
-    await this._ref(`queues/${today}/tcall_${groupId}`).set(called);
-    // Supprimer le nom du bénéficiaire dès que le ticket est appelé (données sensibles)
+    await this._ref(`queues/${today}`).update(writes);
     if (name) await this._ref(`queues/${today}/names_${groupId}/${called}`).remove();
+
     const label   = this.formatTicket(groupId, called);
     const display = name || label;
     return { display, label, name: name || null };
@@ -977,19 +993,17 @@ const DB = {
           const ticketNum = m ? parseInt(m[1], 10) : null;
           if (ticketNum !== null) {
             const today = isoDate(new Date());
-            // Avancer tcall jusqu'à ce ticket si nécessaire + décrémenter wait_ (comme dismissTicket)
-            const currentCall = this.getTicketCalled(grp.id);
-            if (ticketNum > currentCall) {
-              const skipped  = ticketNum - currentCall;
-              const overflow = this.getGroupOverflowQueue(grp.id);
-              const writes   = { [`tcall_${grp.id}`]: ticketNum };
-              if (overflow > 0) {
-                const newOverflow = Math.max(0, overflow - skipped);
-                writes[`wait_${grp.id}`]     = newOverflow || null;
-                if (newOverflow <= 0) writes[`waitSince_${grp.id}`] = null;
-              }
-              await this._ref(`queues/${today}`).update(writes);
+            // Marquer le ticket comme traité hors-ordre (skip_) sans avancer tcall_
+            // → les tickets intermédiaires (avant ce numéro) restent visibles en EN ATTENTE
+            const overflow = this.getGroupOverflowQueue(grp.id);
+            const writes   = { [`skip_${grp.id}/${ticketNum}`]: true };
+            await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
+            if (overflow > 0) {
+              const newOverflow = Math.max(0, overflow - 1);
+              writes[`wait_${grp.id}`] = newOverflow || null;
+              if (newOverflow <= 0) writes[`waitSince_${grp.id}`] = null;
             }
+            await this._ref(`queues/${today}`).update(writes);
           }
         }
       }
@@ -1014,15 +1028,21 @@ const DB = {
         if (ticketNum === null) return;
         await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
         const issued = this.getTicketIssued(grp.id);
+        const writes = {};
         if (ticketNum === issued) {
-          await this._ref(`queues/${today}/tick_${grp.id}`).set(issued - 1 || null);
+          // Dernier ticket : décrémenter tick_ pour éviter un trou en fin de file
+          writes[`tick_${grp.id}`] = issued - 1 || null;
+        } else {
+          // Milieu de file : marquer skip_ pour l'exclure de l'affichage sans décaler les autres
+          writes[`skip_${grp.id}/${ticketNum}`] = true;
         }
         const ovf = this.getGroupOverflowQueue(grp.id);
         if (ovf > 0) {
           const newOvf = ovf - 1;
-          await this._ref(`queues/${today}/wait_${grp.id}`).set(newOvf || null);
-          if (newOvf <= 0) await this._ref(`queues/${today}/waitSince_${grp.id}`).set(null);
+          writes[`wait_${grp.id}`] = newOvf || null;
+          if (newOvf <= 0) writes[`waitSince_${grp.id}`] = null;
         }
+        if (Object.keys(writes).length) await this._ref(`queues/${today}`).update(writes);
       };
 
       // Vérifier si c'est dans preferredPending
