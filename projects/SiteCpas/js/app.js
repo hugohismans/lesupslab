@@ -1421,19 +1421,13 @@ const HOME = {
       const isCurrent  = localId === currentLocal;
       const isBusy     = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
 
-      // Badge service : calendrier en priorité, sinon groupe de file si bureau ouvert
-      let badgeSvc = null;
-      if (activeOcc) {
-        badgeSvc = DB.getSvcLabel(activeOcc) || (activeOcc.isPermanent ? 'Permanence' : 'Réunion');
-      } else if (isCurrent || isOccupied) {
-        const grp = DB.getLocalGroup(localId);
-        if (grp) badgeSvc = grp.name;
-      }
+      // Files d'attente dont ce local fait partie
+      const _localGrps = DB.getLocalGroups(localId);
 
       const cls = ['hs-decl-local',
         isCurrent  ? 'hs-decl-active'   : '',
         isOccupied ? 'hs-decl-occupied' : '',
-        badgeSvc   ? 'hs-decl-has-perm' : '',
+        _localGrps.length ? 'hs-decl-has-perm' : '',
       ].filter(Boolean).join(' ');
 
       const lines = [];
@@ -1450,8 +1444,14 @@ const HOME = {
       else
         lines.push(`<div class="hs-decl-avail">Libre</div>`);
 
-      if (badgeSvc)
-        lines.push(`<div class="hs-decl-perm-badge">🗓 ${escapeHtml(badgeSvc)}</div>`);
+      // Groupes de file d'attente
+      if (_localGrps.length) {
+        const grpBadges = _localGrps.map(g => {
+          const ovf = DB.getGroupOverflowQueue(g.id);
+          return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
+        }).join('');
+        lines.push(`<div class="hs-decl-grps">🔗 ${grpBadges}</div>`);
+      }
 
       return `<div class="${cls}" data-local-id="${localId}">
         <div class="hs-decl-name">${escapeHtml(label)}</div>

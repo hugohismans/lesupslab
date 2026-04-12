@@ -3917,6 +3917,17 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   font-size: .7rem; color: #4f46e5; font-weight: 600;
   margin-top: .25rem; white-space: nowrap;
 }
+.hs-decl-grps { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .3rem; font-size: .7rem; color: #64748b; }
+.hs-decl-grp-badge {
+  display: inline-flex; align-items: center; gap: .25rem;
+  background: #1e293b; border: 1px solid #334155;
+  border-radius: 6px; padding: .15rem .4rem;
+  font-size: .7rem; color: #94a3b8; white-space: nowrap;
+}
+.hs-decl-grp-ovf {
+  background: #dc2626; color: #fff; border-radius: 999px;
+  padding: 0 .35rem; font-size: .65rem; font-weight: 700; line-height: 1.4;
+}
 
 /* ── Raccourcis ──────────────────────────────────────────────────── */
 .hs-shortcuts {
