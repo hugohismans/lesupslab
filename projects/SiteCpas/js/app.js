@@ -2730,12 +2730,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     const overlay = document.getElementById('panicConfirmOverlay');
     if (!btn || !overlay) return;
 
-    // Afficher/masquer selon le rôle
+    // Afficher/masquer selon la permission du rôle
     function updatePanicVisibility() {
-      const myKey  = sessionStorage.getItem('cpas_current_agent_key');
-      const myRole = myKey ? DB.getAgentPermRole(myKey) : null;
-      const canPanic = myRole === '__accueil__' || myRole === '__admin__';
-      btn.classList.toggle('hidden', !canPanic);
+      btn.classList.toggle('hidden', !DB.hasPermission('panicButton'));
     }
     DB.onConfigChange(updatePanicVisibility);
     updatePanicVisibility();
