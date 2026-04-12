@@ -1022,7 +1022,8 @@ const LIVE = {
           ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
           : '';
         // Bouton "Recevoir X" si une personne attend spécifiquement cet agent (côté agent)
-        const preferred = !isAccueil ? DB.getPreferredPending(l) : null;
+        // Masqué si l'agent est déjà en permanence (perm ou réservation active)
+        const preferred = !isAccueil && !perm && !res ? DB.getPreferredPending(l) : null;
         const preferredBtn = preferred
           ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(preferred.displayName || '?')} qui ne souhaite voir que moi</button>`
           : '';
@@ -1035,7 +1036,7 @@ const LIVE = {
           ${grpHint}
           ${preferredBtn}
           ${preferredRecallBtn}
-          ${!busyWithPref && ((queue > 0 && !pendingPref) || (overflow > 0 && pendingPref)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${!busyWithPref && ((queue > 0 && !pendingPref) || (overflow > 0 && pendingPref && !perm && !res)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
           <div class="lv-queue-actions">${leaveBtn}${printBtnHtml}${pauseBtn}${fermerBtn}</div>
@@ -1238,8 +1239,10 @@ const LIVE = {
                }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
              </div>`
           : '';
-        // Chip préféré uniquement pour CE bureau (pas les autres du groupe)
-        const _myPend = DB.getPreferredPending(bureauLocal);
+        // Chip préféré uniquement pour CE bureau (pas les autres du groupe), masqué si permanence active
+        const _myPerm = occs.find(r => parseInt(r.localId) === bureauLocal && r.isPermanent);
+        const _myRes  = occs.find(r => parseInt(r.localId) === bureauLocal && !r.isPermanent && r._start <= now && r._end > now);
+        const _myPend = (!_myPerm && !_myRes) ? DB.getPreferredPending(bureauLocal) : null;
         const _prefChip = _myPend
           ? (() => {
               const parts = [];
