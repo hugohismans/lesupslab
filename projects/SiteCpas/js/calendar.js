@@ -1021,6 +1021,9 @@ const LIVE = {
         const prefQueueHint = prefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
+        // Bouton "Recevoir X" si une personne attend spécifiquement cet agent (côté agent)
+        // Masqué si l'agent est déjà occupé (queue en cours ou busyWithPref)
+        const preferred = !isAccueil && !isBusyLocal ? DB.getPreferredPending(l) : null;
         // Liste complète des tickets en attente — tous les groupes + preferred pending + preferred queue
         const _gcCfgL = DB.getTicketDisplay('groupCard');
         const _prefQueueItems = !isAccueil ? DB.getPreferredQueue(l) : [];
@@ -1073,9 +1076,6 @@ const LIVE = {
         const recallBtn = lastCallAny
           ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
           : '';
-        // Bouton "Recevoir X" si une personne attend spécifiquement cet agent (côté agent)
-        // Masqué si l'agent est déjà occupé (queue en cours ou busyWithPref)
-        const preferred = !isAccueil && !isBusyLocal ? DB.getPreferredPending(l) : null;
         const preferredBtn = preferred
           ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(preferred.displayName || '?')} qui ne souhaite voir que moi</button>`
           : '';
