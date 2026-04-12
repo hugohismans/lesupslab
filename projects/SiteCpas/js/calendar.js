@@ -1044,16 +1044,10 @@ const LIVE = {
                ${_allWaitItems.map((item, i) => {
                  const _num  = _gcCfgL.showNum  ? DB.formatTicket(item.gId, item.n) : `#${i+1}`;
                  const _name = _gcCfgL.showName ? DB.getTicketName(item.gId, item.n) : null;
-                 const _grpLabel = grps.length > 1 ? `<span class="lv-grp-queue-grp">${escapeHtml(item.gName)}</span>` : '';
+                 const _grpLabel = grps.length > 1 ? `<span class="lv-grp-queue-grp">${escapeHtml(item.gName)}</span>` : '<span></span>';
                  const _waitMin = item.ts ? Math.floor((Date.now() - item.ts) / 60000) : null;
-                 const _waitStr = _waitMin !== null ? `<span class="lv-grp-queue-wait">${_waitMin < 1 ? '< 1 min' : `${_waitMin} min`}</span>` : '';
-                 return `<div class="lv-grp-queue-item">
-                   <span class="lv-grp-queue-pos">→ ${i + 1}</span>
-                   <span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span>
-                   ${_name ? `<span class="lv-grp-queue-name">${escapeHtml(_name)}</span>` : ''}
-                   ${_waitStr}
-                   ${_grpLabel}
-                 </div>`;
+                 const _waitStr = _waitMin !== null ? (_waitMin < 1 ? '&lt;1m' : `${_waitMin}m`) : '';
+                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">${_name ? escapeHtml(_name) : ''}</span>${_grpLabel}</div>`;
                }).join('')}
              </div>`
           : '';
