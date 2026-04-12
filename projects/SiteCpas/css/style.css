@@ -1350,6 +1350,42 @@ body {
 /* ═══════════════════════════════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════════════════════════════ */
+/* ── Responsive header — écrans moyens (≤ 1200px) ───────────── */
+@media (max-width: 1200px) {
+  .hd { gap: .4rem; padding: 0 .7rem; }
+  /* La nav peut scroller horizontalement sans montrer la scrollbar */
+  .hd-nav {
+    gap: .2rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .hd-nav::-webkit-scrollbar { display: none; }
+  .hd-tabs { gap: 1px; padding: 2px; }
+  .tab { padding: .28rem .6rem; font-size: .79rem; }
+  .btn-new  { padding: .3rem .7rem; font-size: .79rem; }
+  .btn-live, .btn-analytics, .btn-presence-hd, .btn-absence-hd,
+  .btn-broadcast, .btn-tech-issue, .btn-interventions, .btn-calendar-export {
+    padding: .28rem .5rem; font-size: .79rem;
+  }
+  .hd-agent-badge { max-width: 110px; font-size: .73rem; }
+}
+
+@media (max-width: 1050px) {
+  .hd { gap: .25rem; padding: 0 .5rem; }
+  .hd-nav { gap: .15rem; }
+  .tab { padding: .25rem .45rem; font-size: .75rem; }
+  /* Réduire la taille des labels de boutons verbeux */
+  .btn-new  { padding: .28rem .55rem; font-size: .77rem; }
+  .btn-live, .btn-analytics, .btn-presence-hd, .btn-absence-hd,
+  .btn-broadcast, .btn-tech-issue, .btn-interventions, .btn-calendar-export {
+    padding: .25rem .4rem; font-size: .75rem;
+  }
+  .hd-agent-badge { max-width: 90px; font-size: .7rem; }
+  .hd-logo-img { height: 30px; }
+  .hd-title { font-size: .85rem; }
+}
+
 @media (max-width: 768px) {
   .hd-title  { display: none; }
   .btn-today { display: none; }
@@ -3345,6 +3381,22 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* ── Bannière développement ─────────────────────────────────────── */
+.hs-dev-banner {
+  background: #dc2626;
+  color: #fff;
+  text-align: center;
+  padding: .55rem 1rem;
+  border-radius: 10px;
+  font-size: .82rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.hs-dev-banner a {
+  color: #fde68a;
+  text-decoration: underline;
 }
 
 /* ── Mascotte centrée en haut de l'écran d'accueil ──────────────── */
