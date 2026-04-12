@@ -272,12 +272,15 @@ function render() {
     const fmt        = n => `${prefix}${String(n).padStart(2, '0')}`;
     const waitingTickets = [];
     for (let i = tickCalled + 1; i <= tickIssued; i++) waitingTickets.push(fmt(i));
+    // Fallback : si tick/tcall désynchronisés avec wait_, afficher quand même le nombre en attente
+    const showFallback = gcCfg.showNum && waiting > 0 && waitingTickets.length === 0;
 
-    const ticketsHtml = gcCfg.showNum && waitingTickets.length
+    const ticketsHtml = gcCfg.showNum && (waitingTickets.length || showFallback)
       ? `<div class="pub-grp-tickets">
           <span class="pub-grp-tickets-label">En attente :</span>
           <div class="pub-grp-ticket-list">
             ${waitingTickets.map(t => `<span class="pub-grp-ticket">${t}</span>`).join('')}
+            ${showFallback ? `<span class="pub-grp-ticket pub-grp-ticket-unk">+${waiting}</span>` : ''}
           </div>
         </div>`
       : '';
