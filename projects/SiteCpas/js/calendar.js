@@ -1205,14 +1205,15 @@ const LIVE = {
       </div>`;
       g('liveGrid').innerHTML = groupCards + preferredCard + bureauHtml;
     } else {
-      // Mode bureau : une carte par groupe + carte du bureau
-      const _bureauGrps = bureauLocal !== null ? DB.getLocalGroups(bureauLocal) : [];
+      // Mode bureau : toutes les files visibles, inscrit ou non
+      const _allGrps = Object.entries(DB.getQueueGroups()).map(([id, g]) => ({ id, ...g }));
       const _gcCfg = DB.getTicketDisplay('groupCard');
       const _myPerm = occs.find(r => parseInt(r.localId) === bureauLocal && r.isPermanent);
       const _myRes  = occs.find(r => parseInt(r.localId) === bureauLocal && !r.isPermanent && r._start <= now && r._end > now);
 
-      const grpCardsHtml = _bureauGrps.map(_bureauGrp => {
+      const grpCardsHtml = _allGrps.map(_bureauGrp => {
         const _grpLids    = (_bureauGrp.localIds || []).map(Number);
+        const isEnrolled  = bureauLocal !== null && _grpLids.includes(bureauLocal);
         const _grpOpen    = _grpLids.filter(l => DB.isBureauOpen(l));
         const _grpOcc     = _grpOpen.filter(l => DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l)).length;
         const _grpFree    = _grpOpen.length - _grpOcc;
@@ -1244,34 +1245,42 @@ const LIVE = {
                }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
              </div>`
           : '';
-        // Chips préférés pour CE bureau dans CE groupe (pending + queue), masqués si permanence active
-        const _myPrefPeople = (!_myPerm && !_myRes) ? (() => {
-          const list = [];
-          const pend = DB.getPreferredPending(bureauLocal);
-          if (pend) list.push({ ticket: pend.ticketLabel || null, name: pend.displayName || '?' });
-          DB.getPreferredQueue(bureauLocal).forEach(item => {
-            list.push({ ticket: item.ticketLabel || null, name: item.displayName || '?' });
-          });
-          return list;
-        })() : [];
-        const _prefChip = _myPrefPeople.length
-          ? `<div class="lv-grp-queue-row">
-              <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 POUR MOI :</span>
-              ${_myPrefPeople.map(p => {
-                const parts = [];
-                if (_gcCfg.showNum  && p.ticket) parts.push(escapeHtml(p.ticket));
-                if (_gcCfg.showName && p.name)   parts.push(escapeHtml(p.name));
-                const label = parts.join(' · ') || (p.ticket ? escapeHtml(p.ticket) : '?');
-                return `<span class="lv-grp-chip lv-grp-chip-pref">${label}</span>`;
-              }).join('')}
-            </div>`
+        // Chips préférés : uniquement pour les groupes où ce bureau est inscrit
+        const _prefChip = isEnrolled ? (() => {
+          const _myPrefPeople = (!_myPerm && !_myRes) ? (() => {
+            const list = [];
+            const pend = DB.getPreferredPending(bureauLocal);
+            if (pend) list.push({ ticket: pend.ticketLabel || null, name: pend.displayName || '?' });
+            DB.getPreferredQueue(bureauLocal).forEach(item => {
+              list.push({ ticket: item.ticketLabel || null, name: item.displayName || '?' });
+            });
+            return list;
+          })() : [];
+          return _myPrefPeople.length
+            ? `<div class="lv-grp-queue-row">
+                <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 POUR MOI :</span>
+                ${_myPrefPeople.map(p => {
+                  const parts = [];
+                  if (_gcCfg.showNum  && p.ticket) parts.push(escapeHtml(p.ticket));
+                  if (_gcCfg.showName && p.name)   parts.push(escapeHtml(p.name));
+                  const label = parts.join(' · ') || (p.ticket ? escapeHtml(p.ticket) : '?');
+                  return `<span class="lv-grp-chip lv-grp-chip-pref">${label}</span>`;
+                }).join('')}
+              </div>`
+            : '';
+        })() : '';
+        const actionBtn = bureauLocal !== null
+          ? isEnrolled
+            ? `<button class="lv-grp-leave" data-grp="${_bureauGrp.id}" data-local="${bureauLocal}">🔕 Se désinscrire</button>`
+            : `<button class="lv-grp-join"  data-grp="${_bureauGrp.id}" data-local="${bureauLocal}">➕ Je m'inscris</button>`
           : '';
-        return `<div class="lv-card lv-grp-card lv-grp-card-bureau">
+        return `<div class="lv-card lv-grp-card lv-grp-card-bureau${isEnrolled ? ' lv-grp-enrolled' : ' lv-grp-unrolled'}">
           <div class="lv-grp-title">🔗 ${escapeHtml(_bureauGrp.name)}</div>
           <div class="lv-grp-status">${_grpStatusTxt}</div>
           ${_grpDotsHtml ? `<div class="lv-grp-locals">${_grpDotsHtml}</div>` : ''}
           ${_ovfChips}
           ${_prefChip}
+          ${actionBtn}
         </div>`;
       }).join('');
 
@@ -1336,6 +1345,22 @@ const LIVE = {
       });
     });
 
+
+    // Boutons inscription/désinscription dynamique depuis la vue bureau
+    g('liveGrid').querySelectorAll('.lv-grp-join').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await DB.joinQueueGroup(btn.dataset.grp, parseInt(btn.dataset.local));
+        this.render();
+      });
+    });
+    g('liveGrid').querySelectorAll('.lv-grp-leave').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await DB.leaveQueueGroup(btn.dataset.grp, parseInt(btn.dataset.local));
+        this.render();
+      });
+    });
 
     // Bouton "Ne veut voir qu'un agent" (accueil uniquement)
     g('liveGrid').querySelectorAll('.lv-grp-preferred').forEach(btn => {
@@ -2229,7 +2254,7 @@ const LIVE = {
         : sel.value;
       if (!name) return;
       const selected = [...g('qgroupLocals').querySelectorAll('.lv-qg-local-btn.active')].map(b => parseInt(b.dataset.local));
-      if (selected.length < 1) { showToast('⚠ Sélectionnez au moins 1 local.'); return; }
+
       const id = this._editingGroupId || ('qg_' + Date.now());
       await DB.saveQueueGroup(id, name, selected);
       this._editingGroupId = null;

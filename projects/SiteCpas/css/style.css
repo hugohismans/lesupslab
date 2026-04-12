@@ -1897,6 +1897,21 @@ body {
 .lv-grp-recall:hover { background: #1e293b; color: #e2e8f0; }
 .lv-grp-card-bureau { cursor: default; }
 .lv-grp-card-bureau .lv-grp-status { font-size: 1rem; }
+.lv-grp-card.lv-grp-unrolled { opacity: .7; border-style: dashed; }
+.lv-grp-join {
+  margin-top: .5rem; width: 100%; padding: .4rem .8rem;
+  background: transparent; border: 1.5px solid #3b82f6; color: #93c5fd;
+  border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 600;
+  transition: background .12s;
+}
+.lv-grp-join:hover { background: #1e3a5f; }
+.lv-grp-leave {
+  margin-top: .5rem; width: 100%; padding: .35rem .8rem;
+  background: transparent; border: 1.5px solid #475569; color: #94a3b8;
+  border-radius: 8px; cursor: pointer; font-size: .82rem;
+  transition: background .12s, color .12s;
+}
+.lv-grp-leave:hover { background: #1e293b; color: #e2e8f0; }
 .lv-grp-add {
   width: 100%; padding: .55rem; border-radius: 10px; border: none;
   background: #1d4ed8; color: #fff; font-size: 1rem; font-weight: 700;

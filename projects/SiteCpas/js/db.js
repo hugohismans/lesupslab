@@ -907,6 +907,22 @@ const DB = {
     await this._ref(`appConfig/queueGroups/${id}`).remove();
   },
 
+  // Ajoute un local à la liste d'un groupe (inscription dynamique depuis la vue bureau)
+  async joinQueueGroup(groupId, localId) {
+    const grp = (this._config.queueGroups || {})[groupId];
+    if (!grp) return;
+    const ids = [...new Set([...(grp.localIds || []).map(Number), Number(localId)])];
+    await this._ref(`appConfig/queueGroups/${groupId}/localIds`).set(ids);
+  },
+
+  // Retire un local de la liste d'un groupe (désinscription dynamique)
+  async leaveQueueGroup(groupId, localId) {
+    const grp = (this._config.queueGroups || {})[groupId];
+    if (!grp) return;
+    const ids = (grp.localIds || []).map(Number).filter(l => l !== Number(localId));
+    await this._ref(`appConfig/queueGroups/${groupId}/localIds`).set(ids.length ? ids : null);
+  },
+
   // ── Lieux publics ────────────────────────────────────────────────
   getPublicPlaces() { return this._config.publicPlaces || []; },
 
