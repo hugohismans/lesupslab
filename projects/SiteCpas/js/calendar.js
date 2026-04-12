@@ -797,13 +797,14 @@ const LIVE = {
       const overflow   = DB.getGroupOverflowQueue(grpId);
       const total      = activeLids.length;
       const allFull    = hasOpen && occupied >= total;
+      const free = total - occupied;
       const statusTxt  = !hasOpen
         ? '⚪ Aucun bureau ouvert'
-        : occupied === 0
-          ? '🟢 Disponible'
-          : allFull
-            ? `🔴 Complet (${occupied}/${total})`
-            : `🟡 En cours (${occupied}/${total})`;
+        : allFull
+          ? `🔴 Complet — ${overflow > 0 ? overflow + ' en attente' : 'tous occupés'}`
+          : overflow > 0
+            ? `🟡 ${free} bureau${free > 1 ? 'x' : ''} libre${free > 1 ? 's' : ''} — ${overflow} en attente`
+            : `🟢 ${free} bureau${free > 1 ? 'x' : ''} disponible${free > 1 ? 's' : ''}`;
       const overflowTxt = overflow > 0
         ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente</div>` : '';
       const dotsHtml = hasOpen
@@ -1153,38 +1154,22 @@ const LIVE = {
         if (DB.getFeature('enableNamedTickets')) {
           benefName = (window.prompt('Nom du bénéficiaire (optionnel — Entrée pour ignorer) :') || '').trim() || null;
         }
-        const routed = await DB.routeGroupQueue(grpId);
         const { label: ticket, resolvedName } = await DB.issueTicket(grpId, benefName);
         // Mémoriser le dernier ticket émis pour ce groupe (bouton reprint accueil)
         LIVE._lastEmittedByGrp[grpId] = { display: resolvedName || ticket, label: ticket, name: resolvedName || null };
         // Impression du ticket côté accueil au moment de l'envoi
         if (DB.getFeature('enableTicketPrint')) {
-          const _grpPrint   = DB.getQueueGroups()[grpId];
-          const _localLabel = routed ? DB.getLocalLabel(routed.localId) : (_grpPrint?.name || '');
-          LIVE._doPrintTicket({ ticket: resolvedName || ticket, svc: _grpPrint?.name || '', localLabel: _localLabel });
+          const _grpPrint = DB.getQueueGroups()[grpId];
+          LIVE._doPrintTicket({ ticket: resolvedName || ticket, svc: _grpPrint?.name || '', localLabel: _grpPrint?.name || '' });
         }
         // Informer l'agent si le prénom a été désambiguïsé (homonyme dans la même file)
         if (resolvedName && benefName && resolvedName !== benefName) {
           showToast(`Homonyme détecté — ce bénéficiaire sera appelé « ${resolvedName} » 👥`);
         }
-        if (routed) {
-          const _calledTicket = await DB.callNextTicket(grpId);
-          showRoutingToast(routed.label, _calledTicket.display);
-          const _grpObj = DB.getQueueGroups()[grpId];
-          const _now2 = new Date();
-          const _dayS2 = new Date(_now2); _dayS2.setHours(0,0,0,0);
-          const _dayE2 = new Date(_now2); _dayE2.setHours(23,59,59,999);
-          const _occ2 = DB.getInRange(_dayS2, _dayE2).find(o =>
-            Number(o.localId) === routed.localId && o._start <= _now2 && (o._end === null || o._end >= _now2)
-          );
-          const _pubAgent2 = DB.getBureauAgentDisplayName(routed.localId);
-          await DB.writeLastCall(routed.localId, _pubAgent2, _grpObj?.name || null, _calledTicket.display, _calledTicket.label, _calledTicket.name);
-          LIVE._storeCall(routed.localId, _calledTicket, _occ2);
-        } else {
-          await DB.incrementGroupOverflow(grpId);
-          const overflow = DB.getGroupOverflowQueue(grpId);
-          showWaitBanner(overflow, ticket);
-        }
+        // Le ticket va TOUJOURS en file d'attente — l'agent appelle manuellement le suivant
+        await DB.incrementGroupOverflow(grpId);
+        const overflow = DB.getGroupOverflowQueue(grpId);
+        showWaitBanner(overflow, ticket);
       });
     });
 
@@ -1287,27 +1272,12 @@ const LIVE = {
         const grp     = DB.getLocalGroup(localId);
 
         if (delta === -1 && grp) {
-          // Agent libère son bureau : absorber l'overflow ou vraiment libérer
-          const absorbed = await DB.absorbGroupOverflow(grp.id);
-          if (!absorbed) {
-            await DB.setQueue(localId, 0);
-            // Plus personne en attente : effacer le lastCall pour éviter le fantôme "En cours"
-            this._lastCalled[localId] = false;
-            try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
-            await DB.clearLastCallForLocal(localId);
-          } else {
-            const _now = new Date();
-            const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
-            const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
-            const _occ = DB.getInRange(_dayS, _dayE).find(o =>
-              Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
-            );
-            const _pubAgent = DB.getBureauAgentDisplayName(localId);
-            const _ticket   = await DB.callNextTicket(grp.id);
-            showAgentCallNotif(_ticket.label, _ticket.name);
-            await DB.writeLastCall(localId, _pubAgent, grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
-            LIVE._storeCall(localId, _ticket, _occ);
-          }
+          // Agent libère son bureau — le bénéficiaire est parti, bureau redevient disponible
+          // L'agent choisit lui-même quand appeler le suivant via "🔔 Appeler le suivant"
+          await DB.setQueue(localId, 0);
+          this._lastCalled[localId] = false;
+          try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
+          await DB.clearLastCallForLocal(localId);
         } else {
           await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) + delta));
         }
