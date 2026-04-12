@@ -2042,6 +2042,8 @@ const LIVE = {
   },
 
   // ── Panneau files partagées ─────────────────────────────────────
+  _editingGroupId: null,
+
   _renderQueueGroupPanel() {
     const groups    = DB.getQueueGroups();
     const allLocals = CONFIG.LOCALS;
@@ -2071,12 +2073,14 @@ const LIVE = {
                }).join('')}
              </div>`
           : '';
-        return `<div class="lv-qg-item">
+        const isEditing = this._editingGroupId === id;
+        return `<div class="lv-qg-item${isEditing ? ' lv-qg-item-editing' : ''}">
           <div class="lv-qg-info">
             <strong>${grp.name}</strong>
             <span class="lv-qg-locals">${locNames}</span>
           </div>
           <div class="lv-qg-actions">
+            <button class="lv-qg-edit" data-id="${id}" title="Modifier">✏️</button>
             ${issued > 0 ? `<button class="lv-qg-clear" data-id="${id}" data-name="${grp.name}" title="Vider tous les tickets">🗑</button>` : ''}
             <button class="lv-qg-del" data-id="${id}" title="Supprimer">✕</button>
           </div>
@@ -2120,19 +2124,56 @@ const LIVE = {
       });
       listEl.querySelectorAll('.lv-qg-del').forEach(btn => {
         btn.addEventListener('click', async () => {
+          if (this._editingGroupId === btn.dataset.id) this._cancelEdit();
           await DB.deleteQueueGroup(btn.dataset.id);
           this._renderQueueGroupPanel();
         });
       });
+
+      listEl.querySelectorAll('.lv-qg-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id  = btn.dataset.id;
+          const grp = DB.getQueueGroups()[id];
+          if (!grp) return;
+          if (this._editingGroupId === id) { this._cancelEdit(); return; }
+          this._editingGroupId = id;
+          // Populate name select
+          const sel = g('qgroupNameSelect');
+          const customInput = g('qgroupNameCustom');
+          const knownServices = DB.getServices().filter(s => s !== 'Autre');
+          if (knownServices.includes(grp.name)) {
+            sel.value = grp.name;
+            customInput.classList.add('hidden');
+          } else {
+            sel.value = '__autre__';
+            customInput.value = grp.name;
+            customInput.classList.remove('hidden');
+          }
+          // Toggle local buttons
+          g('qgroupLocals').querySelectorAll('.lv-qg-local-btn').forEach(b => {
+            b.classList.toggle('active', (grp.localIds || []).map(Number).includes(parseInt(b.dataset.local)));
+          });
+          // Update form title + button
+          g('qgroupFormTitle').textContent = `Modifier : ${grp.name}`;
+          g('btnQgroupAdd').textContent = '💾 Enregistrer';
+          g('btnQgroupCancel').classList.remove('hidden');
+          this._renderQueueGroupPanel(); // refresh list to highlight editing row
+        });
+      });
     }
 
-    // Cases à cocher pour nouveau groupe
+    // Boutons toggle pour sélectionner les locaux
     const localsEl = g('qgroupLocals');
-    localsEl.innerHTML = allLocals.map(l =>
-      `<label class="lv-qg-check">
-        <input type="checkbox" value="${l}"> ${DB.getLocalLabel(l)}
-      </label>`
-    ).join('');
+    const editingGrpLocalIds = this._editingGroupId
+      ? ((DB.getQueueGroups()[this._editingGroupId] || {}).localIds || []).map(Number)
+      : [];
+    localsEl.innerHTML = allLocals.map(l => {
+      const isActive = editingGrpLocalIds.includes(Number(l));
+      return `<button class="lv-qg-local-btn${isActive ? ' active' : ''}" data-local="${l}">${DB.getLocalLabel(l)}</button>`;
+    }).join('');
+    localsEl.querySelectorAll('.lv-qg-local-btn').forEach(btn => {
+      btn.addEventListener('click', () => btn.classList.toggle('active'));
+    });
 
     // Menu déroulant des services
     const sel = g('qgroupNameSelect');
@@ -2144,7 +2185,22 @@ const LIVE = {
     sel.onchange = () => {
       customInput.classList.toggle('hidden', sel.value !== '__autre__');
     };
-    customInput.classList.add('hidden');
+    if (!this._editingGroupId) {
+      customInput.classList.add('hidden');
+      g('qgroupFormTitle').textContent = 'Nouveau groupe';
+      g('btnQgroupAdd').textContent = '+ Créer';
+      g('btnQgroupCancel').classList.add('hidden');
+    }
+  },
+
+  _cancelEdit() {
+    this._editingGroupId = null;
+    g('qgroupFormTitle').textContent = 'Nouveau groupe';
+    g('btnQgroupAdd').textContent = '+ Créer';
+    g('btnQgroupCancel').classList.add('hidden');
+    g('qgroupNameCustom').value = '';
+    g('qgroupLocals').querySelectorAll('.lv-qg-local-btn').forEach(b => b.classList.remove('active'));
+    this._renderQueueGroupPanel();
   },
 
   _initQueueGroupPanel() {
@@ -2169,19 +2225,21 @@ const LIVE = {
     });
 
     g('btnQgroupAdd').addEventListener('click', async () => {
-      const sel = g('qgroupNameSelect');
+      const sel  = g('qgroupNameSelect');
       const name = sel.value === '__autre__'
         ? g('qgroupNameCustom').value.trim()
         : sel.value;
       if (!name) return;
-      const checked = [...g('qgroupLocals').querySelectorAll('input:checked')].map(i => parseInt(i.value));
-      if (checked.length < 1) { showToast('⚠ Sélectionnez au moins 1 local.'); return; }
-      const id = 'qg_' + Date.now();
-      await DB.saveQueueGroup(id, name, checked);
+      const selected = [...g('qgroupLocals').querySelectorAll('.lv-qg-local-btn.active')].map(b => parseInt(b.dataset.local));
+      if (selected.length < 1) { showToast('⚠ Sélectionnez au moins 1 local.'); return; }
+      const id = this._editingGroupId || ('qg_' + Date.now());
+      await DB.saveQueueGroup(id, name, selected);
+      this._editingGroupId = null;
       g('qgroupNameCustom').value = '';
-      g('qgroupLocals').querySelectorAll('input').forEach(i => i.checked = false);
       this._renderQueueGroupPanel();
     });
+
+    g('btnQgroupCancel').addEventListener('click', () => this._cancelEdit());
   },
 
   _shownAlerts: new Set(),

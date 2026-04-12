@@ -1784,17 +1784,36 @@ body {
 .lv-qg-del:hover { background: #7f1d1d; }
 
 .lv-qgroup-new { display: flex; flex-direction: column; gap: .5rem; min-width: 200px; }
+.lv-qgroup-form-title { font-size: .78rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
 .lv-qgroup-input {
   background: #1e293b; border: 1.5px solid #334155; color: #f1f5f9;
   border-radius: 8px; padding: .4rem .75rem; font-size: .9rem;
 }
 .lv-qgroup-locals { display: flex; flex-wrap: wrap; gap: .35rem; }
-.lv-qg-check { display: flex; align-items: center; gap: .3rem; color: #94a3b8; font-size: .82rem; cursor: pointer; }
+.lv-qg-local-btn {
+  padding: .28rem .6rem; border-radius: 6px; font-size: .78rem; cursor: pointer;
+  background: #1e293b; border: 1.5px solid #334155; color: #94a3b8;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.lv-qg-local-btn:hover  { border-color: #64748b; color: #e2e8f0; }
+.lv-qg-local-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
+.lv-qgroup-form-actions { display: flex; gap: .5rem; align-items: center; }
 .lv-qgroup-add {
   padding: .4rem .9rem; background: #1d4ed8; border: none; color: #fff;
-  border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; align-self: flex-start;
+  border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600;
 }
 .lv-qgroup-add:hover { background: #2563eb; }
+.lv-qgroup-cancel {
+  padding: .4rem .75rem; background: transparent; border: 1.5px solid #475569; color: #94a3b8;
+  border-radius: 8px; cursor: pointer; font-size: .82rem;
+}
+.lv-qgroup-cancel:hover { border-color: #94a3b8; color: #e2e8f0; }
+.lv-qg-edit {
+  background: transparent; border: none; cursor: pointer; font-size: .95rem;
+  padding: .1rem .25rem; border-radius: 4px; opacity: .7; transition: opacity .1s;
+}
+.lv-qg-edit:hover { opacity: 1; background: #1e293b; }
+.lv-qg-item-editing { border-color: #3b82f6 !important; background: #0f2340 !important; }
 .lv-qg-reset-all {
   width: 100%; padding: .45rem .9rem; margin-bottom: .6rem;
   background: rgba(239,68,68,.12); border: 1.5px solid #ef4444;
