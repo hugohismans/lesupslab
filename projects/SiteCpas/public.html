@@ -124,6 +124,16 @@ function getTicketDisplay(loc) {
   const stored = _config.ticketDisplay[loc] || {};
   return { ...def, ...stored };
 }
+function getLocalQueueGroups(localId) {
+  return Object.entries(_config.queueGroups || {})
+    .filter(([, g]) => (g.localIds || []).map(Number).includes(Number(localId)))
+    .map(([id, g]) => ({ id, ...g }));
+}
+function localQueueGroupsHtml(localId) {
+  const grps = getLocalQueueGroups(localId);
+  if (!grps.length) return null;
+  return `<div class="pub-card-grp-badges">${grps.map(g => `<span class="pub-card-grp-badge">${escapeHtml(g.name)}</span>`).join('')}</div>`;
+}
 
 function expandRec(id, res, viewStart, viewEnd) {
   if (res.isPermanent) return [{ id, ...res, _start: new Date(res.startDateTime), _end: null }];
@@ -320,12 +330,12 @@ function render() {
     if (!isOpen) {
       const activeRes = perm || res; // perm ou réservation en cours
       if (activeRes) {
-        const svc = activeRes.service === 'Autre' ? activeRes.serviceCustom : activeRes.service;
-        const agt = activeRes.agent   === 'Autre' ? activeRes.agentCustom  : activeRes.agent;
+        const agt = activeRes.agent === 'Autre' ? activeRes.agentCustom : activeRes.agent;
+        const grpHtml = localQueueGroupsHtml(l) || `<div class="pub-card-svc">${escapeHtml(activeRes.service === 'Autre' ? activeRes.serviceCustom : (activeRes.service || ''))}</div>`;
         return `<div class="pub-card pub-opening">
           <div class="pub-card-label">${label}</div>
           <div class="pub-card-status">🟠 Ouverture imminente</div>
-          <div class="pub-card-svc">${escapeHtml(svc || '')}</div>
+          ${grpHtml}
           <div class="pub-card-agt">${escapeHtml(getAgentPublicName(agt) || '')}</div>
           <div class="pub-card-opening-hint">Le bureau ne va pas tarder à ouvrir</div>
           ${descHtml}
@@ -357,12 +367,12 @@ function render() {
     }
 
     if (perm) {
-      const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
-      const agt = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
+      const agt = perm.agent === 'Autre' ? perm.agentCustom : perm.agent;
+      const permGrpHtml = localQueueGroupsHtml(l) || `<div class="pub-card-svc">${escapeHtml(perm.service === 'Autre' ? perm.serviceCustom : (perm.service || ''))}</div>`;
       return `<div class="pub-card pub-perm">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">🔒 Permanent</div>
-        <div class="pub-card-svc">${svc}</div>
+        ${permGrpHtml}
         <div class="pub-card-agt">${getAgentPublicName(agt)}</div>
         ${descHtml}
         ${prefBanner}
@@ -392,11 +402,12 @@ function render() {
       if (pbcCfg.showNum  && ticketNumVal)  ticketParts.push(`🎟 n°${escapeHtml(String(ticketNumVal))}`);
       if (pbcCfg.showName && ticketNameVal) ticketParts.push(escapeHtml(String(ticketNameVal)));
       const ticketHtml = ticketParts.length ? `<div class="pub-card-ticket">${ticketParts.join(' — ')}</div>` : '';
+      const resGrpHtml = localQueueGroupsHtml(l) || `<div class="pub-card-svc">${escapeHtml(svc || '')}</div>`;
       return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">${statusIcon}</div>
         ${ticketHtml}
-        <div class="pub-card-svc">${svc}</div>
+        ${resGrpHtml}
         <div class="pub-card-agt">${displayAgt}</div>
         ${waiting > 0 ? `<div class="pub-card-until">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>` : ''}
         ${descHtml}
@@ -423,11 +434,12 @@ function render() {
     if (wiPbcCfg.showNum  && wiTicketNumVal)  wiTicketParts.push(`🎟 n°${escapeHtml(String(wiTicketNumVal))}`);
     if (wiPbcCfg.showName && wiTicketNameVal) wiTicketParts.push(escapeHtml(String(wiTicketNameVal)));
     const wiTicketHtml = wiTicketParts.length ? `<div class="pub-card-ticket">${wiTicketParts.join(' — ')}</div>` : '';
+    const wiGrpHtml = localQueueGroupsHtml(l) || (declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : '');
     return `<div class="pub-card ${wiClass}">
       <div class="pub-card-label">${label}</div>
       <div class="pub-card-status">${wiStatus}</div>
       ${wiTicketHtml}
-      ${declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : ''}
+      ${wiGrpHtml}
       ${wiAgentName ? `<div class="pub-card-agt">${escapeHtml(wiAgentName)}</div>` : ''}
       ${wiWaiting > 0 ? `<div class="pub-card-until">${wiWaiting} personne${wiWaiting > 1 ? 's' : ''} en attente</div>` : ''}
       ${descHtml}
