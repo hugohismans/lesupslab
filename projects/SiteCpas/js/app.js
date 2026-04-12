@@ -2514,14 +2514,16 @@ document.addEventListener('DOMContentLoaded', async function () {
           benefName, targetAgentKey, myKey, placeId, placeName, localId
         );
         // Émettre un ticket pour que la personne apparaisse dans la file visible
-        let ticketLabel = null;
-        const grpForQueue = DB.getLocalGroup(localId);
+        let ticketLabel    = null;
+        let resolvedName   = displayName;
+        const grpForQueue  = DB.getLocalGroup(localId);
         if (grpForQueue) {
           const ticketResult = await DB.issueTicket(grpForQueue.id, displayName || null);
-          ticketLabel = ticketResult.label;
+          ticketLabel  = ticketResult.label;
+          resolvedName = ticketResult.resolvedName || displayName; // nom dédupliqué = même que EN ATTENTE
           await DB.incrementGroupOverflow(grpForQueue.id);
         }
-        await DB.pushToPreferredQueue(localId, { displayName, agentPublicName, requestId, ts: Date.now(), ticketLabel });
+        await DB.pushToPreferredQueue(localId, { displayName: resolvedName, agentPublicName, requestId, ts: Date.now(), ticketLabel });
         const queueLen = DB.getPreferredQueue(localId).length + 1; // +1 car le push n'est pas encore reflété localement
         const localLabel = DB.getLocalLabel(localId);
         await DB.sendNotif(
@@ -2724,8 +2726,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   };
 
-  // Re-render vue Direct quand preferredPending change (listener top-level)
+  // Re-render vue Direct quand preferredPending OU preferredQueue change (listeners top-level)
   DB.onPreferredPendingChange(() => { LIVE.render(); HOME.render(); });
+  DB.onPreferredQueueChange(()   => { LIVE.render(); HOME.render(); });
 
   // ═══════════════════════════════════════════════════════════════
   // ─── Panic button ─────────────────────────────────────────────

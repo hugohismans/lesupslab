@@ -855,11 +855,17 @@ const DB = {
 
   // ── File d'attente preferred par local (plusieurs personnes qui veulent le même agent) ──
   _preferredQueue: {},
+  _preferredQueueCbs: [],
 
   initPreferredQueue() {
     this._ref('appState/preferredQueue').on('value', snap => {
       this._preferredQueue = snap.val() || {};
+      this._preferredQueueCbs.forEach(fn => fn());
     });
+  },
+
+  onPreferredQueueChange(fn) {
+    this._preferredQueueCbs.push(fn);
   },
 
   getPreferredQueue(localId) {
