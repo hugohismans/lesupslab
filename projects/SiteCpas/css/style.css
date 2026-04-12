@@ -2439,6 +2439,15 @@ body {
   font-size: 1rem; color: #cbd5e1; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Badges de groupes de file (vue publique, remplace le service) */
+.lv-grp-badges { display: flex; flex-direction: column; gap: .3rem; margin: .3rem 0; }
+.lv-grp-badge-pub {
+  display: flex; align-items: center; gap: .35rem;
+  background: rgba(59,130,246,.15); border: 1px solid rgba(59,130,246,.35);
+  border-radius: 8px; padding: .25rem .55rem;
+  font-size: .8rem; font-weight: 600; color: #93c5fd;
+}
+.lv-grp-badge-pub::before { content: "🔗"; font-size: .75rem; }
 .lv-agt {
   font-size: 1.25rem; font-weight: 700; color: #a5b4fc;
 }

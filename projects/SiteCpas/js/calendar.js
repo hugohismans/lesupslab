@@ -1020,8 +1020,30 @@ const LIVE = {
         const prefQueueHint = prefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
+        // Liste complète des tickets en attente
+        const _grpIssued  = DB.getTicketIssued(grp.id);
+        const _grpCalled  = DB.getTicketCalled(grp.id);
+        const _grpWaitNums = [];
+        for (let n = _grpCalled + 1; n <= _grpIssued; n++) {
+          if (!DB.isTicketSkipped(grp.id, n)) _grpWaitNums.push(n);
+        }
+        const _gcCfgL = DB.getTicketDisplay('groupCard');
         const overflowBadge = !isAccueil && overflow > 0
-          ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente dans la file</div>`
+          ? `<div class="lv-grp-queue-list">
+               <div class="lv-grp-queue-header">
+                 <span class="lv-grp-queue-arrow">↓</span>
+                 <span class="lv-grp-queue-label">FILE D'ATTENTE — ${overflow} personne${overflow > 1 ? 's' : ''}</span>
+               </div>
+               ${_grpWaitNums.map((n, i) => {
+                 const _num  = _gcCfgL.showNum  ? DB.formatTicket(grp.id, n) : `#${i+1}`;
+                 const _name = _gcCfgL.showName ? DB.getTicketName(grp.id, n) : null;
+                 return `<div class="lv-grp-queue-item">
+                   <span class="lv-grp-queue-pos">→ ${i + 1}</span>
+                   <span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span>
+                   ${_name ? `<span class="lv-grp-queue-name">${escapeHtml(_name)}</span>` : ''}
+                 </div>`;
+               }).join('')}
+             </div>`
           : '';
         const grpHint = !isAccueil
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${overflowBadge}${infoHint}${prefQueueHint}`
@@ -1106,6 +1128,12 @@ const LIVE = {
         </div>`;
       }
 
+      // Groupes de file d'attente pour ce local (vue publique)
+      const _localQGrps = DB.getLocalGroups(l);
+      const grpSvcHtml = isAccueil && _localQGrps.length
+        ? `<div class="lv-grp-badges">${_localQGrps.map(g => `<span class="lv-grp-badge-pub">${escapeHtml(g.name)}</span>`).join('')}</div>`
+        : null;
+
       if (perm) {
         const svc           = DB.getSvcLabel(perm);
         const agt           = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
@@ -1115,7 +1143,7 @@ const LIVE = {
         return `<div class="lv-card ${permCls}">
           <div class="lv-num">${labelHtml}</div>
           <div class="lv-status">${permStatus}</div>
-          <div class="lv-svc">${svc}</div>
+          ${grpSvcHtml ?? `<div class="lv-svc">${svc}</div>`}
           <div class="lv-agt" style="${agtRoleColor ? `color:${agtRoleColor}` : ''}">${fmtAgent(agt)}</div>
           ${queueHtml}
         </div>`;
@@ -1130,7 +1158,7 @@ const LIVE = {
           return `<div class="lv-card lv-closed" style="${agentCardColor ? `border-top:6px solid ${agentCardColor}` : ''}">
             <div class="lv-num">${labelHtml}</div>
             <div class="lv-status">⚫ Fermé</div>
-            <div class="lv-svc">${svc}</div>
+            ${grpSvcHtml ?? `<div class="lv-svc">${svc}</div>`}
             <div class="lv-agt" style="${agtRoleColor ? `color:${agtRoleColor}` : ''}">${fmtAgent(agt)}</div>
             <div class="lv-until">Jusqu'à ${endH}</div>
             ${queueHtml}
@@ -1141,7 +1169,7 @@ const LIVE = {
         return `<div class="lv-card ${cardCls}" style="${agentCardColor ? `border-top:6px solid ${agentCardColor}` : ''}">
           <div class="lv-num">${labelHtml}</div>
           <div class="lv-status">${statusTxt}</div>
-          <div class="lv-svc">${svc}</div>
+          ${grpSvcHtml ?? `<div class="lv-svc">${svc}</div>`}
           <div class="lv-agt" style="${agtRoleColor ? `color:${agtRoleColor}` : ''}">${fmtAgent(agt)}</div>
           <div class="lv-until">Jusqu'à ${endH}</div>
           ${queueHtml}
