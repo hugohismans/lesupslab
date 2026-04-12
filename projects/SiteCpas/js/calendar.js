@@ -998,10 +998,12 @@ const LIVE = {
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
         // "En cours" : seulement pendant busyWithPref (quelqu'un est physiquement dans le bureau)
         // queue >= 1 seul ne suffit pas — c'est juste "quelqu'un attend", pas "quelqu'un est là"
-        // "Rappeler" : visible si quelqu'un est en salle (isBusyLocal) OU encore en overflow
+        // "Rappeler" : visible dès que l'agent a appelé quelqu'un (_lastCalled peuplé)
+        // Disparaît uniquement quand l'agent clique "Je suis disponible" / "Bénéficiaire parti"
         // (false = sentinelle "effacé volontairement" → traiter comme null)
+        // NE PAS conditionner sur isBusyLocal/overflow → comportement aléatoire lié à Firebase
         const lastCallOngoing = !isAccueil && busyWithPref ? (this._lastCalled[l] || null) : null;
-        const lastCallAny     = !isAccueil && (isBusyLocal || overflow > 0) ? (this._lastCalled[l] || null) : null;
+        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
         const dismissBtn = (!isAccueil && busyWithPref)
