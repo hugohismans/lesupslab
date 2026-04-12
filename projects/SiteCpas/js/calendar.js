@@ -1045,10 +1045,13 @@ const LIVE = {
                  const _num  = _gcCfgL.showNum  ? DB.formatTicket(item.gId, item.n) : `#${i+1}`;
                  const _name = _gcCfgL.showName ? DB.getTicketName(item.gId, item.n) : null;
                  const _grpLabel = grps.length > 1 ? `<span class="lv-grp-queue-grp">${escapeHtml(item.gName)}</span>` : '';
+                 const _waitMin = item.ts ? Math.floor((Date.now() - item.ts) / 60000) : null;
+                 const _waitStr = _waitMin !== null ? `<span class="lv-grp-queue-wait">${_waitMin < 1 ? '< 1 min' : `${_waitMin} min`}</span>` : '';
                  return `<div class="lv-grp-queue-item">
                    <span class="lv-grp-queue-pos">→ ${i + 1}</span>
                    <span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span>
                    ${_name ? `<span class="lv-grp-queue-name">${escapeHtml(_name)}</span>` : ''}
+                   ${_waitStr}
                    ${_grpLabel}
                  </div>`;
                }).join('')}
