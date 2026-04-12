@@ -1430,8 +1430,15 @@ const DB = {
     // Fusionner les rôles built-in avec ceux stockés dans Firebase
     const merged = { ...this._defaultPermRoles };
     Object.entries(stored).forEach(([id, r]) => {
-      // Fusionner avec les valeurs par défaut existantes pour ne pas perdre name/color des built-ins
-      merged[id] = { ...(merged[id] || {}), ...r, isBuiltin: !!this._defaultPermRoles[id] };
+      const defaultRole  = merged[id] || {};
+      const defaultPerms = defaultRole.perms || {};
+      const storedPerms  = r.perms || {};
+      // Fusion profonde des perms : les valeurs stockées gagnent,
+      // mais les clés absentes de Firebase tombent sur les valeurs par défaut.
+      // Cela évite de perdre les nouvelles permissions quand le rôle Firebase
+      // a été sauvegardé avant leur ajout.
+      const mergedPerms = { ...defaultPerms, ...storedPerms };
+      merged[id] = { ...defaultRole, ...r, perms: mergedPerms, isBuiltin: !!this._defaultPermRoles[id] };
     });
     return merged;
   },
