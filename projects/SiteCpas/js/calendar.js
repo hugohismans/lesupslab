@@ -1242,21 +1242,29 @@ const LIVE = {
                }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
              </div>`
           : '';
-        // Chip préféré uniquement pour CE bureau (pas les autres du groupe), masqué si permanence active
+        // Chips préférés pour CE bureau (pending + queue), masqués si permanence active
         const _myPerm = occs.find(r => parseInt(r.localId) === bureauLocal && r.isPermanent);
         const _myRes  = occs.find(r => parseInt(r.localId) === bureauLocal && !r.isPermanent && r._start <= now && r._end > now);
-        const _myPend = (!_myPerm && !_myRes) ? DB.getPreferredPending(bureauLocal) : null;
-        const _prefChip = _myPend
-          ? (() => {
-              const parts = [];
-              if (_gcCfg.showNum  && _myPend.ticketLabel) parts.push(escapeHtml(_myPend.ticketLabel));
-              if (_gcCfg.showName && _myPend.displayName)  parts.push(escapeHtml(_myPend.displayName));
-              const label = parts.join(' · ') || (_myPend.displayName ? escapeHtml(_myPend.displayName) : '?');
-              return `<div class="lv-grp-queue-row">
-                <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 POUR MOI :</span>
-                <span class="lv-grp-chip lv-grp-chip-pref">${label}</span>
-              </div>`;
-            })()
+        const _myPrefPeople = (!_myPerm && !_myRes) ? (() => {
+          const list = [];
+          const pend = DB.getPreferredPending(bureauLocal);
+          if (pend) list.push({ ticket: pend.ticketLabel || null, name: pend.displayName || '?' });
+          DB.getPreferredQueue(bureauLocal).forEach(item => {
+            list.push({ ticket: item.ticketLabel || null, name: item.displayName || '?' });
+          });
+          return list;
+        })() : [];
+        const _prefChip = _myPrefPeople.length
+          ? `<div class="lv-grp-queue-row">
+              <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 POUR MOI :</span>
+              ${_myPrefPeople.map(p => {
+                const parts = [];
+                if (_gcCfg.showNum  && p.ticket) parts.push(escapeHtml(p.ticket));
+                if (_gcCfg.showName && p.name)   parts.push(escapeHtml(p.name));
+                const label = parts.join(' · ') || (p.ticket ? escapeHtml(p.ticket) : '?');
+                return `<span class="lv-grp-chip lv-grp-chip-pref">${label}</span>`;
+              }).join('')}
+            </div>`
           : '';
         grpCardHtml = `<div class="lv-card lv-grp-card lv-grp-card-bureau">
           <div class="lv-grp-title">🔗 ${escapeHtml(_bureauGrp.name)}</div>
