@@ -695,45 +695,8 @@ const LIVE = {
     const lieuId = DB.getCurrentLieuId();
     g('liveLieuName').textContent = lieux[lieuId]?.name || '';
 
-    // Barre de présence — absences du jour + statuts intra-journaliers
-    const today   = new Date().toISOString().slice(0, 10);
-    const badges  = [];
-    DB.getAgentsWithKeys().forEach(({ key, name }) => {
-      const color = DB.getAgentRoleColor(name);
-      const style = color ? `border-color:${color}` : '';
-      // Absence planifiée (priorité sur statut journalier)
-      const absEntry = DB.getAgentAbsenceOn(key, today);
-      if (absEntry) {
-        const [, abs] = absEntry;
-        const motifLabels = { maladie: 'Maladie', conge: 'Congé', mission: 'Mission', formation: 'Formation', autre: 'Absent' };
-        const motifTxt = motifLabels[abs.motif] || 'Absent';
-        const comment  = abs.comment ? ` — ${abs.comment}` : '';
-        badges.push(`<span class="lv-pres-badge lv-pres-absent" style="${style}" title="${abs.motif}">❌ ${fmtAgent(name)} — ${motifTxt}${comment}</span>`);
-        return;
-      }
-      const st = DB.getAgentStatus(key);
-      const connected = DB.isConnectedToday(key);
-      // Statut intra-journalier (retard, absent ponctuel)
-      if (st?.status === 'absent') {
-        badges.push(`<span class="lv-pres-badge lv-pres-absent" style="${style}">❌ ${fmtAgent(name)} — Absent</span>`);
-      } else if (st?.status === 'done') {
-        badges.push(`<span class="lv-pres-badge lv-pres-done" style="${style}">🏁 ${fmtAgent(name)} — Parti</span>`);
-      } else if (st?.status === 'late') {
-        badges.push(`<span class="lv-pres-badge lv-pres-late" style="${style}">🚶 ${fmtAgent(name)}${st.arrivalTime ? ` — arrivée ${st.arrivalTime}` : " — J'arrive !"}</span>`);
-      } else if (connected) {
-        badges.push(`<span class="lv-pres-badge lv-pres-present" style="${style}">✅ ${fmtAgent(name)}</span>`);
-      } else {
-        badges.push(`<span class="lv-pres-badge lv-pres-notyet" style="${style}">⏳ ${fmtAgent(name)}</span>`);
-      }
-    });
-    const presBar = g('livePresenceBar');
-    if (badges.length) {
-      presBar.innerHTML = badges.join('');
-      presBar.style.display = '';
-    } else {
-      presBar.innerHTML = '';
-      presBar.style.display = 'none';
-    }
+    // Sidebar agents (remplace l'ancienne barre du haut)
+    if (this.getRole() === 'accueil') this._renderAgentLocations();
 
     const q = this._agentQuery.toLowerCase().trim();
 
@@ -743,35 +706,62 @@ const LIVE = {
       this._renderGridMode(now, occs);
     }
 
-    // Sidebar agents → bureau (accueil uniquement)
-    if (this.getRole() === 'accueil') this._renderAgentLocations();
   },
 
   _renderAgentLocations() {
     const body = g('agentLocationsBody');
     if (!body) return;
-    const locals = CONFIG.LOCALS || [];
-    const entries = [];
-    locals.forEach(lid => {
-      if (!DB.isBureauOpen(lid)) return;
-      const agentKey = DB.getBureauAgentKey(lid);
-      if (!agentKey) return;
-      const agentName = DB.getAgentDisplayName(agentKey) || agentKey;
-      const localLabel = DB.getLocalLabel(lid);
-      entries.push({ agentName, localLabel });
+    const today = new Date().toISOString().slice(0, 10);
+    const motifLabels = { maladie: 'Maladie', conge: 'Congé', mission: 'Mission', formation: 'Formation', autre: 'Absent' };
+
+    const entries = DB.getAgentsWithKeys().map(({ key, name }) => {
+      const color    = DB.getAgentRoleColor(name);
+      const absEntry = DB.getAgentAbsenceOn(key, today);
+      const st       = DB.getAgentStatus(key);
+      const connected = DB.isConnectedToday(key);
+
+      // Bureau ouvert : chercher si cet agent est dans un bureau
+      const openLocal = (CONFIG.LOCALS || []).find(lid =>
+        DB.isBureauOpen(lid) && DB.getBureauAgentKey(lid) === key
+      );
+      const localLabel = openLocal != null ? DB.getLocalLabel(openLocal) : null;
+
+      let icon, statusClass, statusTxt;
+      if (absEntry) {
+        const [, abs] = absEntry;
+        icon = '❌'; statusClass = 'lv-loc-absent';
+        statusTxt = motifLabels[abs.motif] || 'Absent';
+        if (abs.comment) statusTxt += ` — ${abs.comment}`;
+      } else if (st?.status === 'absent') {
+        icon = '❌'; statusClass = 'lv-loc-absent'; statusTxt = 'Absent';
+      } else if (st?.status === 'done') {
+        icon = '🏁'; statusClass = 'lv-loc-done'; statusTxt = 'Parti';
+      } else if (st?.status === 'late') {
+        icon = '🚶'; statusClass = 'lv-loc-late';
+        statusTxt = st.arrivalTime ? `En route — ${st.arrivalTime}` : 'En route';
+      } else if (connected) {
+        icon = '✅'; statusClass = 'lv-loc-present'; statusTxt = localLabel || 'Présent';
+      } else {
+        icon = '⏳'; statusClass = 'lv-loc-notyet'; statusTxt = 'Pas encore là';
+      }
+
+      return { name, icon, statusClass, statusTxt, color,
+               sortOrder: connected ? 0 : (st?.status === 'late' ? 1 : (absEntry || st?.status === 'absent' ? 2 : 3)) };
     });
-    // Tri alphabétique par nom d'agent
-    entries.sort((a, b) => a.agentName.localeCompare(b.agentName, 'fr'));
-    if (!entries.length) {
-      body.innerHTML = '<div class="lv-loc-empty">Aucun agent en bureau</div>';
-      return;
-    }
-    body.innerHTML = entries.map(e =>
-      `<div class="lv-loc-row">
-        <span class="lv-loc-agent">${escapeHtml(e.agentName)}</span>
-        <span class="lv-loc-local">${escapeHtml(e.localLabel)}</span>
-      </div>`
-    ).join('');
+
+    // Tri : présents d'abord, puis en route, puis absents, puis pas encore là — puis alphabétique
+    entries.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'fr'));
+
+    body.innerHTML = entries.map(e => {
+      const borderStyle = e.color ? `border-left: 3px solid ${e.color}; padding-left: .5rem;` : '';
+      return `<div class="lv-loc-row ${e.statusClass}" style="${borderStyle}">
+        <span class="lv-loc-icon">${e.icon}</span>
+        <div class="lv-loc-info">
+          <span class="lv-loc-agent">${escapeHtml(e.name)}</span>
+          <span class="lv-loc-local">${escapeHtml(e.statusTxt)}</span>
+        </div>
+      </div>`;
+    }).join('');
   },
 
   _renderGridMode(now, occs) {
