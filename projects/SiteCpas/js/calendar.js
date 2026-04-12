@@ -1196,11 +1196,11 @@ const LIVE = {
           const amIHere    = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && myAgentKey;
           return `<div class="lv-card lv-free">
             <div class="lv-num">${labelHtml}</div>
-            <div class="lv-status">🟢 Bureau ouvert</div>
+            <div class="lv-status">🟢 Disponible</div>
             ${agentDisp ? `<div class="lv-agt">${escapeHtml(agentDisp)}</div>` : ''}
-            ${declSvc
-              ? `<div class="lv-svc">${escapeHtml(declSvc)}</div>`
-              : '<div class="lv-svc lv-muted lv-no-svc">Aucun service déclaré</div>'}
+            ${isAccueil
+              ? (grpSvcHtml ?? (declSvc ? `<div class="lv-svc">${escapeHtml(declSvc)}</div>` : ''))
+              : (declSvc ? `<div class="lv-svc">${escapeHtml(declSvc)}</div>` : '<div class="lv-svc lv-muted lv-no-svc">Aucun service déclaré</div>')}
             ${amIHere ? `<button class="lv-declare-svc" data-local="${l}">📢 ${declSvc ? 'Changer de service' : 'Déclarer pour un service'}</button>` : ''}
             ${queueHtml}
           </div>`;
