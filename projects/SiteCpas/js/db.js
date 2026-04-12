@@ -939,10 +939,18 @@ const DB = {
           const ticketNum = m ? parseInt(m[1], 10) : null;
           if (ticketNum !== null) {
             const today = isoDate(new Date());
-            // Avancer tcall jusqu'à ce ticket si nécessaire
+            // Avancer tcall jusqu'à ce ticket si nécessaire + décrémenter wait_ (comme dismissTicket)
             const currentCall = this.getTicketCalled(grp.id);
             if (ticketNum > currentCall) {
-              await this._ref(`queues/${today}/tcall_${grp.id}`).set(ticketNum);
+              const skipped  = ticketNum - currentCall;
+              const overflow = this.getGroupOverflowQueue(grp.id);
+              const writes   = { [`tcall_${grp.id}`]: ticketNum };
+              if (overflow > 0) {
+                const newOverflow = Math.max(0, overflow - skipped);
+                writes[`wait_${grp.id}`]     = newOverflow || null;
+                if (newOverflow <= 0) writes[`waitSince_${grp.id}`] = null;
+              }
+              await this._ref(`queues/${today}`).update(writes);
             }
           }
         }

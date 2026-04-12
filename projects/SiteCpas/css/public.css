@@ -305,7 +305,8 @@ body {
 }
 .pub-grp-card.pub-grp-busy .pub-grp-ticket  { border-color: #ef4444; color: #fca5a5; }
 .pub-grp-card.pub-grp-active .pub-grp-ticket { border-color: #f59e0b; color: #fde68a; }
-.pub-grp-ticket-unk { color: #94a3b8; border-color: #475569; font-style: italic; }
+.pub-grp-ticket-unk  { color: #94a3b8; border-color: #475569; font-style: italic; }
+.pub-grp-ticket-name { font-weight: 500; font-size: .88rem; letter-spacing: 0; opacity: .85; }
 
 /* ── Jour férié ────────────────────────────────────────────────── */
 .pub-holiday {

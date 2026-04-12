@@ -268,10 +268,15 @@ function render() {
     const gcCfg      = getTicketDisplay('groupCard');
     const tickIssued = _prevQueue[`tick_${grpId}`] || 0;
     const tickCalled = _prevQueue[`tcall_${grpId}`] || 0;
+    const namesMap   = _prevQueue[`names_${grpId}`] || {};
     const prefix     = (grp.name || 'T').trim()[0].toUpperCase();
     const fmt        = n => `${prefix}${String(n).padStart(2, '0')}`;
     const waitingTickets = [];
-    for (let i = tickCalled + 1; i <= tickIssued; i++) waitingTickets.push(fmt(i));
+    for (let i = tickCalled + 1; i <= tickIssued; i++) {
+      const num  = fmt(i);
+      const name = gcCfg.showName ? (namesMap[String(i)] || null) : null;
+      waitingTickets.push({ num, name });
+    }
     // Fallback : si tick/tcall désynchronisés avec wait_, afficher quand même le nombre en attente
     const showFallback = gcCfg.showNum && waiting > 0 && waitingTickets.length === 0;
 
@@ -279,7 +284,9 @@ function render() {
       ? `<div class="pub-grp-tickets">
           <span class="pub-grp-tickets-label">En attente :</span>
           <div class="pub-grp-ticket-list">
-            ${waitingTickets.map(t => `<span class="pub-grp-ticket">${t}</span>`).join('')}
+            ${waitingTickets.map(({ num, name }) =>
+              `<span class="pub-grp-ticket">${num}${name ? `<span class="pub-grp-ticket-name"> · ${escapeHtml(name)}</span>` : ''}</span>`
+            ).join('')}
             ${showFallback ? `<span class="pub-grp-ticket pub-grp-ticket-unk">+${waiting}</span>` : ''}
           </div>
         </div>`
