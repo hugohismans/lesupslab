@@ -1388,7 +1388,7 @@ const DB = {
       name: 'Accueil', color: '#8b5cf6', isBuiltin: true,
       perms: { createReservation:true, editReservation:false, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
-               managePause:false, manageQueue:true, sendPublicMessage:false, sendNotif:false,
+               managePause:false, manageQueue:true, sendPublicMessage:false, sendNotif:true,
                sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true },
     },
     '__agent__': {

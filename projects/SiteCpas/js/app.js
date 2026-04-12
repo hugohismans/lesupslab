@@ -1934,13 +1934,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.getElementById('btnBroadcast')?.addEventListener('click', () => {
     if (typeof openBroadcastModal === 'function') openBroadcastModal();
   });
-  // Visibilité : accueil ou admin
+  // Visibilité : permission sendNotif
   DB.onConfigChange(() => {
-    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
-    const myRole = myKey ? DB.getAgentPermRole(myKey) : null;
-    const canBC  = myRole === '__accueil__' || myRole === '__admin__' || myRole === '__direction__' || myRole === '__chef_service__';
-    const btnBC  = document.getElementById('btnBroadcast');
-    if (btnBC) btnBC.style.display = canBC ? '' : 'none';
+    const btnBC = document.getElementById('btnBroadcast');
+    if (btnBC) btnBC.style.display = DB.hasPermission('sendNotif') ? '' : 'none';
   });
 
   // Initialiser la status bar à l'heure actuelle
