@@ -1904,6 +1904,7 @@ body {
 .lv-grp-queue-ticket { color: #e2e8f0; font-weight: 600; }
 .lv-grp-queue-name  { color: #94a3b8; font-style: italic; }
 .lv-grp-queue-item-unknown { color: #475569; font-size: .78rem; }
+.lv-grp-queue-grp { font-size: .68rem; color: #4f46e5; background: rgba(79,70,229,.15); border-radius: 4px; padding: .05rem .3rem; margin-left: auto; }
 .lv-grp-chip {
   display: inline-block; padding: .18rem .55rem; border-radius: 6px;
   font-size: .82rem; font-weight: 700; color: #93c5fd;

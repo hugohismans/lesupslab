@@ -1020,27 +1020,36 @@ const LIVE = {
         const prefQueueHint = prefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
-        // Liste complète des tickets en attente
-        const _grpIssued  = DB.getTicketIssued(grp.id);
-        const _grpCalled  = DB.getTicketCalled(grp.id);
-        const _grpWaitNums = [];
-        for (let n = _grpCalled + 1; n <= _grpIssued; n++) {
-          if (!DB.isTicketSkipped(grp.id, n)) _grpWaitNums.push(n);
-        }
+        // Liste complète des tickets en attente — tous les groupes de ce local
         const _gcCfgL = DB.getTicketDisplay('groupCard');
+        const _allWaitItems = [];
+        grps.forEach(g => {
+          const _issued = DB.getTicketIssued(g.id);
+          const _called = DB.getTicketCalled(g.id);
+          for (let n = _called + 1; n <= _issued; n++) {
+            if (!DB.isTicketSkipped(g.id, n)) {
+              const ts = DB.getTicketIssuedAt(g.id, n) || 0;
+              _allWaitItems.push({ gId: g.id, gName: g.name, n, ts });
+            }
+          }
+        });
+        // Trier par timestamp d'émission (ordre d'arrivée global)
+        _allWaitItems.sort((a, b) => a.ts - b.ts);
         const overflowBadge = !isAccueil && overflow > 0
           ? `<div class="lv-grp-queue-list">
                <div class="lv-grp-queue-header">
                  <span class="lv-grp-queue-arrow">↓</span>
                  <span class="lv-grp-queue-label">FILE D'ATTENTE — ${overflow} personne${overflow > 1 ? 's' : ''}</span>
                </div>
-               ${_grpWaitNums.map((n, i) => {
-                 const _num  = _gcCfgL.showNum  ? DB.formatTicket(grp.id, n) : `#${i+1}`;
-                 const _name = _gcCfgL.showName ? DB.getTicketName(grp.id, n) : null;
+               ${_allWaitItems.map((item, i) => {
+                 const _num  = _gcCfgL.showNum  ? DB.formatTicket(item.gId, item.n) : `#${i+1}`;
+                 const _name = _gcCfgL.showName ? DB.getTicketName(item.gId, item.n) : null;
+                 const _grpLabel = grps.length > 1 ? `<span class="lv-grp-queue-grp">${escapeHtml(item.gName)}</span>` : '';
                  return `<div class="lv-grp-queue-item">
                    <span class="lv-grp-queue-pos">→ ${i + 1}</span>
                    <span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span>
                    ${_name ? `<span class="lv-grp-queue-name">${escapeHtml(_name)}</span>` : ''}
+                   ${_grpLabel}
                  </div>`;
                }).join('')}
              </div>`
@@ -1076,7 +1085,7 @@ const LIVE = {
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
         const fermerBtn   = (!isAccueil && isBusyLocal) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
         const noQueueWarn = !isAccueil && isOpen && l === currentAgentOpenLocal
-          ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — préviens l'agent d'accueil pour qu'il t'envoie des bénéficiaires.</div>`
+          ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — Inscris-toi à une file d'attente !</div>`
           : '';
         const noGrpPreferred = !isAccueil ? DB.getPreferredPending(l) : null;
         const noGrpPrefBtn = noGrpPreferred
