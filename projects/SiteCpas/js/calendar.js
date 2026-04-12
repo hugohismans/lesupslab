@@ -902,9 +902,10 @@ const LIVE = {
 
       const label    = DB.getLocalLabel(l);
       const pubLabel = DB.getPublicLocalLabel(l);
-      const grp      = DB.getLocalGroup(l);
+      const grp      = DB.getLocalGroup(l);   // premier groupe (rétro-compat)
+      const grps     = DB.getLocalGroups(l);  // tous les groupes
       const labelHtml = (pubLabel !== label ? `${label}<span class="lv-pub-label">${pubLabel}</span>` : label)
-        + (grp ? `<span class="lv-qg-badge">🔗 ${grp.name}</span>` : '');
+        + grps.map(g => `<span class="lv-qg-badge">🔗 ${g.name}</span>`).join('');
 
       // ── Carte BackOffice (lieu non public, présence pure) ─────────
       if (DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(l)) {
@@ -987,10 +988,12 @@ const LIVE = {
         : '';
 
       if (grp) {
-        const overflow    = DB.getGroupOverflowQueue(grp.id);
+        // Support multi-groupes : overflow = somme de tous les groupes de ce local
+        const oldestGrp   = DB.getOldestOverflowGroup(l) || grp;
+        const overflow    = grps.reduce((sum, g) => sum + DB.getGroupOverflowQueue(g.id), 0);
         const optedOut    = DB.getBureauOptedOut(l);
         const callNextBtn = queue === 0 && overflow > 0 && !busyWithPref
-          ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${grp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
+          ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${oldestGrp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
         // Fermer/Se retirer bloqués pendant permanence en cours (sauf accueil)
@@ -1425,14 +1428,35 @@ const LIVE = {
         const grp     = DB.getLocalGroup(localId);
 
         if (delta === -1) {
-          // Agent libère son bureau — le bénéficiaire est parti, bureau redevient disponible
-          // L'agent choisit lui-même quand appeler le suivant via "🔔 Appeler le suivant"
+          // Agent libère son bureau
           const newQ = grp ? 0 : Math.max(0, DB.getQueue(localId) - 1);
           await DB.setQueue(localId, newQ);
-          if (newQ === 0) {
-            this._lastCalled[localId] = false;
-            try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
-            await DB.clearLastCallForLocal(localId);
+          this._lastCalled[localId] = false;
+          try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
+          await DB.clearLastCallForLocal(localId);
+
+          // Si overflow en attente : appeler automatiquement le ticket le plus ancien
+          const nextGrp = grp ? DB.getOldestOverflowGroup(localId) : null;
+          if (nextGrp) {
+            const _now  = new Date();
+            const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
+            const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
+            const _occ  = DB.getInRange(_dayS, _dayE).find(o =>
+              Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
+            );
+            const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
+            await DB.setQueue(localId, 1);
+            await DB.absorbGroupOverflow(nextGrp.id);
+            const _ticket = await DB.callNextTicket(nextGrp.id);
+            const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
+            if (_prefMatch) {
+              await DB._ref(`appState/preferredRequests/${_prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
+              await DB._ref(`appState/preferredPending/${_prefMatch.localId}`).remove();
+              await DB.shiftPreferredQueue(_prefMatch.localId);
+            }
+            showAgentCallNotif(_ticket.label, _ticket.name);
+            await DB.writeLastCall(localId, _pubAgent, nextGrp.name, _ticket.display, _ticket.label, _ticket.name);
+            LIVE._storeCall(localId, _ticket, _occ);
           }
         } else {
           await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) + delta));

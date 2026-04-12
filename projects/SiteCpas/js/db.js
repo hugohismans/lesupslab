@@ -563,7 +563,7 @@ const DB = {
   },
   onQueueChange(fn) { this._queueCbs.push(fn); },
 
-  // Retourne le groupe auquel appartient un local, ou null
+  // Retourne le premier groupe auquel appartient un local, ou null (rétro-compat)
   getLocalGroup(localId) {
     const lid = parseInt(localId);
     const groups = this._config.queueGroups || {};
@@ -571,6 +571,27 @@ const DB = {
       if ((g.localIds || []).map(Number).includes(lid)) return { id, ...g };
     }
     return null;
+  },
+
+  // Retourne TOUS les groupes auxquels appartient un local
+  getLocalGroups(localId) {
+    const lid = parseInt(localId);
+    const groups = this._config.queueGroups || {};
+    return Object.entries(groups)
+      .filter(([, g]) => (g.localIds || []).map(Number).includes(lid))
+      .map(([id, g]) => ({ id, ...g }));
+  },
+
+  // Parmi tous les groupes d'un local, retourne celui avec le ticket en attente le plus ancien.
+  // Critère : waitSince_ le plus petit (= entré en file en premier). Si ex-aequo : overflow max.
+  getOldestOverflowGroup(localId) {
+    const grps = this.getLocalGroups(localId).filter(g => this.getGroupOverflowQueue(g.id) > 0);
+    if (!grps.length) return null;
+    return grps.reduce((best, g) => {
+      const ts = this.getGroupOverflowSince(g.id) || Infinity;
+      const bestTs = this.getGroupOverflowSince(best.id) || Infinity;
+      return ts < bestTs ? g : best;
+    });
   },
 
   getQueueGroups() { return this._config.queueGroups || {}; },
