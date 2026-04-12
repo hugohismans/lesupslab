@@ -872,16 +872,6 @@ const LIVE = {
       const reprintBtn   = DB.getFeature('enableTicketPrint') && lastEmitted
         ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
         : '';
-      // Bouton Rappeler : dernier ticket appelé dans le groupe (accueil) pour ré-annoncer sur l'écran public
-      // Cherche dans TOUS les lids (pas seulement activeLids) : évite la disparition lors d'une pause/fermeture
-      const lastCalledInGrp = lids
-        .map(l => this._lastCalled[l])
-        .filter(Boolean)
-        .sort((a, b) => (new Date(b.time) - new Date(a.time)))[0] || null;
-      const grpRecallBtn = lastCalledInGrp
-        ? `<button class="lv-grp-recall" data-grpid="${grpId}" data-ticket="${escapeHtml(lastCalledInGrp.ticket || '')}" data-svc="${escapeHtml(lastCalledInGrp.svc || '')}" data-label="${escapeHtml(lastCalledInGrp.localLabel || '')}" title="Ré-annoncer le dernier appel : ${lastCalledInGrp.ticket || '?'}">📢 Rappeler ${lastCalledInGrp.ticket ? escapeHtml(lastCalledInGrp.ticket) : 'le dernier'}</button>`
-        : '';
-
       return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
@@ -889,7 +879,6 @@ const LIVE = {
         ${overflowChipsHtml}
         ${prefChipsHtml}
         <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
-        ${grpRecallBtn}
         ${reprintBtn}
       </div>`;
     }).join('');
