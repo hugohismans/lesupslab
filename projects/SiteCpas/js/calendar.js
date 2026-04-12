@@ -811,6 +811,9 @@ const LIVE = {
             return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
           }).join('')}<span class="lv-grp-locals-count">${occupied}/${total} bureau${total > 1 ? 'x' : ''}</span></div>` : '';
 
+      // Config affichage pour les cartes groupe
+      const gcCfg = DB.getTicketDisplay('groupCard');
+
       // Chips demandes agent spécifique (preferred pending + preferred queue)
       const prefPeople = [];
       // Numéros de tickets réservés aux demandes spécifiques (à exclure des chips généraux)
@@ -834,9 +837,13 @@ const LIVE = {
       const prefChipsHtml = prefPeople.length
         ? `<div class="lv-grp-queue-row">
              <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 SPÉCIFIQUE :</span>
-             ${prefPeople.map(p =>
-               `<span class="lv-grp-chip lv-grp-chip-pref" title="${p.agent ? 'Pour ' + escapeHtml(p.agent) : 'Agent spécifique'}">${p.ticket ? escapeHtml(p.ticket) + ' · ' : ''}${escapeHtml(p.name)}</span>`
-             ).join('')}
+             ${prefPeople.map(p => {
+               const parts = [];
+               if (gcCfg.showNum && p.ticket) parts.push(escapeHtml(p.ticket));
+               if (gcCfg.showName) parts.push(escapeHtml(p.name));
+               const label = parts.join(' · ') || (p.ticket ? escapeHtml(p.ticket) : '?');
+               return `<span class="lv-grp-chip lv-grp-chip-pref" title="${p.agent ? 'Pour ' + escapeHtml(p.agent) : 'Agent spécifique'}">${label}</span>`;
+             }).join('')}
            </div>`
         : '';
 
@@ -850,9 +857,12 @@ const LIVE = {
       const overflowChipsHtml = overflowNums.length
         ? `<div class="lv-grp-queue-row">
              <span class="lv-grp-queue-label">EN ATTENTE :</span>
-             ${overflowNums.map(n =>
-               `<span class="lv-grp-chip">${escapeHtml(DB.formatTicketDisplay(grpId, n))}</span>`
-             ).join('')}
+             ${overflowNums.map(n => {
+               const num  = gcCfg.showNum  ? DB.formatTicket(grpId, n) : null;
+               const name = gcCfg.showName ? DB.getTicketName(grpId, n) : null;
+               const label = [num, name].filter(Boolean).join(' · ') || DB.formatTicket(grpId, n);
+               return `<span class="lv-grp-chip">${escapeHtml(label)}</span>`;
+             }).join('')}
            </div>`
         : '';
 

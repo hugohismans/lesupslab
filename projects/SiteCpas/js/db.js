@@ -297,6 +297,7 @@ const DB = {
     agentNotif:       { showNum: true,  showName: true  },
     waitBanner:       { showNum: true,  showName: false },
     kiosk:            { showNum: true,  showName: true  },
+    groupCard:        { showNum: true,  showName: true  },
   },
   getTicketDisplay(location) {
     const def     = this._ticketDisplayDefaults[location] || { showNum: true, showName: true };
