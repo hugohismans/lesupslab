@@ -815,10 +815,11 @@ const LIVE = {
       const gcCfg = DB.getTicketDisplay('groupCard');
 
       // Chips demandes agent spécifique (preferred pending + preferred queue)
+      // Itérer sur TOUS les bureaux du groupe (pas seulement activeLids) :
+      // une demande spécifique reste valide même si le bureau est fermé/en pause
       const prefPeople = [];
-      // Numéros de tickets réservés aux demandes spécifiques (à exclure des chips généraux)
       const prefTicketNums = new Set();
-      activeLids.forEach(l => {
+      lids.forEach(l => {
         const pend = DB.getPreferredPending(l);
         if (pend) {
           prefPeople.push({ name: pend.displayName || '?', ts: pend.ts || 0, agent: pend.agentPublicName || null, ticket: pend.ticketLabel || null });
