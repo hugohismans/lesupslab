@@ -648,6 +648,7 @@ const DB = {
     const today = isoDate(new Date());
     await this._ref(`queues/${today}`).remove();
     await this._ref('appState/preferredPending').remove();
+    await this._ref('appState/preferredQueue').remove();
   },
 
   // Lit les données de file d'attente pour une plage de dates (historique)
