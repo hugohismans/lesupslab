@@ -2383,6 +2383,12 @@ document.addEventListener('DOMContentLoaded', async function () {
           if (!status || status === 'present') {
             window.MascotBrain?.triggerAgentArrived?.(agentName);
             await _revokeMyTempAdmin(myKey, agentName);
+            // Supprimer toute absence mission/formation du jour
+            const _todayStr = new Date().toISOString().slice(0, 10);
+            const _absEntry = DB.getAgentAbsenceOn(key, _todayStr);
+            if (_absEntry && ['mission','formation'].includes(_absEntry[1]?.motif)) {
+              await DB.deleteAbsence(_absEntry[0]);
+            }
           }
           if (isMyOwn && status === 'absent' && DB._config.agentRoles[myKey] === '__admin__' && !DB.getTempAdminGrant()) {
             await _promptTempAdmin(myKey, agentName);
@@ -2404,6 +2410,12 @@ document.addEventListener('DOMContentLoaded', async function () {
       if (!status || status === 'present') {
         window.MascotBrain?.triggerAgentArrived?.(agentName);
         await _revokeMyTempAdmin(myKey, agentName);
+        // Supprimer toute absence mission/formation du jour
+        const _todayStr2 = new Date().toISOString().slice(0, 10);
+        const _absEntry2 = DB.getAgentAbsenceOn(key, _todayStr2);
+        if (_absEntry2 && ['mission','formation'].includes(_absEntry2[1]?.motif)) {
+          await DB.deleteAbsence(_absEntry2[0]);
+        }
       }
       if (isMyOwn && status === 'absent' && DB._config.agentRoles[myKey] === '__admin__' && !DB.getTempAdminGrant()) {
         await _promptTempAdmin(myKey, agentName);
