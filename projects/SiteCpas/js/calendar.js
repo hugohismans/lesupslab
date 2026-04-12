@@ -1238,11 +1238,26 @@ const LIVE = {
                }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
              </div>`
           : '';
+        // Chip préféré uniquement pour CE bureau (pas les autres du groupe)
+        const _myPend = DB.getPreferredPending(bureauLocal);
+        const _prefChip = _myPend
+          ? (() => {
+              const parts = [];
+              if (_gcCfg.showNum  && _myPend.ticketLabel) parts.push(escapeHtml(_myPend.ticketLabel));
+              if (_gcCfg.showName && _myPend.displayName)  parts.push(escapeHtml(_myPend.displayName));
+              const label = parts.join(' · ') || (_myPend.displayName ? escapeHtml(_myPend.displayName) : '?');
+              return `<div class="lv-grp-queue-row">
+                <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 POUR MOI :</span>
+                <span class="lv-grp-chip lv-grp-chip-pref">${label}</span>
+              </div>`;
+            })()
+          : '';
         grpCardHtml = `<div class="lv-card lv-grp-card lv-grp-card-bureau">
           <div class="lv-grp-title">🔗 ${escapeHtml(_bureauGrp.name)}</div>
           <div class="lv-grp-status">${_grpStatusTxt}</div>
           ${_grpDotsHtml ? `<div class="lv-grp-locals">${_grpDotsHtml}</div>` : ''}
           ${_ovfChips}
+          ${_prefChip}
         </div>`;
       }
       g('liveGrid').innerHTML = grpCardHtml + renderCard(bureauLocal);
