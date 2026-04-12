@@ -3454,6 +3454,9 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 /* Mascotte : walk (gauche-droite) + float (haut-bas) cumulés via deux wrappers */
 .hs-mascot-walker {
   animation: mascot-walk 10s ease-in-out infinite;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .hs-mascot-wrap {
   animation: mascot-float 3.8s ease-in-out infinite;
