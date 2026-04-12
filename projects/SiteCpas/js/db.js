@@ -805,6 +805,30 @@ const DB = {
 
     await this._ref(`queues/${today}`).update(writes);
     await this._ref(`queues/${today}/names_${groupId}/${ticketNumber}`).remove();
+
+    // Nettoyer la demande spécifique (preferred) associée à ce ticket si elle existe
+    const ticketLabel = this.formatTicket(groupId, ticketNumber);
+    const prefMatch = this.findPreferredPendingByTicket(ticketLabel);
+    if (prefMatch) {
+      if (prefMatch.pend.requestId) {
+        await this._ref(`appState/preferredRequests/${prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
+      }
+      await this._ref(`appState/preferredPending/${prefMatch.localId}`).remove();
+      await this.shiftPreferredQueue(prefMatch.localId);
+    } else {
+      // Chercher dans preferredQueue de tous les locaux
+      for (const [lidStr, queueData] of Object.entries(this._preferredQueue || {})) {
+        for (const [key, item] of Object.entries(queueData || {})) {
+          if (item.ticketLabel === ticketLabel) {
+            if (item.requestId) {
+              await this._ref(`appState/preferredRequests/${item.requestId}`).update({ status: 'done', benefName: null });
+            }
+            await this._ref(`appState/preferredQueue/${lidStr}/${key}`).remove();
+            break;
+          }
+        }
+      }
+    }
   },
 
   async writeLastCall(localId, agentName, groupName, ticketNum, ticketLabel, ticketName) {
