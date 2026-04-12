@@ -1868,7 +1868,14 @@ body {
   border: 1.5px solid #2563eb; background: rgba(37,99,235,.12);
   white-space: nowrap;
 }
-.lv-grp-chip-pref { color: #fde68a; border-color: #f59e0b; background: rgba(245,158,11,.12); }
+.lv-grp-chip-pref    { color: #fde68a; border-color: #f59e0b; background: rgba(245,158,11,.12); }
+.lv-grp-chip-unknown { color: #94a3b8; border-color: #475569; background: rgba(71,85,105,.15); font-style: italic; }
+.lv-grp-recall {
+  width: 100%; padding: .45rem; border-radius: 8px; border: 1px solid #475569;
+  background: transparent; color: #94a3b8; font-size: .82rem; font-weight: 600;
+  cursor: pointer; transition: background .12s, color .12s; margin-top: .25rem;
+}
+.lv-grp-recall:hover { background: #1e293b; color: #e2e8f0; }
 .lv-grp-card-bureau { cursor: default; }
 .lv-grp-card-bureau .lv-grp-status { font-size: 1rem; }
 .lv-grp-add {

@@ -854,7 +854,9 @@ const LIVE = {
       for (let n = called + 1; n <= issued; n++) {
         if (!prefTicketNums.has(n)) overflowNums.push(n);
       }
-      const overflowChipsHtml = overflowNums.length
+      // Fallback si ticket_ et wait_ sont désynchronisés (données legacy ou annulation)
+      const extraOverflow = Math.max(0, overflow - overflowNums.length);
+      const overflowChipsHtml = (overflowNums.length || overflow > 0)
         ? `<div class="lv-grp-queue-row">
              <span class="lv-grp-queue-label">EN ATTENTE :</span>
              ${overflowNums.map(n => {
@@ -862,7 +864,7 @@ const LIVE = {
                const name = gcCfg.showName ? DB.getTicketName(grpId, n) : null;
                const label = [num, name].filter(Boolean).join(' · ') || DB.formatTicket(grpId, n);
                return `<span class="lv-grp-chip">${escapeHtml(label)}</span>`;
-             }).join('')}
+             }).join('')}${extraOverflow > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${extraOverflow}</span>` : ''}
            </div>`
         : '';
 
@@ -870,6 +872,15 @@ const LIVE = {
       const reprintBtn   = DB.getFeature('enableTicketPrint') && lastEmitted
         ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
         : '';
+      // Bouton Rappeler : dernier ticket appelé dans le groupe (accueil) pour ré-annoncer sur l'écran public
+      const lastCalledInGrp = activeLids
+        .map(l => this._lastCalled[l])
+        .filter(Boolean)
+        .sort((a, b) => (new Date(b.time) - new Date(a.time)))[0] || null;
+      const grpRecallBtn = lastCalledInGrp
+        ? `<button class="lv-grp-recall" data-grpid="${grpId}" data-ticket="${escapeHtml(lastCalledInGrp.ticket || '')}" data-svc="${escapeHtml(lastCalledInGrp.svc || '')}" data-label="${escapeHtml(lastCalledInGrp.localLabel || '')}" title="Ré-annoncer le dernier appel : ${lastCalledInGrp.ticket || '?'}">📢 Rappeler ${lastCalledInGrp.ticket ? escapeHtml(lastCalledInGrp.ticket) : 'le dernier'}</button>`
+        : '';
+
       return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
@@ -877,6 +888,7 @@ const LIVE = {
         ${overflowChipsHtml}
         ${prefChipsHtml}
         <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
+        ${grpRecallBtn}
         ${reprintBtn}
       </div>`;
     }).join('');
@@ -1252,6 +1264,21 @@ const LIVE = {
         await DB.incrementGroupOverflow(grpId);
         const overflow = DB.getGroupOverflowQueue(grpId);
         showWaitBanner(overflow, ticket, resolvedName || benefName || null);
+      });
+    });
+
+    // Bouton Rappeler dernier appel (accueil, carte groupe)
+    g('liveGrid').querySelectorAll('.lv-grp-recall').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const ticket = btn.dataset.ticket;
+        const svc    = btn.dataset.svc;
+        const label  = btn.dataset.label;
+        if (!ticket) return;
+        // Ré-annoncer sur l'écran public en réécrivant lastCall
+        await DB.writeLastCall(0, null, svc || null, ticket, ticket, null);
+        showAgentCallNotif(ticket, null);
+        showToast(`📢 Rappel envoyé — ${ticket}`);
       });
     });
 
