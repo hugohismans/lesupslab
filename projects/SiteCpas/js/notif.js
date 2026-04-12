@@ -294,7 +294,7 @@ const NOTIF = {
         if (this._reminderSent.has(remindKey)) return;
         this._reminderSent.add(remindKey);
 
-        const svc   = res.service === 'Autre' ? res.serviceCustom : res.service;
+        const svc   = DB.getSvcLabel(res);
         const local = DB.getLocalLabel(res.localId);
         const min   = Math.round(diffMin);
         const msg   = min <= 1

@@ -1881,6 +1881,29 @@ body {
 .lv-grp-queue-row { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-bottom: .5rem; }
 .lv-grp-queue-label { font-size: .7rem; font-weight: 700; color: #94a3b8; letter-spacing: .04em; flex-shrink: 0; }
 .lv-grp-queue-pref-label { color: #f59e0b; }
+
+/* ── Liste de file d'attente bureau ──────────────────────────────── */
+.lv-grp-queue-list {
+  margin: .4rem 0 .5rem;
+  border-left: 2px solid #334155;
+  padding-left: .6rem;
+}
+.lv-grp-queue-header {
+  display: flex; align-items: center; gap: .4rem;
+  margin-bottom: .35rem;
+}
+.lv-grp-queue-arrow { font-size: .9rem; color: #f59e0b; font-weight: 700; }
+.lv-grp-queue-item {
+  display: flex; align-items: baseline; gap: .4rem;
+  padding: .18rem 0;
+  border-bottom: 1px solid #1e293b;
+  font-size: .82rem;
+}
+.lv-grp-queue-item:last-child { border-bottom: none; }
+.lv-grp-queue-pos   { color: #64748b; font-size: .75rem; min-width: 2rem; }
+.lv-grp-queue-ticket { color: #e2e8f0; font-weight: 600; }
+.lv-grp-queue-name  { color: #94a3b8; font-style: italic; }
+.lv-grp-queue-item-unknown { color: #475569; font-size: .78rem; }
 .lv-grp-chip {
   display: inline-block; padding: .18rem .55rem; border-radius: 6px;
   font-size: .82rem; font-weight: 700; color: #93c5fd;
@@ -1912,6 +1935,17 @@ body {
   transition: background .12s, color .12s;
 }
 .lv-grp-leave:hover { background: #1e293b; color: #e2e8f0; }
+
+/* ── Boutons toggle service (formulaire réservation) ──────────────── */
+.fs-btn-wrap { display: flex; flex-wrap: wrap; gap: .35rem; }
+.fs-svc-btn {
+  padding: .28rem .6rem; border-radius: 6px; font-size: .82rem; cursor: pointer;
+  background: #1e293b; border: 1.5px solid #334155; color: #94a3b8;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.fs-svc-btn:hover  { border-color: #64748b; color: #e2e8f0; }
+.fs-svc-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; font-weight: 600; }
+
 .lv-grp-add {
   width: 100%; padding: .55rem; border-radius: 10px; border: none;
   background: #1d4ed8; color: #fff; font-size: 1rem; font-weight: 700;

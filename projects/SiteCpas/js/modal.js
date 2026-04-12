@@ -8,19 +8,24 @@ const MODAL = {
   // Recharge les listes locaux/agents/services depuis Firebase
   refreshSelects() {
     const curLocal   = g('fLocal').value;
-    const curService = g('fService').value;
     const curAgent   = g('fAgent').value;
+    // Mémoriser les services actuellement actifs avant de re-rendre les boutons
+    const curServices = [...g('fServiceBtns').querySelectorAll('.fs-svc-btn.active')].map(b => b.dataset.svc);
 
     g('fLocal').innerHTML = '<option value="">— Sélectionner —</option>' +
       CONFIG.LOCALS.map(l => `<option value="${l}">${DB.getLocalLabel(l)}</option>`).join('');
-    g('fService').innerHTML = '<option value="">— Sélectionner —</option>' +
-      DB.getServices().map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // Boutons toggle pour les services (multi-sélection)
+    g('fServiceBtns').innerHTML = DB.getServices().map(s =>
+      `<button type="button" class="fs-svc-btn${curServices.includes(s) ? ' active' : ''}" data-svc="${escapeHtml(s)}">${escapeHtml(s)}</button>`
+    ).join('');
+    this._bindServiceBtns();
+
     g('fAgent').innerHTML = '<option value="">— Sélectionner —</option>' +
       DB.getAgents().map(a => `<option value="${a}">${a}</option>`).join('');
 
-    if (curLocal)   g('fLocal').value   = curLocal;
-    if (curService) g('fService').value = curService;
-    if (curAgent)   g('fAgent').value   = curAgent;
+    if (curLocal)  g('fLocal').value  = curLocal;
+    if (curAgent)  g('fAgent').value  = curAgent;
 
     // Mettre à jour la liste d'agents dans le select d'invitation
     const invSel = g('fInviteSelect');
@@ -128,7 +133,7 @@ const MODAL = {
     }
 
     listEl.innerHTML = occs.map(r => {
-      const svc   = r.service === 'Autre' ? r.serviceCustom : r.service;
+      const svc   = DB.getSvcLabel(r);
       const agt   = r.agent   === 'Autre' ? r.agentCustom  : r.agent;
       const loc   = DB.getLocalLabel(r.localId);
       const hm    = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
@@ -1119,9 +1124,7 @@ const MODAL = {
     // (appelé par DB.onConfigChange dans app.js au démarrage)
 
     // Champs conditionnels
-    g('fService').addEventListener('change', function() {
-      cls('fServiceCustomWrap', this.value !== 'Autre');
-    });
+    this._bindServiceBtns();
     g('fAgent').addEventListener('change', function() {
       cls('fAgentCustomWrap', this.value !== 'Autre');
     });
@@ -1429,7 +1432,7 @@ const MODAL = {
     const res = DB.getAll()[id];
     if (!res) return;
 
-    const svc  = res.service === 'Autre' ? res.serviceCustom : res.service;
+    const svc  = DB.getSvcLabel(res);
     const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
     const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
     const recL  = { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle' };
@@ -1468,15 +1471,16 @@ const MODAL = {
 
   // ─── Enregistrer (créer ou modifier) ───────────────────────────
   async save() {
-    const localId = parseInt(g('fLocal').value);
-    const service = g('fService').value;
-    const agent   = g('fAgent').value;
-    const isPerm  = g('fPermanent').checked;
+    const localId  = parseInt(g('fLocal').value);
+    const services = [...g('fServiceBtns').querySelectorAll('.fs-svc-btn.active')].map(b => b.dataset.svc);
+    const service  = services[0] || '';   // compat backward
+    const agent    = g('fAgent').value;
+    const isPerm   = g('fPermanent').checked;
 
-    if (!localId || !service || !agent)
-      return alert('Veuillez remplir les champs obligatoires : Local, Service, Agent.');
-    if (service === 'Autre' && !g('fServiceCustom').value.trim())
-      return alert('Veuillez préciser le service.');
+    if (!localId || !services.length || !agent)
+      return alert('Veuillez remplir les champs obligatoires : Local, Service(s), Agent.');
+    if (services.includes('Autre') && !g('fServiceCustom').value.trim())
+      return alert('Veuillez préciser le service personnalisé.');
     if (agent === 'Autre' && !g('fAgentCustom').value.trim())
       return alert("Veuillez préciser l'agent.");
 
@@ -1649,7 +1653,7 @@ const MODAL = {
 
     const data = {
       localId,
-      service,    serviceCustom: g('fServiceCustom').value.trim(),
+      service,    services,   serviceCustom: g('fServiceCustom').value.trim(),
       agent,      agentCustom:   g('fAgentCustom').value.trim(),
       comment:    g('fComment').value.trim(),
       isPermanent: isPerm,
@@ -1805,13 +1809,17 @@ const MODAL = {
     g('resTitle').textContent = 'Modifier la réservation';
 
     g('fLocal').value    = res.localId;
-    g('fService').value  = res.service;
     g('fAgent').value    = res.agent;
     g('fComment').value  = res.comment || '';
     g('fPermanent').checked = res.isPermanent;
 
-    if (res.service === 'Autre') { cls('fServiceCustomWrap', false); g('fServiceCustom').value = res.serviceCustom || ''; }
-    if (res.agent   === 'Autre') { cls('fAgentCustomWrap',   false); g('fAgentCustom').value   = res.agentCustom   || ''; }
+    // Pré-sélectionner les services (tableau ou valeur unique pour compat)
+    const activeSvcs = res.services?.length ? res.services : (res.service ? [res.service] : []);
+    g('fServiceBtns').querySelectorAll('.fs-svc-btn').forEach(btn => {
+      btn.classList.toggle('active', activeSvcs.includes(btn.dataset.svc));
+    });
+    if (activeSvcs.includes('Autre')) { cls('fServiceCustomWrap', false); g('fServiceCustom').value = res.serviceCustom || ''; }
+    if (res.agent === 'Autre') { cls('fAgentCustomWrap', false); g('fAgentCustom').value = res.agentCustom || ''; }
 
     if (res.isPermanent) {
       g('fDatesWrap').style.display = 'none';
@@ -1857,10 +1865,12 @@ const MODAL = {
 
   // ─── Helpers ───────────────────────────────────────────────────
   _reset() {
-    ['fLocal','fService','fAgent','fServiceCustom','fAgentCustom','fComment',
+    ['fLocal','fAgent','fServiceCustom','fAgentCustom','fComment',
      'fDateStart','fTimeStart','fDateEnd','fTimeEnd','fRecEndDate'].forEach(id => {
       const e = g(id); if (e) e.value = '';
     });
+    // Désélectionner tous les boutons service
+    g('fServiceBtns').querySelectorAll('.fs-svc-btn').forEach(b => b.classList.remove('active'));
     g('fPermanent').checked = false;
     g('fDatesWrap').style.display = '';
     g('fRecType').value  = 'none';
@@ -1875,6 +1885,19 @@ const MODAL = {
     // Vider les chips d'invitation
     if (g('fInviteChips')) g('fInviteChips').innerHTML = '';
     if (g('fInviteSelect')) g('fInviteSelect').value = '';
+  },
+
+  // Attache les handlers click sur les boutons service (appelé après chaque re-render)
+  _bindServiceBtns() {
+    g('fServiceBtns').querySelectorAll('.fs-svc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        const hasAutre = [...g('fServiceBtns').querySelectorAll('.fs-svc-btn.active')]
+          .some(b => b.dataset.svc === 'Autre');
+        cls('fServiceCustomWrap', !hasAutre);
+        if (!hasAutre) g('fServiceCustom').value = '';
+      });
+    });
   },
 
   _updateHint() {

@@ -79,7 +79,7 @@ const HOME = {
       .filter(r => { const d = (r._start - now) / 60000; return d > 0 && d <= 12; })
       .sort((a, b) => a._start - b._start)[0];
     if (imminent) {
-      const svc = escapeHtml(imminent.service === 'Autre' ? imminent.serviceCustom : imminent.service);
+      const svc = escapeHtml(DB.getSvcLabel(imminent));
       const loc = escapeHtml(DB.getLocalLabel(imminent.localId));
       const min = Math.round((imminent._start - now) / 60000);
       return min <= 1 ? `C'est l'heure ! ${loc} — ${svc} 🚀` : `Dans ${min} min : ${svc} au ${loc} ⏰`;
@@ -101,7 +101,7 @@ const HOME = {
       .filter(r => { const d = (r._start - now) / 60000; return d > 12 && d <= 60; })
       .sort((a, b) => a._start - b._start)[0];
     if (nextSoon) {
-      const svc = escapeHtml(nextSoon.service === 'Autre' ? nextSoon.serviceCustom : nextSoon.service);
+      const svc = escapeHtml(DB.getSvcLabel(nextSoon));
       const min = Math.round((nextSoon._start - now) / 60000);
       return `Prochain RDV dans ${min} min — ${svc} 📅`;
     }
@@ -1211,7 +1211,7 @@ const HOME = {
         agendaEl.innerHTML = '<div class="hs-agenda-empty">Aucune réservation aujourd\'hui</div>';
       } else {
         agendaEl.innerHTML = todays.map((r, i) => {
-          const svc = r.service === 'Autre' ? r.serviceCustom : r.service;
+          const svc = DB.getSvcLabel(r);
           const loc = DB.getLocalLabel(r.localId);
           const hm  = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
           const hme = r._end?.toLocaleTimeString('fr-BE',   { hour:'2-digit', minute:'2-digit' }) || '';
@@ -1424,9 +1424,7 @@ const HOME = {
       // Badge service : calendrier en priorité, sinon groupe de file si bureau ouvert
       let badgeSvc = null;
       if (activeOcc) {
-        badgeSvc = activeOcc.service === 'Autre'
-          ? (activeOcc.serviceCustom || 'Permanence')
-          : (activeOcc.service || (activeOcc.isPermanent ? 'Permanence' : 'Réunion'));
+        badgeSvc = DB.getSvcLabel(activeOcc) || (activeOcc.isPermanent ? 'Permanence' : 'Réunion');
       } else if (isCurrent || isOccupied) {
         const grp = DB.getLocalGroup(localId);
         if (grp) badgeSvc = grp.name;
@@ -1768,7 +1766,7 @@ function generateIcal(agentName, reservations) {
     const start = new Date(res.startDateTime);
     const end   = res.endDateTime ? new Date(res.endDateTime) : new Date(res.startDateTime);
     if (!res.isPermanent && res.endDateTime) { /* OK */ }
-    const svc   = res.service === 'Autre' ? res.serviceCustom : res.service;
+    const svc   = DB.getSvcLabel(res);
     const local = DB.getLocalLabel(res.localId);
     lines.push('BEGIN:VEVENT');
     lines.push(`UID:${id}@moncompagnon`);

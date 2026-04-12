@@ -96,7 +96,7 @@ const CAL = {
           // Permanent → couvre tous les créneaux restants
           const span = total - i;
           coveredUntil[l] = total;
-          const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
+          const svc = DB.getSvcLabel(perm);
           h += `<td class="cv-cell is-perm" rowspan="${span}" data-id="${perm.id}" data-act="detail">
             <span class="ct">🔒 ${svc}</span>
           </td>`;
@@ -113,7 +113,7 @@ const CAL = {
           span = Math.max(1, span);
           coveredUntil[l] = i + span;
 
-          const svc   = res.service === 'Autre' ? res.serviceCustom : res.service;
+          const svc   = DB.getSvcLabel(res);
           const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
           const agtFmt = fmtAgent(agt);
           const recType = res.recurrence?.type;
@@ -538,7 +538,7 @@ const LIVE = {
     const ticket    = isObj ? ticketInfo.display : ticketInfo;
     const ticketLabel = isObj ? ticketInfo.label  : ticketInfo;
     const ticketName  = isObj ? (ticketInfo.name || null) : null;
-    const svc      = occ ? (occ.service === 'Autre' ? occ.serviceCustom : occ.service) : '';
+    const svc      = occ ? DB.getSvcLabel(occ) : '';
     const agent    = occ ? (occ.agent   === 'Autre' ? occ.agentCustom  : occ.agent)   : null;
     const pubAgent = agent ? DB.getAgentPublicName(agent) : null;
     this._lastCalled[localId] = { ticket, ticketLabel, ticketName, svc, pubAgent, localLabel: DB.getLocalLabel(localId), time: new Date() };
@@ -949,7 +949,7 @@ const LIVE = {
         const targetRes = perm || res || allForLocal.filter(r => r._start > now).sort((a, b) => a._start - b._start)[0] || null;
 
         const fmtResRow = (o, highlight) => {
-          const svc = o.service === 'Autre' ? o.serviceCustom : o.service;
+          const svc = DB.getSvcLabel(o);
           const agt = o.agent   === 'Autre' ? o.agentCustom  : o.agent;
           const hm  = o._start?.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) || '';
           const hme = o._end?.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) || '';
@@ -1107,7 +1107,7 @@ const LIVE = {
       }
 
       if (perm) {
-        const svc           = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
+        const svc           = DB.getSvcLabel(perm);
         const agt           = perm.agent   === 'Autre' ? perm.agentCustom  : perm.agent;
         const agtRoleColor  = DB.getAgentRoleColor(agt);
         const permCls       = isOpen ? 'lv-perm' : 'lv-closed';
@@ -1121,7 +1121,7 @@ const LIVE = {
         </div>`;
       }
       if (res) {
-        const svc           = res.service === 'Autre' ? res.serviceCustom : res.service;
+        const svc           = DB.getSvcLabel(res);
         const agt           = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
         const endH          = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         const agentCardColor = DB.getAgentColor(agt);     // couleur de carte (paramétrable)
@@ -1235,14 +1235,22 @@ const LIVE = {
         const _ovfNums = [];
         for (let n = _called + 1; n <= _issued; n++) { if (!DB.isTicketSkipped(_bureauGrp.id, n)) _ovfNums.push(n); }
         const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length);
-        const _ovfChips = (_ovfNums.length || _extraOvf > 0) && _gcCfg.showNum
-          ? `<div class="lv-grp-queue-row">
-               <span class="lv-grp-queue-label">EN ATTENTE :</span>
-               ${_ovfNums.map(n => {
-                 const num  = DB.formatTicket(_bureauGrp.id, n);
+        const _ovfChips = (_ovfNums.length || _extraOvf > 0)
+          ? `<div class="lv-grp-queue-list">
+               <div class="lv-grp-queue-header">
+                 <span class="lv-grp-queue-arrow">↓</span>
+                 <span class="lv-grp-queue-label">FILE D'ATTENTE — ${_grpOvf} personne${_grpOvf > 1 ? 's' : ''}</span>
+               </div>
+               ${_ovfNums.map((n, i) => {
+                 const num  = _gcCfg.showNum  ? DB.formatTicket(_bureauGrp.id, n) : `#${i+1}`;
                  const name = _gcCfg.showName ? DB.getTicketName(_bureauGrp.id, n) : null;
-                 return `<span class="lv-grp-chip">${escapeHtml(name ? num + ' · ' + name : num)}</span>`;
-               }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
+                 return `<div class="lv-grp-queue-item">
+                   <span class="lv-grp-queue-pos">→ ${i + 1}</span>
+                   <span class="lv-grp-queue-ticket">${escapeHtml(num)}</span>
+                   ${name ? `<span class="lv-grp-queue-name">${escapeHtml(name)}</span>` : ''}
+                 </div>`;
+               }).join('')}
+               ${_extraOvf > 0 ? `<div class="lv-grp-queue-item lv-grp-queue-item-unknown">→ … +${_extraOvf} autre${_extraOvf > 1 ? 's' : ''}</div>` : ''}
              </div>`
           : '';
         // Chips préférés : uniquement pour les groupes où ce bureau est inscrit
@@ -1567,7 +1575,7 @@ const LIVE = {
         const res = curRes || nextRes;
         let infoHtml = '';
         if (res) {
-          const svc = res.service === 'Autre' ? res.serviceCustom : res.service;
+          const svc = DB.getSvcLabel(res);
           const agt = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
           const hm  = res._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const hme = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
@@ -1602,9 +1610,10 @@ const LIVE = {
               if (!_grpCheck) {
                 _notifMsg += ` ⚠️ Ce bureau n'est dans aucune file partagée.`;
               } else if (res) {
-                const _svcOpen = res.service === 'Autre' ? res.serviceCustom : res.service;
-                if (!DB.serviceMatchesGroup(_svcOpen, _grpCheck)) {
-                  _notifMsg += ` ⚠️ Service "${_svcOpen}" ne correspond pas au groupe "${_grpCheck.name}".`;
+                const _svcsOpen = DB.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s);
+                const _anyMatch = _svcsOpen.some(s => DB.serviceMatchesGroup(s, _grpCheck));
+                if (!_anyMatch) {
+                  _notifMsg += ` ⚠️ Service(s) "${_svcsOpen.join(', ')}" ne correspondent pas au groupe "${_grpCheck.name}".`;
                 }
               }
               const _accueilKeys = DB.getAccueilAgentKeys();
@@ -1790,7 +1799,7 @@ const LIVE = {
         let infoHtml = '';
         if (next) {
           const agt = next.agent   === 'Autre' ? next.agentCustom  : next.agent;
-          const svc = next.service === 'Autre' ? next.serviceCustom : next.service;
+          const svc = DB.getSvcLabel(next);
           const hm  = next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const hme = next._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           infoHtml  = `<div class="lv-bm-res">
@@ -1865,7 +1874,7 @@ const LIVE = {
     const ql = q.toLowerCase();
 
     const getAgt = r => (r.agent   === 'Autre' ? r.agentCustom   : r.agent)   || '';
-    const getSvc = r => (r.service === 'Autre' ? r.serviceCustom : r.service)  || '';
+    const getSvc = r => DB.getSvcLabel(r) || '';
 
     const matchesAgent   = r => {
       const name = getAgt(r);
@@ -2275,7 +2284,7 @@ const LIVE = {
       this._shownAlerts.add(key);
       const label   = DB.getLocalLabel(Number(o.localId));
       const agt     = o.agent   === 'Autre' ? o.agentCustom   : o.agent;
-      const svc     = o.service === 'Autre' ? o.serviceCustom : o.service;
+      const svc     = DB.getSvcLabel(o);
       const minLeft = Math.max(1, Math.round((o._start - now) / 60000));
       showUpcomingAlert(label, agt, svc, minLeft);
     });
@@ -2324,7 +2333,7 @@ function updateStatusBar() {
     );
 
     if (perm) {
-      const svc = perm.service === 'Autre' ? perm.serviceCustom : perm.service;
+      const svc = DB.getSvcLabel(perm);
       return `<div class="lpill is-perm" title="${svc}">
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">🔒 Permanent</div>
@@ -2332,7 +2341,7 @@ function updateStatusBar() {
       </div>`;
     }
     if (res) {
-      const svc = res.service === 'Autre' ? res.serviceCustom : res.service;
+      const svc = DB.getSvcLabel(res);
       const agt = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
       const agtFmt = fmtAgent(agt);
       const endH = res._end

@@ -183,6 +183,10 @@ const DB = {
       .map(a => a.key);
   },
   getServicesWithKeys()   { return this._config.services; },
+  // Retourne la liste des services d'une réservation (compat ancien format champ unique)
+  getResSvcs(res)         { return res.services?.length ? res.services : (res.service ? [res.service] : []); },
+  // Retourne le libellé affichable des services (ex: "Aide sociale + Médiation")
+  getSvcLabel(res)        { return this.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s).join(' + ') || ''; },
   getById(id)             { return this._data[id] ? { id, ...this._data[id] } : null; },
   getLocalLabel(id)       { return this._config.localLabels[id]       || `Local ${id}`; },
   getPublicLocalLabel(id) { return this._config.publicLabels[id]      || this.getLocalLabel(id); },

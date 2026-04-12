@@ -90,7 +90,7 @@ const ANALYTICS = {
         s.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }),
         e.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }),
         DB.getLocalLabel(r.localId),
-        r.service === 'Autre' ? (r.serviceCustom || '') : r.service,
+        DB.getSvcLabel(r) || r.service,
         r.agent   === 'Autre' ? (r.agentCustom   || '') : r.agent,
         r.comment || '',
       ]);
@@ -284,8 +284,10 @@ ANALYTICS.register({
   render(el, { from, to }) {
     const counts = {};
     _anOccs(from, to).forEach(r => {
-      const svc = r.service === 'Autre' ? (r.serviceCustom || 'Autre') : r.service;
-      counts[svc] = (counts[svc] || 0) + 1;
+      DB.getResSvcs(r).forEach(s => {
+        const svc = s === 'Autre' ? (r.serviceCustom || 'Autre') : s;
+        counts[svc] = (counts[svc] || 0) + 1;
+      });
     });
     const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7);
     if (!sorted.length) { el.innerHTML = '<p class="an-empty">Aucune donnée sur cette période.</p>'; return; }
