@@ -627,7 +627,16 @@ const HOME = {
   _bonjourKey(agentKey) {
     return `mc_bonjour_${agentKey}_${new Date().toISOString().slice(0, 10)}`;
   },
-  _hasSaidBonjourToday(agentKey) { return !!localStorage.getItem(this._bonjourKey(agentKey)); },
+  _hasSaidBonjourToday(agentKey) {
+    if (localStorage.getItem(this._bonjourKey(agentKey))) return true;
+    // Si déjà connecté dans Firebase (rechargement de page, localStorage vidé…)
+    // → considérer le bonjour comme déjà dit pour éviter le rappel intempestif
+    if (typeof DB !== 'undefined' && DB.isConnectedToday?.(agentKey)) {
+      this._markSaidBonjourToday(agentKey);
+      return true;
+    }
+    return false;
+  },
   _markSaidBonjourToday(agentKey) { localStorage.setItem(this._bonjourKey(agentKey), '1'); },
 
   // Résout l'introType d'un agent (built-in roleId, ou introType du rôle custom, ou __agent__ par défaut)
