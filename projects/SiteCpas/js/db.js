@@ -844,6 +844,15 @@ const DB = {
     return this._preferredPending[String(localId)] || this._preferredPending[localId] || null;
   },
 
+  // Cherche dans tous les preferredPending lequel correspond à ce ticketLabel
+  findPreferredPendingByTicket(ticketLabel) {
+    if (!ticketLabel) return null;
+    for (const [lidStr, pend] of Object.entries(this._preferredPending || {})) {
+      if (pend?.ticketLabel === ticketLabel) return { localId: parseInt(lidStr), pend };
+    }
+    return null;
+  },
+
   // ── File d'attente preferred par local (plusieurs personnes qui veulent le même agent) ──
   _preferredQueue: {},
 

@@ -830,7 +830,11 @@ const LIVE = {
           }
         }
         DB.getPreferredQueue(l).forEach(item => {
-          prefPeople.push({ name: item.displayName || '?', ts: item.ts || 0, agent: item.agentPublicName || null, ticket: null });
+          prefPeople.push({ name: item.displayName || '?', ts: item.ts || 0, agent: item.agentPublicName || null, ticket: item.ticketLabel || null });
+          if (item.ticketLabel) {
+            const mq = item.ticketLabel.match(/(\d+)$/);
+            if (mq) prefTicketNums.add(parseInt(mq[1], 10));
+          }
         });
       });
       prefPeople.sort((a, b) => a.ts - b.ts);
@@ -847,16 +851,14 @@ const LIVE = {
            </div>`
         : '';
 
-      // Chips file d'attente générale (overflow) — hors tickets déjà en demande spécifique
+      // Chips file d'attente générale — tous les tickets (y compris demandes spécifiques)
       const issued = DB.getTicketIssued(grpId);
       const called = DB.getTicketCalled(grpId);
       const overflowNums = [];
       for (let n = called + 1; n <= issued; n++) {
-        if (!prefTicketNums.has(n)) overflowNums.push(n);
+        overflowNums.push(n);
       }
-      // Fallback si tick_/wait_ désynchronisés — soustraire aussi les tickets préférés dans wait_
-      // (depuis respondToPreferredRequest, les tickets préférés incrémentent wait_)
-      const extraOverflow = Math.max(0, overflow - overflowNums.length - prefTicketNums.size);
+      const extraOverflow = Math.max(0, overflow - overflowNums.length);
       const overflowChipsHtml = (overflowNums.length || extraOverflow > 0)
         ? `<div class="lv-grp-queue-row">
              <span class="lv-grp-queue-label">EN ATTENTE :</span>
@@ -1228,8 +1230,8 @@ const LIVE = {
           if (pend?.ticketLabel) { const m = pend.ticketLabel.match(/(\d+)$/); if (m) _prefNums.add(parseInt(m[1], 10)); }
         });
         const _ovfNums = [];
-        for (let n = _called + 1; n <= _issued; n++) { if (!_prefNums.has(n)) _ovfNums.push(n); }
-        const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length - _prefNums.size);
+        for (let n = _called + 1; n <= _issued; n++) { _ovfNums.push(n); }
+        const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length);
         const _ovfChips = (_ovfNums.length || _extraOvf > 0) && _gcCfg.showNum
           ? `<div class="lv-grp-queue-row">
                <span class="lv-grp-queue-label">EN ATTENTE :</span>
@@ -1452,6 +1454,13 @@ const LIVE = {
           const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
           const _grp      = DB.getQueueGroups()[grpId];
           const _ticket   = await DB.callNextTicket(grpId);
+          // Si ce ticket correspond à une demande spécifique, fermer proprement sans re-avancer tcall/wait
+          const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
+          if (_prefMatch) {
+            await DB._ref(`appState/preferredRequests/${_prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
+            await DB._ref(`appState/preferredPending/${_prefMatch.localId}`).remove();
+            await DB.shiftPreferredQueue(_prefMatch.localId);
+          }
           showAgentCallNotif(_ticket.label, _ticket.name);
           await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
           LIVE._storeCall(localId, _ticket, _occ);
@@ -1581,6 +1590,12 @@ const LIVE = {
               );
               const _pubAgent = DB.getBureauAgentDisplayName(localId);
               const _ticket   = await DB.callNextTicket(grp.id);
+              const _prefMatch2 = DB.findPreferredPendingByTicket(_ticket.label);
+              if (_prefMatch2) {
+                await DB._ref(`appState/preferredRequests/${_prefMatch2.pend.requestId}`).update({ status: 'done', benefName: null });
+                await DB._ref(`appState/preferredPending/${_prefMatch2.localId}`).remove();
+                await DB.shiftPreferredQueue(_prefMatch2.localId);
+              }
               showAgentCallNotif(_ticket.label, _ticket.name);
               await DB.writeLastCall(localId, _pubAgent, grp.name || null, _ticket.display, _ticket.label, _ticket.name);
               LIVE._storeCall(localId, _ticket, _occ);
