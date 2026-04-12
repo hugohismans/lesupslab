@@ -1597,7 +1597,7 @@ function applyFeatureFlags() {
     if (el) el.style.display = visible ? '' : 'none';
   };
   show('btnLive',             DB.getFeature('enableTickets'));
-  show('pubDdWrap',           DB._config.features['enablePublicView'] !== false);
+  show('btnPublic',           DB._config.features['enablePublicView'] !== false);
   show('btnPresenceHd',       DB.getFeature('enablePresence'));
   show('btnAnalytics',        DB.getFeature('enableAnalytics'));
   show('notifBell',           DB.getFeature('enableNotif'));
@@ -2357,35 +2357,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     HOME._requireBonjour(() => MODAL.openNew({ date: isoDate(CAL.date) }));
   });
 
-  // ─── Dropdown Vue Publique ─────────────────────────────────────
-  function updatePublicDropdown() {
-    const orgParam  = ORG_ID !== 'cpas-quaregnon' ? `?org=${ORG_ID}` : '';
-    const sep       = orgParam ? '&' : '?';
-    const screens   = DB.getScreens();
-    const menu      = document.getElementById('pubDdMenu');
-    if (!menu) return;
-    menu.innerHTML  = `
-      <a class="pub-dd-item" href="public.html${orgParam}" target="_blank">🌐 Tous les locaux</a>
-      ${screens.length ? '<div class="pub-dd-sep"></div>' : ''}
-      ${screens.map(s =>
-        `<a class="pub-dd-item" href="public.html${orgParam}${sep}screen=${s.id}" target="_blank">
-          🖥 ${escapeHtml(s.name)}
-        </a>`
-      ).join('')}`;
+  // Bouton "Public" → ouvre vuepublic.html (lien direct, pas de dropdown)
+  // L'URL inclut l'orgId si différent du défaut
+  const _pubBtn = document.getElementById('btnPublic');
+  if (_pubBtn && _pubBtn.tagName === 'A') {
+    const _orgParam = ORG_ID !== 'cpas-quaregnon' ? `?org=${encodeURIComponent(ORG_ID)}` : '';
+    _pubBtn.href = `vuepublic.html${_orgParam}`;
   }
-
-  // Rafraîchir le dropdown quand la config change
-  DB.onConfigChange(updatePublicDropdown);
-
-  // Ouvrir/fermer le dropdown
-  document.getElementById('btnPublic').addEventListener('click', e => {
-    e.stopPropagation();
-    const menu = document.getElementById('pubDdMenu');
-    menu.classList.toggle('hidden');
-  });
-  document.addEventListener('click', () => {
-    document.getElementById('pubDdMenu')?.classList.add('hidden');
-  });
 
   // Bouton ajout écran → géré dans modal.js (_initSettings)
 

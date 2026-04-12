@@ -83,10 +83,7 @@
       </button>
     </div>
     <button class="btn-calendar-export" id="btnCalendarExport" title="Exporter mon agenda (.ics)" style="display:none">📅 Agenda</button>
-    <div class="pub-dd-wrap" id="pubDdWrap">
-      <button class="btn-live" id="btnPublic" title="Vue publique">🖥 Public ▾</button>
-      <div class="pub-dd-menu hidden" id="pubDdMenu"></div>
-    </div>
+    <a class="btn-live" id="btnPublic" href="vuepublic.html" target="_blank" title="Vue publique">🖥 Public</a>
     <button class="btn-settings" id="btnSettings" title="Paramètres">⚙</button>
     <button class="btn-dnd" id="btnDnd" title="Activer le mode absent">🔔</button>
     <div class="notif-bell-wrap">
@@ -1073,7 +1070,13 @@
   </div>
   <div class="live-presence-bar" id="livePresenceBar"></div>
   <div class="lv-lieu-filters hidden" id="liveLieuFilters"></div>
-  <div class="live-grid" id="liveGrid"></div>
+  <div class="lv-content-area">
+    <div class="live-grid" id="liveGrid"></div>
+    <div class="lv-agent-locations-panel hidden" id="agentLocationsPanel">
+      <div class="lv-loc-title">📍 Agents en bureau</div>
+      <div id="agentLocationsBody"></div>
+    </div>
+  </div>
   <div class="live-agent-result hidden" id="liveAgentResult"></div>
 </div>
 

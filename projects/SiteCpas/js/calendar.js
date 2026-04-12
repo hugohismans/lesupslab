@@ -647,6 +647,8 @@ const LIVE = {
     g('btnQueueGroups').classList.toggle('hidden', !isAccueil);
     g('btnToggleBureaux').classList.toggle('hidden', !isAccueil);
     g('liveAgentSearch').closest('.live-search-wrap').classList.toggle('hidden', !isAccueil);
+    // Sidebar agents → bureau : visible uniquement en mode accueil
+    g('agentLocationsPanel').classList.toggle('hidden', !isAccueil);
     if (!isAccueil) {
       g('queueGroupPanel').classList.add('hidden');
       this._showAllBureaux = false;
@@ -740,6 +742,36 @@ const LIVE = {
     } else {
       this._renderGridMode(now, occs);
     }
+
+    // Sidebar agents → bureau (accueil uniquement)
+    if (this.getRole() === 'accueil') this._renderAgentLocations();
+  },
+
+  _renderAgentLocations() {
+    const body = g('agentLocationsBody');
+    if (!body) return;
+    const locals = CONFIG.LOCALS || [];
+    const entries = [];
+    locals.forEach(lid => {
+      if (!DB.isBureauOpen(lid)) return;
+      const agentKey = DB.getBureauAgentKey(lid);
+      if (!agentKey) return;
+      const agentName = DB.getAgentDisplayName(agentKey) || agentKey;
+      const localLabel = DB.getLocalLabel(lid);
+      entries.push({ agentName, localLabel });
+    });
+    // Tri alphabétique par nom d'agent
+    entries.sort((a, b) => a.agentName.localeCompare(b.agentName, 'fr'));
+    if (!entries.length) {
+      body.innerHTML = '<div class="lv-loc-empty">Aucun agent en bureau</div>';
+      return;
+    }
+    body.innerHTML = entries.map(e =>
+      `<div class="lv-loc-row">
+        <span class="lv-loc-agent">${escapeHtml(e.agentName)}</span>
+        <span class="lv-loc-local">${escapeHtml(e.localLabel)}</span>
+      </div>`
+    ).join('');
   },
 
   _renderGridMode(now, occs) {
@@ -798,7 +830,7 @@ const LIVE = {
         <div class="lv-grp-status">${statusTxt}</div>
         ${overflowTxt}
         ${dotsHtml}
-        <button class="lv-grp-add" data-grp="${grpId}"${!hasOpen ? ' disabled title="Aucun bureau ouvert dans ce groupe"' : ''}>+ Envoyer un bénéficiaire</button>
+        <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
         ${reprintBtn}
       </div>`;
     }).join('');
@@ -931,8 +963,11 @@ const LIVE = {
         const prefQueueHint = prefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
+        const overflowBadge = !isAccueil && overflow > 0
+          ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente dans la file</div>`
+          : '';
         const grpHint = !isAccueil
-          ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${infoHint}${prefQueueHint}`
+          ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${overflowBadge}${infoHint}${prefQueueHint}`
           : '';
         // Rappel disponible dès qu'un ticket a été appelé, même si quelqu'un est en salle
         const recallBtn = lastCallAny

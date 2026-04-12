@@ -557,7 +557,7 @@ const MascotBrain = {
       const dir  = snap.val();
       if (!dir) { window.HOME?._showBubble?.("Aucun ami connecté pour l'instant... 😢"); return; }
 
-      const currentOrgId = window.CONFIG?.ORG_ID || '';
+      const currentOrgId = window.ORG_ID || window.CONFIG?.ORG_ID || '';
       const others = Object.entries(dir)
         .filter(([id, d]) => id !== currentOrgId && d.visitsEnabled !== false)
         .map(([, data]) => data);
@@ -630,7 +630,7 @@ const MascotBrain = {
       const dir  = snap.val();
       if (!dir) return;
 
-      const currentOrgId = window.CONFIG?.ORG_ID || '';
+      const currentOrgId = window.ORG_ID || window.CONFIG?.ORG_ID || '';
       const others = Object.entries(dir)
         .filter(([id, d]) => id !== currentOrgId && d.visitsEnabled !== false)
         .map(([, data]) => data);

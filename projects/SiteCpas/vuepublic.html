@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vue publique</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1a0f2e 55%, #0f1f38 100%);
+      min-height: 100dvh; color: #e2e8f0;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* ── Header ── */
+    .vp-header {
+      width: 100%; padding: 2rem 2rem 1rem;
+      display: flex; flex-direction: column; align-items: center; gap: .6rem;
+      text-align: center;
+    }
+    .vp-logo {
+      width: 72px; height: 72px; border-radius: 18px;
+      object-fit: contain; background: rgba(255,255,255,.08);
+    }
+    .vp-logo-hidden { display: none; }
+    .vp-org {
+      font-size: 1.4rem; font-weight: 800; color: #e2e8f0;
+    }
+    .vp-sub {
+      font-size: .83rem; color: #64748b;
+    }
+
+    /* ── Grid ── */
+    .vp-grid {
+      width: 100%; max-width: 820px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.25rem;
+      padding: 1.5rem 2rem 3rem;
+    }
+
+    /* ── Carte vue ── */
+    .vp-card {
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(255,255,255,.1);
+      border-radius: 18px;
+      padding: 2rem 1.25rem 1.5rem;
+      display: flex; flex-direction: column; align-items: center; gap: .9rem;
+      cursor: pointer; text-decoration: none; color: inherit;
+      transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+    }
+    .vp-card:hover {
+      background: rgba(255,255,255,.12);
+      border-color: rgba(99,102,241,.5);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 36px rgba(0,0,0,.35);
+    }
+    .vp-card:active { transform: translateY(-1px); }
+
+    .vp-card-icon {
+      font-size: 2.2rem; line-height: 1;
+    }
+    .vp-card-name {
+      font-size: .92rem; font-weight: 700;
+      text-align: center; color: #e2e8f0;
+      line-height: 1.35;
+    }
+    .vp-card-desc {
+      font-size: .75rem; color: #64748b;
+      text-align: center; line-height: 1.4;
+    }
+    .vp-card-all {
+      border-color: rgba(99,102,241,.3);
+    }
+    .vp-card-all .vp-card-icon { font-size: 2.4rem; }
+
+    /* ── États ── */
+    .vp-loading, .vp-empty, .vp-disabled {
+      color: #475569; font-size: .9rem;
+      padding: 3rem; text-align: center;
+      grid-column: 1/-1;
+    }
+    .vp-disabled { color: #f87171; }
+    .vp-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(255,255,255,.1);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Section header ── */
+    .vp-section {
+      width: 100%; max-width: 820px;
+      padding: .5rem 2rem 0;
+      font-size: .75rem; font-weight: 700; color: #475569;
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+    .vp-section:first-of-type { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="vp-header">
+  <img class="vp-logo vp-logo-hidden" id="vpLogo" alt="Logo organisation">
+  <div class="vp-org" id="vpOrgName">Chargement…</div>
+  <div class="vp-sub">Sélectionnez une vue publique</div>
+</div>
+
+<div class="vp-grid" id="vpGrid">
+  <div class="vp-loading">
+    <div class="vp-spinner"></div>
+    Connexion à Firebase…
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script>
+  firebase.initializeApp(CONFIG.FIREBASE);
+  const db   = firebase.database();
+  const grid = document.getElementById('vpGrid');
+
+  function esc(s) {
+    return String(s ?? '')
+      .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+      .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Construction des paramètres URL pour les liens public.html
+  const orgParam = ORG_ID !== 'cpas-quaregnon' ? `?org=${encodeURIComponent(ORG_ID)}` : '';
+  const sep      = orgParam ? '&' : '?';
+
+  db.ref(`orgs/${ORG_ID}/appConfig`).once('value').then(snap => {
+    const d        = snap.val() || {};
+    const meta     = d.meta     || {};
+    const screens  = d.screens  || {};
+    const features = d.features || {};
+
+    // Header
+    const orgName = meta.name || ORG_ID;
+    document.getElementById('vpOrgName').textContent = orgName;
+    document.title = `${orgName} — Vue publique`;
+    if (meta.logoUrl) {
+      const img = document.getElementById('vpLogo');
+      img.src = meta.logoUrl;
+      img.classList.remove('vp-logo-hidden');
+      img.onerror = () => img.classList.add('vp-logo-hidden');
+    }
+
+    // Feature flag désactivé
+    if (features.enablePublicView === false) {
+      grid.innerHTML = '<div class="vp-disabled">⛔ La vue publique est désactivée pour cette organisation.</div>';
+      return;
+    }
+
+    // Construire les cartes
+    const screenEntries = Object.entries(screens)
+      .map(([id, s]) => ({ id, name: s.name || 'Écran sans nom', order: s.order ?? 999 }))
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'fr'));
+
+    let html = '';
+
+    // Carte "Tous les locaux"
+    html += `<a class="vp-card vp-card-all" href="public.html${orgParam}" target="_blank">
+      <div class="vp-card-icon">🌐</div>
+      <div class="vp-card-name">Tous les locaux</div>
+      <div class="vp-card-desc">Vue complète de tous les bureaux</div>
+    </a>`;
+
+    // Cartes par écran configuré
+    if (screenEntries.length) {
+      screenEntries.forEach(s => {
+        html += `<a class="vp-card" href="public.html${orgParam}${sep}screen=${encodeURIComponent(s.id)}" target="_blank">
+          <div class="vp-card-icon">🖥</div>
+          <div class="vp-card-name">${esc(s.name)}</div>
+          <div class="vp-card-desc">Écran personnalisé</div>
+        </a>`;
+      });
+    }
+
+    grid.innerHTML = html;
+
+  }).catch(err => {
+    grid.innerHTML = `<div class="vp-empty">Erreur de connexion : ${esc(err.message)}</div>`;
+  });
+</script>
+</body>
+</html>

@@ -85,6 +85,7 @@ let _config = { agents: [], localLabels: {}, publicLabels: {}, localDescriptions
 let _agentStatus = {};
 let _currentLieuId = null;
 let _locals = CONFIG.LOCALS;
+let _lastCallsData = {}; // dernier ticket appelé par local (pour affichage sur carte bureau)
 
 function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function getLocalLabel(id)       { return _config.localLabels[id]       || `Local ${id}`; }
@@ -362,9 +363,14 @@ function render() {
       // Agent affiché : celui réellement déclaré dans le bureau, sinon celui de la réservation
       const actualKey   = _bureauState[String(l)]?.agentKey || null;
       const displayAgt  = actualKey ? (getAgentPublicNameByKey(actualKey) || getAgentPublicName(agt)) : getAgentPublicName(agt);
+      // Ticket en cours (affiché uniquement quand occupé)
+      const curCall = busy ? (_lastCallsData[String(l)] || null) : null;
+      const ticketDisplay = curCall ? (curCall.ticketLabel || curCall.ticketNum || null) : null;
+      const ticketHtml = ticketDisplay ? `<div class="pub-card-ticket">🎟 n°${escapeHtml(String(ticketDisplay))}</div>` : '';
       return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">${statusIcon}</div>
+        ${ticketHtml}
         <div class="pub-card-svc">${svc}</div>
         <div class="pub-card-agt">${displayAgt}</div>
         ${waiting > 0 ? `<div class="pub-card-until">${waiting} personne${waiting > 1 ? 's' : ''} en attente</div>` : ''}
@@ -383,9 +389,14 @@ function render() {
     const wiWaiting  = Math.max(0, getQueueForLocal(l) - 1);
     const wiAgentKey = _bureauState[String(l)]?.agentKey || null;
     const wiAgentName = wiAgentKey ? getAgentPublicNameByKey(wiAgentKey) : null;
+    // Ticket en cours (affiché uniquement quand occupé)
+    const wiCurCall = wiBusy ? (_lastCallsData[String(l)] || null) : null;
+    const wiTicketDisplay = wiCurCall ? (wiCurCall.ticketLabel || wiCurCall.ticketNum || null) : null;
+    const wiTicketHtml = wiTicketDisplay ? `<div class="pub-card-ticket">🎟 n°${escapeHtml(String(wiTicketDisplay))}</div>` : '';
     return `<div class="pub-card ${wiClass}">
       <div class="pub-card-label">${label}</div>
       <div class="pub-card-status">${wiStatus}</div>
+      ${wiTicketHtml}
       ${declSvc ? `<div class="pub-card-svc">${escapeHtml(declSvc)}</div>` : ''}
       ${wiAgentName ? `<div class="pub-card-agt">${escapeHtml(wiAgentName)}</div>` : ''}
       ${wiWaiting > 0 ? `<div class="pub-card-until">${wiWaiting} personne${wiWaiting > 1 ? 's' : ''} en attente</div>` : ''}
@@ -651,6 +662,12 @@ db.ref(`orgs/${ORG_ID}/appState/lastCall`).on('value', snap => {
   if (_locals.includes(Number(d.localId))) {
     showNextCall(Number(d.localId), d.agentName || null, d.groupName || null, d.ticketNum || null, d.ticketLabel || null, d.ticketName || null);
   }
+});
+
+// Écoute Firebase — dernier ticket appelé par bureau (pour affichage carte publique)
+db.ref(`orgs/${ORG_ID}/appState/lastCalls`).on('value', snap => {
+  _lastCallsData = snap.val() || {};
+  render();
 });
 
 // Écoute Firebase — bénéficiaires préférentiels en attente par bureau
