@@ -1513,8 +1513,6 @@ const LIVE = {
         const grpId    = btn.dataset.grp;
         const isAccueilBtn = btn.classList.contains('lv-q-next-accueil');
         const doCall = async () => {
-          await DB.setQueue(localId, 1);
-          await DB.absorbGroupOverflow(grpId);
           const _now  = new Date();
           const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
           const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
@@ -1524,6 +1522,11 @@ const LIVE = {
           const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
           const _grp      = DB.getQueueGroups()[grpId];
           const _ticket   = await DB.callNextTicket(grpId);
+          // _storeCall AVANT les awaits suivants : les renders Firebase intermédiaires
+          // (setQueue, writeLastCall) verront déjà _lastCalled peuplé → "En cours" immédiat
+          LIVE._storeCall(localId, _ticket, _occ);
+          await DB.setQueue(localId, 1);
+          await DB.absorbGroupOverflow(grpId);
           // Si ce ticket correspond à une demande spécifique, fermer proprement sans re-avancer tcall/wait
           const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
           if (_prefMatch) {
@@ -1533,7 +1536,7 @@ const LIVE = {
           }
           showAgentCallNotif(_ticket.label, _ticket.name);
           await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
-          LIVE._storeCall(localId, _ticket, _occ);
+          LIVE.render(); // forcer un rendu final après tous les writes
         };
         if (isAccueilBtn) {
           showBureauConfirm({
