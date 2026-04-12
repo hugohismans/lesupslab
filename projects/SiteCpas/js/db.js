@@ -696,9 +696,15 @@ const DB = {
 
   // Résout les conflits de prénom dans une même file :
   // si "Hugo" existe déjà → retourne "Hugo 2", "Hugo 3", etc.
+  // N'inclut que les tickets réellement en attente (tcall+1..tick, hors skip_)
   _resolveTicketName(groupId, name) {
-    const existing = Object.values(this._queueData[`names_${groupId}`] || {})
-      .map(n => n.toLowerCase());
+    const tcall    = this.getTicketCalled(groupId);
+    const tick     = this.getTicketIssued(groupId);
+    const namesData = this._queueData[`names_${groupId}`] || {};
+    const skipData  = this._queueData[`skip_${groupId}`]  || {};
+    const existing = Object.entries(namesData)
+      .filter(([n]) => { const num = parseInt(n, 10); return num > tcall && num <= tick && !skipData[n]; })
+      .map(([, v]) => v.toLowerCase());
     const base = name.trim();
     if (!existing.includes(base.toLowerCase())) return base;
     let i = 2;
@@ -959,16 +965,16 @@ const DB = {
     if ((response === 'accepted' || response === 'eta') && localId) {
       // Si le local appartient à un groupe de file, émettre un ticket pour stats + impression
       const grp = this.getLocalGroup(localId);
-      let ticketLabel = null;
+      let ticketLabel   = null;
+      let resolvedName  = displayName;
       if (grp) {
         const result = await this.issueTicket(grp.id, displayName || null);
-        ticketLabel = result.label;
-        // Incrémenter wait_ pour que le ticket soit comptabilisé dans l'overflow
-        // (nécessaire pour que callNextBtn s'affiche et que closePreferredRequest décrémente correctement)
+        ticketLabel  = result.label;
+        resolvedName = result.resolvedName || displayName; // nom dédupliqué = cohérent avec EN ATTENTE
         await this.incrementGroupOverflow(grp.id);
       }
       await this._ref(`appState/preferredPending/${localId}`).set({
-        displayName:     displayName    || '—',
+        displayName:     resolvedName   || '—',
         agentPublicName: agentPublicName || null,
         requestId,
         ticketLabel:     ticketLabel || null,
