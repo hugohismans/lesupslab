@@ -1042,7 +1042,7 @@ const LIVE = {
           ${grpHint}
           ${preferredBtn}
           ${preferredRecallBtn}
-          ${!busyWithPref && ((queue > 0 && !pendingPref) || (overflow > 0 && pendingPref && !perm && !res)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${!busyWithPref && (queue > 0 || (overflow > 0 && !pendingPref)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
           <div class="lv-queue-actions">${leaveBtn}${printBtnHtml}${pauseBtn}${fermerBtn}</div>
