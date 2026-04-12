@@ -912,6 +912,9 @@ const DB = {
       if (grp) {
         const result = await this.issueTicket(grp.id, displayName || null);
         ticketLabel = result.label;
+        // Incrémenter wait_ pour que le ticket soit comptabilisé dans l'overflow
+        // (nécessaire pour que callNextBtn s'affiche et que closePreferredRequest décrémente correctement)
+        await this.incrementGroupOverflow(grp.id);
       }
       await this._ref(`appState/preferredPending/${localId}`).set({
         displayName:     displayName    || '—',
@@ -975,10 +978,17 @@ const DB = {
           if (ticketNum !== null) {
             const today = isoDate(new Date());
             await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
-            // Decrements the issued counter if it was the last one
             const issued = this.getTicketIssued(grp.id);
+            // Décrémenter tick_ si c'était le dernier ticket (évite les trous dans la numérotation)
             if (ticketNum === issued) {
               await this._ref(`queues/${today}/tick_${grp.id}`).set(issued - 1 || null);
+            }
+            // Décrémenter wait_ : le ticket avait été ajouté à l'overflow par respondToPreferredRequest
+            const ovf = this.getGroupOverflowQueue(grp.id);
+            if (ovf > 0) {
+              const newOvf = ovf - 1;
+              await this._ref(`queues/${today}/wait_${grp.id}`).set(newOvf || null);
+              if (newOvf <= 0) await this._ref(`queues/${today}/waitSince_${grp.id}`).set(null);
             }
           }
         }
