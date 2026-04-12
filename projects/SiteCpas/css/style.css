@@ -2963,6 +2963,15 @@ body {
 .st-perm-agt   { color: #475569; }
 .st-perm-loc   { color: #94a3b8; font-size: .78rem; }
 /* Diagnostic notifications */
+/* ── Table affichage des tickets ─────────────────────────────── */
+.st-td-table { width:100%; border-collapse:collapse; font-size:.85rem; margin-top:.5rem; }
+.st-td-table th { text-align:left; color:#94a3b8; font-weight:600; padding:.4rem .6rem; border-bottom:1px solid #334155; font-size:.78rem; text-transform:uppercase; letter-spacing:.04em; }
+.st-td-table td { padding:.5rem .6rem; border-bottom:1px solid #1e293b; color:#e2e8f0; vertical-align:middle; }
+.st-td-table tr:last-child td { border-bottom:none; }
+.st-td-table tr:hover td { background:rgba(255,255,255,.03); }
+.st-td-check { display:flex; align-items:center; gap:.45rem; cursor:pointer; user-select:none; }
+.st-td-check input[type="checkbox"] { width:16px; height:16px; cursor:pointer; accent-color:#7c3aed; }
+
 .st-notif-diag-row { display:flex; gap:.75rem; align-items:center; margin-bottom:.35rem; font-size:.85rem; }
 .st-notif-diag-label { color:#94a3b8; min-width:180px; }
 .st-notif-diag-val { font-weight:700; }

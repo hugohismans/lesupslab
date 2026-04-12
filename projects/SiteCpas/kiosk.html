@@ -301,9 +301,13 @@ async function _issueTicket(groupId, groupName) {
 
 // ── Afficher le ticket émis ───────────────────────────────────────
 function _showTicket(ticket, svcName, benefName, waiting) {
+  const tdDef  = { showNum: true, showName: true };
+  const tdCfg  = { ...tdDef, ...(_config?.ticketDisplay?.kiosk || {}) };
   document.getElementById('tSvc').textContent  = svcName;
-  document.getElementById('tNum').textContent  = ticket;
-  document.getElementById('tName').textContent = benefName ? `Bonjour ${benefName} !` : '';
+  const tNumEl = document.getElementById('tNum');
+  if (tNumEl) { tNumEl.textContent = tdCfg.showNum ? ticket : ''; tNumEl.style.display = tdCfg.showNum ? '' : 'none'; }
+  const tNameEl = document.getElementById('tName');
+  if (tNameEl) { tNameEl.textContent = (tdCfg.showName && benefName) ? `Bonjour ${benefName} !` : ''; tNameEl.style.display = (tdCfg.showName && benefName) ? '' : 'none'; }
   document.getElementById('tWait').textContent = waiting > 0
     ? `Environ ${waiting} personne${waiting > 1 ? 's' : ''} avant vous`
     : 'Vous êtes le(la) prochain(e) !';

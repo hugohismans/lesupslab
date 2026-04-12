@@ -616,6 +616,29 @@ const MODAL = {
       }));
     }
 
+    // ── Affichage des tickets ──────────────────────────────────────
+    if (isAdmin) {
+      const LOCATIONS = ['publicCall', 'publicBureauCard', 'agentNotif', 'waitBanner', 'kiosk'];
+      // Initialiser les checkboxes depuis la config
+      LOCATIONS.forEach(loc => {
+        const cfg = DB.getTicketDisplay(loc);
+        ['showNum', 'showName'].forEach(field => {
+          const cb = document.querySelector(`#stTicketDisplayTable input[data-loc="${loc}"][data-field="${field}"]`);
+          if (cb) cb.checked = cfg[field];
+        });
+      });
+      // Sauvegarder immédiatement au changement
+      document.getElementById('stTicketDisplayTable')?.addEventListener('change', async e => {
+        const cb = e.target;
+        if (cb.tagName !== 'INPUT' || cb.type !== 'checkbox') return;
+        const loc   = cb.dataset.loc;
+        const field = cb.dataset.field;
+        if (!loc || !field) return;
+        await DB.setTicketDisplay(loc, field, cb.checked);
+        showToast('Préférences d\'affichage enregistrées ✓', 'ok');
+      });
+    }
+
     // ── Diagnostic notifications navigateur ──────────────────────
     const _refreshNotifDiag = () => {
       const permEl  = g('stNotifPermState');
@@ -1992,14 +2015,18 @@ function showRoutingToast(bureauLabel, ticketNum) {
 }
 
 let _waitBannerTimer = null;
-function showWaitBanner(queueCount, ticketNum) {
+function showWaitBanner(queueCount, ticketNum, benefName) {
   const banner   = document.getElementById('waitBanner');
   const sub      = document.getElementById('waitBannerSub');
   const ticketEl = document.getElementById('waitTicket');
   if (!banner) return;
+  const wbCfg = (typeof DB !== 'undefined') ? DB.getTicketDisplay('waitBanner') : { showNum: true, showName: false };
   if (ticketEl) {
-    ticketEl.textContent = ticketNum ? `Ticket ${ticketNum}` : '';
-    ticketEl.classList.toggle('hidden', !ticketNum);
+    const parts = [];
+    if (wbCfg.showNum  && ticketNum)  parts.push(`Ticket ${ticketNum}`);
+    if (wbCfg.showName && benefName)  parts.push(benefName);
+    ticketEl.textContent = parts.join(' — ');
+    ticketEl.classList.toggle('hidden', !parts.length);
   }
   sub.textContent = queueCount > 0
     ? `${queueCount} personne${queueCount > 1 ? 's' : ''} en attente`
@@ -2016,8 +2043,9 @@ function showAgentCallNotif(ticketLabel, benefName) {
   const nameEl    = document.getElementById('agentCallName');
   const ticketEl  = document.getElementById('agentCallTicket');
   if (!banner) return;
-  if (nameEl)   { nameEl.textContent   = benefName  || ''; nameEl.classList.toggle('hidden', !benefName); }
-  if (ticketEl) { ticketEl.textContent = ticketLabel ? `n°${ticketLabel}` : ''; ticketEl.classList.toggle('hidden', !ticketLabel); }
+  const anCfg = (typeof DB !== 'undefined') ? DB.getTicketDisplay('agentNotif') : { showNum: true, showName: true };
+  if (nameEl)   { nameEl.textContent   = (anCfg.showName && benefName)  ? benefName  : ''; nameEl.classList.toggle('hidden', !anCfg.showName || !benefName); }
+  if (ticketEl) { ticketEl.textContent = (anCfg.showNum  && ticketLabel) ? `n°${ticketLabel}` : ''; ticketEl.classList.toggle('hidden', !anCfg.showNum || !ticketLabel); }
   banner.classList.remove('hidden');
   if (_agentCallTimer) clearTimeout(_agentCallTimer);
   _agentCallTimer = setTimeout(() => banner.classList.add('hidden'), 7000);

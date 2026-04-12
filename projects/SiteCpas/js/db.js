@@ -77,6 +77,7 @@ const DB = {
               .sort((a, b) => a.order - b.order)
           : [],
         publicPermLieux: d.publicPermLieux || {},
+        ticketDisplay:   d.ticketDisplay   || {},
       };
 
       // Charger les lieux triés par order
@@ -287,6 +288,24 @@ const DB = {
 
   getFeature(name)           { return !!this._config.features[name]; },
   async setFeature(name, val) { await this._ref(`appConfig/features/${name}`).set(val ? true : false); },
+
+  // ── Affichage des tickets (par emplacement) ───────────────────────
+  // locations: publicCall | publicBureauCard | agentNotif | waitBanner | kiosk
+  _ticketDisplayDefaults: {
+    publicCall:       { showNum: true,  showName: true  },
+    publicBureauCard: { showNum: true,  showName: false },
+    agentNotif:       { showNum: true,  showName: true  },
+    waitBanner:       { showNum: true,  showName: false },
+    kiosk:            { showNum: true,  showName: true  },
+  },
+  getTicketDisplay(location) {
+    const def     = this._ticketDisplayDefaults[location] || { showNum: true, showName: true };
+    const stored  = this._config.ticketDisplay[location]  || {};
+    return { ...def, ...stored };
+  },
+  async setTicketDisplay(location, field, val) {
+    await this._ref(`appConfig/ticketDisplay/${location}/${field}`).set(!!val);
+  },
 
   getMascotId()              { return this._config.mascotId || 'poulpe'; },
   async setMascotId(id)      { await this._ref('appConfig/mascotId').set(id); },

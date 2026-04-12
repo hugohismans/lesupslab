@@ -114,6 +114,16 @@ function getAgentPublicNameByKey(key) {
   return _config.agentPublicNames[key] || agent.name;
 }
 
+const _tdDefaults = {
+  publicCall:       { showNum: true,  showName: true  },
+  publicBureauCard: { showNum: true,  showName: false },
+};
+function getTicketDisplay(loc) {
+  const def    = _tdDefaults[loc] || { showNum: true, showName: true };
+  const stored = _config.ticketDisplay[loc] || {};
+  return { ...def, ...stored };
+}
+
 function expandRec(id, res, viewStart, viewEnd) {
   if (res.isPermanent) return [{ id, ...res, _start: new Date(res.startDateTime), _end: null }];
   const origStart = new Date(res.startDateTime);
@@ -365,8 +375,13 @@ function render() {
       const displayAgt  = actualKey ? (getAgentPublicNameByKey(actualKey) || getAgentPublicName(agt)) : getAgentPublicName(agt);
       // Ticket en cours (affiché uniquement quand occupé)
       const curCall = busy ? (_lastCallsData[String(l)] || null) : null;
-      const ticketDisplay = curCall ? (curCall.ticketLabel || curCall.ticketNum || null) : null;
-      const ticketHtml = ticketDisplay ? `<div class="pub-card-ticket">🎟 n°${escapeHtml(String(ticketDisplay))}</div>` : '';
+      const pbcCfg  = getTicketDisplay('publicBureauCard');
+      const ticketNumVal  = curCall ? (curCall.ticketLabel || curCall.ticketNum || null) : null;
+      const ticketNameVal = curCall ? (curCall.ticketName || null) : null;
+      const ticketParts   = [];
+      if (pbcCfg.showNum  && ticketNumVal)  ticketParts.push(`🎟 n°${escapeHtml(String(ticketNumVal))}`);
+      if (pbcCfg.showName && ticketNameVal) ticketParts.push(escapeHtml(String(ticketNameVal)));
+      const ticketHtml = ticketParts.length ? `<div class="pub-card-ticket">${ticketParts.join(' — ')}</div>` : '';
       return `<div class="pub-card ${cardClass}" style="${color ? `border-top:6px solid ${color}` : ''}">
         <div class="pub-card-label">${label}</div>
         <div class="pub-card-status">${statusIcon}</div>
@@ -391,8 +406,13 @@ function render() {
     const wiAgentName = wiAgentKey ? getAgentPublicNameByKey(wiAgentKey) : null;
     // Ticket en cours (affiché uniquement quand occupé)
     const wiCurCall = wiBusy ? (_lastCallsData[String(l)] || null) : null;
-    const wiTicketDisplay = wiCurCall ? (wiCurCall.ticketLabel || wiCurCall.ticketNum || null) : null;
-    const wiTicketHtml = wiTicketDisplay ? `<div class="pub-card-ticket">🎟 n°${escapeHtml(String(wiTicketDisplay))}</div>` : '';
+    const wiPbcCfg  = getTicketDisplay('publicBureauCard');
+    const wiTicketNumVal  = wiCurCall ? (wiCurCall.ticketLabel || wiCurCall.ticketNum || null) : null;
+    const wiTicketNameVal = wiCurCall ? (wiCurCall.ticketName || null) : null;
+    const wiTicketParts   = [];
+    if (wiPbcCfg.showNum  && wiTicketNumVal)  wiTicketParts.push(`🎟 n°${escapeHtml(String(wiTicketNumVal))}`);
+    if (wiPbcCfg.showName && wiTicketNameVal) wiTicketParts.push(escapeHtml(String(wiTicketNameVal)));
+    const wiTicketHtml = wiTicketParts.length ? `<div class="pub-card-ticket">${wiTicketParts.join(' — ')}</div>` : '';
     return `<div class="pub-card ${wiClass}">
       <div class="pub-card-label">${label}</div>
       <div class="pub-card-status">${wiStatus}</div>
@@ -487,6 +507,7 @@ db.ref(`orgs/${ORG_ID}/appConfig`).on('value', snap => {
   _config.queueGroups       = d.queueGroups       || {};
   _config.screens           = d.screens           || {};
   _config.publicPermLieux   = d.publicPermLieux   || {};
+  _config.ticketDisplay     = d.ticketDisplay     || {};
   // lieux avec publicName et localIds (pour les permanences)
   _config.lieux = d.lieux
     ? Object.entries(d.lieux).map(([id, l]) => ({
@@ -583,9 +604,10 @@ function showNextCall(localId, agentName, groupName, ticketNum, ticketLabel, tic
   // Numéro de ticket (ticketLabel prioritaire, sinon ticketNum si c'est un code)
   const label   = ticketLabel || (!ticketName ? ticketNum : null);
   const nameVal = ticketName  || (ticketLabel ? ticketNum : null); // nom = ticketName ou display si label séparé
+  const pcCfg   = getTicketDisplay('publicCall');
 
   const ticketEl = document.getElementById('nextCallTicket');
-  if (label) {
+  if (pcCfg.showNum && label) {
     ticketEl.textContent = `n°${label}`;
     ticketEl.classList.remove('hidden');
   } else {
@@ -593,7 +615,7 @@ function showNextCall(localId, agentName, groupName, ticketNum, ticketLabel, tic
   }
 
   const nameEl = document.getElementById('nextCallName');
-  if (nameVal) {
+  if (pcCfg.showName && nameVal) {
     nameEl.textContent = nameVal;
     nameEl.classList.remove('hidden');
   } else {

@@ -819,6 +819,48 @@
             </div>
           </div>
 
+          <!-- Affichage des tickets -->
+          <h3 class="st-title" style="margin-top:1.25rem">🎟 Affichage des tickets</h3>
+          <div class="st-admin-section">
+            <p class="st-perm-intro">Choisissez ce qui est affiché à chaque endroit où apparaît un ticket.</p>
+            <table class="st-td-table" id="stTicketDisplayTable">
+              <thead>
+                <tr>
+                  <th>Emplacement</th>
+                  <th>N° de ticket</th>
+                  <th>Nom bénéficiaire</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-loc="publicCall">
+                  <td>📺 Appel en salle d'attente</td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="publicCall" data-field="showNum"> Afficher</label></td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="publicCall" data-field="showName"> Afficher</label></td>
+                </tr>
+                <tr data-loc="publicBureauCard">
+                  <td>🪟 Carte bureau (vue publique)</td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="publicBureauCard" data-field="showNum"> Afficher</label></td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="publicBureauCard" data-field="showName"> Afficher</label></td>
+                </tr>
+                <tr data-loc="agentNotif">
+                  <td>🔔 Notification agent (Vue Direct)</td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="agentNotif" data-field="showNum"> Afficher</label></td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="agentNotif" data-field="showName"> Afficher</label></td>
+                </tr>
+                <tr data-loc="waitBanner">
+                  <td>⏳ Bannière d'attente (accueil)</td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="waitBanner" data-field="showNum"> Afficher</label></td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="waitBanner" data-field="showName"> Afficher</label></td>
+                </tr>
+                <tr data-loc="kiosk">
+                  <td>🖨️ Borne d'impression</td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="kiosk" data-field="showNum"> Afficher</label></td>
+                  <td><label class="st-td-check"><input type="checkbox" data-loc="kiosk" data-field="showName"> Afficher</label></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <!-- Fonctionnalités avancées (feature flags) -->
           <h3 class="st-title" style="margin-top:1.25rem">🔬 Options avancées — Modules</h3>
           <div class="st-admin-section">

@@ -1196,7 +1196,7 @@ const LIVE = {
         // Le ticket va TOUJOURS en file d'attente — l'agent appelle manuellement le suivant
         await DB.incrementGroupOverflow(grpId);
         const overflow = DB.getGroupOverflowQueue(grpId);
-        showWaitBanner(overflow, ticket);
+        showWaitBanner(overflow, ticket, resolvedName || benefName || null);
       });
     });
 
