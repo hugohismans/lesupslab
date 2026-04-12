@@ -2056,9 +2056,11 @@ const LIVE = {
         const issued   = DB.getTicketIssued(id);
         const called   = DB.getTicketCalled(id);
         const overflow = DB.getGroupOverflowQueue(id);
-        // Tickets en attente = called+1 jusqu'à issued
+        // Tickets en attente = called+1 jusqu'à issued, hors skip_
         const waitingNums = [];
-        for (let n = called + 1; n <= issued; n++) waitingNums.push(n);
+        for (let n = called + 1; n <= issued; n++) {
+          if (!DB.isTicketSkipped(id, n)) waitingNums.push(n);
+        }
         const ticketsHtml = waitingNums.length
           ? `<div class="lv-qg-ticket-row">
                ${waitingNums.map(n => {
