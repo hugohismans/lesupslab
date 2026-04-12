@@ -62,8 +62,46 @@ const MODAL = {
     g('settingsOverlay').querySelectorAll('.st-admin-section').forEach(el => {
       el.style.display = isAdmin ? '' : 'none';
     });
+    // Sidebar — show/hide admin group
+    const sideAdminGroup = g('settingsOverlay')?.querySelector('.st-sidenav-group.st-admin-section');
+    if (sideAdminGroup) sideAdminGroup.style.display = isAdmin ? '' : 'none';
     this._renderSettingsList();
     g('settingsOverlay').classList.remove('hidden');
+    this._initSidenavScroll();
+  },
+
+  // Sidebar navigation — scroll to section + highlight active link
+  _initSidenavScroll() {
+    const sidenav = g('stSidenav');
+    const scroll  = g('settingsOverlay')?.querySelector('.st-settings-scroll');
+    if (!sidenav || !scroll) return;
+
+    // Click handler
+    if (!sidenav._navBound) {
+      sidenav._navBound = true;
+      sidenav.addEventListener('click', e => {
+        const link = e.target.closest('.st-sidenav-link');
+        if (!link) return;
+        const targetId = link.dataset.target;
+        const anchor   = targetId && document.getElementById(targetId);
+        if (anchor) {
+          anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          sidenav.querySelectorAll('.st-sidenav-link').forEach(l => l.classList.remove('st-nav-active'));
+          link.classList.add('st-nav-active');
+        }
+      });
+      // Scroll spy
+      scroll.addEventListener('scroll', () => {
+        const anchors = scroll.querySelectorAll('.st-section-anchor[id]');
+        let activeId = null;
+        anchors.forEach(a => {
+          if (a.getBoundingClientRect().top - scroll.getBoundingClientRect().top <= 32) activeId = a.id;
+        });
+        sidenav.querySelectorAll('.st-sidenav-link').forEach(l => {
+          l.classList.toggle('st-nav-active', l.dataset.target === activeId);
+        });
+      }, { passive: true });
+    }
   },
 
   _renderPermDay(lieuId) {

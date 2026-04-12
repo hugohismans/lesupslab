@@ -805,13 +805,57 @@ const LIVE = {
           : overflow > 0
             ? `🟡 ${free} bureau${free > 1 ? 'x' : ''} libre${free > 1 ? 's' : ''} — ${overflow} en attente`
             : `🟢 ${free} bureau${free > 1 ? 'x' : ''} disponible${free > 1 ? 's' : ''}`;
-      const overflowTxt = overflow > 0
-        ? `<div class="lv-grp-overflow">⏳ ${overflow} en attente</div>` : '';
       const dotsHtml = hasOpen
         ? `<div class="lv-grp-locals">${activeLids.map(l => {
             const busy = DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l);
             return `<span class="lv-grp-dot${busy ? ' busy' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
-          }).join('')}</div>` : '';
+          }).join('')}<span class="lv-grp-locals-count">${occupied}/${total} bureau${total > 1 ? 'x' : ''}</span></div>` : '';
+
+      // Chips demandes agent spécifique (preferred pending + preferred queue)
+      const prefPeople = [];
+      // Numéros de tickets réservés aux demandes spécifiques (à exclure des chips généraux)
+      const prefTicketNums = new Set();
+      activeLids.forEach(l => {
+        const pend = DB.getPreferredPending(l);
+        if (pend) {
+          prefPeople.push({ name: pend.displayName || '?', ts: pend.ts || 0, agent: pend.agentPublicName || null, ticket: pend.ticketLabel || null });
+          if (pend.ticketLabel) {
+            const num = DB.getTicketCalled(grpId); // find matching ticket number
+            // Extract number from label (e.g. "M04" → 4)
+            const m = pend.ticketLabel.match(/(\d+)$/);
+            if (m) prefTicketNums.add(parseInt(m[1], 10));
+          }
+        }
+        DB.getPreferredQueue(l).forEach(item => {
+          prefPeople.push({ name: item.displayName || '?', ts: item.ts || 0, agent: item.agentPublicName || null, ticket: null });
+        });
+      });
+      prefPeople.sort((a, b) => a.ts - b.ts);
+      const prefChipsHtml = prefPeople.length
+        ? `<div class="lv-grp-queue-row">
+             <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 SPÉCIFIQUE :</span>
+             ${prefPeople.map(p =>
+               `<span class="lv-grp-chip lv-grp-chip-pref" title="${p.agent ? 'Pour ' + escapeHtml(p.agent) : 'Agent spécifique'}">${p.ticket ? escapeHtml(p.ticket) + ' · ' : ''}${escapeHtml(p.name)}</span>`
+             ).join('')}
+           </div>`
+        : '';
+
+      // Chips file d'attente générale (overflow) — hors tickets déjà en demande spécifique
+      const issued = DB.getTicketIssued(grpId);
+      const called = DB.getTicketCalled(grpId);
+      const overflowNums = [];
+      for (let n = called + 1; n <= issued; n++) {
+        if (!prefTicketNums.has(n)) overflowNums.push(n);
+      }
+      const overflowChipsHtml = overflowNums.length
+        ? `<div class="lv-grp-queue-row">
+             <span class="lv-grp-queue-label">EN ATTENTE :</span>
+             ${overflowNums.map(n =>
+               `<span class="lv-grp-chip">${escapeHtml(DB.formatTicketDisplay(grpId, n))}</span>`
+             ).join('')}
+           </div>`
+        : '';
+
       const lastEmitted  = this._lastEmittedByGrp[grpId];
       const reprintBtn   = DB.getFeature('enableTicketPrint') && lastEmitted
         ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
@@ -819,8 +863,9 @@ const LIVE = {
       return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
-        ${overflowTxt}
         ${dotsHtml}
+        ${overflowChipsHtml}
+        ${prefChipsHtml}
         <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
         ${reprintBtn}
       </div>`;

@@ -473,7 +473,10 @@ const NOTIF = {
           // Contenu spécifique preferred_reply_accueil
           let prefReplyHtml = '';
           if (isPrefReply && n.requestId && n.status !== 'done' && n.status !== 'cancelled') {
-            prefReplyHtml = `<button class="notif-pref-cancel-btn" data-req="${n.requestId}" data-lid="${n.localId || ''}">🗑 Annuler la demande</button>`;
+            const printBtn = n.ticketLabel && window.LIVE && DB.getFeature('enableTicketPrint')
+              ? `<button class="notif-pref-print-btn" data-ticket="${escapeHtml(n.ticketLabel)}">🖨 Imprimer ${escapeHtml(n.ticketLabel)}</button>`
+              : '';
+            prefReplyHtml = `${printBtn}<button class="notif-pref-cancel-btn" data-req="${n.requestId}" data-lid="${n.localId || ''}">🗑 Annuler la demande</button>`;
           }
 
           return `
@@ -526,6 +529,14 @@ const NOTIF = {
         e.stopPropagation();
         if (isLive) this._closeLivePanel(); else this._closePanel();
         window._openPreferredResponseModal?.(btn.dataset.id, btn.dataset.req, 'decline');
+      });
+    });
+
+    // Bouton imprimer ticket (côté accueil — demande spécifique acceptée)
+    target.querySelectorAll('.notif-pref-print-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        window.LIVE?._doPrintTicket({ ticket: btn.dataset.ticket, svc: '', localLabel: '' });
       });
     });
 

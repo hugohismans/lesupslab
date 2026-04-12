@@ -47,7 +47,7 @@
      HEADER
 ═══════════════════════════════════════════════════════════ -->
 <header class="hd">
-  <span class="hd-version">v0.1.10</span>
+  <span class="hd-version">v0.1.12</span>
   <div class="hd-brand">
     <img src="assets/logo.jpg" alt="Logo" class="hd-logo-img" id="appLogo">
     <span class="hd-title" id="appOrgName">moncompagnon</span>
@@ -643,22 +643,52 @@
 ═══════════════════════════════════════════════════════════ -->
 
 <div class="overlay hidden" id="settingsOverlay">
-  <div class="modal modal-sm">
+  <div class="modal modal-settings">
     <div class="modal-hd">
       <h2 id="settingsTitle">⚙ Paramètres</h2>
       <button class="modal-x" data-close="settingsOverlay">✕</button>
     </div>
-    <div class="modal-bd">
+    <div class="st-settings-layout">
+
+      <!-- Sidebar navigation -->
+      <nav class="st-sidenav" id="stSidenav">
+        <a class="st-sidenav-link" data-target="stSectPerm">📅 Permanences</a>
+        <div class="st-sidenav-group st-admin-section">
+          <div class="st-sidenav-sep">Organisation</div>
+          <a class="st-sidenav-link" data-target="stSectAgents">🎨 Agents</a>
+          <a class="st-sidenav-link" data-target="stSectServices">📋 Services</a>
+          <a class="st-sidenav-link" data-target="stSectLieux">🗂 Lieux & Locaux</a>
+          <a class="st-sidenav-link" data-target="stSectScreens">🖥 Écrans publics</a>
+          <a class="st-sidenav-link" data-target="stSectLieuxPublics">📍 Lieux publics</a>
+          <a class="st-sidenav-link" data-target="stSectBureauAccueil">🪟 Bureau accueil</a>
+          <div class="st-sidenav-sep">Modules & Affichage</div>
+          <a class="st-sidenav-link" data-target="stSectModules">🔧 Modules</a>
+          <a class="st-sidenav-link" data-target="stSectMascot">🐙 Mascotte</a>
+          <a class="st-sidenav-link" data-target="stSectTickets">🎟 Tickets</a>
+          <a class="st-sidenav-link" data-target="stSectSons">🔊 Sons</a>
+          <a class="st-sidenav-link" data-target="stSectLocalisation">📍 Localisation</a>
+          <div class="st-sidenav-sep">Sécurité & Système</div>
+          <a class="st-sidenav-link" data-target="stSectPermissions">🔐 Rôles & Droits</a>
+          <a class="st-sidenav-link" data-target="stSectAbsences">📅 Absences</a>
+          <a class="st-sidenav-link" data-target="stSectNotifs">🔔 Notifications</a>
+          <a class="st-sidenav-link" data-target="stSectFin">🌙 Fin de journée</a>
+          <a class="st-sidenav-link" data-target="stSectDonnees">🔒 Données</a>
+          <a class="st-sidenav-link" data-target="stSectDiag">🔬 Diagnostic</a>
+        </div>
+      </nav>
+
+    <div class="modal-bd st-settings-scroll">
 
       <!-- ══ PROCHAINES PERMANENCES ════════════════════════════════ -->
+      <div class="st-section-anchor" id="stSectPerm"></div>
       <div class="st-admin-section" id="stProchainePerm">
         <h3 class="st-title">📅 Permanences du jour</h3>
         <select id="stPermLieuSelect" class="st-select-lieu"></select>
         <div id="stPermList" class="st-perm-day-list"></div>
       </div>
 
-      <!-- ══ SECTION ESSENTIELLE ══════════════════════════════════ -->
-
+      <!-- ══ AGENTS ═══════════════════════════════════════════════ -->
+      <div class="st-section-anchor" id="stSectAgents"></div>
       <h3 class="st-title">🎨 Agents</h3>
       <div id="stAgentList" class="st-list"></div>
       <div class="st-add st-admin-section">
@@ -671,6 +701,7 @@
         <p class="st-import-hint">Format : <code>nom_affiché;nom_public</code> — un agent par ligne</p>
       </div>
 
+      <div class="st-section-anchor" id="stSectServices"></div>
       <div class="st-admin-section">
         <h3 class="st-title" style="margin-top:1.25rem">Services</h3>
         <div id="stSvcList" class="st-list"></div>
@@ -680,17 +711,14 @@
         </div>
       </div>
 
+      <div class="st-section-anchor" id="stSectModules"></div>
       <h3 class="st-title" style="margin-top:1.25rem">🔧 Modules</h3>
       <div class="st-admin-section">
         <div id="stModulesList"></div>
       </div>
 
-      <!-- ══ OPTIONS AVANCÉES (repliées par défaut) ═══════════════ -->
-      <details class="st-advanced-details" id="stAdvanced">
-        <summary class="st-advanced-summary">⚙️ Options avancées</summary>
-        <div class="st-advanced-body">
-
           <!-- Lieux, Horaires, Locaux -->
+          <div class="st-section-anchor" id="stSectLieux"></div>
           <div class="st-admin-section">
             <h3 class="st-title">Lieux</h3>
             <div id="stLieuList" class="st-list"></div>
@@ -711,6 +739,7 @@
           </div>
 
           <!-- Écrans publics -->
+          <div class="st-section-anchor" id="stSectScreens"></div>
           <h3 class="st-title" style="margin-top:1.25rem">🖥 Écrans publics</h3>
           <div class="st-admin-section">
             <div id="stScreenList" class="st-screen-list"></div>
@@ -721,6 +750,7 @@
           </div>
 
           <!-- Gestion des absences -->
+          <div class="st-section-anchor" id="stSectAbsences"></div>
           <div class="st-admin-section" id="absencesAdminSection">
             <h3 class="st-title" style="margin-top:1.25rem">📅 Absences</h3>
             <p class="st-perm-intro">Déclarez une absence pour n'importe quel agent (congé, maladie, mission…).</p>
@@ -728,6 +758,7 @@
           </div>
 
           <!-- Mascotte de l'organisation -->
+          <div class="st-section-anchor" id="stSectMascot"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">🐙 Mascotte</h3>
             <label class="st-toggle-row" title="Désactiver pour remplacer la mascotte par deux boutons simples Bonjour / Au revoir" id="stMascotToggleRow">
@@ -739,6 +770,7 @@
           </div>
 
           <!-- Localisation (pour la météo) -->
+          <div class="st-section-anchor" id="stSectLocalisation"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">📍 Localisation</h3>
             <p class="st-perm-intro">Indiquez la ville pour afficher la météo contextuelle dans l'assistant.</p>
@@ -771,6 +803,7 @@
           </div>
 
           <!-- Volume des sons -->
+          <div class="st-section-anchor" id="stSectSons"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">🔊 Volume des sons</h3>
             <p class="st-perm-intro">Intensité du carillon sur l'écran public et des sons de notification pour les agents.</p>
@@ -784,6 +817,7 @@
           </div>
 
           <!-- Alerte fin de journée -->
+          <div class="st-section-anchor" id="stSectFin"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">🔔 Alerte fin de journée</h3>
             <p class="st-perm-intro">À cette heure, l'admin est alerté si des agents sont encore connectés et peut leur envoyer un rappel.</p>
@@ -796,6 +830,7 @@
           </div>
 
           <!-- Données sensibles — durée de conservation -->
+          <div class="st-section-anchor" id="stSectDonnees"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">🔒 Données sensibles bénéficiaires</h3>
             <p class="st-perm-intro">Délai après lequel le nom d'un bénéficiaire est automatiquement effacé de la base de données, à compter de la lecture de la notification par l'agent concerné.</p>
@@ -808,6 +843,7 @@
           </div>
 
           <!-- Lieux publics -->
+          <div class="st-section-anchor" id="stSectLieuxPublics"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">📍 Lieux publics</h3>
             <p class="st-perm-intro">Espaces physiques non-réservables (halls, couloirs, salles d'attente…) utilisés pour situer un bénéficiaire ou indiquer une zone à l'entretien.</p>
@@ -820,6 +856,7 @@
           </div>
 
           <!-- Affichage des tickets -->
+          <div class="st-section-anchor" id="stSectTickets"></div>
           <h3 class="st-title" style="margin-top:1.25rem">🎟 Affichage des tickets</h3>
           <div class="st-admin-section">
             <p class="st-perm-intro">Choisissez ce qui est affiché à chaque endroit où apparaît un ticket.</p>
@@ -862,6 +899,7 @@
           </div>
 
           <!-- Fonctionnalités avancées (feature flags) -->
+          <div class="st-section-anchor" id="stSectDiag"></div>
           <h3 class="st-title" style="margin-top:1.25rem">🔬 Options avancées — Modules</h3>
           <div class="st-admin-section">
             <div id="stModulesAdvList"></div>
@@ -888,6 +926,7 @@
           </div>
 
           <!-- Bureau d'accueil (local caché) -->
+          <div class="st-section-anchor" id="stSectBureauAccueil"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">🪟 Bureau d'accueil</h3>
             <p class="st-perm-intro">Désignez un local comme bureau d'accueil caché — invisible dans le calendrier et les stats, mais visible sur l'écran d'accueil pour les agents de permanence.</p>
@@ -901,6 +940,7 @@
           </div>
 
           <!-- Rôles & Permissions -->
+          <div class="st-section-anchor" id="stSectPermissions"></div>
           <h3 class="st-title" style="margin-top:1.25rem">🔐 Rôles &amp; Permissions</h3>
           <div class="st-admin-section" id="stPermSection">
             <p class="st-perm-intro">Définissez des collections de droits et assignez-les aux agents. Les agents sans rôle ont accès à tout (jusqu'au système de comptes agents).</p>
@@ -954,6 +994,7 @@
           </div>
 
           <!-- Envoi notification manuelle -->
+          <div class="st-section-anchor" id="stSectNotifs"></div>
           <div class="st-admin-section">
             <h3 class="st-title" style="margin-top:1.25rem">📣 Envoyer une notification</h3>
             <div class="st-notif-send">
@@ -985,10 +1026,8 @@
             </div>
           </div>
 
-        </div>
-      </details>
-
-    </div>
+    </div><!-- /st-settings-scroll -->
+    </div><!-- /st-settings-layout -->
     <div class="modal-ft">
       <button class="btn-primary" data-close="settingsOverlay">Fermer</button>
     </div>

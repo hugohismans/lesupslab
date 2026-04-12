@@ -905,13 +905,22 @@ const DB = {
     await this._ref(`appState/preferredRequests/${requestId}`).update(updates);
     // Créer preferredPending sur l'écran public si l'agent est dans un local
     if ((response === 'accepted' || response === 'eta') && localId) {
+      // Si le local appartient à un groupe de file, émettre un ticket pour stats + impression
+      const grp = this.getLocalGroup(localId);
+      let ticketLabel = null;
+      if (grp) {
+        const result = await this.issueTicket(grp.id, displayName || null);
+        ticketLabel = result.label;
+      }
       await this._ref(`appState/preferredPending/${localId}`).set({
         displayName:     displayName    || '—',
         agentPublicName: agentPublicName || null,
         requestId,
+        ticketLabel:     ticketLabel || null,
         ts: Date.now(),
       });
     }
+    return { ticketLabel };
   },
 
   async closePreferredRequest(requestId, localId) {
@@ -919,7 +928,26 @@ const DB = {
       status:    'done',
       benefName: null,    // suppression immédiate données sensibles
     });
-    if (localId) await this._ref(`appState/preferredPending/${localId}`).remove();
+    if (localId) {
+      // Si un ticket avait été émis pour ce client, le marquer comme "appelé" pour les stats
+      const pend = this.getPreferredPending(localId);
+      if (pend?.ticketLabel) {
+        const grp = this.getLocalGroup(localId);
+        if (grp) {
+          const m = pend.ticketLabel.match(/(\d+)$/);
+          const ticketNum = m ? parseInt(m[1], 10) : null;
+          if (ticketNum !== null) {
+            const today = isoDate(new Date());
+            // Avancer tcall jusqu'à ce ticket si nécessaire
+            const currentCall = this.getTicketCalled(grp.id);
+            if (ticketNum > currentCall) {
+              await this._ref(`queues/${today}/tcall_${grp.id}`).set(ticketNum);
+            }
+          }
+        }
+      }
+      await this._ref(`appState/preferredPending/${localId}`).remove();
+    }
   },
 
   async cancelPreferredRequest(requestId, localId) {
@@ -927,7 +955,27 @@ const DB = {
       status:    'cancelled',
       benefName: null,
     });
-    if (localId) await this._ref(`appState/preferredPending/${localId}`).remove();
+    if (localId) {
+      // Si un ticket avait été émis mais l'interaction est annulée, retirer le ticket des stats
+      const pend = this.getPreferredPending(localId);
+      if (pend?.ticketLabel) {
+        const grp = this.getLocalGroup(localId);
+        if (grp) {
+          const m = pend.ticketLabel.match(/(\d+)$/);
+          const ticketNum = m ? parseInt(m[1], 10) : null;
+          if (ticketNum !== null) {
+            const today = isoDate(new Date());
+            await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
+            // Decrements the issued counter if it was the last one
+            const issued = this.getTicketIssued(grp.id);
+            if (ticketNum === issued) {
+              await this._ref(`queues/${today}/tick_${grp.id}`).set(issued - 1 || null);
+            }
+          }
+        }
+      }
+      await this._ref(`appState/preferredPending/${localId}`).remove();
+    }
   },
 
   async markPreferredRequestNameRead(requestId, deleteMin) {

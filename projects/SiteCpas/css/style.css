@@ -1004,6 +1004,39 @@ body {
 .modal-sm { max-width: 440px; }
 .modal-xs { max-width: 380px; }
 
+/* ── Settings modal — wide sidebar layout ────────────────── */
+.modal-settings {
+  width: 90vw; max-width: 880px; max-height: 88vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-settings .modal-hd { flex-shrink: 0; }
+.modal-settings .modal-ft { flex-shrink: 0; border-top: 1px solid #e5e7eb; padding: .75rem 1.25rem; }
+.st-settings-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+.st-sidenav {
+  width: 190px; flex-shrink: 0;
+  overflow-y: auto; scrollbar-width: thin;
+  border-right: 1px solid #e5e7eb;
+  padding: .6rem .5rem;
+  display: flex; flex-direction: column; gap: .1rem;
+  background: #f8fafc;
+}
+.st-sidenav-link {
+  display: block; padding: .42rem .75rem; border-radius: 7px;
+  font-size: .82rem; font-weight: 500; color: #475569;
+  cursor: pointer; text-decoration: none;
+  transition: background .12s, color .12s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.st-sidenav-link:hover { background: #e2e8f0; color: #1e293b; }
+.st-sidenav-link.st-nav-active { background: #1d4ed8; color: #fff; }
+.st-sidenav-sep {
+  font-size: .7rem; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: .07em;
+  padding: .75rem .75rem .25rem;
+}
+.st-settings-scroll { flex: 1; overflow-y: auto; min-height: 0; padding: 1rem 1.25rem; }
+.st-section-anchor { height: 0; overflow: hidden; }
+
 .modal-hd {
   display: flex; align-items: center; justify-content: space-between;
   padding: 1rem 1.25rem; border-bottom: 1px solid #e5e7eb;
@@ -1825,6 +1858,17 @@ body {
 }
 .lv-grp-dot.busy { background: #ef4444; }
 .lv-grp-dot.lv-grp-dot-me { outline: 2px solid #f1f5f9; outline-offset: 2px; }
+.lv-grp-locals-count { font-size: .78rem; color: #64748b; margin-left: .3rem; align-self: center; }
+.lv-grp-queue-row { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-bottom: .5rem; }
+.lv-grp-queue-label { font-size: .7rem; font-weight: 700; color: #94a3b8; letter-spacing: .04em; flex-shrink: 0; }
+.lv-grp-queue-pref-label { color: #f59e0b; }
+.lv-grp-chip {
+  display: inline-block; padding: .18rem .55rem; border-radius: 6px;
+  font-size: .82rem; font-weight: 700; color: #93c5fd;
+  border: 1.5px solid #2563eb; background: rgba(37,99,235,.12);
+  white-space: nowrap;
+}
+.lv-grp-chip-pref { color: #fde68a; border-color: #f59e0b; background: rgba(245,158,11,.12); }
 .lv-grp-card-bureau { cursor: default; }
 .lv-grp-card-bureau .lv-grp-status { font-size: 1rem; }
 .lv-grp-add {

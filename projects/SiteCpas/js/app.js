@@ -2628,7 +2628,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       ? (req.benefName.split(' ')[0] || req.benefName)
       : 'Bénéficiaire';
 
-    await DB.respondToPreferredRequest(reqId, response, etaMin, comment, localId, myPublicName, displayName);
+    const { ticketLabel } = await DB.respondToPreferredRequest(reqId, response, etaMin, comment, localId, myPublicName, displayName);
 
     const myName   = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'L\'agent';
     const localLbl = localId ? ` (${DB.getLocalLabel(localId)})` : '';
@@ -2643,9 +2643,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (comment) replyMsg += ` — ${comment}`;
     if (localId && (response === 'accepted' || response === 'eta')) {
       replyMsg += ` Diriger vers ${DB.getLocalLabel(localId)}.`;
+      if (ticketLabel) replyMsg += ` Ticket : ${ticketLabel}.`;
     }
 
-    await DB.sendNotif(replyMsg, 'preferred_reply_accueil', req.accueilAgentKey, { requestId: reqId });
+    await DB.sendNotif(replyMsg, 'preferred_reply_accueil', req.accueilAgentKey, { requestId: reqId, ticketLabel: ticketLabel || null });
     _prefResponseContext = null;
   };
 
