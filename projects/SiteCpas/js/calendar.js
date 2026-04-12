@@ -1138,8 +1138,35 @@ const LIVE = {
       </div>`;
       g('liveGrid').innerHTML = groupCards + preferredCard + bureauHtml;
     } else {
-      // Mode bureau : n'afficher que la carte du local sélectionné
-      g('liveGrid').innerHTML = renderCard(bureauLocal);
+      // Mode bureau : carte de la file de groupe + carte du bureau
+      const _bureauGrp = bureauLocal !== null ? DB.getLocalGroup(bureauLocal) : null;
+      let grpCardHtml = '';
+      if (_bureauGrp) {
+        const _grpLids    = (_bureauGrp.localIds || []).map(Number);
+        const _grpOpen    = _grpLids.filter(l => DB.isBureauOpen(l));
+        const _grpOcc     = _grpOpen.filter(l => DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l)).length;
+        const _grpFree    = _grpOpen.length - _grpOcc;
+        const _grpOvf     = DB.getGroupOverflowQueue(_bureauGrp.id);
+        const _grpStatusTxt = _grpOpen.length === 0
+          ? '⚪ Aucun bureau ouvert'
+          : _grpOcc >= _grpOpen.length
+            ? `🔴 Complet — ${_grpOvf > 0 ? _grpOvf + ' en attente' : 'tous occupés'}`
+            : _grpOvf > 0
+              ? `🟡 ${_grpFree} bureau${_grpFree > 1 ? 'x' : ''} libre${_grpFree > 1 ? 's' : ''} — ${_grpOvf} en attente`
+              : `🟢 ${_grpFree} bureau${_grpFree > 1 ? 'x' : ''} disponible${_grpFree > 1 ? 's' : ''}`;
+        const _grpDotsHtml = _grpOpen.map(l => {
+          const busy = DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l);
+          const isMe = l === bureauLocal;
+          return `<span class="lv-grp-dot${busy ? ' busy' : ''}${isMe ? ' lv-grp-dot-me' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
+        }).join('');
+        grpCardHtml = `<div class="lv-card lv-grp-card lv-grp-card-bureau">
+          <div class="lv-grp-title">🔗 ${escapeHtml(_bureauGrp.name)}</div>
+          <div class="lv-grp-status">${_grpStatusTxt}</div>
+          ${_grpOvf > 0 ? `<div class="lv-grp-overflow">⏳ ${_grpOvf} personne${_grpOvf > 1 ? 's' : ''} en attente</div>` : ''}
+          ${_grpDotsHtml ? `<div class="lv-grp-locals">${_grpDotsHtml}</div>` : ''}
+        </div>`;
+      }
+      g('liveGrid').innerHTML = grpCardHtml + renderCard(bureauLocal);
     }
 
     this._renderLieuFilters();

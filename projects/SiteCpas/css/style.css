@@ -1787,6 +1787,9 @@ body {
   background: #22c55e; flex-shrink: 0;
 }
 .lv-grp-dot.busy { background: #ef4444; }
+.lv-grp-dot.lv-grp-dot-me { outline: 2px solid #f1f5f9; outline-offset: 2px; }
+.lv-grp-card-bureau { cursor: default; }
+.lv-grp-card-bureau .lv-grp-status { font-size: 1rem; }
 .lv-grp-add {
   width: 100%; padding: .55rem; border-radius: 10px; border: none;
   background: #1d4ed8; color: #fff; font-size: 1rem; font-weight: 700;
