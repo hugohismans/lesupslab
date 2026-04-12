@@ -2379,13 +2379,13 @@ document.addEventListener('DOMContentLoaded', async function () {
   // ── Boutons flottants fin de journée (admin only) ─────────────────
   function _updateEodFab() {
     const fab = document.getElementById('eodFab');
-    if (fab) fab.classList.toggle('hidden', !DB.hasPermission('manageAgentStatus'));
+    if (fab) fab.classList.toggle('hidden', !DB.hasPermission('editSettings'));
   }
   DB.onConfigChange(_updateEodFab);
   _updateEodFab();
 
   document.getElementById('btnFabClearLocals')?.addEventListener('click', async () => {
-    if (!DB.hasPermission('manageAgentStatus')) return;
+    if (!DB.hasPermission('editSettings')) return;
     const nb = Object.keys(DB._bureauState).filter(id => DB.isBureauOpen(id)).length;
     if (!nb) { showToast('Aucun bureau ouvert.', 'info'); return; }
     if (!confirm(`Fermer ${nb} bureau${nb > 1 ? 'x' : ''} ouvert${nb > 1 ? 's' : ''} ?\n\nLes agents restent marqués comme présents.`)) return;
@@ -2394,7 +2394,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
 
   document.getElementById('btnFabGoodbyeAll')?.addEventListener('click', async () => {
-    if (!DB.hasPermission('manageAgentStatus')) return;
+    if (!DB.hasPermission('editSettings')) return;
     const connected = DB.getConnectedTodayAgents().filter(k => DB.getAgentStatus(k)?.status !== 'done');
     if (!connected.length) { showToast('Aucun agent encore connecté.', 'info'); return; }
     const names = connected
