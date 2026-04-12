@@ -3523,6 +3523,7 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   align-items: center;
 }
 .hs-mascot-wrap {
+  position: relative;
   animation: mascot-float 3.8s ease-in-out infinite;
   filter: drop-shadow(0 6px 14px rgba(109,40,217,.25));
 }

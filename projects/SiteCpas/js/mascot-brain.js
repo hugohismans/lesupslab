@@ -428,15 +428,15 @@ const MascotBrain = {
 
   // ── Accessoires ────────────────────────────────────────────────
   _setAccessory(id) {
-    const stage = document.querySelector('.hs-mascot-stage');
-    if (!stage) return;
-    stage.querySelector('.ms-acc-container')?.remove();
+    const wrap = document.querySelector('.hs-mascot-wrap');
+    if (!wrap) return;
+    wrap.querySelector('.ms-acc-container')?.remove();
     if (!id || !MASCOT_ACCESSORIES[id]) return;
 
     const div = document.createElement('div');
     div.className = `ms-acc-container ms-acc-${id}`;
     div.innerHTML = MASCOT_ACCESSORIES[id];
-    stage.appendChild(div);
+    wrap.appendChild(div);
   },
 
   // ── Triggers événementiels ─────────────────────────────────────

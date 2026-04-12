@@ -1455,12 +1455,11 @@ const HOME = {
 
     if (!lieu) { cards.innerHTML = ''; return; }
 
-    // Récupérer toutes les permanences/réunions actives aujourd'hui
+    // Réservations du jour (badge) — toute réservation d'aujourd'hui, permanences toujours incluses
     const now  = new Date();
     const dayS = new Date(now); dayS.setHours(0, 0, 0, 0);
     const dayE = new Date(now); dayE.setHours(23, 59, 59, 999);
-    const activeOccs = DB.getInRange(dayS, dayE)
-      .filter(r => r._start <= now && (r._end === null || r._end > now));
+    const todayOccs = DB.getInRange(dayS, dayE);
 
     cards.innerHTML = lieu.localIds.map(localId => {
       const label = DB.getLocalLabel(localId);
@@ -1482,7 +1481,7 @@ const HOME = {
         }
       }
 
-      const activeOcc  = activeOccs.find(r => Number(r.localId) === localId) || null;
+      const activeOcc  = todayOccs.find(r => Number(r.localId) === localId) || null;
       const isOccupied = occupantNames.length > 0;
       const isCurrent  = localId === currentLocal;
 
@@ -1534,7 +1533,7 @@ const HOME = {
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
           showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
-            info: `Impossible de quitter — une permanence ou réunion est en cours dans <strong>${escapeHtml(label)}</strong>.`,
+            info: `Terminez votre permanence avant de quitter <strong>${escapeHtml(label)}</strong>.`,
             okLabel: null }); return;
         }
         await DB.setAgentPresence(localId, false);
@@ -1587,7 +1586,7 @@ const HOME = {
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
           showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
-            info: `Impossible de quitter — une permanence ou réunion est en cours dans <strong>${escapeHtml(label)}</strong>.`,
+            info: `Terminez votre permanence avant de quitter <strong>${escapeHtml(label)}</strong>.`,
             okLabel: null }); return;
         }
         await DB.closeBureau(localId);
