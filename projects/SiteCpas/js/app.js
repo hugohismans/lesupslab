@@ -2513,7 +2513,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         const { requestId } = await DB.createPreferredRequest(
           benefName, targetAgentKey, myKey, placeId, placeName, localId
         );
-        await DB.pushToPreferredQueue(localId, { displayName, agentPublicName, requestId, ts: Date.now() });
+        // Émettre un ticket pour que la personne apparaisse dans la file visible
+        let ticketLabel = null;
+        const grpForQueue = DB.getLocalGroup(localId);
+        if (grpForQueue) {
+          const ticketResult = await DB.issueTicket(grpForQueue.id, displayName || null);
+          ticketLabel = ticketResult.label;
+          await DB.incrementGroupOverflow(grpForQueue.id);
+        }
+        await DB.pushToPreferredQueue(localId, { displayName, agentPublicName, requestId, ts: Date.now(), ticketLabel });
         const queueLen = DB.getPreferredQueue(localId).length + 1; // +1 car le push n'est pas encore reflété localement
         const localLabel = DB.getLocalLabel(localId);
         await DB.sendNotif(

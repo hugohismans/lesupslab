@@ -874,6 +874,7 @@ const DB = {
       displayName:     next.displayName     || '—',
       agentPublicName: next.agentPublicName || null,
       requestId:       next.requestId,
+      ticketLabel:     next.ticketLabel     || null,
       ts:              Date.now(),
     });
     return next;
@@ -969,32 +970,49 @@ const DB = {
       benefName: null,
     });
     if (localId) {
-      // Si un ticket avait été émis mais l'interaction est annulée, retirer le ticket des stats
-      const pend = this.getPreferredPending(localId);
-      if (pend?.ticketLabel) {
-        const grp = this.getLocalGroup(localId);
-        if (grp) {
-          const m = pend.ticketLabel.match(/(\d+)$/);
-          const ticketNum = m ? parseInt(m[1], 10) : null;
-          if (ticketNum !== null) {
-            const today = isoDate(new Date());
-            await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
-            const issued = this.getTicketIssued(grp.id);
-            // Décrémenter tick_ si c'était le dernier ticket (évite les trous dans la numérotation)
-            if (ticketNum === issued) {
-              await this._ref(`queues/${today}/tick_${grp.id}`).set(issued - 1 || null);
-            }
-            // Décrémenter wait_ : le ticket avait été ajouté à l'overflow par respondToPreferredRequest
-            const ovf = this.getGroupOverflowQueue(grp.id);
-            if (ovf > 0) {
-              const newOvf = ovf - 1;
-              await this._ref(`queues/${today}/wait_${grp.id}`).set(newOvf || null);
-              if (newOvf <= 0) await this._ref(`queues/${today}/waitSince_${grp.id}`).set(null);
-            }
-          }
+      const grp = this.getLocalGroup(localId);
+      const today = isoDate(new Date());
+
+      // Helper : annuler le ticket associé à un ticketLabel
+      const cancelTicketLabel = async (ticketLabel) => {
+        if (!ticketLabel || !grp) return;
+        const m = ticketLabel.match(/(\d+)$/);
+        const ticketNum = m ? parseInt(m[1], 10) : null;
+        if (ticketNum === null) return;
+        await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
+        const issued = this.getTicketIssued(grp.id);
+        if (ticketNum === issued) {
+          await this._ref(`queues/${today}/tick_${grp.id}`).set(issued - 1 || null);
         }
+        const ovf = this.getGroupOverflowQueue(grp.id);
+        if (ovf > 0) {
+          const newOvf = ovf - 1;
+          await this._ref(`queues/${today}/wait_${grp.id}`).set(newOvf || null);
+          if (newOvf <= 0) await this._ref(`queues/${today}/waitSince_${grp.id}`).set(null);
+        }
+      };
+
+      // Vérifier si c'est dans preferredPending
+      const pend = this.getPreferredPending(localId);
+      if (pend?.requestId === requestId) {
+        await cancelTicketLabel(pend.ticketLabel);
+        await this._ref(`appState/preferredPending/${localId}`).remove();
+        return;
       }
-      await this._ref(`appState/preferredPending/${localId}`).remove();
+
+      // Vérifier si c'est dans preferredQueue (en attente derrière le pending actuel)
+      const queue = this.getPreferredQueue(localId);
+      const queueItem = queue.find(item => item.requestId === requestId);
+      if (queueItem) {
+        await cancelTicketLabel(queueItem.ticketLabel);
+        await this._ref(`appState/preferredQueue/${localId}/${queueItem._key}`).remove();
+        return;
+      }
+
+      // Fallback : retirer le pending si requestId correspond (legacy sans requestId stocké)
+      if (pend) {
+        await this._ref(`appState/preferredPending/${localId}`).remove();
+      }
     }
   },
 
