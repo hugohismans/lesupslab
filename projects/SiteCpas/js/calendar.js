@@ -1009,7 +1009,9 @@ const LIVE = {
         // "Rappeler" : dès que isBusyLocal (utile pour ré-annoncer)
         // (false = sentinelle "effacé volontairement" → traiter comme null)
         const lastCallOngoing = !isAccueil && busyWithPref ? (this._lastCalled[l] || null) : null;
-        const lastCallAny     = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
+        // Rappeler visible tant que _lastCalled est non-null (pas le sentinel false) — indépendant de isBusyLocal
+        // Le sentinel false est posé par "Je suis disponible" (groupe) et "Bénéficiaire parti"
+        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
         const dismissBtn = (!isAccueil && busyWithPref)
@@ -1068,7 +1070,7 @@ const LIVE = {
         const noGrpDismissBtn = (!isAccueil && busyWithPref)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
-        const noGrpLastCall = !isAccueil && isBusyLocal ? (this._lastCalled[l] || null) : null;
+        const noGrpLastCall = !isAccueil ? (this._lastCalled[l] || null) : null;
         const noGrpInfoHint = noGrpLastCall
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${noGrpLastCall.ticket ? `<strong>n°${escapeHtml(noGrpLastCall.ticket)}</strong>` : 'ticket en cours'}${noGrpLastCall.svc ? ` · ${escapeHtml(noGrpLastCall.svc)}` : ''}${noGrpDismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${noGrpDismissBtn}</div>` : '');
@@ -1381,13 +1383,16 @@ const LIVE = {
         const delta   = parseInt(btn.dataset.delta);
         const grp     = DB.getLocalGroup(localId);
 
-        if (delta === -1 && grp) {
+        if (delta === -1) {
           // Agent libère son bureau — le bénéficiaire est parti, bureau redevient disponible
           // L'agent choisit lui-même quand appeler le suivant via "🔔 Appeler le suivant"
-          await DB.setQueue(localId, 0);
-          this._lastCalled[localId] = false;
-          try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
-          await DB.clearLastCallForLocal(localId);
+          const newQ = grp ? 0 : Math.max(0, DB.getQueue(localId) - 1);
+          await DB.setQueue(localId, newQ);
+          if (newQ === 0) {
+            this._lastCalled[localId] = false;
+            try { localStorage.removeItem(`cpas_lastCall_${localId}`); } catch(_) {}
+            await DB.clearLastCallForLocal(localId);
+          }
         } else {
           await DB.setQueue(localId, Math.max(0, DB.getQueue(localId) + delta));
         }
