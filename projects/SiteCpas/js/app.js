@@ -1232,74 +1232,8 @@ const HOME = {
       agendaEl.innerHTML = '<div class="hs-agenda-empty">Connectez-vous pour voir votre agenda</div>';
     }
 
-    // ─ Bureau d'accueil (local caché) ───────────────────────────────
+    // ─ Bureau d'accueil (local caché) — pour "Qui est où" uniquement ─
     const deskLocalId = DB.getAccueilDeskLocalId();
-    const deskCard    = document.getElementById('hsAccueilDeskCard');
-    if (deskCard) {
-      if (deskLocalId !== null) {
-        const deskPresence = DB.getBackofficePresence(deskLocalId);
-        const deskKeys     = Object.keys(deskPresence);
-        const deskNames    = deskKeys.map(k => agents.find(a => a.key === k)?.name || k);
-        const iAmAtDesk    = agentKey && !!deskPresence[agentKey];
-        deskCard.innerHTML = `
-          <h3 class="hs-card-title">🪟 Bureau d'accueil</h3>
-          <div class="hs-bo-presence">
-            ${deskNames.length
-              ? deskNames.map(n => `<span class="hs-pres-chip${n === agentName ? ' hs-chip-me' : ''}">${escapeHtml(n)}</span>`).join('')
-              : '<span class="hs-bo-nobody">Personne actuellement</span>'}
-          </div>
-          <button class="hs-desk-btn${iAmAtDesk ? ' hs-desk-leave' : ''}" id="hsAccueilDeskBtn" data-present="${iAmAtDesk ? '1' : '0'}" data-local="${deskLocalId}">
-            ${iAmAtDesk ? '🚪 Je quitte l\'accueil' : '🪟 Je suis à l\'accueil'}
-          </button>`;
-        deskCard.classList.remove('hidden');
-        // Binder le bouton à chaque render
-        document.getElementById('hsAccueilDeskBtn')?.addEventListener('click', async () => {
-          const btn  = document.getElementById('hsAccueilDeskBtn');
-          const lid  = parseInt(btn.dataset.local);
-          const here = btn.dataset.present === '1';
-          if (!here) {
-            // Déjà dans un autre backoffice/desk ?
-            const prevLocal = DB.getAgentCurrentPresenceLocal();
-            if (prevLocal !== null && prevLocal !== lid) {
-              const prevLabel = DB.getLocalLabel(prevLocal);
-              const prevLieu  = DB.getLocalLieuName(prevLocal);
-              showBureauConfirm({
-                icon: '🔄', title: 'Changer de local',
-                info: `Vous êtes indiqué(e) présent(e) à <strong>${escapeHtml(prevLabel)}</strong>${prevLieu ? ` (${escapeHtml(prevLieu)})` : ''}.<br>Voulez-vous changer de local ?`,
-                okLabel: 'Oui, changer', okClass: 'ok-open',
-                onOk: async () => {
-                  await DB.setAgentPresence(prevLocal, false);
-                  await DB.setAgentPresence(lid, true);
-                  this.render();
-                },
-              });
-              return;
-            }
-            // Bureau normal déjà ouvert ?
-            const openBureau = DB.getOpenBureauForCurrentAgent();
-            if (openBureau !== null) {
-              const openLabel = DB.getLocalLabel(openBureau);
-              const openLieu  = DB.getLocalLieuName(openBureau);
-              showBureauConfirm({
-                icon: '🔄', title: 'Changer de local',
-                info: `Vous êtes indiqué(e) présent(e) à <strong>${escapeHtml(openLabel)}</strong>${openLieu ? ` (${escapeHtml(openLieu)})` : ''}.<br>Voulez-vous changer de local ?`,
-                okLabel: 'Oui, changer', okClass: 'ok-open',
-                onOk: async () => {
-                  await DB.closeBureau(openBureau);
-                  await DB.setAgentPresence(lid, true);
-                  this.render();
-                },
-              });
-              return;
-            }
-          }
-          await DB.setAgentPresence(lid, !here);
-          this.render();
-        });
-      } else {
-        deskCard.classList.add('hidden');
-      }
-    }
 
     // ─ Qui est où ────────────────────────────────────────────────────
     const presEl = document.getElementById('hsPresence');
