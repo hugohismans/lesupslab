@@ -1536,8 +1536,11 @@ const HOME = {
             info: `Terminez votre permanence avant de quitter <strong>${escapeHtml(label)}</strong>.`,
             okLabel: null }); return;
         }
-        await DB.setAgentPresence(localId, false);
-        this.render(); return;
+        showBureauConfirm({ icon: '🚪', title: `Quitter ${escapeHtml(label)}`,
+          info: `Voulez-vous quitter <strong>${escapeHtml(label)}</strong> ?`,
+          okLabel: 'Quitter', okClass: 'ok-close',
+          onOk: async () => { await DB.setAgentPresence(localId, false); this.render(); },
+        }); return;
       }
       // Quelqu'un d'autre déjà là → confirmer
       const pres    = DB.getBackofficePresence(localId);
@@ -1581,7 +1584,7 @@ const HOME = {
     } else {
       // Bureau normal
       const currAgentKey = DB.getBureauAgentKey(localId);
-      // Déjà présent ici → c'est un toggle : fermer le bureau
+      // Déjà présent ici → confirmation avant de quitter
       if (currAgentKey === agentKey) {
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
@@ -1589,8 +1592,11 @@ const HOME = {
             info: `Terminez votre permanence avant de quitter <strong>${escapeHtml(label)}</strong>.`,
             okLabel: null }); return;
         }
-        await DB.closeBureau(localId);
-        this.render(); return;
+        showBureauConfirm({ icon: '🚪', title: `Quitter ${escapeHtml(label)}`,
+          info: `Voulez-vous fermer <strong>${escapeHtml(label)}</strong> ?`,
+          okLabel: 'Quitter', okClass: 'ok-close',
+          onOk: async () => { await DB.closeBureau(localId); this.render(); },
+        }); return;
       }
       // Bureau occupé par quelqu'un d'autre
       if (currAgentKey) {
