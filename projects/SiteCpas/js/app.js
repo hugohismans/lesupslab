@@ -1565,6 +1565,16 @@ const HOME = {
           onOk: async () => { await DB.setAgentPresence(localId, false); this.render(); },
         }); return;
       }
+      // Vérifier consultation en cours avant tout changement
+      const _curOpen = DB.getOpenBureauForCurrentAgent();
+      const _curBO   = DB.getAgentCurrentPresenceLocal();
+      const _curBusy = _curOpen !== null ? _curOpen : _curBO;
+      if (_curBusy !== null && _curBusy !== localId && this._isBureauBusy(_curBusy)) {
+        showBureauConfirm({ icon: '🔴', title: 'Consultation en cours',
+          info: `Vous êtes avec un bénéficiaire dans <strong>${escapeHtml(DB.getLocalLabel(_curBusy))}</strong>.<br>Terminez la consultation avant de changer de local.`,
+          okLabel: null }); return;
+      }
+
       // Quelqu'un d'autre déjà là → confirmer
       const pres    = DB.getBackofficePresence(localId);
       const others  = Object.keys(pres).filter(k => k !== agentKey)
@@ -1647,6 +1657,11 @@ const HOME = {
       if (DB.getFeature('enableBackoffice')) {
         const boLocal = DB.getAgentCurrentPresenceLocal();
         if (boLocal !== null) {
+          if (this._isBureauBusy(boLocal)) {
+            showBureauConfirm({ icon: '🔴', title: 'Consultation en cours',
+              info: `Vous êtes avec un bénéficiaire dans <strong>${escapeHtml(DB.getLocalLabel(boLocal))}</strong>.<br>Terminez la consultation avant de changer de local.`,
+              okLabel: null }); return;
+          }
           showBureauConfirm({
             icon: '🔄', title: 'Changer de local',
             info: `Vous êtes présent(e) à <strong>${escapeHtml(DB.getLocalLabel(boLocal))}</strong>. Voulez-vous changer ?`,
