@@ -1277,9 +1277,10 @@ const HOME = {
             const openKey  = DB.getBureauAgentKey(localId);
             const openName = openKey ? (agents.find(a => a.key === openKey)?.name || null) : null;
             const isMe     = openKey && openKey === agentKey;
+            const isBusy   = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
             if (openKey) _assignedKeys.add(openKey);
-            presRows.push(`<div class="hs-pres-row${isMe ? ' hs-pres-me' : ''}">
-              <span class="hs-pres-local">🟢 ${escapeHtml(localLabel)}</span>
+            presRows.push(`<div class="hs-pres-row${isMe ? ' hs-pres-me' : ''}${isBusy ? ' hs-pres-busy' : ''}">
+              <span class="hs-pres-local">${isBusy ? '🔴' : '🟢'} ${escapeHtml(localLabel)}${isBusy ? ' <span class="hs-pres-benef">· avec bénéf.</span>' : ''}</span>
               <span class="hs-pres-lieu">${escapeHtml(lieuName)}</span>
               <span class="hs-pres-agents">${openName ? `<span class="hs-pres-chip">${escapeHtml(openName)}${isMe ? ' ✓' : ''}</span>` : ''}</span>
             </div>`);

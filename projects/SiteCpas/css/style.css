@@ -3791,8 +3791,10 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   padding: .4rem .55rem; border-radius: 8px;
   background: #f8fafc;
 }
-.hs-pres-row.hs-pres-me  { background: #f0fdf4; }
-.hs-pres-row.hs-pres-bo  { background: #1e1b4b18; }
+.hs-pres-row.hs-pres-me   { background: #f0fdf4; }
+.hs-pres-row.hs-pres-bo   { background: #1e1b4b18; }
+.hs-pres-row.hs-pres-busy { background: #fff1f2; }
+.hs-pres-benef { font-size: .72rem; font-weight: 400; color: #dc2626; }
 .hs-pres-local { font-size: .83rem; font-weight: 700; color: #1e293b; white-space: nowrap; }
 .hs-pres-lieu  { font-size: .72rem; color: #94a3b8; white-space: nowrap; }
 .hs-pres-agents { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; }
