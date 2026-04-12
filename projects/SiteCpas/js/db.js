@@ -666,9 +666,27 @@ const DB = {
   },
 
   _ticketPrefix(groupId) {
-    const grp = (this._config.queueGroups || {})[groupId];
+    const groups = this._config.queueGroups || {};
+    const grp    = groups[groupId];
     if (!grp?.name) return 'T';
-    return grp.name.trim()[0].toUpperCase();
+
+    const _base = (name) => {
+      const stop  = new Set(['de', 'du', 'des', 'le', 'la', 'les', 'et', 'en', 'à', 'au', 'aux', 'un', 'une']);
+      const words = name.trim().split(/\s+/).filter(w => !stop.has(w.toLowerCase()));
+      const src   = words.length ? words : [name.trim()];
+      return src.slice(0, 2).map(w => (w[0] || '').toUpperCase()).join('') || 'T';
+    };
+
+    const base = _base(grp.name);
+
+    // Détecter les conflits de préfixe entre groupes → numéroter à partir du 2e
+    const conflicting = Object.entries(groups)
+      .filter(([, g]) => g?.name && _base(g.name) === base)
+      .map(([id]) => id)
+      .sort();                       // tri stable par groupId
+
+    const idx = conflicting.indexOf(groupId);
+    return idx <= 0 ? base : `${base}${idx + 1}`;
   },
 
   formatTicket(groupId, n) {
