@@ -854,9 +854,10 @@ const LIVE = {
       for (let n = called + 1; n <= issued; n++) {
         if (!prefTicketNums.has(n)) overflowNums.push(n);
       }
-      // Fallback si ticket_ et wait_ sont désynchronisés (données legacy ou annulation)
-      const extraOverflow = Math.max(0, overflow - overflowNums.length);
-      const overflowChipsHtml = (overflowNums.length || overflow > 0)
+      // Fallback si tick_/wait_ désynchronisés — soustraire aussi les tickets préférés dans wait_
+      // (depuis respondToPreferredRequest, les tickets préférés incrémentent wait_)
+      const extraOverflow = Math.max(0, overflow - overflowNums.length - prefTicketNums.size);
+      const overflowChipsHtml = (overflowNums.length || extraOverflow > 0)
         ? `<div class="lv-grp-queue-row">
              <span class="lv-grp-queue-label">EN ATTENTE :</span>
              ${overflowNums.map(n => {
@@ -1022,8 +1023,8 @@ const LIVE = {
           ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
           : '';
         // Bouton "Recevoir X" si une personne attend spécifiquement cet agent (côté agent)
-        // Masqué si l'agent est déjà en permanence (perm ou réservation active)
-        const preferred = !isAccueil && !perm && !res ? DB.getPreferredPending(l) : null;
+        // Masqué si l'agent est déjà occupé (queue en cours ou busyWithPref)
+        const preferred = !isAccueil && !isBusyLocal ? DB.getPreferredPending(l) : null;
         const preferredBtn = preferred
           ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(preferred.displayName || '?')} qui ne souhaite voir que moi</button>`
           : '';
@@ -1228,8 +1229,8 @@ const LIVE = {
         });
         const _ovfNums = [];
         for (let n = _called + 1; n <= _issued; n++) { if (!_prefNums.has(n)) _ovfNums.push(n); }
-        const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length);
-        const _ovfChips = (_ovfNums.length || _grpOvf > 0) && _gcCfg.showNum
+        const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length - _prefNums.size);
+        const _ovfChips = (_ovfNums.length || _extraOvf > 0) && _gcCfg.showNum
           ? `<div class="lv-grp-queue-row">
                <span class="lv-grp-queue-label">EN ATTENTE :</span>
                ${_ovfNums.map(n => {
