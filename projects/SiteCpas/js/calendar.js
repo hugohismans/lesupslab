@@ -1218,11 +1218,33 @@ const LIVE = {
           const isMe = l === bureauLocal;
           return `<span class="lv-grp-dot${busy ? ' busy' : ''}${isMe ? ' lv-grp-dot-me' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
         }).join('');
+        // Chips overflow pour la vue bureau
+        const _gcCfg    = DB.getTicketDisplay('groupCard');
+        const _issued   = DB.getTicketIssued(_bureauGrp.id);
+        const _called   = DB.getTicketCalled(_bureauGrp.id);
+        const _prefNums = new Set();
+        _grpOpen.forEach(l => {
+          const pend = DB.getPreferredPending(l);
+          if (pend?.ticketLabel) { const m = pend.ticketLabel.match(/(\d+)$/); if (m) _prefNums.add(parseInt(m[1], 10)); }
+        });
+        const _ovfNums = [];
+        for (let n = _called + 1; n <= _issued; n++) { if (!_prefNums.has(n)) _ovfNums.push(n); }
+        const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length);
+        const _ovfChips = (_ovfNums.length || _grpOvf > 0) && _gcCfg.showNum
+          ? `<div class="lv-grp-queue-row">
+               <span class="lv-grp-queue-label">EN ATTENTE :</span>
+               ${_ovfNums.map(n => {
+                 const num  = DB.formatTicket(_bureauGrp.id, n);
+                 const name = _gcCfg.showName ? DB.getTicketName(_bureauGrp.id, n) : null;
+                 return `<span class="lv-grp-chip">${escapeHtml(name ? num + ' · ' + name : num)}</span>`;
+               }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
+             </div>`
+          : '';
         grpCardHtml = `<div class="lv-card lv-grp-card lv-grp-card-bureau">
           <div class="lv-grp-title">🔗 ${escapeHtml(_bureauGrp.name)}</div>
           <div class="lv-grp-status">${_grpStatusTxt}</div>
-          ${_grpOvf > 0 ? `<div class="lv-grp-overflow">⏳ ${_grpOvf} personne${_grpOvf > 1 ? 's' : ''} en attente</div>` : ''}
           ${_grpDotsHtml ? `<div class="lv-grp-locals">${_grpDotsHtml}</div>` : ''}
+          ${_ovfChips}
         </div>`;
       }
       g('liveGrid').innerHTML = grpCardHtml + renderCard(bureauLocal);
