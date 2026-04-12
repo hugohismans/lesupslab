@@ -1651,6 +1651,9 @@ function applyFeatureFlags() {
   if (_showPlanning && DB.hasPermission?.('managePlanning')) {
     document.getElementById('plBtnAdd')?.classList.remove('hidden');
   }
+
+  // Bouton Diffuser — permission sendNotif
+  show('btnBroadcast', DB.hasPermission?.('sendNotif') || false);
 }
 
 // ─── Export iCal (Phase 5.6) ───────────────────────────────────
@@ -1934,11 +1937,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.getElementById('btnBroadcast')?.addEventListener('click', () => {
     if (typeof openBroadcastModal === 'function') openBroadcastModal();
   });
-  // Visibilité : permission sendNotif
-  DB.onConfigChange(() => {
-    const btnBC = document.getElementById('btnBroadcast');
-    if (btnBC) btnBC.style.display = DB.hasPermission('sendNotif') ? '' : 'none';
-  });
+  // Visibilité gérée dans applyFeatureFlags() (appelée au bon moment)
 
   // Initialiser la status bar à l'heure actuelle
   const now = new Date();
