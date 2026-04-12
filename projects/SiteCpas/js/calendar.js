@@ -985,7 +985,7 @@ const LIVE = {
       if (grp) {
         const overflow    = DB.getGroupOverflowQueue(grp.id);
         const optedOut    = DB.getBureauOptedOut(l);
-        const callNextBtn = queue === 0 && overflow > 0 && !pendingPref
+        const callNextBtn = queue === 0 && overflow > 0 && !busyWithPref
           ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${grp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
