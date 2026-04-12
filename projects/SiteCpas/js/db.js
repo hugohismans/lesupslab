@@ -582,14 +582,17 @@ const DB = {
       .map(([id, g]) => ({ id, ...g }));
   },
 
-  // Parmi tous les groupes d'un local, retourne celui avec le ticket en attente le plus ancien.
-  // Critère : waitSince_ le plus petit (= entré en file en premier). Si ex-aequo : overflow max.
+  // Parmi tous les groupes d'un local, retourne celui dont le prochain ticket à appeler
+  // est le plus ancien (timestamp d'émission). Fallback : waitSince_, puis overflow max.
   getOldestOverflowGroup(localId) {
     const grps = this.getLocalGroups(localId).filter(g => this.getGroupOverflowQueue(g.id) > 0);
     if (!grps.length) return null;
     return grps.reduce((best, g) => {
-      const ts = this.getGroupOverflowSince(g.id) || Infinity;
-      const bestTs = this.getGroupOverflowSince(best.id) || Infinity;
+      // Prochain ticket non-skippé de chaque groupe
+      const nextN    = (n => { const issued = this.getTicketIssued(g.id); while (n <= issued && this.isTicketSkipped(g.id, n)) n++; return n; })(this.getTicketCalled(g.id) + 1);
+      const bestNextN = (n => { const issued = this.getTicketIssued(best.id); while (n <= issued && this.isTicketSkipped(best.id, n)) n++; return n; })(this.getTicketCalled(best.id) + 1);
+      const ts     = this.getTicketIssuedAt(g.id,    nextN)    || this.getGroupOverflowSince(g.id)    || Infinity;
+      const bestTs = this.getTicketIssuedAt(best.id, bestNextN) || this.getGroupOverflowSince(best.id) || Infinity;
       return ts < bestTs ? g : best;
     });
   },
@@ -663,6 +666,8 @@ const DB = {
     await ref.child(`tcall_${groupId}`).remove();
     await ref.child(`wait_${groupId}`).remove();
     await ref.child(`skip_${groupId}`).remove();
+    await ref.child(`times_${groupId}`).remove();
+    await ref.child(`names_${groupId}`).remove();
   },
 
   // Remet à zéro TOUTES les files (locaux + groupes) ET les demandes agent spécifique
@@ -736,14 +741,20 @@ const DB = {
   async issueTicket(groupId, beneficiaryName) {
     const today = isoDate(new Date());
     const n = this.getTicketIssued(groupId) + 1;
-    await this._ref(`queues/${today}/tick_${groupId}`).set(n);
+    const writes = { [`tick_${groupId}`]: n, [`times_${groupId}/${n}`]: Date.now() };
     let resolvedName = null;
     if (beneficiaryName) {
       resolvedName = this._resolveTicketName(groupId, beneficiaryName.trim());
-      await this._ref(`queues/${today}/names_${groupId}/${n}`).set(resolvedName);
+      writes[`names_${groupId}/${n}`] = resolvedName;
     }
+    await this._ref(`queues/${today}`).update(writes);
     // Retourne { label: numéro formaté, resolvedName: nom résolu (null si pas de nom) }
     return { label: this.formatTicket(groupId, n), resolvedName };
+  },
+
+  // Timestamp d'émission du ticket N d'un groupe (pour comparer l'ancienneté inter-groupes)
+  getTicketIssuedAt(groupId, n) {
+    return this._queueData[`times_${groupId}`]?.[String(n)] || null;
   },
 
   getTicketName(groupId, number) {
@@ -789,6 +800,7 @@ const DB = {
     const name = this.getTicketName(groupId, called);
     await this._ref(`queues/${today}`).update(writes);
     if (name) await this._ref(`queues/${today}/names_${groupId}/${called}`).remove();
+    await this._ref(`queues/${today}/times_${groupId}/${called}`).remove();
 
     const label   = this.formatTicket(groupId, called);
     const display = name || label;
@@ -826,6 +838,7 @@ const DB = {
 
     await this._ref(`queues/${today}`).update(writes);
     await this._ref(`queues/${today}/names_${groupId}/${ticketNumber}`).remove();
+    await this._ref(`queues/${today}/times_${groupId}/${ticketNumber}`).remove();
 
     // Nettoyer la demande spécifique (preferred) associée à ce ticket si elle existe
     const ticketLabel = this.formatTicket(groupId, ticketNumber);
