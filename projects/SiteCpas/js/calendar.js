@@ -1021,15 +1021,16 @@ const LIVE = {
         const prefQueueHint = prefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
-        // Bouton "Recevoir X" si une personne attend spécifiquement cet agent (côté agent)
-        // Masqué si l'agent est déjà occupé (queue en cours ou busyWithPref)
-        const preferred = !isAccueil && !isBusyLocal ? DB.getPreferredPending(l) : null;
+        // pending preferred — toujours récupéré pour la liste d'attente
+        const _preferredPending = !isAccueil ? DB.getPreferredPending(l) : null;
+        // Bouton "Recevoir X" : uniquement si l'agent est libre (pas busyWithPref/permanence)
+        const preferred = _preferredPending && !isBusyLocal ? _preferredPending : null;
         // Liste complète des tickets en attente — tous les groupes + preferred pending + preferred queue
         const _gcCfgL = DB.getTicketDisplay('groupCard');
         const _prefQueueItems = !isAccueil ? DB.getPreferredQueue(l) : [];
         const _allWaitItems = [];
-        // Ajouter le preferred pending (ex: cxx) avec flag isPref
-        if (!isAccueil && preferred) {
+        // Ajouter le preferred pending (ex: cxx) avec flag isPref — même pendant permanence
+        if (!isAccueil && _preferredPending) {
           _allWaitItems.push({ isPref: true, ts: preferred.ts || 0, prefName: preferred.displayName || '?', prefTicket: preferred.ticketLabel || preferred.displayName || '?' });
         }
         // Ajouter les personnes en attente derrière le preferred pending
@@ -1049,7 +1050,7 @@ const LIVE = {
         });
         // Trier par timestamp d'émission (ordre d'arrivée global)
         _allWaitItems.sort((a, b) => a.ts - b.ts);
-        const totalWaiting = overflow + (preferred ? 1 : 0) + _prefQueueItems.length;
+        const totalWaiting = overflow + (_preferredPending ? 1 : 0) + _prefQueueItems.length;
         const overflowBadge = !isAccueil && totalWaiting > 0
           ? `<div class="lv-grp-queue-list">
                <div class="lv-grp-queue-header">
