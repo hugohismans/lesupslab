@@ -1450,7 +1450,7 @@ const HOME = {
           const ovf = DB.getGroupOverflowQueue(g.id);
           return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
         }).join('');
-        lines.push(`<div class="hs-decl-grps">🔗 ${grpBadges}</div>`);
+        lines.push(`<div class="hs-decl-grps">🔗 ${grpBadges}<span class="hs-decl-grp-legend">= personnes en attente</span></div>`);
       }
 
       return `<div class="${cls}" data-local-id="${localId}">

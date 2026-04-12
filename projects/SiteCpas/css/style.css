@@ -3946,6 +3946,9 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   background: #dc2626; color: #fff; border-radius: 999px;
   padding: 0 .35rem; font-size: .65rem; font-weight: 700; line-height: 1.4;
 }
+.hs-decl-grp-legend {
+  font-size: .62rem; color: #64748b; font-style: italic; white-space: nowrap; align-self: center;
+}
 
 /* ── Raccourcis ──────────────────────────────────────────────────── */
 .hs-shortcuts {
