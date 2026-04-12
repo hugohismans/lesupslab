@@ -1205,10 +1205,13 @@ const LIVE = {
       </div>`;
       g('liveGrid').innerHTML = groupCards + preferredCard + bureauHtml;
     } else {
-      // Mode bureau : carte de la file de groupe + carte du bureau
-      const _bureauGrp = bureauLocal !== null ? DB.getLocalGroup(bureauLocal) : null;
-      let grpCardHtml = '';
-      if (_bureauGrp) {
+      // Mode bureau : une carte par groupe + carte du bureau
+      const _bureauGrps = bureauLocal !== null ? DB.getLocalGroups(bureauLocal) : [];
+      const _gcCfg = DB.getTicketDisplay('groupCard');
+      const _myPerm = occs.find(r => parseInt(r.localId) === bureauLocal && r.isPermanent);
+      const _myRes  = occs.find(r => parseInt(r.localId) === bureauLocal && !r.isPermanent && r._start <= now && r._end > now);
+
+      const grpCardsHtml = _bureauGrps.map(_bureauGrp => {
         const _grpLids    = (_bureauGrp.localIds || []).map(Number);
         const _grpOpen    = _grpLids.filter(l => DB.isBureauOpen(l));
         const _grpOcc     = _grpOpen.filter(l => DB.getQueue(l) >= 1 || DB.isBureauBusyWithPreferred(l) || !!DB.getPreferredPending(l)).length;
@@ -1226,15 +1229,8 @@ const LIVE = {
           const isMe = l === bureauLocal;
           return `<span class="lv-grp-dot${busy ? ' busy' : ''}${isMe ? ' lv-grp-dot-me' : ''}" title="${DB.getLocalLabel(l)}"></span>`;
         }).join('');
-        // Chips overflow pour la vue bureau
-        const _gcCfg    = DB.getTicketDisplay('groupCard');
-        const _issued   = DB.getTicketIssued(_bureauGrp.id);
-        const _called   = DB.getTicketCalled(_bureauGrp.id);
-        const _prefNums = new Set();
-        _grpOpen.forEach(l => {
-          const pend = DB.getPreferredPending(l);
-          if (pend?.ticketLabel) { const m = pend.ticketLabel.match(/(\d+)$/); if (m) _prefNums.add(parseInt(m[1], 10)); }
-        });
+        const _issued  = DB.getTicketIssued(_bureauGrp.id);
+        const _called  = DB.getTicketCalled(_bureauGrp.id);
         const _ovfNums = [];
         for (let n = _called + 1; n <= _issued; n++) { if (!DB.isTicketSkipped(_bureauGrp.id, n)) _ovfNums.push(n); }
         const _extraOvf = Math.max(0, _grpOvf - _ovfNums.length);
@@ -1248,9 +1244,7 @@ const LIVE = {
                }).join('')}${_extraOvf > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${_extraOvf}</span>` : ''}
              </div>`
           : '';
-        // Chips préférés pour CE bureau (pending + queue), masqués si permanence active
-        const _myPerm = occs.find(r => parseInt(r.localId) === bureauLocal && r.isPermanent);
-        const _myRes  = occs.find(r => parseInt(r.localId) === bureauLocal && !r.isPermanent && r._start <= now && r._end > now);
+        // Chips préférés pour CE bureau dans CE groupe (pending + queue), masqués si permanence active
         const _myPrefPeople = (!_myPerm && !_myRes) ? (() => {
           const list = [];
           const pend = DB.getPreferredPending(bureauLocal);
@@ -1272,15 +1266,16 @@ const LIVE = {
               }).join('')}
             </div>`
           : '';
-        grpCardHtml = `<div class="lv-card lv-grp-card lv-grp-card-bureau">
+        return `<div class="lv-card lv-grp-card lv-grp-card-bureau">
           <div class="lv-grp-title">🔗 ${escapeHtml(_bureauGrp.name)}</div>
           <div class="lv-grp-status">${_grpStatusTxt}</div>
           ${_grpDotsHtml ? `<div class="lv-grp-locals">${_grpDotsHtml}</div>` : ''}
           ${_ovfChips}
           ${_prefChip}
         </div>`;
-      }
-      g('liveGrid').innerHTML = grpCardHtml + renderCard(bureauLocal);
+      }).join('');
+
+      g('liveGrid').innerHTML = grpCardsHtml + renderCard(bureauLocal);
     }
 
     this._renderLieuFilters();
