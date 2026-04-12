@@ -113,7 +113,8 @@ const CAL = {
           span = Math.max(1, span);
           coveredUntil[l] = i + span;
 
-          const svc   = DB.getSvcLabel(res);
+          const svcs  = DB.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s);
+          const svc   = svcs.join(' + '); // pour title/tooltip
           const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
           const agtFmt = fmtAgent(agt);
           const recType = res.recurrence?.type;
@@ -137,8 +138,8 @@ const CAL = {
             <span class="ct ct-drag" draggable="true"
               data-id="${res.id}" data-slot="${i}" data-local="${l}" data-span="${span}"
               data-occ-date="${isoDate(res._start)}" data-is-rec="${isRec ? '1' : '0'}">
-              <b>${svc}</b><br>
-              <small>${agtFmt}</small><br>
+              ${svcs.map(s => `<b>${escapeHtml(s)}</b>`).join('<br>')}
+              <br><small>${agtFmt}</small><br>
               <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
               ${comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
               ${invitedNames ? `<small class="ct-invited" title="Agents invités : ${escapeHtml(invitedNames)}">👥 ${escapeHtml(invitedNames)}</small>` : ''}
