@@ -277,17 +277,13 @@ function render() {
       const name = gcCfg.showName ? (namesMap[String(i)] || null) : null;
       waitingTickets.push({ num, name });
     }
-    // Fallback : si tick/tcall désynchronisés avec wait_, afficher quand même le nombre en attente
-    const showFallback = gcCfg.showNum && waiting > 0 && waitingTickets.length === 0;
-
-    const ticketsHtml = gcCfg.showNum && (waitingTickets.length || showFallback)
+    const ticketsHtml = gcCfg.showNum && waitingTickets.length
       ? `<div class="pub-grp-tickets">
           <span class="pub-grp-tickets-label">En attente :</span>
           <div class="pub-grp-ticket-list">
             ${waitingTickets.map(({ num, name }) =>
               `<span class="pub-grp-ticket">${num}${name ? `<span class="pub-grp-ticket-name"> · ${escapeHtml(name)}</span>` : ''}</span>`
             ).join('')}
-            ${showFallback ? `<span class="pub-grp-ticket pub-grp-ticket-unk">+${waiting}</span>` : ''}
           </div>
         </div>`
       : '';
