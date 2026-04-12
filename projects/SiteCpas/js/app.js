@@ -1484,14 +1484,30 @@ const HOME = {
       const activeOcc  = todayOccs.find(r => Number(r.localId) === localId) || null;
       const isOccupied = occupantNames.length > 0;
       const isCurrent  = localId === currentLocal;
+      const isBusy     = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
+
+      // Badge service : calendrier en priorité, sinon groupe de file si bureau ouvert
+      let badgeSvc = null;
+      if (activeOcc) {
+        badgeSvc = activeOcc.service === 'Autre'
+          ? (activeOcc.serviceCustom || 'Permanence')
+          : (activeOcc.service || (activeOcc.isPermanent ? 'Permanence' : 'Réunion'));
+      } else if (isCurrent || isOccupied) {
+        const grp = DB.getLocalGroup(localId);
+        if (grp) badgeSvc = grp.name;
+      }
 
       const cls = ['hs-decl-local',
         isCurrent  ? 'hs-decl-active'   : '',
         isOccupied ? 'hs-decl-occupied' : '',
-        activeOcc  ? 'hs-decl-has-perm' : '',
+        badgeSvc   ? 'hs-decl-has-perm' : '',
       ].filter(Boolean).join(' ');
 
       const lines = [];
+      // Indicateur "avec un bénéficiaire"
+      if (isBusy && (isCurrent || isOccupied))
+        lines.push(`<div class="hs-decl-busy">🔴 Avec un bénéficiaire</div>`);
+
       if (isCurrent && occupantNames.length)
         lines.push(`<div class="hs-decl-me">✅ Vous + ${escapeHtml(occupantNames.join(', '))}</div>`);
       else if (isCurrent)
@@ -1501,16 +1517,18 @@ const HOME = {
       else
         lines.push(`<div class="hs-decl-avail">Libre</div>`);
 
-      if (activeOcc) {
-        const svc = activeOcc.service === 'Autre' ? (activeOcc.serviceCustom || 'Permanence') : (activeOcc.service || (activeOcc.isPermanent ? 'Permanence' : 'Réunion'));
-        lines.push(`<div class="hs-decl-perm-badge">🗓 ${escapeHtml(svc)}</div>`);
-      }
+      if (badgeSvc)
+        lines.push(`<div class="hs-decl-perm-badge">🗓 ${escapeHtml(badgeSvc)}</div>`);
 
       return `<div class="${cls}" data-local-id="${localId}">
         <div class="hs-decl-name">${escapeHtml(label)}</div>
         ${lines.join('')}
       </div>`;
     }).join('') || '<div class="hs-decl-avail">Aucun bureau dans ce lieu.</div>';
+  },
+
+  _isBureauBusy(localId) {
+    return DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
   },
 
   _getActiveOccupancy(localId) {
@@ -1530,6 +1548,11 @@ const HOME = {
     if (isBO) {
       // Déjà présent ici → quitter
       if (agentKey && DB.isAgentPresentInLocal(localId, agentKey)) {
+        if (this._isBureauBusy(localId)) {
+          showBureauConfirm({ icon: '🔴', title: 'Consultation en cours',
+            info: `Vous êtes actuellement avec un bénéficiaire dans <strong>${escapeHtml(label)}</strong>.<br>Terminez la consultation avant de quitter.`,
+            okLabel: null }); return;
+        }
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
           showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
@@ -1586,6 +1609,11 @@ const HOME = {
       const currAgentKey = DB.getBureauAgentKey(localId);
       // Déjà présent ici → confirmation avant de quitter
       if (currAgentKey === agentKey) {
+        if (this._isBureauBusy(localId)) {
+          showBureauConfirm({ icon: '🔴', title: 'Consultation en cours',
+            info: `Vous êtes actuellement avec un bénéficiaire dans <strong>${escapeHtml(label)}</strong>.<br>Terminez la consultation avant de quitter.`,
+            okLabel: null }); return;
+        }
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
           showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
