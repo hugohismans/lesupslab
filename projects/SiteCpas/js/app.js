@@ -1580,8 +1580,10 @@ const HOME = {
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
           showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
-            info: `Terminez votre permanence avant de quitter <strong>${escapeHtml(label)}</strong>.`,
-            okLabel: null }); return;
+            info: `Une permanence est en cours dans <strong>${escapeHtml(label)}</strong>. Voulez-vous la terminer et quitter ?`,
+            okLabel: 'Finir la permanence et quitter', okClass: 'ok-close',
+            onOk: async () => { await DB.setAgentPresence(localId, false); this.render(); },
+          }); return;
         }
         showBureauConfirm({ icon: '🚪', title: `Quitter ${escapeHtml(label)}`,
           info: `Voulez-vous quitter <strong>${escapeHtml(label)}</strong> ?`,
@@ -1651,8 +1653,19 @@ const HOME = {
         const _activeOcc = this._getActiveOccupancy(localId);
         if (_activeOcc) {
           showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
-            info: `Terminez votre permanence avant de quitter <strong>${escapeHtml(label)}</strong>.`,
-            okLabel: null }); return;
+            info: `Une permanence est en cours dans <strong>${escapeHtml(label)}</strong>. Voulez-vous la terminer et fermer le bureau ?`,
+            okLabel: 'Finir la permanence et quitter', okClass: 'ok-close',
+            onOk: async () => {
+              await DB.clearBureauPause(localId);
+              const pref = DB.getPreferredPending(localId);
+              if (pref?.requestId) {
+                await DB.cancelPreferredRequest(pref.requestId, localId);
+                window._notifyPreferredCancelledOnClose?.(pref, label);
+              }
+              await DB.closeBureau(localId);
+              this.render();
+            },
+          }); return;
         }
         showBureauConfirm({ icon: '🚪', title: `Quitter ${escapeHtml(label)}`,
           info: `Voulez-vous fermer <strong>${escapeHtml(label)}</strong> ?`,
