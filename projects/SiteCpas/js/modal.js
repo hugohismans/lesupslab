@@ -1978,7 +1978,7 @@ const MODAL = {
     const container = g('fAgentsList');
     if (!container) return;
     const connectedName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
-    const agents = DB.getAgents() || [];
+    const agents = (DB.getAgents() || []).filter(n => n !== 'Autre');
     container.innerHTML = agents.map(name => {
       const isMe = name === connectedName;
       const checked = isMe || checkedNames.includes(name);

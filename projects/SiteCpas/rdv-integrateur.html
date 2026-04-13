@@ -525,23 +525,30 @@ async function main() {
       }
 
       // ── Créer une demande par participant ─────────────────────────
-      const allParticipants = [{ key: agentKey, name: agentName }, ...colleagues];
-      const groupNames = allParticipants.map(p => p.name);
-      const isGroup = allParticipants.length > 1;
-      const baseMsg = `Demande via la page de bienvenue — visite intégrateur — ${localLabel}`;
+      const integratorName = agentsData[integratorKey] || 'Intégrateur';
+      // Participants = demandeur(s) + intégrateur (son agenda est aussi bloqué)
+      const agentParticipants = [{ key: agentKey, name: agentName }, ...colleagues];
+      const allParticipants   = [...agentParticipants, { key: integratorKey, name: integratorName }];
+      const groupNames = agentParticipants.map(p => p.name); // noms des agents (sans intégrateur)
+      const isGroup = agentParticipants.length > 1;
+      const baseMsg = `Visite intégrateur — ${localLabel}${isGroup ? ` — Groupe : ${groupNames.join(', ')}` : ` — avec ${agentName}`}`;
+      const withPersonObj = isGroup
+        ? { type: 'agent', name: groupNames.join(', '), agentKey }
+        : { type: 'agent', name: agentName, agentKey };
 
       btn.textContent = 'Envoi…';
 
-      // Créer une demande + une réservation directe par participant
-      await Promise.all(allParticipants.flatMap(p => [
+      // Créer une demande par agent participant + une réservation par participant
+      await Promise.all([
+        // Un seul appointmentRequest (le demandeur principal)
         db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
           slotId:            _selectedChunk._slotId,
           startDateTime:     sStart,
           endDateTime:       sEnd,
           targetAgentKey:    integratorKey,
-          requesterAgentKey: p.key,
-          requesterName:     p.name,
-          withPerson:        p.name,
+          requesterAgentKey: agentKey,
+          requesterName:     agentName,
+          withPerson:        withPersonObj,
           groupSession:      isGroup,
           groupParticipants: isGroup ? groupNames : null,
           message:           baseMsg,
@@ -552,25 +559,29 @@ async function main() {
           createdAt:         Date.now(),
           respondedAt:       Date.now(),
         }),
-        db.ref(`orgs/${ORG_ID}/reservations`).push({
-          localId:       String(localId),
-          agent:         p.name,
-          services:      ['Rendez-vous intégrateur'],
-          type:          'rendez-vous',
-          startDateTime: sStart,
-          endDateTime:   sEnd,
-          note:          `${baseMsg}${isGroup ? ` — Groupe : ${groupNames.join(', ')}` : ''}`,
-          recurrence:    { type: 'none' },
-          createdAt:     Date.now(),
-        }),
-      ]));
+        // Une réservation par participant (agents + intégrateur)
+        ...allParticipants.map(p =>
+          db.ref(`orgs/${ORG_ID}/reservations`).push({
+            localId:       String(localId),
+            agent:         p.name,
+            services:      ['Rendez-vous intégrateur'],
+            type:          'rendez-vous',
+            startDateTime: sStart,
+            endDateTime:   sEnd,
+            agents:        allParticipants.map(x => x.name),
+            note:          baseMsg,
+            recurrence:    { type: 'none' },
+            createdAt:     Date.now(),
+          })
+        ),
+      ]);
 
       document.getElementById('successSlotInfo').textContent =
         `📅 ${fmtDate(sStart)} de ${fmtTime(sStart)} à ${fmtTime(sEnd)} — ${localLabel}`;
 
-      let msg = 'L\'intégrateur arrivera au créneau demandé à votre local.<br>En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l\'utiliser !';
+      let msg = `L'intégrateur arrivera au créneau demandé à votre local.<br>En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l'utiliser !`;
       if (isGroup) {
-        msg += `<br><br>👥 <strong>Formation groupée</strong> — ${groupNames.join(', ')} ont chacun·e leur demande enregistrée.`;
+        msg += `<br><br>👥 <strong>Formation groupée</strong> — ${groupNames.join(', ')} sont inclus dans la réservation.`;
       }
       document.getElementById('successMsg').innerHTML = msg;
       showScreen('screenSuccess');
