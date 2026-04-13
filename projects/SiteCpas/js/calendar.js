@@ -1381,7 +1381,7 @@ const LIVE = {
         const _allWaitItems = [];
         // Ajouter le preferred pending (ex: cxx) avec flag isPref — même pendant permanence
         if (amIHere && _preferredPending) {
-          _allWaitItems.push({ isPref: true, ts: preferred.ts || 0, prefName: preferred.displayName || '?', prefTicket: preferred.ticketLabel || preferred.displayName || '?' });
+          _allWaitItems.push({ isPref: true, ts: _preferredPending.ts || 0, prefName: _preferredPending.displayName || '?', prefTicket: _preferredPending.ticketLabel || _preferredPending.displayName || '?' });
         }
         // Ajouter les personnes en attente derrière le preferred pending
         _prefQueueItems.forEach(pq => {
