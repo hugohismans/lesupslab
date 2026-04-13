@@ -476,21 +476,24 @@ async function main() {
     sel.appendChild(grp);
   });
 
-  // Créneaux occupés = réservations existantes où l'intégrateur est présent (agent ou agents[])
+  // Écouter les réservations en temps réel → re-rendre les créneaux à chaque changement
   const integratorName = agentsData[integratorKey] || 'Intégrateur';
-  const resSnap2 = await ref('reservations').once('value');
-  const takenSlots = new Set();
-  resSnap2.forEach(child => {
-    const r = child.val();
-    if (!r.startDateTime || r.isPermanent) return;
-    const isHugo = (r.agent === integratorName && integratorName) ||
-                   (Array.isArray(r.agents) && integratorName && r.agents.includes(integratorName));
-    if (isHugo) takenSlots.add(r.startDateTime);
-  });
+  const expandedSlots  = expandSlots(rawSlots);
 
   showScreen('screenBook');
-  renderSlots(expandSlots(rawSlots), takenSlots);
   renderColleagues(agentsData, agentKey, integratorKey);
+
+  ref('reservations').on('value', snap => {
+    const takenSlots = new Set();
+    snap.forEach(child => {
+      const r = child.val();
+      if (!r.startDateTime || r.isPermanent) return;
+      const isHugo = (r.agent === integratorName) ||
+                     (Array.isArray(r.agents) && r.agents.includes(integratorName));
+      if (isHugo) takenSlots.add(r.startDateTime);
+    });
+    renderSlots(expandedSlots, takenSlots);
+  });
 
   // Bouton confirmer
   document.getElementById('confirmBtn').addEventListener('click', async () => {
