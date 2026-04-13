@@ -1585,9 +1585,10 @@ const MODAL = {
     const myKey      = sessionStorage.getItem('cpas_current_agent_key');
     const isConcerned = !res.secret || (myKey && (myKey === res.requesterAgentKey || myKey === res.targetAgentKey));
     const isSecret   = res.type === 'rendez-vous' && !!res.secret;
-    const svc  = res.type === 'rendez-vous'
-      ? (isSecret ? (isConcerned ? '📅 Rendez-vous 🔒' : '📅 Rendez-vous 🔒') : '📅 Rendez-vous')
-      : DB.getSvcLabel(res);
+    const _svcBase = DB.getSvcLabel(res);
+    const svc  = res.type === 'rendez-vous' && isSecret
+      ? (isConcerned ? `${_svcBase} 🔒` : '📅 Rendez-vous 🔒')
+      : _svcBase;
     const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
     const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
     const recL  = { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle' };
