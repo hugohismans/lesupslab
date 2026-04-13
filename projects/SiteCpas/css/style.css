@@ -5722,6 +5722,17 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .lp-desk-booked    { background:#fee2e2; color:#991b1b; }
 .lp-desk-perm      { background:#e2e8f0; color:#64748b; }
 
+/* ─── RDV local picker — toggles lieu + desk grid ────────────── */
+.rdv-lieu-bar         { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.75rem; }
+.rdv-lieu-toggle      { padding:.35rem .75rem; border:1.5px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#475569; font-size:.8rem; font-weight:600; cursor:pointer; transition:all .15s; }
+.rdv-lieu-toggle:hover { border-color:#94a3b8; background:#f1f5f9; }
+.rdv-lieu-toggle.active { background:#1e3a5f; color:#fff; border-color:#1e3a5f; }
+.rdv-local-grid       { display:flex; flex-direction:column; gap:.4rem; }
+.rdv-local-desk-group { margin-bottom:.4rem; }
+.rdv-local-desk-header { font-size:.82rem; font-weight:700; color:#1e3a5f; padding:.3rem .5rem; background:#f1f5f9; border-radius:6px 6px 0 0; border:1px solid #e2e8f0; border-bottom:none; }
+.rdv-local-desk-grid  { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:1px; background:#e2e8f0; border:1px solid #e2e8f0; border-radius:0 0 6px 6px; overflow:hidden; }
+.rdv-desk-btn         { border-radius:0 !important; border:none !important; }
+
 /* ─── Préfixe ticket (queue group form) ───────────────────────── */
 .lv-qg-prefix-row    { display:flex; align-items:center; gap:.5rem; margin:.5rem 0; flex-wrap:wrap; }
 .lv-qg-prefix-label  { font-size:.78rem; font-weight:600; color:#94a3b8; white-space:nowrap; }

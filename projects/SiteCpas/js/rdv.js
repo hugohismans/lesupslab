@@ -978,6 +978,8 @@
   }
 
   // ── Local picker ──────────────────────────────────────────────────
+  let _pickerLieuId = null;
+
   function _showLocalPicker(requestId, startDT, endDT, targetAgentKey, withPerson, message, isAutoRequester, hintMsg) {
     _pendingAccept = { requestId, startDT, endDT, targetAgentKey, withPerson, message, isAutoRequester };
 
@@ -986,50 +988,88 @@
     const hintEl   = document.getElementById('rdvLocalHint');
     if (!overlay || !listEl) return;
 
-    if (hintEl) hintEl.textContent = hintMsg || 'Sélectionnez un local frontoffice pour ce rendez-vous.';
+    if (hintEl) hintEl.textContent = hintMsg || 'Choisissez le local pour ce rendez-vous.';
 
-    // Construire la liste des locaux frontoffice avec état disponibilité
     const conflicts = DB.getInRange(startDT, endDT);
-    const takenLocals = new Set(conflicts.map(r => String(r.localId)));
-
     const lieux = Object.entries(DB._lieux || {})
-      .filter(([, l]) => !l.isBackoffice)
       .sort(([, a], [, b]) => (a.order || 999) - (b.order || 999));
 
-    let html = '';
-    lieux.forEach(([, lieu]) => {
-      const visibleLocals = lieu.localIds.filter(lid => !DB.isLocalHidden(lid));
-      if (!visibleLocals.length) return;
-      html += `<div class="rdv-local-lieu"><strong>${escHtml(lieu.name)}</strong></div>`;
+    if (!_pickerLieuId && lieux.length) _pickerLieuId = lieux[0][0];
+
+    // Toggles lieux
+    let html = '<div class="rdv-lieu-bar">';
+    lieux.forEach(([id, l]) => {
+      html += `<button class="rdv-lieu-toggle${_pickerLieuId === id ? ' active' : ''}" data-lieu="${id}">${escHtml(l.name)}</button>`;
+    });
+    html += '</div>';
+
+    // Locaux du lieu sélectionné
+    const lieu = lieux.find(([id]) => id === _pickerLieuId)?.[1];
+    if (lieu) {
+      const visibleLocals = (lieu.localIds || []).filter(lid => !DB.isLocalHidden?.(lid));
+      html += '<div class="rdv-local-grid">';
       visibleLocals.forEach(lid => {
-        const label   = DB.getLocalLabel(lid);
-        const isFree  = !takenLocals.has(String(lid));
-        html += `
-          <button class="rdv-local-btn${isFree ? '' : ' rdv-local-busy'}"
-            data-lid="${lid}" ${isFree ? '' : 'disabled'}
-            title="${isFree ? 'Disponible' : 'Déjà réservé sur ce créneau'}">
+        const label = DB.getLocalLabel(lid);
+        const hasDesks = DB.localHasDesks(lid);
+
+        if (hasDesks) {
+          // Local avec desks → header + desk buttons
+          const desks = DB.getLocalDesks(lid);
+          html += `<div class="rdv-local-desk-group"><div class="rdv-local-desk-header">${escHtml(label)}</div><div class="rdv-local-desk-grid">`;
+          desks.forEach(deskId => {
+            const dLabel = DB.getDeskLabel(deskId);
+            const isFree = !conflicts.some(r => DB.unitOccupies(r, lid, deskId));
+            html += `<button class="rdv-local-btn rdv-desk-btn${isFree ? '' : ' rdv-local-busy'}"
+              data-lid="${lid}" data-desk="${deskId}" ${isFree ? '' : 'disabled'}>
+              <span class="rdv-local-icon">${isFree ? '🟢' : '🔴'}</span>
+              <span>${escHtml(dLabel)}</span>
+            </button>`;
+          });
+          html += '</div></div>';
+        } else {
+          // Local sans desk
+          const isFree = !conflicts.some(r => parseInt(r.localId) === lid && !r.deskId);
+          html += `<button class="rdv-local-btn${isFree ? '' : ' rdv-local-busy'}"
+            data-lid="${lid}" ${isFree ? '' : 'disabled'}>
             <span class="rdv-local-icon">${isFree ? '🟢' : '🔴'}</span>
             <span>${escHtml(label)}</span>
-            ${isFree ? '' : '<span class="rdv-local-busy-label">Occupé</span>'}
           </button>`;
+        }
+      });
+      html += '</div>';
+    }
+
+    listEl.innerHTML = html || '<div class="rdv-empty">Aucun local disponible.</div>';
+
+    // Bind lieu toggles
+    listEl.querySelectorAll('.rdv-lieu-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _pickerLieuId = btn.dataset.lieu;
+        _showLocalPicker(requestId, startDT, endDT, targetAgentKey, withPerson, message, isAutoRequester, hintMsg);
       });
     });
 
-    listEl.innerHTML = html || '<div class="rdv-empty">Aucun local frontoffice disponible.</div>';
+    // Bind local/desk buttons
     listEl.querySelectorAll('.rdv-local-btn:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', () => _confirmLocalPick(String(btn.dataset.lid)));
+      btn.addEventListener('click', () => {
+        const lid = String(btn.dataset.lid);
+        const deskId = btn.dataset.desk || null;
+        _confirmLocalPick(lid, deskId);
+      });
     });
 
     overlay.classList.remove('hidden');
   }
 
-  async function _confirmLocalPick(localId) {
+  async function _confirmLocalPick(localId, deskId) {
     const overlay = document.getElementById('rdvLocalOverlay');
     overlay?.classList.add('hidden');
 
     if (!_pendingAccept) return;
     const { requestId, startDT, endDT, targetAgentKey, withPerson, message, isAutoRequester } = _pendingAccept;
     _pendingAccept = null;
+    // Stocker le deskId pour l'utiliser dans _finalizeAccept
+    _pendingDeskId = deskId || null;
 
     try {
       await _finalizeAccept(requestId, localId, targetAgentKey, startDT, endDT, withPerson, message, isAutoRequester);
@@ -1037,6 +1077,7 @@
       _showToast('Erreur lors de la confirmation : ' + e.message, 'warn');
     }
   }
+  let _pendingDeskId = null;
 
   // ── Finaliser l'acceptation — étape 1 : vérif conflits + confirmation split ──
   let _pendingBoSplit = null;
@@ -1161,6 +1202,7 @@
     const req0 = await DB.getAppointmentRequest(requestId);
     await DB._ref('reservations').push({
       localId:            String(localId),
+      deskId:             _pendingDeskId || null,
       agent:              agentDisplayName,
       services:           [],
       type:               'rendez-vous',
@@ -1174,6 +1216,7 @@
       recurrence:         { type: 'none' },
       createdAt:          Date.now(),
     });
+    _pendingDeskId = null;
 
     // Mettre à jour le statut de la demande
     await DB.acceptAppointmentRequest(requestId, localId);
