@@ -1049,6 +1049,7 @@ const HOME = {
     // ─ Se déclarer dans un bureau — lieu + cartes toggle ─────────────
     document.getElementById('hsDeclLieuSelect').addEventListener('change', () => {
       this._renderDeclCards();
+      this._renderQueueGroups();
     });
     document.getElementById('hsDeclCards').addEventListener('click', e => {
       const card = e.target.closest('[data-local-id]');
@@ -1378,6 +1379,28 @@ const HOME = {
     }
 
     this._renderDeclCards();
+    this._renderQueueGroups();
+  },
+
+  _renderQueueGroups() {
+    const el = document.getElementById('hsQueueGroups');
+    if (!el) return;
+    const groups = Object.entries(DB.getQueueGroups() || {});
+    if (!groups.length) { el.innerHTML = '<div class="hs-qgrp-empty">Aucun groupe de file configuré.</div>'; return; }
+    el.innerHTML = groups.map(([id, grp]) => {
+      const lids    = (grp.localIds || []).map(Number);
+      const total   = lids.length;
+      const open    = lids.filter(l => DB.isBureauOpen(l)).length;
+      const ovf     = DB.getGroupOverflowQueue(id);
+      const statusCls = open === 0 ? 'hs-qgrp-row-closed' : open < total ? 'hs-qgrp-row-partial' : 'hs-qgrp-row-open';
+      const statusDot = open === 0 ? '⚪' : open < total ? '🟡' : '🟢';
+      return `<div class="hs-qgrp-row ${statusCls}">
+        <span class="hs-qgrp-dot">${statusDot}</span>
+        <span class="hs-qgrp-name">${escapeHtml(grp.name)}</span>
+        <span class="hs-qgrp-bureaux">${open} / ${total} bureau${total > 1 ? 'x' : ''} ouvert${open > 1 ? 's' : open === 1 ? '' : 's'}</span>
+        ${ovf > 0 ? `<span class="hs-qgrp-ovf">${ovf} en attente</span>` : ''}
+      </div>`;
+    }).join('');
   },
 
   _renderDeclCards() {

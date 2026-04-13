@@ -3952,6 +3952,26 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   font-size: .62rem; color: #64748b; font-style: italic; white-space: nowrap; align-self: center;
 }
 
+/* ── Groupes de file d'attente (section accueil) ─────────────────── */
+.hs-qgrp-card { padding: .75rem 1rem; }
+.hs-qgrp-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .45rem .6rem; border-radius: 8px;
+  margin-bottom: .3rem; font-size: .9rem;
+}
+.hs-qgrp-row-open    { background: #f0fdf4; }
+.hs-qgrp-row-partial { background: #fefce8; }
+.hs-qgrp-row-closed  { background: #f8fafc; opacity: .65; }
+.hs-qgrp-dot   { font-size: 1rem; flex-shrink: 0; }
+.hs-qgrp-name  { font-weight: 600; flex: 1; color: #1e293b; }
+.hs-qgrp-bureaux { font-size: .8rem; color: #64748b; white-space: nowrap; }
+.hs-qgrp-ovf {
+  font-size: .75rem; font-weight: 700;
+  background: #dc2626; color: #fff;
+  border-radius: 999px; padding: .1rem .5rem;
+}
+.hs-qgrp-empty { font-size: .85rem; color: #94a3b8; padding: .5rem 0; }
+
 /* ── Raccourcis ──────────────────────────────────────────────────── */
 .hs-shortcuts {
   display: flex; gap: .75rem; flex-wrap: wrap;
