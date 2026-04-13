@@ -2108,13 +2108,14 @@ const LIVE = {
       const startH = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
       const endH   = r._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
       const isCurrent = r._start <= now && r._end > now;
+      const timeLabel = isCurrent ? `<span class="lv-ar-encours">En cours</span> jusqu'à ${endH}` : `${startH} – ${endH}`;
       return `<div class="lv-agent-row ${isCurrent ? 'lv-ar-now' : 'lv-ar-future'}" style="${cardColor ? `border-left:4px solid ${cardColor}` : ''}">
         <div class="lv-ar-dot">${isCurrent ? '🟢' : '🕐'}</div>
         <div class="lv-ar-info">
           <div class="lv-ar-loc">${escapeHtml(loc)}</div>
           <div class="lv-ar-svc">${escapeHtml(svc)}</div>
           <div class="lv-ar-agt" style="${roleColor ? `color:${roleColor}` : ''}">${fmtAgent(agt)}</div>
-          <div class="lv-ar-time">${startH} – ${endH}</div>
+          <div class="lv-ar-time">${timeLabel}</div>
         </div>
       </div>`;
     };
@@ -2231,9 +2232,12 @@ const LIVE = {
       if (hasFuture) rowsHtml += `<div class="lv-day-sep">Aujourd'hui</div>`;
       rowsHtml += todayItems.map(fmt).join('');
     }
+    const _todayStr = now.toISOString().slice(0, 10);
     Object.entries(_groupedByDay).forEach(([ds, items]) => {
       const _d = new Date(ds + 'T12:00:00');
-      const _dayLabel = `${_dayNamesLong[_d.getDay()]} ${_d.getDate()}/${_d.getMonth() + 1}`;
+      const _dayLabel = ds === _todayStr
+        ? "Aujourd'hui"
+        : `${_dayNamesLong[_d.getDay()]} ${_d.getDate()}/${_d.getMonth() + 1}`;
       rowsHtml += `<div class="lv-day-sep">${_dayLabel}</div>`;
       rowsHtml += items.map(fmt).join('');
     });

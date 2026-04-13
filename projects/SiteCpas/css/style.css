@@ -2850,6 +2850,7 @@ body {
   color: #64748b; padding: .4rem .2rem .1rem; border-top: 1px solid #1e293b; margin-top: .25rem;
 }
 .lv-agent-rows .lv-day-sep:first-child { border-top: none; margin-top: 0; }
+.lv-ar-encours { font-weight: 700; color: #4ade80; margin-right: .25rem; }
 .lv-ar-now    { border-left-color: #22c55e; background: #0f1f14; }
 .lv-ar-future { border-left-color: #6366f1; }
 .lv-ar-perm   { border-left-color: #78716c; }
