@@ -1,0 +1,75 @@
+{
+  "rules": {
+    "orgs": {
+      "$orgId": {
+        // Lecture autorisée pour toute l'organisation
+        ".read": true,
+
+        // ── Réservations ──────────────────────────────────────────
+        "reservations": {
+          ".write": true,
+          "$resId": {
+            ".validate": "newData.hasChild('localId') && newData.hasChild('startDateTime')"
+          }
+        },
+
+        // ── Configuration (appConfig) ─────────────────────────────
+        "appConfig": {
+          ".write": true,
+          // Empêcher la suppression totale de appConfig
+          ".validate": "newData.exists()"
+        },
+
+        // ── État temps réel (appState) ────────────────────────────
+        "appState": {
+          ".write": true
+        },
+
+        // ── Files d'attente ───────────────────────────────────────
+        "queues": {
+          ".write": true
+        },
+
+        // ── Historique files d'attente ─────────────────────────────
+        "queueHistory": {
+          ".write": true
+        },
+
+        // ── Statut agents (présence, connexion) ───────────────────
+        "agentStatus": {
+          ".write": true
+        },
+
+        // ── Notifications ─────────────────────────────────────────
+        "notifications": {
+          ".write": true
+        },
+
+        // ── Absences ──────────────────────────────────────────────
+        "absences": {
+          ".write": true
+        },
+
+        // ── Requêtes techniques ───────────────────────────────────
+        "techRequests": {
+          ".write": true
+        },
+
+        // ── Interventions ─────────────────────────────────────────
+        "interventions": {
+          ".write": true
+        },
+
+        // ── Tout autre chemin sous l'org → autorisé ───────────────
+        "$other": {
+          ".write": true
+        }
+      }
+    },
+
+    // ── TOUT LE RESTE → INTERDIT ──────────────────────────────────
+    // Empêche la lecture/écriture en dehors de /orgs/
+    ".read": false,
+    ".write": false
+  }
+}
