@@ -1268,11 +1268,18 @@
 
     // Créer la réservation RDV
     const req0 = await DB.getAppointmentRequest(requestId);
+    const withName = withPerson?.name || '';
+    const svcLabel = `Rendez-vous avec ${withName}`;
+    // Si le "avec qui" est un agent CPAS → l'ajouter comme invité pour que ça apparaisse dans son agenda
+    const invitedAgents = {};
+    if (withPerson?.type === 'agent' && withPerson?.agentKey) {
+      invitedAgents[withPerson.agentKey] = true;
+    }
     await DB._ref('reservations').push({
       localId:            String(localId),
       deskId:             _pendingDeskId || null,
       agent:              agentDisplayName,
-      services:           [],
+      services:           [svcLabel],
       type:               'rendez-vous',
       rdvSlotId:          req0?.slotId || null,
       startDateTime:      startDT,
@@ -1281,6 +1288,7 @@
       secret:             req0?.secret ? true : null,
       requesterAgentKey:  req0?.requesterAgentKey || null,
       targetAgentKey:     targetAgentKey,
+      invitedAgents:      Object.keys(invitedAgents).length ? invitedAgents : null,
       recurrence:         { type: 'none' },
       createdAt:          Date.now(),
     });
