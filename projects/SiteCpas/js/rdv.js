@@ -1173,18 +1173,17 @@
     await DB.acceptAppointmentRequest(requestId, localId);
 
     // Notifications
-    const req = await DB.getAppointmentRequest(requestId);
     if (isAutoRequester) {
       await DB.sendNotif(
-        `📅 RDV auto-accepté avec ${escHtml(req?.requesterName || '')} — ${_fmtDT(startDT)} au ${localName}`,
+        `📅 RDV auto-accepté avec ${escHtml(req0?.requesterName || '')} — ${_fmtDT(startDT)} au ${localName}`,
         'rdv_info', targetAgentKey, { requestId }
       );
       _showToast(`✅ RDV confirmé au ${localName} — ${_fmtDT(startDT)}`);
     } else {
-      if (req?.requesterAgentKey) {
+      if (req0?.requesterAgentKey) {
         await DB.sendNotif(
           `✅ RDV accepté par ${agentDisplayName} — ${_fmtDT(startDT)} au ${localName}`,
-          'rdv_accepted', req.requesterAgentKey, { requestId, localId }
+          'rdv_accepted', req0.requesterAgentKey, { requestId, localId }
         );
       }
       _showToast(`RDV accepté et réservation créée au ${localName} ✓`);

@@ -3591,6 +3591,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Logique d'acceptation RDV depuis app.js (similaire à rdv.js _finalizeAccept)
   async function _rdvFinalizeAcceptFromApp(req, requestId, localId, _myKey, myName) {
+    if (!req || !req.startDateTime || !req.endDateTime) {
+      showToast('Demande introuvable ou incomplète.', 'warn');
+      return;
+    }
     const startDT = req.startDateTime;
     const endDT   = req.endDateTime;
     const localName = DB.getLocalName(localId);
@@ -3640,7 +3644,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await DB.acceptAppointmentRequest(requestId, localId);
 
     // Notif retour au demandeur
-    const fmtDT = iso => { if (!iso) return ''; const d = new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+    const fmtDT = iso => { if (!iso) return ''; const d = new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
     if (req.requesterAgentKey) {
       await DB.sendNotif(`✅ RDV accepté par ${myName} — ${fmtDT(startDT)} au ${localName}`, 'rdv_accepted', req.requesterAgentKey, { requestId, localId });
     }

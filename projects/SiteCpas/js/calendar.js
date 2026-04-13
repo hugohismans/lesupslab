@@ -810,6 +810,19 @@ const LIVE = {
 
   _showAllBureaux: false,
   _hiddenLieux: new Set(),
+  _filterLieuId: null,
+
+  _renderLieuSelector() {
+    const sel = g('liveLieuSelector');
+    if (!sel) return;
+    const lieux = DB.getLieux();
+    sel.innerHTML = '<option value="">🏢 Tous les lieux</option>' +
+      Object.entries(lieux)
+        .filter(([, l]) => !l.isBackoffice)
+        .map(([id, l]) => `<option value="${id}"${id === this._filterLieuId ? ' selected' : ''}>${escapeHtml(l.name)}</option>`)
+        .join('');
+    sel.onchange = () => { this._filterLieuId = sel.value || null; this.render(); };
+  },
 
   _renderLieuFilters() {
     const bar = g('liveLieuFilters');
@@ -893,6 +906,7 @@ const LIVE = {
     const lieux  = DB.getLieux();
     const lieuId = DB.getCurrentLieuId();
     g('liveLieuName').textContent = lieux[lieuId]?.name || '';
+    this._renderLieuSelector();
 
     // Sidebar agents (remplace l'ancienne barre du haut)
     if (this.getRole() === 'accueil') this._renderAgentLocations();
@@ -1466,7 +1480,11 @@ const LIVE = {
     // ── Construire le HTML de la grille ──────────────────────────
     const allLieux = DB.getLieux();
     const lieuGroupsHtml = Object.entries(allLieux)
-      .filter(([lieuId, lieu]) => !lieu.isBackoffice && !this._hiddenLieux.has(lieuId))
+      .filter(([lieuId, lieu]) =>
+        !lieu.isBackoffice &&
+        !this._hiddenLieux.has(lieuId) &&
+        (!this._filterLieuId || lieuId === this._filterLieuId)
+      )
       .map(([lieuId, lieu]) => {
         const locals = lieu.localIds || [];
         if (!locals.length) return '';
