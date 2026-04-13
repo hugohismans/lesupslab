@@ -1070,8 +1070,8 @@ const LIVE = {
         if (_nextRes) {
           const _agt   = _nextRes.agent === 'Autre' ? (_nextRes.agentCustom || '?') : _nextRes.agent;
           const _loc   = DB.getLocalLabel(parseInt(_nextRes.localId));
-          const _dOpts = { weekday: 'short', day: 'numeric', month: 'numeric' };
-          const _dStr  = _nextRes._start.toLocaleDateString('fr-BE', _dOpts);
+          const _isToday = _nextRes._start.toISOString().slice(0,10) === now.toISOString().slice(0,10);
+          const _dStr  = _isToday ? "Aujourd'hui" : _nextRes._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'numeric' });
           const _hStr  = _nextRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           nextResHtml  = `<div class="lv-grp-next-res">
             <span class="lv-grp-next-label">Prochain créneau</span>
