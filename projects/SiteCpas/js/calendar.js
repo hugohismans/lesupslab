@@ -2717,65 +2717,51 @@ function updateStatusBar() {
     const hasDesks = DB.localHasDesks(l);
     const desks    = hasDesks ? DB.getLocalDesks(l) : [];
 
-    // ── Local SANS desk — comportement existant ──
+    // ── Local SANS desk ──
     if (!hasDesks) {
       const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
       const res  = occs.find(r =>
         parseInt(r.localId) === l && !r.isPermanent && r._start <= dt && r._end > dt
       );
-      if (perm) {
-        const svc = DB.getSvcLabel(perm);
-        return `<div class="lpill is-perm" title="${svc}">
-          <div class="lp-num">${DB.getLocalLabel(l)}</div>
-          <div class="lp-status">🔒 Permanent</div>
-          <div class="lp-detail">${svc}</div>
-        </div>`;
-      }
-      if (res) {
-        const svc = DB.getSvcLabel(res);
-        const agt = res.agent === 'Autre' ? res.agentCustom : res.agent;
-        const agtFmt = fmtAgent(agt);
-        const endH = res._end ? res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
-        return `<div class="lpill is-booked" title="${svc} — ${agt}">
-          <div class="lp-num">${DB.getLocalLabel(l)}</div>
-          <div class="lp-status">🔴 Réservé</div>
-          <div class="lp-detail">${svc}</div>
-          <div class="lp-agent" style="${DB.getAgentRoleColor(agt) ? `color:${DB.getAgentRoleColor(agt)}` : ''}">${agtFmt}</div>
-          ${endH ? `<div class="lp-until">jusqu'à ${endH}</div>` : ''}
-        </div>`;
-      }
-      const next = occs.filter(r => parseInt(r.localId) === l && !r.isPermanent && r._start > dt).sort((a, b) => a._start - b._start)[0];
-      const nextH = next ? next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : null;
-      return `<div class="lpill is-free">
+      const cls  = perm ? 'is-perm' : res ? 'is-booked' : 'is-free';
+      const stat = perm ? '🔒 Permanent' : res ? '🔴 Réservé' : '🟢 Libre';
+      return `<div class="lpill ${cls}">
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
-        <div class="lp-status">🟢 Libre</div>
-        ${nextH ? `<div class="lp-free-until">jusqu'à ${nextH}</div>` : '<div class="lp-free-until">toute la journée</div>'}
+        <div class="lp-status">${stat}</div>
       </div>`;
     }
 
-    // ── Local AVEC desks — carte parent + sous-cartes desk ──
+    // ── Local AVEC desks — carte compacte + sous-cartes desk ──
     const deskStates = desks.map((dId, idx) => {
       const perm = occs.find(r => DB.unitOccupies(r, l, dId) && r.isPermanent);
       const res  = occs.find(r => DB.unitOccupies(r, l, dId) && !r.isPermanent && r._start <= dt && r._end > dt);
       const cls  = perm ? 'lp-desk-perm' : res ? 'lp-desk-booked' : 'lp-desk-free';
-      const title = perm ? `${DB.getDeskLabel(dId)} — 🔒 Permanent`
-        : res ? `${DB.getDeskLabel(dId)} — Réservé (${DB.getSvcLabel(res)})`
-        : `${DB.getDeskLabel(dId)} — Libre`;
-      return `<span class="lp-desk ${cls}" title="${title}">${idx + 1}</span>`;
+      return `<span class="lp-desk ${cls}" data-sb-local="${l}" title="${DB.getDeskLabel(dId)}">${idx + 1}</span>`;
     });
-    const nFree = desks.filter(dId => {
-      return !occs.some(r => DB.unitOccupies(r, l, dId) && (r.isPermanent || (r._start <= dt && r._end > dt)));
-    }).length;
+    const nFree = desks.filter(dId =>
+      !occs.some(r => DB.unitOccupies(r, l, dId) && (r.isPermanent || (r._start <= dt && r._end > dt)))
+    ).length;
     const pillClass = nFree === 0 ? 'is-booked' : nFree === desks.length ? 'is-free' : 'is-partial';
     const statusTxt = nFree === 0 ? '🔴 Complet' : nFree === desks.length ? '🟢 Libre' : `🟠 ${nFree}/${desks.length}`;
     return `<div class="lpill-wrap">
-      <div class="lpill ${pillClass}">
+      <div class="lpill ${pillClass}" data-sb-local="${l}">
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">${statusTxt}</div>
       </div>
       <div class="lp-desks">${deskStates.join('')}</div>
     </div>`;
   }).join('');
+
+  // ── Clic sur une carte desk-local → basculer le filtre desk dans le calendrier ──
+  pills.querySelectorAll('[data-sb-local]').forEach(el => {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      const localId = parseInt(el.dataset.sbLocal);
+      CAL._deskFilter = localId;
+      CAL.setView('day');
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'day'));
+    });
+  });
 }
 
 // ───────────────────────────────────────────────────────────────────
