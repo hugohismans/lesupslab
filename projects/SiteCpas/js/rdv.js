@@ -670,9 +670,7 @@
         }
       });
 
-    DB.listenAvailabilitySlots(targetAgentKey, slots => {
-      _targetSlots = slots;
-      // Fusionner avec les plages RDV du calendrier (isRdvSlot)
+    function _refreshMergedSlots() {
       const agentName = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
       const calSlots = DB.getRdvSlotReservations(agentName).map(r => ({
         id: r.id,
@@ -684,10 +682,18 @@
         favoriteDeskId:  r.deskId || null,
         _fromCalendar: true,
       }));
-      const merged = [...slots, ...calSlots].sort((a, b) => (a.startDateTime || '').localeCompare(b.startDateTime || ''));
+      const merged = [..._targetSlots, ...calSlots].sort((a, b) => (a.startDateTime || '').localeCompare(b.startDateTime || ''));
       const expanded = _expandSlots(merged);
       _renderTargetSlots(expanded, targetAgentKey);
+    }
+
+    DB.listenAvailabilitySlots(targetAgentKey, slots => {
+      _targetSlots = slots;
+      _refreshMergedSlots();
     });
+
+    // Re-merger quand les réservations changent (isRdvSlot du calendrier)
+    DB.onChange(() => _refreshMergedSlots());
   }
 
   function _renderTargetSlots(slots, targetAgentKey) {
