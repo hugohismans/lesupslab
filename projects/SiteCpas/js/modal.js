@@ -2053,12 +2053,13 @@ function showToast(msg = 'Modification enregistrée') {
 }
 
 // ── Modal confirmation ouverture/fermeture bureau ────────────────
-function showBureauConfirm({ icon, title, info, okLabel, okClass, onOk }) {
+function showBureauConfirm({ icon, title, info, okLabel, okClass, onOk, ok2Label, ok2Class, onOk2 }) {
   const overlay = g('bureauConfirmOverlay');
   g('bureauConfirmIcon').textContent  = icon;
   g('bureauConfirmTitle').textContent = title;
   g('bureauConfirmInfo').innerHTML    = info || '';
-  const okBtn = g('bureauConfirmOk');
+  const okBtn  = g('bureauConfirmOk');
+  const ok2Btn = g('bureauConfirmOk2');
   if (okLabel) {
     okBtn.textContent = okLabel;
     okBtn.className   = `lv-bureau-modal-ok${okClass ? ' ' + okClass : ''}`;
@@ -2066,10 +2067,18 @@ function showBureauConfirm({ icon, title, info, okLabel, okClass, onOk }) {
   } else {
     okBtn.style.display = 'none';
   }
+  if (ok2Label) {
+    ok2Btn.textContent = ok2Label;
+    ok2Btn.className   = `lv-bureau-modal-ok lv-bureau-modal-ok2${ok2Class ? ' ' + ok2Class : ''}`;
+    ok2Btn.classList.remove('hidden');
+  } else {
+    ok2Btn.classList.add('hidden');
+  }
   overlay.classList.remove('hidden');
 
   const close = () => overlay.classList.add('hidden');
-  okBtn.onclick = () => { close(); if (onOk) onOk(); };
+  okBtn.onclick  = () => { close(); if (onOk)  onOk(); };
+  ok2Btn.onclick = () => { close(); if (onOk2) onOk2(); };
   g('bureauConfirmCancel').onclick = close;
   overlay.onclick = e => { if (e.target === overlay) close(); };
 }

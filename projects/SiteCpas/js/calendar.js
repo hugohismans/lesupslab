@@ -539,21 +539,26 @@ const CAL = {
         }
       }
 
-      try {
-        if (dnd.isRec) {
-          const fromDate = new Date(dnd.occDate + 'T00:00:00')
-            .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          const ok = confirm(
-            `Réservation récurrente.\n\nOK = déplacer seulement l'occurrence du ${fromDate}\nAnnuler = ne rien faire`
-          );
-          if (!ok) return;
-          await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO);
-        } else {
-          await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO);
-        }
-        showToast('Réservation déplacée ✓');
-      } catch (err) {
-        showToast('Erreur : ' + err.message);
+      if (dnd.isRec) {
+        const fromDate = new Date(dnd.occDate + 'T00:00:00')
+          .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        showBureauConfirm({
+          icon: '🔁', title: 'Réservation récurrente',
+          info: `Voulez-vous déplacer seulement l'occurrence du <strong>${fromDate}</strong>, ou toute la série ?`,
+          okLabel: 'Cette occurrence', okClass: 'ok-open',
+          onOk: async () => {
+            try { await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO); showToast('Occurrence déplacée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+          },
+          ok2Label: 'Toute la série', ok2Class: 'ok-close',
+          onOk2: async () => {
+            try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO); showToast('Série déplacée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+          },
+        });
+      } else {
+        try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO); showToast('Réservation déplacée ✓'); }
+        catch(err) { showToast('Erreur : ' + err.message); }
       }
     });
 
@@ -653,21 +658,30 @@ const CAL = {
         }
       }
 
-      try {
-        if (rz.isRec) {
-          const fromDate = new Date(rz.occDate + 'T00:00:00')
-            .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-          const ok = confirm(`Réservation récurrente.\n\nOK = modifier seulement l'occurrence du ${fromDate}\nAnnuler = ne rien faire`);
-          if (!ok) { self.render(); return; }
-          await DB.moveOccurrence(rz.resId, rz.occDate, rz.localId, newStart, newEnd);
-        } else {
-          await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd);
-        }
-        showToast('Réservation redimensionnée ✓');
-      } catch(err) {
-        showToast('Erreur : ' + err.message);
+      if (rz.isRec) {
+        const fromDate = new Date(rz.occDate + 'T00:00:00')
+          .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        showBureauConfirm({
+          icon: '🔁', title: 'Réservation récurrente',
+          info: `Voulez-vous modifier seulement l'occurrence du <strong>${fromDate}</strong>, ou toute la série ?`,
+          okLabel: 'Cette occurrence', okClass: 'ok-open',
+          onOk: async () => {
+            try { await DB.moveOccurrence(rz.resId, rz.occDate, rz.localId, newStart, newEnd); showToast('Occurrence redimensionnée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+            self.render();
+          },
+          ok2Label: 'Toute la série', ok2Class: 'ok-close',
+          onOk2: async () => {
+            try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd); showToast('Série redimensionnée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+            self.render();
+          },
+        });
+      } else {
+        try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd); showToast('Réservation redimensionnée ✓'); }
+        catch(err) { showToast('Erreur : ' + err.message); }
+        self.render();
       }
-      self.render();
     };
 
     document.addEventListener('mousemove', self._resizeMoveFn);
