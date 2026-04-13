@@ -1857,44 +1857,89 @@ const WIDGETS = [
   { id: 'qgroups',  label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups' },
 ];
 
-function _widgetKey(agentKey) { return `cpas_widgets_${agentKey}`; }
+function _widgetKey(agentKey)      { return `cpas_widgets_${agentKey}`; }
+function _widgetOrderKey(agentKey) { return `cpas_widgets_order_${agentKey}`; }
 
 function _getHiddenWidgets(agentKey) {
   try { return JSON.parse(localStorage.getItem(_widgetKey(agentKey)) || '[]'); }
   catch { return []; }
 }
-
 function _setHiddenWidgets(agentKey, hiddenIds) {
   localStorage.setItem(_widgetKey(agentKey), JSON.stringify(hiddenIds));
 }
 
+function _getWidgetOrder(agentKey) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(_widgetOrderKey(agentKey)) || 'null');
+    const defaultOrder = WIDGETS.map(w => w.id);
+    if (!Array.isArray(stored)) return defaultOrder;
+    // Compléter si des widgets ont été ajoutés depuis
+    const full = [...stored.filter(id => defaultOrder.includes(id))];
+    defaultOrder.forEach(id => { if (!full.includes(id)) full.push(id); });
+    return full;
+  } catch { return WIDGETS.map(w => w.id); }
+}
+function _setWidgetOrder(agentKey, orderedIds) {
+  localStorage.setItem(_widgetOrderKey(agentKey), JSON.stringify(orderedIds));
+}
+
 function _applyWidgetPrefs(agentKey) {
   const hidden = _getHiddenWidgets(agentKey);
+  const order  = _getWidgetOrder(agentKey);
   WIDGETS.forEach(w => {
     const el = document.querySelector(w.selector);
-    if (el) el.classList.toggle('hidden', hidden.includes(w.id));
+    if (!el) return;
+    el.classList.toggle('hidden', hidden.includes(w.id));
+    el.style.order = order.indexOf(w.id);
   });
 }
 
 function _openCustomizeModal(agentKey) {
-  const hidden = _getHiddenWidgets(agentKey);
-  const list = document.getElementById('hsCustomizeList');
+  const hidden  = _getHiddenWidgets(agentKey);
+  const order   = _getWidgetOrder(agentKey);
+  const list    = document.getElementById('hsCustomizeList');
   if (!list) return;
-  list.innerHTML = WIDGETS.map(w => `
-    <label class="hs-customize-row">
-      <input type="checkbox" class="hs-customize-cb" data-widget="${w.id}"
-        ${!hidden.includes(w.id) ? 'checked' : ''}>
-      <span>${w.label}</span>
-    </label>`).join('');
+
+  const ordered = [...WIDGETS].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const n = ordered.length;
+
+  list.innerHTML = ordered.map((w, idx) => `
+    <div class="hs-customize-row">
+      <label class="hs-customize-chk-label">
+        <input type="checkbox" class="hs-customize-cb" data-widget="${w.id}"
+          ${!hidden.includes(w.id) ? 'checked' : ''}>
+        <span>${w.label}</span>
+      </label>
+      <div class="hs-customize-arrows">
+        <button class="hs-cust-arrow" data-dir="up"   data-widget="${w.id}"${idx === 0     ? ' disabled' : ''}>▲</button>
+        <button class="hs-cust-arrow" data-dir="down" data-widget="${w.id}"${idx === n - 1 ? ' disabled' : ''}>▼</button>
+      </div>
+    </div>`).join('');
+
   list.querySelectorAll('.hs-customize-cb').forEach(cb => {
     cb.addEventListener('change', () => {
       const newHidden = WIDGETS
-        .filter(w => !list.querySelector(`[data-widget="${w.id}"]`).checked)
+        .filter(w => !list.querySelector(`[data-widget="${w.id}"]`)?.checked)
         .map(w => w.id);
       _setHiddenWidgets(agentKey, newHidden);
       _applyWidgetPrefs(agentKey);
     });
   });
+
+  list.querySelectorAll('.hs-cust-arrow').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id  = btn.dataset.widget;
+      const dir = btn.dataset.dir;
+      const cur = _getWidgetOrder(agentKey);
+      const idx = cur.indexOf(id);
+      if (dir === 'up'   && idx > 0)          [cur[idx - 1], cur[idx]] = [cur[idx], cur[idx - 1]];
+      if (dir === 'down' && idx < cur.length - 1) [cur[idx], cur[idx + 1]] = [cur[idx + 1], cur[idx]];
+      _setWidgetOrder(agentKey, cur);
+      _applyWidgetPrefs(agentKey);
+      _openCustomizeModal(agentKey);
+    });
+  });
+
   document.getElementById('hsCustomizeOverlay').classList.remove('hidden');
 }
 
