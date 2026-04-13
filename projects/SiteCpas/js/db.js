@@ -604,15 +604,18 @@ const DB = {
     }
   },
 
-  async openBureau(localId) {
+  async openBureau(localId, deskId = null) {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
-    await this._ref(`appState/bureaux/${localId}`).set({ open: true, ts: Date.now(), agentKey });
+    const data = { open: true, ts: Date.now(), agentKey };
+    if (deskId) data.deskId = deskId;
+    await this._ref(`appState/bureaux/${localId}`).set(data);
     // Si l'agent avait le statut "en route" (late), l'effacer maintenant qu'il est arrivé
     if (agentKey && this._agentStatus[agentKey]?.status === 'late') {
       await this.setAgentStatus(agentKey, null);
     }
   },
   getBureauAgentKey(localId)            { return this._bureauState[String(localId)]?.agentKey || null; },
+  getBureauDeskId(localId)              { return this._bureauState[String(localId)]?.deskId || null; },
   isBureauBusyWithPreferred(localId)    { return !!(this._bureauState[String(localId)]?.busyWithPreferred); },
   async setBureauBusyWithPreferred(localId, busy) {
     if (busy) await this._ref(`appState/bureaux/${localId}/busyWithPreferred`).set(true);

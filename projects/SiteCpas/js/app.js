@@ -1092,7 +1092,8 @@ const HOME = {
       if (!card) return;
       const localId = parseInt(card.dataset.localId);
       if (!localId) return;
-      this._requireBonjour(() => this._handleDeclClick(localId));
+      const deskId = card.dataset.deskId || null;
+      this._requireBonjour(() => this._handleDeclClick(localId, deskId));
     });
   },
 
@@ -1153,7 +1154,8 @@ const HOME = {
       const connected = DB.isConnectedToday(agentKey);
       // Bureau ouvert
       const myBureau = DB.getOpenBureauForCurrentAgent?.() ?? null;
-      const myBureauLabel = myBureau !== null ? DB.getLocalLabel(myBureau) : null;
+      const myBureauDesk  = myBureau !== null ? DB.getBureauDeskId(myBureau) : null;
+      const myBureauLabel = myBureau !== null ? DB.getUnitLabel(myBureau, myBureauDesk) : null;
       const myBureauLieu  = myBureau !== null ? DB.getLocalLieuName?.(myBureau) ?? '' : '';
       // Backoffice
       const allLieux = DB.getLieux();
@@ -1435,8 +1437,10 @@ const HOME = {
 
     // Badge bureau actuel
     if (currEl) {
+      const currentDeskId = currentLocal !== null ? DB.getBureauDeskId(currentLocal) : null;
+      const currentUnitLabel = currentLocal !== null ? DB.getUnitLabel(currentLocal, currentDeskId) : null;
       currEl.innerHTML = currentLocal !== null
-        ? `<div class="hs-decl-current">📍 Bureau actuel : <strong>${escapeHtml(DB.getLocalLabel(currentLocal))}</strong></div>`
+        ? `<div class="hs-decl-current">📍 Bureau actuel : <strong>${escapeHtml(currentUnitLabel)}</strong></div>`
         : '';
     }
 
@@ -1479,6 +1483,9 @@ const HOME = {
     const lieu  = lieux[this._declLieuId];
     if (!lieu) { bar.innerHTML = ''; return; }
 
+    const openBureau   = DB.getOpenBureauForCurrentAgent();
+    const boLocal      = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;
+    const currentLocal = openBureau ?? boLocal;
     const localIds = lieu.localIds || [];
     // Filtrer : montrer les locaux qui ont des desks + les locaux sans desk
     // Les locaux avec desks sont sélectionnables (pour voir leurs desks dans les cartes)
@@ -1488,8 +1495,9 @@ const HOME = {
       const hasDesks = DB.localHasDesks(localId);
       const nDesks = hasDesks ? DB.getLocalDesks(localId).length : 0;
       const isActive = this._declLocalId === localId;
-      return `<button class="hs-decl-toggle hs-decl-local-toggle${isActive ? ' active' : ''}" data-decl-local="${localId}">
-        ${escapeHtml(label)}${hasDesks ? ` <small>(${nDesks})</small>` : ''}
+      const isMine = localId === currentLocal;
+      return `<button class="hs-decl-toggle hs-decl-local-toggle${isActive ? ' active' : ''}${isMine ? ' hs-decl-mine' : ''}" data-decl-local="${localId}">
+        ${isMine ? '✅ ' : ''}${escapeHtml(label)}${hasDesks ? ` <small>(${nDesks})</small>` : ''}
       </button>`;
     }).join('');
 
@@ -1557,23 +1565,25 @@ const HOME = {
         return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
       }).join('')}</div>` : '';
 
-      cards.innerHTML = `<div class="hs-decl-desk-grid">${desks.map(deskId => {
-        const dLabel = DB.getDeskLabel(deskId);
-        const oKey = DB.getBureauAgentKey(localId);
-        const iAmHere = oKey === agentKey;
-        const isOccupied = oKey && oKey !== agentKey;
+      const oKey     = DB.getBureauAgentKey(localId);
+      const oDeskId  = DB.getBureauDeskId(localId);
+
+      cards.innerHTML = `<div class="hs-decl-desk-grid">${desks.map(dId => {
+        const dLabel = DB.getDeskLabel(dId);
+        const isMyDesk   = oKey === agentKey && oDeskId === dId;
+        const isOtherDesk = oKey && oKey !== agentKey && oDeskId === dId;
 
         let status;
-        if (iAmHere) status = '<div class="hs-decl-me">✅ Vous</div>';
-        else if (isOccupied) status = `<div class="hs-decl-occ">👤 ${escapeHtml(DB.getAgentDisplayName(oKey) || '?')}</div>`;
+        if (isMyDesk) status = '<div class="hs-decl-me">✅ Vous</div>';
+        else if (isOtherDesk) status = `<div class="hs-decl-occ">👤 ${escapeHtml(DB.getAgentDisplayName(oKey) || '?')}</div>`;
         else status = '<div class="hs-decl-avail">Libre</div>';
 
         const cls = ['hs-decl-desk',
-          iAmHere ? 'hs-decl-active' : '',
-          isOccupied ? 'hs-decl-occupied' : '',
+          isMyDesk ? 'hs-decl-active' : '',
+          isOtherDesk ? 'hs-decl-occupied' : '',
         ].filter(Boolean).join(' ');
 
-        return `<div class="${cls}" data-local-id="${localId}">
+        return `<div class="${cls}" data-local-id="${localId}" data-desk-id="${dId}">
           <span class="hs-decl-desk-name">${escapeHtml(dLabel)}</span>
           ${status}
         </div>`;
@@ -1598,10 +1608,11 @@ const HOME = {
     ) || null;
   },
 
-  async _handleDeclClick(localId) {
+  async _handleDeclClick(localId, deskId = null) {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key');
     const isBO     = DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(localId);
-    const label    = DB.getLocalLabel(localId);
+    const hasDesks = DB.localHasDesks(localId);
+    const label    = deskId ? DB.getUnitLabel(localId, deskId) : DB.getLocalLabel(localId);
 
     if (isBO) {
       // Déjà présent ici → quitter
@@ -1611,13 +1622,16 @@ const HOME = {
             info: `Vous êtes actuellement avec un bénéficiaire dans <strong>${escapeHtml(label)}</strong>.<br>Terminez la consultation avant de quitter.`,
             okLabel: null }); return;
         }
-        const _activeOcc = this._getActiveOccupancy(localId);
-        if (_activeOcc) {
-          showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
-            info: `Une permanence est en cours dans <strong>${escapeHtml(label)}</strong>. Voulez-vous la terminer et quitter ?`,
-            okLabel: 'Finir la permanence et quitter', okClass: 'ok-close',
-            onOk: async () => { await DB.setAgentPresence(localId, false); this.render(); },
-          }); return;
+        // Vérifier permanence seulement pour les locaux SANS desk
+        if (!hasDesks) {
+          const _activeOcc = this._getActiveOccupancy(localId);
+          if (_activeOcc) {
+            showBureauConfirm({ icon: '🔒', title: 'Permanence en cours',
+              info: `Une permanence est en cours dans <strong>${escapeHtml(label)}</strong>. Voulez-vous la terminer et quitter ?`,
+              okLabel: 'Finir la permanence et quitter', okClass: 'ok-close',
+              onOk: async () => { await DB.setAgentPresence(localId, false); this.render(); },
+            }); return;
+          }
         }
         showBureauConfirm({ icon: '🚪', title: `Quitter ${escapeHtml(label)}`,
           info: `Voulez-vous quitter <strong>${escapeHtml(label)}</strong> ?`,
@@ -1739,13 +1753,13 @@ const HOME = {
             okLabel: 'Oui, changer', okClass: 'ok-open',
             onOk: async () => {
               await DB.setAgentPresence(boLocal, false);
-              await DB.openBureau(localId);
+              await DB.openBureau(localId, deskId);
               this.render();
             },
           }); return;
         }
       }
-      await DB.openBureau(localId);
+      await DB.openBureau(localId, deskId);
       if (DB.getFeature('enableNotif')) {
         const _lieuName  = DB.getLocalLieuName(localId);
         const _localName = label;

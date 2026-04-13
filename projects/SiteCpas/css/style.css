@@ -5698,6 +5698,8 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-decl-toggle.active { background:#1e3a5f; color:#fff; border-color:#1e3a5f; }
 .hs-decl-toggle small  { font-weight:400; opacity:.7; }
 .hs-decl-local-toggle  { font-size:.78rem; }
+.hs-decl-toggle.hs-decl-mine { border-color:#22c55e; background:#f0fdf4; color:#166534; }
+.hs-decl-toggle.hs-decl-mine.active { background:#22c55e; color:#fff; border-color:#22c55e; }
 .hs-decl-hint          { font-size:.82rem; color:#94a3b8; padding:.5rem 0; }
 
 /* ─── Déclaration desk sub-cards ─────────────────────────────── */
