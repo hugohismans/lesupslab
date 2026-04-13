@@ -467,9 +467,10 @@ async function main() {
     const grp = document.createElement('optgroup');
     grp.label = lieu.name;
     lieu.localIds.forEach(id => {
+      const label = localLabels[id] || localLabels[String(id)] || `Local ${id}`;
       const opt = document.createElement('option');
-      opt.value = `${lieu.name}|${id}`;
-      opt.textContent = localLabels[id] || localLabels[String(id)] || `Local ${id}`;
+      opt.value = `${lieu.name}|${id}|${label}`;
+      opt.textContent = label;
       grp.appendChild(opt);
     });
     sel.appendChild(grp);
@@ -494,7 +495,7 @@ async function main() {
     if (!_selectedChunk) return;
     const localVal = document.getElementById('localSelect').value;
     if (!localVal) { alert('Veuillez sélectionner votre local.'); return; }
-    const [localLieu, localId] = localVal.split('|');
+    const [localLieu, localId, localLabel] = localVal.split('|');
 
     const btn = document.getElementById('confirmBtn');
     btn.disabled = true;
@@ -527,10 +528,12 @@ async function main() {
       const allParticipants = [{ key: agentKey, name: agentName }, ...colleagues];
       const groupNames = allParticipants.map(p => p.name);
       const isGroup = allParticipants.length > 1;
-      const baseMsg = `Demande via la page de bienvenue — visite intégrateur — Local ${localId} (${localLieu})`;
+      const baseMsg = `Demande via la page de bienvenue — visite intégrateur — ${localLabel}`;
 
       btn.textContent = 'Envoi…';
-      await Promise.all(allParticipants.map(p =>
+
+      // Créer une demande + une réservation directe par participant
+      await Promise.all(allParticipants.flatMap(p => [
         db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
           slotId:            _selectedChunk._slotId,
           startDateTime:     sStart,
@@ -544,14 +547,26 @@ async function main() {
           message:           baseMsg,
           localId:           Number(localId),
           localLieu:         localLieu,
-          status:            'pending',
+          localLabel:        localLabel,
+          status:            'accepted',
           createdAt:         Date.now(),
-          respondedAt:       null,
-        })
-      ));
+          respondedAt:       Date.now(),
+        }),
+        db.ref(`orgs/${ORG_ID}/reservations`).push({
+          localId:       String(localId),
+          agent:         p.name,
+          services:      ['Rendez-vous intégrateur'],
+          type:          'rendez-vous',
+          startDateTime: sStart,
+          endDateTime:   sEnd,
+          note:          `${baseMsg}${isGroup ? ` — Groupe : ${groupNames.join(', ')}` : ''}`,
+          recurrence:    { type: 'none' },
+          createdAt:     Date.now(),
+        }),
+      ]));
 
       document.getElementById('successSlotInfo').textContent =
-        `📅 ${fmtDate(sStart)} de ${fmtTime(sStart)} à ${fmtTime(sEnd)} — Local ${localId} (${localLieu})`;
+        `📅 ${fmtDate(sStart)} de ${fmtTime(sStart)} à ${fmtTime(sEnd)} — ${localLabel}`;
 
       let msg = 'L\'intégrateur arrivera au créneau demandé à votre local.<br>En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l\'utiliser !';
       if (isGroup) {

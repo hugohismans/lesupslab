@@ -4071,6 +4071,28 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-wait-empty  { font-size:.82rem; color:#94a3b8; padding:.5rem 0; }
 .hs-wait-footer { font-size:.7rem; color:#94a3b8; margin-top:.4rem; text-align:right; }
 
+/* ── Modal back-office multi-agents ──────────────────────────────── */
+.bo-agents-list {
+  display: flex; flex-wrap: wrap; gap: .5rem;
+  padding: .5rem 0; min-height: 2rem;
+}
+.bo-agent-chip {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .35rem .75rem; border-radius: 999px;
+  border: 2px solid #e2e8f0; background: #f8fafc;
+  cursor: pointer; font-size: .85rem; font-weight: 600;
+  color: #475569; transition: all .15s; user-select: none;
+}
+.bo-agent-chip input[type="checkbox"] { display: none; }
+.bo-agent-chip.checked {
+  background: #1e3a5f; color: #fff;
+  border-color: #1e3a5f;
+}
+.bo-agent-chip .bo-chip-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor; opacity: .6; flex-shrink: 0;
+}
+
 /* ── Widget Prochaines réservations ───────────────────────────────── */
 .hs-upcoming-list  { display: flex; flex-direction: column; gap: .2rem; }
 .hs-upcoming-empty { font-size: .85rem; color: #94a3b8; padding: .4rem 0; }

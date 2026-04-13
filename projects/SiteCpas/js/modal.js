@@ -1128,6 +1128,7 @@ const MODAL = {
     g('fAgent').addEventListener('change', function() {
       cls('fAgentCustomWrap', this.value !== 'Autre');
     });
+    g('fLocal').addEventListener('change', () => this._onLocalChange());
     g('fPermanent').addEventListener('change', function() {
       g('fDatesWrap').style.display = this.checked ? 'none' : '';
     });
@@ -1409,9 +1410,12 @@ const MODAL = {
 
     if (opts.local) g('fLocal').value = opts.local;
 
-    // Pré-remplir avec l'agent connecté
+    // Basculer UI back-office si un local est pré-sélectionné
+    if (opts.local) this._onLocalChange();
+
+    // Pré-remplir avec l'agent connecté (mode non back-office uniquement)
     const _connectedAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
-    if (_connectedAgentName && g('fAgent')) {
+    if (_connectedAgentName && g('fAgent') && !DB.isLocalBackoffice(parseInt(opts.local))) {
       const opt = [...g('fAgent').options].find(o => o.value === _connectedAgentName);
       if (opt) g('fAgent').value = _connectedAgentName;
     }
@@ -1452,7 +1456,10 @@ const MODAL = {
     let html = `
       <div class="det-row"><span class="det-l">Local</span>   <span class="det-v">${DB.getLocalLabel(res.localId)}</span></div>
       <div class="det-row"><span class="det-l">Service</span> <span class="det-v">${svc}</span></div>
-      <div class="det-row"><span class="det-l">Agent</span>   <span class="det-v">${fmtAgent(agt)}</span></div>`;
+      <div class="det-row"><span class="det-l">Agent</span>   <span class="det-v">${fmtAgent(agt)}</span></div>
+      ${res.agents && res.agents.length > 1
+        ? `<div class="det-row"><span class="det-l">Participants</span><span class="det-v">${res.agents.map(a => escapeHtml(a)).join(', ')}</span></div>`
+        : ''}`;
 
     if (res.isPermanent) {
       html += `<div class="det-row"><span class="det-l">Type</span>
@@ -1492,14 +1499,24 @@ const MODAL = {
     const localId  = parseInt(g('fLocal').value);
     const services = [...g('fServiceBtns').querySelectorAll('.fs-svc-btn.active')].map(b => b.dataset.svc);
     const service  = services[0] || '';   // compat backward
-    const agent    = g('fAgent').value;
+    const isBO     = localId && DB.isLocalBackoffice(localId);
     const isPerm   = g('fPermanent').checked;
 
-    if (!localId || !services.length || !agent)
+    // Back-office : lire la liste multi-agents
+    let boAgents = [];
+    if (isBO) {
+      boAgents = [...(g('fAgentsList')?.querySelectorAll('input[type="checkbox"]:checked') || [])]
+        .map(cb => cb.value).filter(Boolean);
+      if (!boAgents.length) return alert('Veuillez sélectionner au moins un participant.');
+    }
+
+    const agent    = isBO ? (boAgents[0] || '') : g('fAgent').value;
+
+    if (!localId || !services.length || (!isBO && !agent))
       return alert('Veuillez remplir les champs obligatoires : Local, Service(s), Agent.');
     if (services.includes('Autre') && !g('fServiceCustom').value.trim())
       return alert('Veuillez préciser le service personnalisé.');
-    if (agent === 'Autre' && !g('fAgentCustom').value.trim())
+    if (!isBO && agent === 'Autre' && !g('fAgentCustom').value.trim())
       return alert("Veuillez préciser l'agent.");
 
     let startDT = null, endDT = null;
@@ -1686,21 +1703,24 @@ const MODAL = {
 
     const recType = g('fRecType').value;
 
-    // Agents invités
+    // Agents invités (mode normal uniquement)
     const invitedAgents = {};
-    g('fInviteChips')?.querySelectorAll('.invite-chip').forEach(chip => {
-      if (chip.dataset.key) invitedAgents[chip.dataset.key] = true;
-    });
+    if (!isBO) {
+      g('fInviteChips')?.querySelectorAll('.invite-chip').forEach(chip => {
+        if (chip.dataset.key) invitedAgents[chip.dataset.key] = true;
+      });
+    }
 
     const data = {
       localId,
       service,    services,   serviceCustom: g('fServiceCustom').value.trim(),
-      agent,      agentCustom:   g('fAgentCustom').value.trim(),
+      agent,      agentCustom:   isBO ? '' : g('fAgentCustom').value.trim(),
       comment:    g('fComment').value.trim(),
       isPermanent: isPerm,
       startDateTime: startDT,
       endDateTime:   isPerm ? null : endDT,
       invitedAgents: Object.keys(invitedAgents).length ? invitedAgents : null,
+      agents: isBO && boAgents.length > 1 ? boAgents : null,
       recurrence: {
         type:     isPerm ? 'none' : recType,
         interval: parseInt(g('fInterval').value) || 1,
@@ -1850,9 +1870,20 @@ const MODAL = {
     g('resTitle').textContent = 'Modifier la réservation';
 
     g('fLocal').value    = res.localId;
-    g('fAgent').value    = res.agent;
     g('fComment').value  = res.comment || '';
     g('fPermanent').checked = res.isPermanent;
+
+    // Mode back-office : afficher la liste multi-agents
+    const _isBO = res.localId && DB.isLocalBackoffice(res.localId);
+    if (_isBO) {
+      cls('fAgentSingleWrap', true);
+      cls('fAgentsListWrap',  false);
+      cls('fInviteWrap',      true);
+      const checkedNames = res.agents || (res.agent ? [res.agent] : []);
+      this._populateBoAgents(checkedNames);
+    } else {
+      g('fAgent').value = res.agent;
+    }
 
     // Pré-sélectionner les services (tableau ou valeur unique pour compat)
     const activeSvcs = res.services?.length ? res.services : (res.service ? [res.service] : []);
@@ -1926,6 +1957,46 @@ const MODAL = {
     // Vider les chips d'invitation
     if (g('fInviteChips')) g('fInviteChips').innerHTML = '';
     if (g('fInviteSelect')) g('fInviteSelect').value = '';
+    // Rétablir l'état normal (local non back-office)
+    cls('fAgentSingleWrap', false);
+    cls('fAgentsListWrap',  true);
+    if (g('fAgentsList')) g('fAgentsList').innerHTML = '';
+  },
+
+  // Basculer entre mode agent unique et liste multi-agents selon le local
+  _onLocalChange() {
+    const localId = parseInt(g('fLocal').value);
+    const isBO = localId && DB.isLocalBackoffice(localId);
+    cls('fAgentSingleWrap', isBO);   // hidden si backoffice
+    cls('fAgentsListWrap',  !isBO);  // hidden si normal
+    cls('fInviteWrap',      isBO);   // cacher les invités en backoffice
+    if (isBO) this._populateBoAgents();
+  },
+
+  // Remplir la liste de chips d'agents pour un local back-office
+  _populateBoAgents(checkedNames = []) {
+    const container = g('fAgentsList');
+    if (!container) return;
+    const connectedName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+    const agents = DB.getAgents() || [];
+    container.innerHTML = agents.map(name => {
+      const isMe = name === connectedName;
+      const checked = isMe || checkedNames.includes(name);
+      const color = DB.getAgentRoleColor?.(name) || '#1e3a5f';
+      return `<label class="bo-agent-chip${checked ? ' checked' : ''}" data-name="${escapeHtml(name)}">
+        <input type="checkbox" name="boAgent" value="${escapeHtml(name)}"${checked ? ' checked' : ''}>
+        <span class="bo-chip-dot" style="background:${color}"></span>
+        ${escapeHtml(name)}${isMe ? ' (moi)' : ''}
+      </label>`;
+    }).join('');
+    // Toggle classe checked au clic
+    container.querySelectorAll('.bo-agent-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const cb = chip.querySelector('input[type="checkbox"]');
+        cb.checked = !cb.checked;
+        chip.classList.toggle('checked', cb.checked);
+      });
+    });
   },
 
   // Attache les handlers click sur les boutons service (appelé après chaque re-render)
