@@ -900,7 +900,7 @@ const LIVE = {
       !l.isBackoffice && (!this._filterLieuId || id === this._filterLieuId)
     );
     lieuEntries.forEach(([, lieu]) => {
-      (lieu.localIds ? Object.keys(lieu.localIds).map(Number).sort((a, b) => a - b) : []).forEach(localId => {
+      (lieu.localIds || []).forEach(localId => {
         const opt = document.createElement('option');
         opt.value = `bureau_${localId}`;
         opt.textContent = `🏢 Bureau — ${DB.getLocalLabel(localId)}`;
