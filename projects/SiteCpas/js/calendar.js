@@ -154,8 +154,18 @@ const CAL = {
           span = Math.max(1, span);
           coveredUntil[l] = i + span;
 
-          const svcs  = DB.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s);
-          const svc   = svcs.join(' + '); // pour title/tooltip
+          const isRdv = res.type === 'rendez-vous';
+          const myKey = sessionStorage.getItem('cpas_current_agent_key');
+          const isConcernedRdv = !res.secret || (myKey && (myKey === res.requesterAgentKey || myKey === res.targetAgentKey));
+          let svcs, svc;
+          if (isRdv) {
+            const noteDisplay = res.secret && !isConcernedRdv ? '🔒 Confidentiel' : (res.note || '');
+            svcs = ['📅 Rendez-vous' + (noteDisplay ? ` · ${noteDisplay}` : '')];
+            svc  = svcs[0];
+          } else {
+            svcs  = DB.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s);
+            svc   = svcs.join(' + ');
+          }
           const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
           const agtFmt = fmtAgent(agt);
           const recType = res.recurrence?.type;
@@ -164,16 +174,15 @@ const CAL = {
           const recLabel  = isRec ? recLabels[recType] || '' : '';
           const startH = res._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const endH   = res._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
-          const agentColor = DB.getAgentColor(agt);
+          const agentColor = isRdv ? null : DB.getAgentColor(agt);
           const colorStyle = agentColor ? ` style="background:${agentColor}20;border-left:3px solid ${agentColor}"` : '';
           const comment = res.comment ? res.comment.trim() : '';
-          const myKey   = sessionStorage.getItem('cpas_current_agent_key');
           const isInvited = myKey && res.invitedAgents?.[myKey];
           const invitedNames = res.invitedAgents
             ? Object.keys(res.invitedAgents).map(k => DB.getAgentsWithKeys().find(a => a.key === k)?.name || k).join(', ')
             : '';
-          h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}${isInvited ? ' is-invited' : ''}" rowspan="${span}"
-            data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail"
+          h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}${isInvited ? ' is-invited' : ''}${isRdv ? ' is-rdv' : ''}" rowspan="${span}"
+            data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail" data-type="${res.type || ''}"
             data-slot="${i}" data-local="${l}" data-span="${span}" data-occ-date="${isoDate(res._start)}"
             ${colorStyle}>
             <span class="ct ct-drag" draggable="true"
@@ -182,7 +191,7 @@ const CAL = {
               ${svcs.map(s => `<b>${escapeHtml(s)}</b>`).join('<br>')}
               <br><small>${agtFmt}</small><br>
               <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
-              ${comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
+              ${!isRdv && comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
               ${invitedNames ? `<small class="ct-invited" title="Agents invités : ${escapeHtml(invitedNames)}">👥 ${escapeHtml(invitedNames)}</small>` : ''}
             </span>
             <div class="ct-resize" title="Étirer la réservation"></div>

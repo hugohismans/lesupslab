@@ -14,6 +14,8 @@
   let _selectedSlot  = null;  // { id, startDateTime, endDateTime, selectedStart, selectedEnd }
   let _pendingAccept    = null;  // { requestId, localId } en attente si local picker
   let _pendingDelWithRdv = null; // { slotId, occDate, rdvResIds } en attente de confirmation
+  let _targetRequests   = [];   // demandes pending/accepted pour l'agent cible (conflit)
+  let _targetReqListener = null;
 
   // ── Init ─────────────────────────────────────────────────────────
   function init() {
@@ -553,6 +555,11 @@
       DB._ref(`appState/availabilitySlots/${_targetListener}`).off();
       _targetListener = null;
     }
+    if (_targetReqListener) {
+      DB._ref('appState/appointmentRequests').orderByChild('targetAgentKey').equalTo(_targetReqListener).off();
+      _targetReqListener = null;
+      _targetRequests = [];
+    }
 
     if (!targetAgentKey) {
       el.innerHTML = '<div class="rdv-empty rdv-empty-sm">Sélectionnez un agent pour voir ses créneaux.</div>';
@@ -561,7 +568,24 @@
     }
 
     el.innerHTML = '<div class="rdv-empty rdv-empty-sm">Chargement…</div>';
-    _targetListener = targetAgentKey;
+    _targetListener    = targetAgentKey;
+    _targetReqListener = targetAgentKey;
+
+    // Écouter les demandes existantes pour l'agent cible (pour bloquer les créneaux déjà demandés)
+    DB._ref('appState/appointmentRequests').orderByChild('targetAgentKey').equalTo(targetAgentKey)
+      .on('value', snap => {
+        _targetRequests = [];
+        snap.forEach(c => {
+          const v = c.val();
+          if (v.status !== 'refused' && v.startDateTime && v.endDateTime) {
+            _targetRequests.push({ id: c.key, ...v });
+          }
+        });
+        // Rafraîchir le time picker si un slot est déjà sélectionné
+        if (_selectedSlot) {
+          _showTimePicker(_selectedSlot.startDateTime, _selectedSlot.endDateTime, targetAgentKey);
+        }
+      });
 
     DB.listenAvailabilitySlots(targetAgentKey, slots => {
       _targetSlots = slots;
@@ -644,11 +668,21 @@
       const eh = String(endObj.getHours()).padStart(2, '0');
       const em = String(endObj.getMinutes()).padStart(2, '0');
       const endDT = `${endObj.toISOString().slice(0, 10)}T${eh}:${em}`;
-      const busy = existingRes.some(r => {
+      const btnEnd30 = btnStart + 30 * 60000;
+      // Conflit agenda global (réservations déjà créées)
+      const calBusy = existingRes.some(r => {
         const rS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
         const rE = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
-        return btnStart < rE && (btnStart + 30 * 60000) > rS;
+        return btnStart < rE && btnEnd30 > rS;
       });
+      // Conflit demandes en cours (pending/accepted) pour l'agent cible
+      const reqBusy = _targetRequests.some(req => {
+        if (!req.startDateTime || !req.endDateTime) return false;
+        const rS = new Date(req.startDateTime).getTime();
+        const rE = new Date(req.endDateTime).getTime();
+        return btnStart < rE && btnEnd30 > rS;
+      });
+      const busy = calBusy || reqBusy;
       items.push({ startDT, endDT, hh, mm, eh, em, busy });
       cursor.setMinutes(cursor.getMinutes() + 30);
     }
@@ -762,14 +796,26 @@
   }
 
   async function _processRequest({ targetAgentKey, slotId, startDateTime, endDateTime, withPerson, message, secret }) {
-    // Vérifier via l'agenda global si le créneau 30min est déjà pris
+    // Vérifier via l'agenda global si le créneau est déjà pris
     const agentName = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
-    const conflicts = DB.getInRange(startDateTime, endDateTime).filter(r => {
+    const reqS = new Date(startDateTime).getTime();
+    const reqE = new Date(endDateTime).getTime();
+    const calConflict = DB.getInRange(startDateTime, endDateTime).some(r => {
       const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
-      return a === agentName;
+      if (a !== agentName) return false;
+      const rS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
+      const rE = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
+      return reqS < rE && reqE > rS;
     });
-    if (conflicts.length) {
-      _showError('rdvRequestError', 'Ce créneau est déjà réservé dans l\'agenda.');
+    // Vérifier les demandes en cours (pending/accepted) pour éviter les doublons
+    const reqConflict = _targetRequests.some(req => {
+      if (!req.startDateTime || !req.endDateTime) return false;
+      const rS = new Date(req.startDateTime).getTime();
+      const rE = new Date(req.endDateTime).getTime();
+      return reqS < rE && reqE > rS;
+    });
+    if (calConflict || reqConflict) {
+      _showError('rdvRequestError', 'Ce créneau est déjà réservé ou une demande est en cours.');
       return;
     }
 
