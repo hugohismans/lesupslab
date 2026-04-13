@@ -1047,12 +1047,8 @@ const LIVE = {
       const pubLabel = DB.getPublicLocalLabel(l);
       const grp      = DB.getLocalGroup(l);   // premier groupe (rétro-compat)
       const grps     = DB.getLocalGroups(l);  // tous les groupes
-      const myAgentKey  = sessionStorage.getItem('cpas_current_agent_key');
-      const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
-      const _bureauOpener = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && !!myAgentKey;
-      // Si une réservation en cours appartient à un autre agent, l'ouvreur de bureau n'a pas accès
-      const _resAgent   = res ? (res.agent === 'Autre' ? res.agentCustom : res.agent) : null;
-      const amIHere     = _bureauOpener && (!_resAgent || !myAgentName || _resAgent === myAgentName);
+      const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
+      const amIHere    = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && !!myAgentKey;
       const labelHtml = (pubLabel !== label ? `${label}<span class="lv-pub-label">${pubLabel}</span>` : label)
         + grps.map(g => `<span class="lv-qg-badge">🔗 ${g.name}</span>`).join('');
 
@@ -1321,16 +1317,19 @@ const LIVE = {
       }
       if (res) {
         const svc           = DB.getSvcLabel(res);
-        const agt           = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
+        const resAgt        = res.agent === 'Autre' ? res.agentCustom : res.agent;
         const endH          = res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
-        const agentCardColor = DB.getAgentColor(agt);     // couleur de carte (paramétrable)
-        const agtRoleColor   = DB.getAgentRoleColor(agt); // couleur du pseudo (rôle)
+        // Si le bureau est ouvert par quelqu'un d'autre que l'agent de la réservation, afficher l'ouvreur
+        const openerDisp    = isOpen ? DB.getBureauAgentDisplayName(l) : null;
+        const agt           = (openerDisp && openerDisp !== resAgt) ? openerDisp : resAgt;
+        const agentCardColor = DB.getAgentColor(resAgt);    // couleur de carte basée sur la réservation
+        const agtRoleColor   = DB.getAgentRoleColor(agt);   // couleur du pseudo de l'agent présent
         if (!isOpen) {
           return `<div class="lv-card lv-closed" style="${agentCardColor ? `border-top:6px solid ${agentCardColor}` : ''}">
             <div class="lv-num">${labelHtml}</div>
             <div class="lv-status">⚫ Fermé</div>
             ${grpSvcHtml ?? `<div class="lv-svc">${svc}</div>`}
-            <div class="lv-agt" style="${agtRoleColor ? `color:${agtRoleColor}` : ''}">${fmtAgent(agt)}</div>
+            <div class="lv-agt" style="${agtRoleColor ? `color:${agtRoleColor}` : ''}">${fmtAgent(resAgt)}</div>
             <div class="lv-until">Jusqu'à ${endH}</div>
             ${queueHtml}
           </div>`;
