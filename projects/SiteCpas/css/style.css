@@ -5511,6 +5511,9 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .notif-item.notif-rdv_accepted { border-left: 3px solid #22c55e; }
 .notif-item.notif-rdv_refused  { border-left: 3px solid #ef4444; }
 .notif-item.notif-rdv_info     { border-left: 3px solid #8b5cf6; }
+.notif-rdv-detail      { margin: .35rem 0 .1rem; display: flex; flex-direction: column; gap: .18rem; }
+.notif-rdv-detail-row  { font-size: .8rem; color: #475569; }
+.notif-rdv-comment     { font-style: italic; color: #64748b; }
 .notif-rdv-actions { display: flex; gap: .45rem; margin-top: .5rem; }
 .notif-rdv-accept {
   background: #22c55e; color: #fff; border: none; border-radius: 7px;

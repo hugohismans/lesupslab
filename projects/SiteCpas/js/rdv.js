@@ -707,7 +707,8 @@
         `📨 Demande de RDV de ${requesterName} — avec ${withStr}`,
         'rdv_request',
         targetAgentKey,
-        { requestId, startDateTime, endDateTime, requesterAgentKey: _agentKey }
+        { requestId, startDateTime, endDateTime, requesterAgentKey: _agentKey,
+          withPersonName: withStr, rdvComment: message || null }
       );
 
       _showToast(`Demande envoyée à ${targetName} ✓`);

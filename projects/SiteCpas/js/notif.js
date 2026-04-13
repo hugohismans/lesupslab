@@ -499,16 +499,39 @@ const NOTIF = {
               </div>` : (n.responded ? `<div style="font-size:.78rem;color:#4ade80;margin-top:.35rem">✓ Réponse envoyée</div>` : '')}`;
           }
 
-          // Contenu spécifique rdv_request (boutons accepter/refuser)
+          // Contenu spécifique rdv_request (détails + boutons accepter/refuser)
           let rdvHtml = '';
-          if (isRdvRequest && n.requestId && !n.rdvResponded) {
-            rdvHtml = `
-              <div class="notif-rdv-actions" data-rdv-req-id="${n.requestId}">
-                <button class="notif-rdv-accept" data-id="${id}" data-req="${n.requestId}">✅ Accepter</button>
-                <button class="notif-rdv-refuse" data-id="${id}" data-req="${n.requestId}">❌ Refuser</button>
-              </div>`;
-          } else if (isRdvRequest && n.rdvResponded) {
-            rdvHtml = `<div style="font-size:.78rem;color:#4ade80;margin-top:.35rem">✓ Réponse envoyée</div>`;
+          if (isRdvRequest) {
+            // Bloc détail : heure, avec qui, commentaire
+            let rdvDetail = '';
+            if (n.startDateTime) {
+              const sd = new Date(n.startDateTime);
+              const ed = n.endDateTime ? new Date(n.endDateTime) : null;
+              const fmt = d => d.toLocaleString('fr-BE', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+              const fmtT = d => d.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' });
+              rdvDetail += `<div class="notif-rdv-detail-row">🕐 ${fmt(sd)}${ed ? ` – ${fmtT(ed)}` : ''}</div>`;
+            }
+            if (n.withPersonName) {
+              rdvDetail += `<div class="notif-rdv-detail-row">👤 ${escapeHtml(n.withPersonName)}</div>`;
+            }
+            if (n.rdvComment) {
+              rdvDetail += `<div class="notif-rdv-detail-row notif-rdv-comment">💬 ${escapeHtml(n.rdvComment)}</div>`;
+            }
+
+            if (n.requestId && !n.rdvResponded) {
+              rdvHtml = `
+                <div class="notif-rdv-detail">${rdvDetail}</div>
+                <div class="notif-rdv-actions" data-rdv-req-id="${n.requestId}">
+                  <button class="notif-rdv-accept" data-id="${id}" data-req="${n.requestId}">✅ Accepter</button>
+                  <button class="notif-rdv-refuse" data-id="${id}" data-req="${n.requestId}">❌ Refuser</button>
+                </div>`;
+            } else if (n.rdvResponded) {
+              rdvHtml = `
+                <div class="notif-rdv-detail">${rdvDetail}</div>
+                <div style="font-size:.78rem;color:#4ade80;margin-top:.35rem">✓ Réponse envoyée</div>`;
+            } else {
+              rdvHtml = `<div class="notif-rdv-detail">${rdvDetail}</div>`;
+            }
           }
 
           // Contenu spécifique preferred_reply_accueil
