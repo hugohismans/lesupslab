@@ -1047,6 +1047,8 @@ const LIVE = {
       const pubLabel = DB.getPublicLocalLabel(l);
       const grp      = DB.getLocalGroup(l);   // premier groupe (rétro-compat)
       const grps     = DB.getLocalGroups(l);  // tous les groupes
+      const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
+      const amIHere    = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && !!myAgentKey;
       const labelHtml = (pubLabel !== label ? `${label}<span class="lv-pub-label">${pubLabel}</span>` : label)
         + grps.map(g => `<span class="lv-qg-badge">🔗 ${g.name}</span>`).join('');
 
@@ -1122,7 +1124,8 @@ const LIVE = {
       // Boutons de file
       let queueHtml;
       // Pause/retirer/fermer bloqués dès qu'on est en permanence (queue ou busyWithPref)
-      const pauseBtn  = isOpen && !isAccueil && !isBusyLocal
+      // Et seulement visibles par l'agent qui a ouvert ce bureau
+      const pauseBtn  = isOpen && amIHere && !isBusyLocal
         ? `<button class="lv-pause-btn" data-local="${l}">⏸ Pause</button>`
         : '';
 
@@ -1139,8 +1142,8 @@ const LIVE = {
           ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${oldestGrp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
-        // Fermer/Se retirer bloqués pendant permanence en cours (sauf accueil)
-        const fermerBtn   = (!isAccueil && isBusyLocal) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
+        // Fermer bloqué si : en cours de permanence (sauf accueil) OU pas l'agent connecté
+        const fermerBtn   = (!isAccueil && (isBusyLocal || !amIHere)) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
         const leaveBtn = '';
         // Bénéficiaire en cours (queue = 0 → dernier appelé, ou busyWithPref en cours)
         // "En cours" : seulement pendant busyWithPref (quelqu'un est physiquement dans le bureau)
@@ -1238,7 +1241,7 @@ const LIVE = {
         </div>`;
       } else {
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
-        const fermerBtn   = (!isAccueil && isBusyLocal) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
+        const fermerBtn   = (!isAccueil && (isBusyLocal || !amIHere)) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
         const noQueueWarn = !isAccueil && isOpen && l === currentAgentOpenLocal
           ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — Inscris-toi à une file d'attente !</div>`
           : '';
@@ -1347,8 +1350,6 @@ const LIVE = {
         if (isOpen) {
           const declSvc    = DB.getBureauDeclaredService(l);
           const agentDisp  = DB.getBureauAgentDisplayName(l);
-          const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
-          const amIHere    = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && myAgentKey;
           return `<div class="lv-card lv-free">
             <div class="lv-num">${labelHtml}</div>
             <div class="lv-status">🟢 Disponible</div>
