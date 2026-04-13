@@ -899,8 +899,10 @@ const LIVE = {
     const lieuEntries = Object.entries(lieux).filter(([id, l]) =>
       !l.isBackoffice && (!this._filterLieuId || id === this._filterLieuId)
     );
+    const accueilLocalId = DB.getAccueilDeskLocalId?.() ?? null;
     lieuEntries.forEach(([, lieu]) => {
       (lieu.localIds || []).forEach(localId => {
+        if (localId === accueilLocalId) return; // local accueil masqué
         const opt = document.createElement('option');
         opt.value = `bureau_${localId}`;
         opt.textContent = `🏢 Bureau — ${DB.getLocalLabel(localId)}`;
