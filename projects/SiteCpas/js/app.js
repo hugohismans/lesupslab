@@ -1057,9 +1057,19 @@ const HOME = {
         const label        = DB.getLocalLabel(localId);
         const isBusy       = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
         if (isBusy) {
+          const agentNameBusy = DB.getAgentDisplayName(kickAgentKey) || kickAgentKey;
           showBureauConfirm({ icon: '🔴', title: 'Consultation en cours',
-            info: `<strong>${escapeHtml(label)}</strong> est actuellement avec un bénéficiaire.<br>Impossible de retirer l'agent pendant une consultation.`,
-            okLabel: null });
+            info: `<strong>${escapeHtml(label)}</strong> est actuellement avec un bénéficiaire.<br>En tant qu'administrateur, vous pouvez forcer le retrait.`,
+            okLabel: '⚡ Forcer le retrait', okClass: 'ok-danger',
+            onOk: async () => {
+              await DB.closeBureau(localId);
+              await DB.sendNotif(
+                `⚠️ Un administrateur vous a retiré du local "${label}" pendant une consultation. Pensez à quitter le local.`,
+                'urgent', kickAgentKey
+              );
+              showToast(`${agentNameBusy} retiré de force de ${label} ✓`);
+            },
+          });
           return;
         }
         const agentName = DB.getAgentDisplayName(kickAgentKey) || kickAgentKey;
