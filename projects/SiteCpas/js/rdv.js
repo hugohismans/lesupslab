@@ -478,31 +478,21 @@
   }
 
   // Trouve les IDs de réservations de type rendez-vous liées à un slot (ou une occurrence)
-  async function _findLinkedRdvIds(slotId, occDate) {
-    const snap = await DB._ref('appState/appointmentRequests')
-      .orderByChild('slotId').equalTo(slotId).once('value');
-    const agentName = _agentName || '';
+  // Trouve les IDs de réservations RDV liées à un slot via le champ slotId stocké sur la réservation
+  function _findLinkedRdvIds(slotId, occDate) {
+    const all = DB.getAll ? DB.getAll() : {};
     const ids = [];
-    snap.forEach(c => {
-      const v = c.val();
-      if (v.status !== 'accepted') return;
-      const { startDateTime, endDateTime } = v;
-      if (!startDateTime || !endDateTime) return;
-      if (occDate && startDateTime.slice(0, 10) !== occDate) return;
-      // Chercher la réservation correspondante dans l'agenda global
-      DB.getInRange(startDateTime, endDateTime).forEach(r => {
-        const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
-        if (r.type === 'rendez-vous' && a === agentName && r.startDateTime === startDateTime && r.id) {
-          if (!ids.includes(r.id)) ids.push(r.id);
-        }
-      });
+    Object.entries(all).forEach(([id, r]) => {
+      if (r.type !== 'rendez-vous' || r.rdvSlotId !== slotId) return;
+      if (occDate && r.startDateTime?.slice(0, 10) !== occDate) return;
+      if (!ids.includes(id)) ids.push(id);
     });
     return ids;
   }
 
   async function _deleteSlot(slotId) {
     if (!_agentKey || !slotId) return;
-    const rdvResIds = await _findLinkedRdvIds(slotId, null);
+    const rdvResIds = _findLinkedRdvIds(slotId, null);
     if (rdvResIds.length) {
       _pendingDelWithRdv = { slotId, occDate: null, rdvResIds };
       const msg = document.getElementById('rdvDelRdvMsg');
@@ -529,7 +519,7 @@
 
   async function _deleteSlotOccurrence(slotId, occDate) {
     if (!_agentKey || !slotId || !occDate) return;
-    const rdvResIds = await _findLinkedRdvIds(slotId, occDate);
+    const rdvResIds = _findLinkedRdvIds(slotId, occDate);
     if (rdvResIds.length) {
       _pendingDelWithRdv = { slotId, occDate, rdvResIds };
       const msg = document.getElementById('rdvDelRdvMsg');
@@ -624,7 +614,7 @@
     });
   }
 
-  // ── Sous-sélection horaire : créneaux fixes de 30 min ───────────
+  // ── Sous-sélection horaire : créneaux 30 min, sélection multiple consécutive ─
   function _showTimePicker(slotStart, slotEnd, targetAgentKey) {
     const tp      = document.getElementById('rdvTimePicker');
     const slotsEl = document.getElementById('rdvTpSlots');
@@ -633,52 +623,88 @@
     slotsEl.innerHTML = '';
     if (_selectedSlot) { _selectedSlot.selectedStart = null; _selectedSlot.selectedEnd = null; }
 
-    // Réservations existantes de l'agent cible sur cette plage (agenda global)
+    // Réservations existantes de l'agent cible (agenda global)
     const agentName   = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
     const existingRes = DB.getInRange(slotStart, slotEnd).filter(r => {
       const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
       return a === agentName;
     });
 
+    // Construire la liste des créneaux 30 min
+    const items = [];
     const endLim = new Date(slotEnd);
     const cursor = new Date(slotStart);
-
     while (cursor.getTime() + 30 * 60000 <= endLim.getTime()) {
-      const hh  = String(cursor.getHours()).padStart(2, '0');
-      const mm  = String(cursor.getMinutes()).padStart(2, '0');
-      const dateStr  = cursor.toISOString().slice(0, 10);
-      const startDT  = `${dateStr}T${hh}:${mm}`;
+      const hh = String(cursor.getHours()).padStart(2, '0');
+      const mm = String(cursor.getMinutes()).padStart(2, '0');
+      const dateStr = cursor.toISOString().slice(0, 10);
+      const startDT = `${dateStr}T${hh}:${mm}`;
       const btnStart = cursor.getTime();
-      const endObj   = new Date(btnStart + 30 * 60000);
-      const eh  = String(endObj.getHours()).padStart(2, '0');
-      const em  = String(endObj.getMinutes()).padStart(2, '0');
-      const endDT    = `${endObj.toISOString().slice(0, 10)}T${eh}:${em}`;
-      const btnEnd   = endObj.getTime();
-
-      // Vérifier si ce créneau chevauche une réservation existante
+      const endObj  = new Date(btnStart + 30 * 60000);
+      const eh = String(endObj.getHours()).padStart(2, '0');
+      const em = String(endObj.getMinutes()).padStart(2, '0');
+      const endDT = `${endObj.toISOString().slice(0, 10)}T${eh}:${em}`;
       const busy = existingRes.some(r => {
-        const rStart = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
-        const rEnd   = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
-        return btnStart < rEnd && btnEnd > rStart;
+        const rS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
+        const rE = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
+        return btnStart < rE && (btnStart + 30 * 60000) > rS;
       });
+      items.push({ startDT, endDT, hh, mm, eh, em, busy });
+      cursor.setMinutes(cursor.getMinutes() + 30);
+    }
 
+    // État de la sélection
+    let selStart = null; // index du premier créneau sélectionné
+    let selEnd   = null; // index du dernier créneau sélectionné
+
+    const updateSelection = () => {
+      const btns = slotsEl.querySelectorAll('.rdv-tp-slot-btn');
+      btns.forEach((b, i) => {
+        const inRange = selStart !== null && i >= selStart && i <= selEnd;
+        b.classList.toggle('active', inRange);
+      });
+      if (selStart !== null && selEnd !== null && _selectedSlot) {
+        _selectedSlot.selectedStart = items[selStart].startDT;
+        _selectedSlot.selectedEnd   = items[selEnd].endDT;
+      } else if (_selectedSlot) {
+        _selectedSlot.selectedStart = null;
+        _selectedSlot.selectedEnd   = null;
+      }
+    };
+
+    items.forEach((item, idx) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'rdv-tp-slot-btn' + (busy ? ' busy' : '');
-      btn.textContent = `${hh}:${mm} – ${eh}:${em}`;
-      if (busy) {
+      btn.className = 'rdv-tp-slot-btn' + (item.busy ? ' busy' : '');
+      btn.textContent = `${item.hh}:${item.mm} – ${item.eh}:${item.em}`;
+      if (item.busy) {
         btn.disabled = true;
         btn.title = 'Déjà réservé dans l\'agenda';
       } else {
         btn.addEventListener('click', () => {
-          slotsEl.querySelectorAll('.rdv-tp-slot-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          if (_selectedSlot) { _selectedSlot.selectedStart = startDT; _selectedSlot.selectedEnd = endDT; }
+          if (selStart === null) {
+            // Aucune sélection → ancrer ici
+            selStart = selEnd = idx;
+          } else if (idx === selStart && selStart === selEnd) {
+            // Clic sur le seul sélectionné → désélectionner
+            selStart = selEnd = null;
+          } else if (idx >= selStart) {
+            // Étendre ou réduire vers la droite (si pas de busy entre les deux)
+            const hasGap = items.slice(selStart, idx + 1).some(it => it.busy);
+            if (hasGap) {
+              selStart = selEnd = idx; // reset si créneau occupé entre les deux
+            } else {
+              selEnd = idx;
+            }
+          } else {
+            // Clic à gauche du début → nouvel ancrage
+            selStart = selEnd = idx;
+          }
+          updateSelection();
         });
       }
       slotsEl.appendChild(btn);
-      cursor.setMinutes(cursor.getMinutes() + 30);
-    }
+    });
   }
 
   // ── Onglet 2 : Envoyer la demande ────────────────────────────────
@@ -981,6 +1007,7 @@
       agent:              agentDisplayName,
       services:           [],
       type:               'rendez-vous',
+      rdvSlotId:          req0?.slotId || null,
       startDateTime:      startDT,
       endDateTime:        endDT,
       note:               rdvNote,
