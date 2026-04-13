@@ -5,6 +5,7 @@
 const CAL = {
   view: 'day',
   date: new Date(),
+  _deskFilter: null,   // null = locaux sans desk | localId = desks de ce local
 
   setView(v) { this.view = v; this.render(); },
 
@@ -59,8 +60,25 @@ const CAL = {
     const slots = getSlots();
     const total = slots.length;
 
-    // coveredUntil[unitKey] = index du premier slot NON couvert pour l'unité
-    const displayUnits = DB.getDisplayUnits();
+    // ── Filtre desk : locaux avec desks → toggle buttons ──────────────
+    const allUnits = DB.getDisplayUnits();
+    // Locaux qui possèdent des desks (pour les toggles)
+    const deskLocals = [];
+    const seen = new Set();
+    allUnits.forEach(u => {
+      if (u.type === 'desk' && !seen.has(u.localId)) {
+        seen.add(u.localId);
+        deskLocals.push({ localId: u.localId, label: DB.getLocalLabel(u.localId) });
+      }
+    });
+    // Si le filtre pointe vers un local qui n'a plus de desks, reset
+    if (this._deskFilter && !deskLocals.some(dl => dl.localId === this._deskFilter)) this._deskFilter = null;
+
+    // Unités visibles selon le filtre
+    const displayUnits = this._deskFilter
+      ? allUnits.filter(u => u.type === 'desk' && u.localId === this._deskFilter)
+      : allUnits.filter(u => u.type === 'local');
+
     const coveredUntil = {};
     displayUnits.forEach(u => coveredUntil[u.deskId ?? u.localId] = 0);
 
@@ -84,6 +102,18 @@ const CAL = {
       ${dateLabel}
       ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
     </div>`;
+
+    // Barre de toggles desk (visible seulement s'il y a des locaux avec desks)
+    if (deskLocals.length) {
+      h += '<div class="cv-desk-filter">';
+      h += `<button class="cv-desk-toggle${!this._deskFilter ? ' active' : ''}" data-filter="">Locaux</button>`;
+      deskLocals.forEach(dl => {
+        const nDesks = allUnits.filter(u => u.type === 'desk' && u.localId === dl.localId).length;
+        h += `<button class="cv-desk-toggle${this._deskFilter === dl.localId ? ' active' : ''}" data-filter="${dl.localId}">${escapeHtml(dl.label)} <small>(${nDesks})</small></button>`;
+      });
+      h += '</div>';
+    }
+
     h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
@@ -220,6 +250,15 @@ const CAL = {
     this._bind(el);
     this._bindDnd(el, d);
     this._renderNowLine(el, d);
+
+    // ── Bind toggles desk ──────────────────────────────────────────
+    el.querySelectorAll('.cv-desk-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.filter;
+        this._deskFilter = val ? parseInt(val) : null;
+        this.render();
+      });
+    });
   },
 
   // ─────────────────────────────────────────────────────────────────
