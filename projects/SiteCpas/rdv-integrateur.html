@@ -52,6 +52,7 @@
     .chunk-btn:hover { border-color: #ef4444; background: #fff5f5; color: #ef4444; }
     .chunk-btn.selected { background: #ef4444; border-color: #ef4444; color: #fff; }
     .chunk-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .chunk-taken { background: #fee2e2 !important; border-color: #fca5a5 !important; color: #dc2626 !important; cursor: not-allowed !important; font-size: .8rem; }
 
     .slots-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
 
@@ -349,7 +350,7 @@ function selectChunk(chunk, btn) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────
-function renderSlots(slots) {
+function renderSlots(slots, takenSlots) {
   const el = document.getElementById('slotsList');
   const nowStr = localISO(new Date());
   const future = slots.filter(s => s.startDateTime > nowStr);
@@ -365,6 +366,8 @@ function renderSlots(slots) {
     splitInto30(slot).forEach(chunk => {
       const day = chunk.startDateTime.slice(0, 10);
       if (!byDay[day]) byDay[day] = [];
+      // Marquer si déjà réservé
+      chunk._taken = takenSlots.has(chunk.startDateTime);
       byDay[day].push(chunk);
     });
   });
@@ -373,18 +376,20 @@ function renderSlots(slots) {
     <div class="day-group">
       <div class="day-label">${fmtDate(day + 'T00:00')}</div>
       <div class="chunks">
-        ${chunks.map((chunk, i) => `
-          <button class="chunk-btn" data-day="${day}" data-idx="${i}">
-            ${fmtTime(chunk.startDateTime)} – ${fmtTime(chunk.endDateTime)}
-          </button>
-        `).join('')}
+        ${chunks.map((chunk, i) => chunk._taken
+          ? `<button class="chunk-btn chunk-taken" data-day="${day}" data-idx="${i}" disabled title="Déjà réservé">
+               🔒 ${fmtTime(chunk.startDateTime)} – ${fmtTime(chunk.endDateTime)}
+             </button>`
+          : `<button class="chunk-btn" data-day="${day}" data-idx="${i}">
+               ${fmtTime(chunk.startDateTime)} – ${fmtTime(chunk.endDateTime)}
+             </button>`
+        ).join('')}
       </div>
     </div>
   `).join('');
 
-  // Stocker les chunks pour retrouver au clic
   const allChunksByDay = byDay;
-  el.querySelectorAll('.chunk-btn').forEach(btn => {
+  el.querySelectorAll('.chunk-btn:not([disabled])').forEach(btn => {
     const day = btn.dataset.day;
     const idx = parseInt(btn.dataset.idx);
     btn.addEventListener('click', () => selectChunk(allChunksByDay[day][idx], btn));
@@ -470,8 +475,18 @@ async function main() {
     sel.appendChild(grp);
   });
 
+  // Charger les demandes existantes pour l'intégrateur (pending + accepted)
+  const reqsSnap = await ref('appState/appointmentRequests').once('value');
+  const takenSlots = new Set();
+  reqsSnap.forEach(child => {
+    const r = child.val();
+    if (r.targetAgentKey === integratorKey && r.status !== 'cancelled' && r.startDateTime) {
+      takenSlots.add(r.startDateTime);
+    }
+  });
+
   showScreen('screenBook');
-  renderSlots(expandSlots(rawSlots));
+  renderSlots(expandSlots(rawSlots), takenSlots);
   renderColleagues(agentsData, agentKey, integratorKey);
 
   // Bouton confirmer
