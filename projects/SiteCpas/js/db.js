@@ -380,7 +380,7 @@ const DB = {
     await this._ref(`appConfig/agentPublicNames/${key}`).set(name.trim() || null);
   },
 
-  getFeature(name)           { return !!this._config.features[name]; },
+  getFeature(name)           { return !!(this._config.features && this._config.features[name]); },
   async setFeature(name, val) { await this._ref(`appConfig/features/${name}`).set(val ? true : false); },
 
   // ── Affichage des tickets (par emplacement) ───────────────────────
