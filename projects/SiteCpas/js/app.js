@@ -1048,6 +1048,36 @@ const HOME = {
       this._renderQueueGroups();
     });
     document.getElementById('hsDeclCards').addEventListener('click', e => {
+      // Bouton kick admin
+      const kickBtn = e.target.closest('.hs-decl-kick-btn');
+      if (kickBtn) {
+        e.stopPropagation();
+        const localId     = parseInt(kickBtn.dataset.kickLocal);
+        const kickAgentKey = kickBtn.dataset.kickAgent;
+        const label        = DB.getLocalLabel(localId);
+        const isBusy       = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
+        if (isBusy) {
+          showBureauConfirm({ icon: '🔴', title: 'Consultation en cours',
+            info: `<strong>${escapeHtml(label)}</strong> est actuellement avec un bénéficiaire.<br>Impossible de retirer l'agent pendant une consultation.`,
+            okLabel: null });
+          return;
+        }
+        const agentName = DB.getAgentDisplayName(kickAgentKey) || kickAgentKey;
+        showBureauConfirm({
+          icon: '⚠️', title: `Retirer ${escapeHtml(agentName)} ?`,
+          info: `Voulez-vous retirer <strong>${escapeHtml(agentName)}</strong> du local <strong>${escapeHtml(label)}</strong> ?<br><br>L'agent recevra une notification.`,
+          okLabel: 'Retirer', okClass: 'ok-danger',
+          onOk: async () => {
+            await DB.closeBureau(localId);
+            await DB.sendNotif(
+              `⚠️ Un administrateur vous a retiré du local "${label}". Pensez à quitter le local par vous-même.`,
+              'info', kickAgentKey
+            );
+            showToast(`${agentName} retiré de ${label} ✓`);
+          },
+        });
+        return;
+      }
       const card = e.target.closest('[data-local-id]');
       if (!card) return;
       const localId = parseInt(card.dataset.localId);
@@ -1504,8 +1534,18 @@ const HOME = {
         lines.push(`<div class="hs-decl-grps">🔗 ${grpBadges}<span class="hs-decl-grp-legend">= personnes en attente</span></div>`);
       }
 
+      const isAdmin    = DB.hasPermission('editSettings');
+      const kickTarget = !isBO && isOccupied && !isCurrent && isAdmin
+        ? DB.getBureauAgentKey(localId) : null;
+      const kickBtn = kickTarget
+        ? `<button class="hs-decl-kick-btn" data-kick-local="${localId}" data-kick-agent="${kickTarget}" title="Retirer l'agent de ce local">✕</button>`
+        : '';
+
       return `<div class="${cls}" data-local-id="${localId}">
-        <div class="hs-decl-name">${escapeHtml(label)}</div>
+        <div class="hs-decl-name-row">
+          <span class="hs-decl-name">${escapeHtml(label)}</span>
+          ${kickBtn}
+        </div>
         ${lines.join('')}
       </div>`;
     }).join('') || '<div class="hs-decl-avail">Aucun bureau dans ce lieu.</div>';

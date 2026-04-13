@@ -4136,7 +4136,16 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-decl-local.hs-decl-occupied:not(.hs-decl-active) { border-color: #f59e0b; background: #fffbeb; }
 .hs-decl-local.hs-decl-has-perm                   { box-shadow: 0 0 0 2px #818cf8 inset; }
 
-.hs-decl-name      { font-size: 1.05rem; font-weight: 700; color: #1e293b; padding-bottom: .25rem; border-bottom: 2px solid #e2e8f0; margin-bottom: .2rem; }
+.hs-decl-name-row  { display: flex; align-items: center; justify-content: space-between; padding-bottom: .25rem; border-bottom: 2px solid #e2e8f0; margin-bottom: .2rem; }
+.hs-decl-name      { font-size: 1.05rem; font-weight: 700; color: #1e293b; }
+.hs-decl-kick-btn  {
+  background: none; border: 1px solid #fca5a5; color: #ef4444;
+  border-radius: 5px; width: 1.4rem; height: 1.4rem; font-size: .7rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  opacity: .55; transition: opacity .15s, background .15s;
+  flex-shrink: 0; line-height: 1;
+}
+.hs-decl-kick-btn:hover { opacity: 1; background: #fef2f2; }
 .hs-decl-me        { font-size: .74rem; color: #16a34a; font-weight: 600; margin-top: .2rem; }
 .hs-decl-occ       { font-size: .74rem; color: #d97706; margin-top: .2rem; }
 .hs-decl-avail     { font-size: .74rem; color: #94a3b8; margin-top: .2rem; }
