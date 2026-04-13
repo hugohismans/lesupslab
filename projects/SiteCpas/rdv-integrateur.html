@@ -457,14 +457,18 @@ async function main() {
   });
 
   // Charger les lieux, labels et bureaux pour le sélecteur de local
-  const [lieuxSnap, labelsSnap, bureauxSnap] = await Promise.all([
+  const [lieuxSnap, labelsSnap, bureauxSnap, desksSnap, deskLabelsSnap] = await Promise.all([
     ref('appConfig/lieux').once('value'),
     ref('appConfig/localLabels').once('value'),
     ref('appState/bureaux').once('value'),
+    ref('appConfig/localDesks').once('value'),
+    ref('appConfig/deskLabels').once('value'),
   ]);
-  const lieuxData   = lieuxSnap.val()  || {};
-  const localLabels = labelsSnap.val() || {};
-  const bureauxData = bureauxSnap.val() || {};
+  const lieuxData    = lieuxSnap.val()      || {};
+  const localLabels  = labelsSnap.val()     || {};
+  const bureauxData  = bureauxSnap.val()    || {};
+  const localDesks   = desksSnap.val()      || {};
+  const deskLabels   = deskLabelsSnap.val() || {};
   // Trouver le local bureau de l'agent connecté
   const agentBureauId = Object.entries(bureauxData).find(([, info]) => info?.agentKey === agentKey)?.[0] || null;
   const lieuxList = Object.entries(lieuxData)
@@ -479,17 +483,34 @@ async function main() {
     grp.label = lieu.name;
     lieu.localIds.forEach(id => {
       const label = localLabels[id] || localLabels[String(id)] || `Local ${id}`;
-      const opt = document.createElement('option');
-      opt.value = `${lieu.name}|${id}|${label}`;
-      opt.textContent = label;
-      grp.appendChild(opt);
+      const desks = Object.keys(localDesks[String(id)] || {});
+      if (desks.length) {
+        // Local avec desks → une option par desk
+        desks.forEach(deskId => {
+          const dLabel = deskLabels[deskId] || `Desk ${String(deskId).slice(-4)}`;
+          const opt = document.createElement('option');
+          opt.value = `${lieu.name}|${id}|${label} — ${dLabel}|${deskId}`;
+          opt.textContent = `${label} — ${dLabel}`;
+          grp.appendChild(opt);
+        });
+      } else {
+        // Local sans desk → option simple
+        const opt = document.createElement('option');
+        opt.value = `${lieu.name}|${id}|${label}|`;
+        opt.textContent = label;
+        grp.appendChild(opt);
+      }
     });
     sel.appendChild(grp);
   });
 
   // Pré-sélectionner le bureau de l'agent si connu et présent dans le dropdown
   if (agentBureauId) {
-    const optToSelect = [...sel.options].find(o => o.value.split('|')[1] === String(agentBureauId));
+    // Chercher d'abord un desk du local de l'agent, sinon le local lui-même
+    const optToSelect = [...sel.options].find(o => {
+      const p = o.value.split('|');
+      return p[1] === String(agentBureauId);
+    });
     if (optToSelect) sel.value = optToSelect.value;
   }
 
@@ -498,21 +519,30 @@ async function main() {
   const expandedSlots  = expandSlots(rawSlots);
   let   _lastResData   = {};
 
+  function _unitOccupies(r, localId, deskId) {
+    const rLocal = parseInt(r.localId);
+    const rDesk  = r.deskId || null;
+    if (deskId) return rDesk === deskId || (!rDesk && rLocal === parseInt(localId));
+    return rLocal === parseInt(localId) && !rDesk;
+  }
+
   function _rebuildAndRender() {
-    const localVal    = document.getElementById('localSelect').value;
-    const selectedLid = localVal ? localVal.split('|')[1] : null;
+    const localVal     = document.getElementById('localSelect').value;
+    const parts        = localVal ? localVal.split('|') : [];
+    const selectedLid  = parts[1] || null;
+    const selectedDesk = parts[3] || null;
     const taken = new Set();
 
     Object.values(_lastResData).forEach(r => {
       if (!r.startDateTime || r.isPermanent) return;
       const rS = r.startDateTime;
       const rE = r.endDateTime || '';
-      // Hugo est dans la resa
+      // L'intégrateur est dans la resa
       const isHugo = r.agent === integratorName ||
                      (Array.isArray(r.agents) && r.agents.includes(integratorName));
-      // Le local sélectionné est occupé (chevauchement de plage)
-      const isLocalBusy = selectedLid && String(r.localId) === String(selectedLid) && rE;
-      if (!isHugo && !isLocalBusy) return;
+      // L'unité sélectionnée (desk ou local) est occupée
+      const isUnitBusy = selectedLid && _unitOccupies(r, selectedLid, selectedDesk) && rE;
+      if (!isHugo && !isUnitBusy) return;
       // Marquer tous les chunks qui chevauchent cette réservation
       expandedSlots.forEach(slot => {
         splitInto30(slot).forEach(chunk => {
@@ -542,7 +572,9 @@ async function main() {
     if (!_selectedChunk) return;
     const localVal = document.getElementById('localSelect').value;
     if (!localVal) { alert('Veuillez sélectionner votre local.'); return; }
-    const [localLieu, localId, localLabel] = localVal.split('|');
+    const _parts = localVal.split('|');
+    const [localLieu, localId, localLabel] = _parts;
+    const deskId = _parts[3] || null;
 
     const btn = document.getElementById('confirmBtn');
     btn.disabled = true;
@@ -559,7 +591,7 @@ async function main() {
       const sStart  = _selectedChunk.startDateTime;
       const sEnd    = _selectedChunk.endDateTime;
       const conflict = Object.values(resData).some(r => {
-        if (String(r.localId) !== String(localId)) return false;
+        if (!_unitOccupies(r, localId, deskId)) return false;
         const rS = r.startDateTime || '';
         const rE = r.endDateTime   || '';
         return rS < sEnd && rE > sStart;
@@ -608,6 +640,7 @@ async function main() {
         }),
         db.ref(`orgs/${ORG_ID}/reservations`).push({
           localId:       String(localId),
+          deskId:        deskId || null,
           agent:         agentName,          // demandeur principal (agent = premier pour compat)
           agents:        allNames,           // tous les participants → visibles dans "Mon agenda"
           services:      ['Rendez-vous intégrateur'],
