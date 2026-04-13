@@ -3369,7 +3369,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const enableNamed = DB.getFeature('enableNamedTickets');
     const displayName = enableNamed ? (benefName.split(' ')[0] || benefName) : 'Bénéficiaire';
 
-    const agentPublicName = DB.getAgentPublicName(targetAgentKey);
+    const agentPublicName = DB.getAgentPublicName(targetAgentKey) || agentName;
 
     // Vérifier si le bureau est déjà occupé (preferred en attente OU agent en cours avec quelqu'un)
     if (localId !== null) {
@@ -3499,7 +3499,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (!req) return;
 
     const localId = DB.getBureauByAgent(myKey);
-    const myPublicName = DB.getAgentPublicName(myKey);
+    const _myAgentName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || '';
+    const myPublicName = DB.getAgentPublicName(myKey) || _myAgentName;
     const enableNamed  = DB.getFeature('enableNamedTickets');
     const displayName  = enableNamed && req.benefName
       ? (req.benefName.split(' ')[0] || req.benefName)
