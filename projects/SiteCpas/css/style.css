@@ -5691,6 +5691,16 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .st-desk-add-btn   { padding:.3rem .6rem; background:#1e3a5f; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:.82rem; }
 #fDeskWrap         { margin-top:.5rem; }
 
+/* ─── Déclaration desk sub-cards ─────────────────────────────── */
+.hs-decl-desk-group  { margin-bottom:.5rem; }
+.hs-decl-desk-header { font-size:.82rem; font-weight:700; color:#1e3a5f; padding:.4rem .6rem; background:#f1f5f9; border-radius:8px 8px 0 0; border:1px solid #e2e8f0; border-bottom:none; }
+.hs-decl-desk-grid   { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:1px; background:#e2e8f0; border:1px solid #e2e8f0; border-radius:0 0 8px 8px; overflow:hidden; }
+.hs-decl-desk        { background:#fff; padding:.5rem .6rem; cursor:pointer; transition:all .15s; text-align:center; }
+.hs-decl-desk:hover  { background:#f0f6ff; }
+.hs-decl-desk.hs-decl-active   { background:#fef9c3; border-color:#f59e0b; }
+.hs-decl-desk.hs-decl-occupied { background:#fef2f2; }
+.hs-decl-desk-name   { font-weight:700; font-size:.82rem; color:#1e293b; display:block; margin-bottom:.15rem; }
+
 /* ─── Status bar — desk sub-pills ─────────────────────────────── */
 .lpill-wrap        { display:inline-flex; flex-direction:column; align-items:stretch; vertical-align:top; }
 .lpill-wrap .lpill  { margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; }

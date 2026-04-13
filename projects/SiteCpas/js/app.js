@@ -1507,6 +1507,49 @@ const HOME = {
     cards.innerHTML = lieu.localIds.map(localId => {
       const label = DB.getLocalLabel(localId);
       const isBO  = DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(localId);
+      const hasDesks = DB.localHasDesks(localId);
+
+      // ── Local avec desks → en-tête + sous-cartes desk ──
+      if (hasDesks) {
+        const desks = DB.getLocalDesks(localId);
+        // État global du local (pour les files d'attente)
+        const _localGrps = DB.getLocalGroups(localId);
+        const grpHtml = _localGrps.length ? `<div class="hs-decl-grps" style="margin-top:.3rem">🔗 ${_localGrps.map(g => {
+          const ovf = DB.getGroupOverflowQueue(g.id);
+          return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
+        }).join('')}</div>` : '';
+
+        const deskCards = desks.map(deskId => {
+          const dLabel = DB.getDeskLabel(deskId);
+          const oKey = DB.getBureauAgentKey(localId);
+          const isCurrent = localId === currentLocal;
+          const isOccupied = oKey && oKey !== agentKey;
+          const iAmHere = oKey === agentKey;
+
+          let status;
+          if (iAmHere) status = '<div class="hs-decl-me">✅ Vous</div>';
+          else if (isOccupied) status = `<div class="hs-decl-occ">👤 ${escapeHtml(DB.getAgentDisplayName(oKey) || '?')}</div>`;
+          else status = '<div class="hs-decl-avail">Libre</div>';
+
+          const cls = ['hs-decl-desk',
+            iAmHere ? 'hs-decl-active' : '',
+            isOccupied ? 'hs-decl-occupied' : '',
+          ].filter(Boolean).join(' ');
+
+          return `<div class="${cls}" data-local-id="${localId}">
+            <span class="hs-decl-desk-name">${escapeHtml(dLabel)}</span>
+            ${status}
+          </div>`;
+        }).join('');
+
+        return `<div class="hs-decl-desk-group">
+          <div class="hs-decl-desk-header">${escapeHtml(label)}</div>
+          <div class="hs-decl-desk-grid">${deskCards}</div>
+          ${grpHtml}
+        </div>`;
+      }
+
+      // ── Local sans desk → carte standard ──
       let iAmHere = false;
       const occupantNames = [];
 
@@ -1524,7 +1567,6 @@ const HOME = {
         }
       }
 
-      const activeOcc  = todayOccs.find(r => Number(r.localId) === localId) || null;
       const isOccupied = occupantNames.length > 0;
       const isCurrent  = localId === currentLocal;
       const isBusy     = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
