@@ -392,16 +392,12 @@ const DB = {
   async setAgentStatus(agentKey, status, arrivalTime) {
     const today = isoDate(new Date());
     if (!status) {
-      // Conserver connectedAt + DND, supprimer seulement le statut présence
+      // Retour à présent : toujours garantir connectedAt (évite "Pas encore connecté")
       const current = this._agentStatus[agentKey] || {};
       const keep = {};
-      if (current.connectedAt) keep.connectedAt = current.connectedAt;
-      if (current.dnd)         keep.dnd         = true;
-      if (Object.keys(keep).length) {
-        await this._ref(`agentStatus/${today}/${agentKey}`).set(keep);
-      } else {
-        await this._ref(`agentStatus/${today}/${agentKey}`).remove();
-      }
+      keep.connectedAt = current.connectedAt || Date.now();
+      if (current.dnd) keep.dnd = true;
+      await this._ref(`agentStatus/${today}/${agentKey}`).set(keep);
     } else {
       const current = this._agentStatus[agentKey] || {};
       const data = status === 'late'

@@ -956,6 +956,7 @@ const HOME = {
       if (isDone) {
         // Retour en présent → révoquer le grant temporaire si applicable
         await _revokeMyTempAdmin(agentKey, agentName);
+        await DB.markConnectedToday(agentKey);
         await DB.setAgentStatus(agentKey, null);
         const prenom = agentName ? agentName.split(' ')[0] : null;
         const n = prenom ? ` ${prenom}` : '';
@@ -2371,6 +2372,8 @@ document.addEventListener('DOMContentLoaded', async function () {
           const comment = document.getElementById('presenceConfirmMsg')?.value.trim() || '';
           const urgent  = document.getElementById('presenceConfirmUrgent')?.checked || false;
           close();
+          // Garantir connectedAt avant setAgentStatus pour éviter "Pas encore connecté"
+          if (!status || status === 'present') await DB.markConnectedToday(key);
           await DB.setAgentStatus(key, status, time);
           if (!isMyOwn) {
             const lbl = { late: `J'arrive ! (arrivée prévue ${time || '?'})`, absent: 'Absent(e)' };
@@ -2401,6 +2404,8 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     } else {
       // Pas de notif → enregistrer directement
+      // Garantir connectedAt avant setAgentStatus pour éviter "Pas encore connecté"
+      if (!status || status === 'present') await DB.markConnectedToday(key);
       await DB.setAgentStatus(key, status, time);
       if (!isMyOwn && DB.getFeature('enableNotifAuto')) {
         const lbl = { late: `J'arrive ! (arrivée prévue ${time || '?'})`, absent: 'Absent(e)' };
