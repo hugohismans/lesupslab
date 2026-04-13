@@ -541,6 +541,13 @@ const DB = {
   async closeBureau(localId) {
     await this._ref(`appState/bureaux/${localId}`).set({ open: false, ts: Date.now() });
     await this.setQueue(localId, 0);
+    // Désinscrire le local de toutes les files d'attente partagées
+    const groups = this._config.queueGroups || {};
+    await Promise.all(
+      Object.keys(groups)
+        .filter(gId => (groups[gId].localIds || []).map(Number).includes(Number(localId)))
+        .map(gId => this.leaveQueueGroup(gId, localId))
+    );
   },
   async setBureauPause(localId, { estimatedMin, comment }) {
     await this._ref(`appState/bureaux/${localId}/pause`).set({
