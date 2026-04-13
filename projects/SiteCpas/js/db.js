@@ -78,6 +78,8 @@ const DB = {
           : [],
         publicPermLieux: d.publicPermLieux || {},
         ticketDisplay:   d.ticketDisplay   || {},
+        localDesks:  d.localDesks  || {},   // { [localId]: { [deskId]: true } }
+        deskLabels:  d.deskLabels  || {},   // { [deskId]: "Desk A" }
       };
 
       // Charger les lieux triés par order
@@ -191,6 +193,66 @@ const DB = {
   getLocalLabel(id)       { return this._config.localLabels[id]       || `Local ${id}`; },
   getPublicLocalLabel(id) { return this._config.publicLabels[id]      || this.getLocalLabel(id); },
   getLocalDescription(id) { return this._config.localDescriptions[id] || ''; },
+
+  // ── Desks ─────────────────────────────────────────────────────────
+  getLocalDesks(localId)  { return Object.keys(this._config.localDesks[String(localId)] || {}); },
+  localHasDesks(localId)  { return this.getLocalDesks(localId).length > 0; },
+  getDeskLabel(deskId)    { return this._config.deskLabels[deskId] || `Desk ${String(deskId).slice(-4)}`; },
+  // Libellé complet "Bureau 1 — Desk A" ou "Bureau 1"
+  getUnitLabel(localId, deskId) {
+    const loc = this.getLocalLabel(localId);
+    return deskId ? `${loc} — ${this.getDeskLabel(deskId)}` : loc;
+  },
+  // Liste des unités d'affichage pour le lieu courant (colonnes calendrier)
+  getDisplayUnits() {
+    const units = [];
+    CONFIG.LOCALS.forEach(localId => {
+      const desks = this.getLocalDesks(localId);
+      if (desks.length > 0) {
+        desks.forEach(deskId => units.push({
+          type: 'desk', localId, deskId,
+          label: this.getDeskLabel(deskId),
+          fullLabel: this.getUnitLabel(localId, deskId),
+        }));
+      } else {
+        units.push({ type: 'local', localId, deskId: null,
+          label: this.getLocalLabel(localId), fullLabel: this.getLocalLabel(localId) });
+      }
+    });
+    return units;
+  },
+  // Helper conflit unifié — remplace parseInt(r.localId) === localId dans les conflits
+  // deskId null = mode local legacy, deskId string = mode desk
+  unitOccupies(r, localId, deskId) {
+    const rLocal = parseInt(r.localId);
+    const rDesk  = r.deskId || null;
+    if (deskId) {
+      // Mode desk : bloqué par même desk OU par résa legacy du même local (règle 4)
+      return rDesk === deskId || (!rDesk && rLocal === localId);
+    } else {
+      // Mode local legacy : bloqué seulement si même local et pas de deskId sur r
+      return rLocal === localId && !rDesk;
+    }
+  },
+  // CRUD desks
+  async addDeskToLocal(localId, label) {
+    const ref = this._ref(`appConfig/localDesks/${localId}`).push();
+    const deskId = ref.key;
+    await this._update({
+      [`appConfig/localDesks/${localId}/${deskId}`]: true,
+      [`appConfig/deskLabels/${deskId}`]: label.trim() || 'Desk',
+    });
+    return deskId;
+  },
+  async setDeskLabel(deskId, label) {
+    await this._ref(`appConfig/deskLabels/${deskId}`).set(label.trim() || null);
+  },
+  async removeDesk(localId, deskId) {
+    await this._update({
+      [`appConfig/localDesks/${localId}/${deskId}`]: null,
+      [`appConfig/deskLabels/${deskId}`]: null,
+    });
+  },
   isLocalHidden(localId)  { return !!(this._config.hiddenLocals[String(localId)]); },
   getAccueilDeskLocalId() { return this._config.accueilDeskLocalId ? Number(this._config.accueilDeskLocalId) : null; },
   async setAccueilDeskLocalId(localId) {
@@ -208,15 +270,16 @@ const DB = {
   getAppHash()             { return this._config.appPasswordHash   || null; },
   async setAppHash(hash)   { await this._ref('appConfig/appPasswordHash').set(hash); },
 
-  async moveReservation(id, newLocalId, newStartISO, newEndISO) {
+  async moveReservation(id, newLocalId, newStartISO, newEndISO, newDeskId = null) {
     await this._ref(`reservations/${id}`).update({
       localId:       String(newLocalId),
+      deskId:        newDeskId || null,
       startDateTime: newStartISO,
       endDateTime:   newEndISO,
     });
   },
 
-  async moveOccurrence(id, occDateISO, newLocalId, newStartISO, newEndISO) {
+  async moveOccurrence(id, occDateISO, newLocalId, newStartISO, newEndISO, newDeskId = null) {
     const res = this._data[id];
     if (!res) throw new Error('Réservation introuvable');
     // Marquer l'occurrence originale comme exception
@@ -226,6 +289,7 @@ const DB = {
     await this._ref('reservations').push({
       ...base,
       localId:       String(newLocalId),
+      deskId:        newDeskId || null,
       startDateTime: newStartISO,
       endDateTime:   newEndISO,
       recurrence:    { type: 'none' },

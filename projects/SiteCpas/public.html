@@ -81,7 +81,7 @@ const db = firebase.database();
 const _screenParam = new URLSearchParams(window.location.search).get('screen');
 
 let _reservations = {};
-let _config = { agents: [], localLabels: {}, publicLabels: {}, localDescriptions: {}, agentColors: {}, agentEmojis: {}, agentPublicNames: {}, queueGroups: {}, features: {}, screens: {}, messageJour: '', messageJourAt: null, lieux: {} };
+let _config = { agents: [], localLabels: {}, publicLabels: {}, localDescriptions: {}, agentColors: {}, agentEmojis: {}, agentPublicNames: {}, queueGroups: {}, features: {}, screens: {}, messageJour: '', messageJourAt: null, lieux: {}, localDesks: {}, deskLabels: {} };
 let _agentStatus = {};
 let _currentLieuId = null;
 let _locals = CONFIG.LOCALS;
@@ -91,6 +91,13 @@ function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&q
 function getLocalLabel(id)       { return _config.localLabels[id]       || `Local ${id}`; }
 function getPublicLocalLabel(id) { return _config.publicLabels[id]      || getLocalLabel(id); }
 function getLocalDescription(id) { return _config.localDescriptions[id] || ''; }
+function getDeskLabel(deskId)    { return _config.deskLabels[deskId]    || `Desk ${String(deskId).slice(-4)}`; }
+function localHasDesks(localId)  { return Object.keys(_config.localDesks[String(localId)] || {}).length > 0; }
+function getLocalDesks(localId)  { return Object.keys(_config.localDesks[String(localId)] || {}); }
+function unitOccupiesPublic(r, localId, deskId) {
+  const rLocal = parseInt(r.localId), rDesk = r.deskId || null;
+  return deskId ? (rDesk === deskId || (!rDesk && rLocal === localId)) : (rLocal === localId && !rDesk);
+}
 function getAgentColor(name) {
   const agent = _config.agents.find(a => a.name === name);
   if (!agent?.key) return null;
@@ -542,6 +549,8 @@ db.ref(`orgs/${ORG_ID}/appConfig`).on('value', snap => {
   }
   _config.agents      = d.agents   ? Object.entries(d.agents).map(([k,v]) => ({key:k, name:v})) : [];
   _config.localLabels = d.localLabels || {};
+  _config.localDesks  = d.localDesks  || {};
+  _config.deskLabels  = d.deskLabels  || {};
   _config.agentColors = d.agentColors || {};
   _config.agentEmojis = d.agentEmojis || {};
   _config.features    = d.features    || {};

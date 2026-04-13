@@ -1290,7 +1290,7 @@ const HOME = {
         </div>`;
         agendaEl.innerHTML = todays.map((r, i) => {
           const svc    = DB.getSvcLabel(r);
-          const loc    = DB.getLocalLabel(r.localId);
+          const loc    = DB.getUnitLabel(parseInt(r.localId), r.deskId || null);
           const hm     = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
           const hme    = r._end?.toLocaleTimeString('fr-BE',   { hour:'2-digit', minute:'2-digit' }) || '';
           const active = r._start <= now && (r._end === null || r._end >= now);
@@ -2157,7 +2157,7 @@ function _renderUpcomingWidget() {
     const hme = r._end?.toLocaleTimeString('fr-BE',  { hour: '2-digit', minute: '2-digit' }) || '';
     const svc = DB.getSvcLabel(r);
     const agt = r.agent === 'Autre' ? (r.agentCustom || 'Autre') : (r.agent || '');
-    const loc = DB.getLocalLabel(Number(r.localId));
+    const loc = DB.getUnitLabel(parseInt(r.localId), r.deskId || null);
     return `<div class="hs-upcoming-row">
       <span class="hs-upcoming-time">${hm}${hme ? `–${hme}` : ''}</span>
       <span class="hs-upcoming-svc">${escapeHtml(svc)}</span>
@@ -2229,7 +2229,7 @@ function _renderWeekWidget() {
       const hm  = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
       const hme = r._end?.toLocaleTimeString('fr-BE',  { hour: '2-digit', minute: '2-digit' }) || '';
       const svc = DB.getSvcLabel(r);
-      const loc = DB.getLocalLabel(Number(r.localId));
+      const loc = DB.getUnitLabel(parseInt(r.localId), r.deskId || null);
       return `<div class="hs-week-item" data-res-id="${r.id}" style="cursor:pointer" title="${escapeHtml(svc)} — ${escapeHtml(loc)}">
         <span class="hs-week-time">${hm}${hme ? ` – ${hme}` : ''}</span>
         <span class="hs-week-svc">${escapeHtml(svc.slice(0, 22))}${svc.length > 22 ? '…' : ''}</span>

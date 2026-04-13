@@ -59,9 +59,10 @@ const CAL = {
     const slots = getSlots();
     const total = slots.length;
 
-    // coveredUntil[l] = index du premier slot NON couvert pour le local l
+    // coveredUntil[unitKey] = index du premier slot NON couvert pour l'unité
+    const displayUnits = DB.getDisplayUnits();
     const coveredUntil = {};
-    CONFIG.LOCALS.forEach(l => coveredUntil[l] = 0);
+    displayUnits.forEach(u => coveredUntil[u.deskId ?? u.localId] = 0);
 
     // ── Colonne "Mon agenda" ──────────────────────────────────────────
     const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
@@ -86,7 +87,7 @@ const CAL = {
     h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
-    CONFIG.LOCALS.forEach(l => h += `<th class="loc-hd">${DB.getLocalLabel(l)}</th>`);
+    displayUnits.forEach(u => h += `<th class="loc-hd">${escapeHtml(u.label)}</th>`);
     h += '</tr></thead><tbody>';
 
     slots.forEach((slot, i) => {
@@ -111,7 +112,7 @@ const CAL = {
             span = Math.max(1, span);
             coveredUntilMe = i + span;
             const mySvc  = DB.getSvcLabel(myRes);
-            const myLoc  = DB.getLocalLabel(parseInt(myRes.localId));
+            const myLoc  = DB.getUnitLabel(parseInt(myRes.localId), myRes.deskId || null);
             const myStartH = myRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
             const myEndH   = myRes._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
             const myStyle  = myAgentColor ? ` style="background:${myAgentColor}20;border-left:3px solid ${myAgentColor}"` : '';
@@ -128,19 +129,20 @@ const CAL = {
         }
       }
 
-      CONFIG.LOCALS.forEach(l => {
+      displayUnits.forEach(u => {
+        const unitKey = u.deskId ?? u.localId;
         // Cette cellule est couverte par un rowspan précédent → on l'ignore
-        if (coveredUntil[l] > i) return;
+        if (coveredUntil[unitKey] > i) return;
 
-        const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
+        const perm = occs.find(r => DB.unitOccupies(r, u.localId, u.deskId) && r.isPermanent);
         const res  = occs.find(r =>
-          parseInt(r.localId) === l && !r.isPermanent && r._start < sE && r._end > sS
+          DB.unitOccupies(r, u.localId, u.deskId) && !r.isPermanent && r._start < sE && r._end > sS
         );
 
         if (perm) {
           // Permanent → couvre tous les créneaux restants
           const span = total - i;
-          coveredUntil[l] = total;
+          coveredUntil[unitKey] = total;
           const svc = DB.getSvcLabel(perm);
           h += `<td class="cv-cell is-perm" rowspan="${span}" data-id="${perm.id}" data-act="detail">
             <span class="ct">🔒 ${svc}</span>
@@ -156,7 +158,7 @@ const CAL = {
             else if (jS >= res._end) break;
           }
           span = Math.max(1, span);
-          coveredUntil[l] = i + span;
+          coveredUntil[unitKey] = i + span;
 
           const isRdv = res.type === 'rendez-vous';
           const myKey = sessionStorage.getItem('cpas_current_agent_key');
@@ -191,10 +193,10 @@ const CAL = {
             : '';
           h += `<td class="cv-cell is-booked${isRec ? ' is-rec' : ''}${isInvited ? ' is-invited' : ''}${isRdv ? ' is-rdv' : ''}" rowspan="${span}"
             data-id="${res.id}" data-occ="${res._occDate || ''}" data-act="detail" data-type="${res.type || ''}"
-            data-slot="${i}" data-local="${l}" data-span="${span}" data-occ-date="${isoDate(res._start)}"
+            data-slot="${i}" data-local="${u.localId}" data-desk="${u.deskId || ''}" data-span="${span}" data-occ-date="${isoDate(res._start)}"
             ${colorStyle}>
             <span class="ct ct-drag" draggable="true"
-              data-id="${res.id}" data-slot="${i}" data-local="${l}" data-span="${span}"
+              data-id="${res.id}" data-slot="${i}" data-local="${u.localId}" data-desk="${u.deskId || ''}" data-span="${span}"
               data-occ-date="${isoDate(res._start)}" data-is-rec="${isRec ? '1' : '0'}">
               ${svcs.map(s => `<b>${escapeHtml(s)}</b>`).join('<br>')}
               <br><small>${agtFmt}</small><br>
@@ -206,7 +208,7 @@ const CAL = {
           </td>`;
 
         } else {
-          h += `<td class="cv-cell is-free" data-local="${l}" data-date="${isoDate(d)}" data-time="${slot.label}" data-slot="${i}" data-act="new"></td>`;
+          h += `<td class="cv-cell is-free" data-local="${u.localId}" data-desk="${u.deskId || ''}" data-date="${isoDate(d)}" data-time="${slot.label}" data-slot="${i}" data-act="new"></td>`;
         }
       });
 
@@ -277,21 +279,24 @@ const CAL = {
         const sE   = new Date(sS.getTime() + slotMinWk * 60000);
         const isTd = sameDay(day, today);
 
-        const localsSet = new Set(CONFIG.LOCALS.map(Number));
+        const wkUnits = DB.getDisplayUnits();
         const booked = new Set();
-        occs.forEach(r => {
-          if (!localsSet.has(parseInt(r.localId))) return;
-          if (r.isPermanent) { booked.add(r.localId); return; }
-          if (r._start && sameDay(r._start, day) && r._start < sE && r._end > sS) booked.add(r.localId);
+        wkUnits.forEach(u => {
+          const unitKey = u.deskId ?? u.localId;
+          occs.forEach(r => {
+            if (!DB.unitOccupies(r, u.localId, u.deskId)) return;
+            if (r.isPermanent) { booked.add(unitKey); return; }
+            if (r._start && sameDay(r._start, day) && r._start < sE && r._end > sS) booked.add(unitKey);
+          });
         });
 
-        const total = CONFIG.LOCALS.length;
+        const total = wkUnits.length;
         const free  = total - booked.size;
         const color = availColor(free, total);
 
         h += `<div class="wk-cell${isTd ? ' is-today' : ''}" style="background:${color}"
           data-date="${isoDate(day)}" data-time="${slot.label}" data-act="new-week"
-          title="${free}/${total} locaux libres — ${slot.label}">
+          title="${free}/${total} unités libres — ${slot.label}">
           <span class="wk-cnt">${free}/${total}</span>
         </div>`;
       }
@@ -339,26 +344,29 @@ const CAL = {
         const inMonth = cursor.getMonth() === month && cursor.getFullYear() === year;
         const isTd    = sameDay(cursor, today);
 
-        let free = CONFIG.LOCALS.length;
+        const moUnits = DB.getDisplayUnits();
+        const moTotal = moUnits.length;
+        let free = moTotal;
         if (inMonth) {
-          const localsSet = new Set(CONFIG.LOCALS.map(Number));
           const booked = new Set();
-          occs.forEach(r => {
-            const lid = parseInt(r.localId);
-            if (!localsSet.has(lid)) return;
-            if (r.isPermanent) { booked.add(lid); return; }
-            if (r._start && sameDay(r._start, cursor)) booked.add(lid);
+          moUnits.forEach(u => {
+            const unitKey = u.deskId ?? u.localId;
+            occs.forEach(r => {
+              if (!DB.unitOccupies(r, u.localId, u.deskId)) return;
+              if (r.isPermanent) { booked.add(unitKey); return; }
+              if (r._start && sameDay(r._start, cursor)) booked.add(unitKey);
+            });
           });
-          free = Math.max(0, CONFIG.LOCALS.length - booked.size);
+          free = Math.max(0, moTotal - booked.size);
         }
 
-        const color = inMonth ? availColor(free, CONFIG.LOCALS.length) : 'transparent';
+        const color = inMonth ? availColor(free, moTotal) : 'transparent';
 
         const isHoliday = inMonth && isBelgianHoliday(isoDate(cursor));
         h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}${isHoliday ? ' is-holiday' : ''}"
           data-date="${isoDate(cursor)}" data-act="go-day" ${isHoliday ? `title="${getHolidayName(isoDate(cursor))}"` : ''}>
           <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}${isHoliday ? ' 🇧🇪' : ''}</div>
-          ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/${CONFIG.LOCALS.length}</div>` : ''}
+          ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/${moTotal}</div>` : ''}
         </div>`;
 
         cursor = addDays(cursor, 1);
@@ -452,6 +460,7 @@ const CAL = {
         durMs:       span * DB.getLieuConfig().slotMin * 60000,
         occDate:     handle.dataset.occDate,
         origLocalId: parseInt(handle.dataset.local),
+        origDeskId:  handle.dataset.desk || null,
       };
       // Marquer la cellule parente
       const card = handle.closest('.cv-cell.is-booked');
@@ -472,7 +481,7 @@ const CAL = {
       // Colonne via la td la plus proche (booked ou free, peu importe)
       const td = e.target.closest('td[data-local]');
       if (!td) return null;
-      return { slot: parseInt(row.dataset.slot), local: td.dataset.local };
+      return { slot: parseInt(row.dataset.slot), local: td.dataset.local, desk: td.dataset.desk || null };
     }
 
     // ── dragover — toujours appelé sur la table entière ─────────────
@@ -489,7 +498,7 @@ const CAL = {
       // Surligner les slots de la durée dans la colonne cible
       for (let s = hit.slot; s < hit.slot + self._dnd.span; s++) {
         const row  = table.querySelector(`tr[data-slot="${s}"]`);
-        const cell = row?.querySelector(`.cv-cell.is-free[data-local="${hit.local}"]`);
+        const cell = row?.querySelector(`.cv-cell.is-free[data-local="${hit.local}"][data-desk="${hit.desk || ''}"]`);
         if (cell) cell.classList.add('dnd-over');
       }
     });
@@ -524,6 +533,7 @@ const CAL = {
       }
 
       const newLocalId  = parseInt(hit.local);
+      const newDeskId   = hit.desk || null;
       const dateStr     = isoDate(d);
       const hh = slotInfo.h, mm = slotInfo.m;
       const newStart    = new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00`);
@@ -531,11 +541,11 @@ const CAL = {
       const newStartISO = `${dateStr}T${pad(hh)}:${pad(mm)}`;
       const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
 
-      // Vérification des conflits — même local
+      // Vérification des conflits — même unité (local/desk)
       const conflicts = DB.getInRange(newStart, newEnd)
-        .filter(r => parseInt(r.localId) === newLocalId && r.id !== dnd.resId);
+        .filter(r => DB.unitOccupies(r, newLocalId, newDeskId) && r.id !== dnd.resId);
       if (conflicts.length) {
-        showToast('⚠ Conflit : créneau déjà occupé pour ce local.');
+        showToast('⚠ Conflit : créneau déjà occupé pour cette unité.');
         return;
       }
       // Vérification des conflits — agent dans un autre local
@@ -564,17 +574,17 @@ const CAL = {
           info: `Voulez-vous déplacer seulement l'occurrence du <strong>${fromDate}</strong>, ou toute la série ?`,
           okLabel: 'Cette occurrence', okClass: 'ok-open',
           onOk: async () => {
-            try { await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO); showToast('Occurrence déplacée ✓'); }
+            try { await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO, newDeskId); showToast('Occurrence déplacée ✓'); }
             catch(err) { showToast('Erreur : ' + err.message); }
           },
           ok2Label: 'Toute la série', ok2Class: 'ok-close',
           onOk2: async () => {
-            try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO); showToast('Série déplacée ✓'); }
+            try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO, newDeskId); showToast('Série déplacée ✓'); }
             catch(err) { showToast('Erreur : ' + err.message); }
           },
         });
       } else {
-        try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO); showToast('Réservation déplacée ✓'); }
+        try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO, newDeskId); showToast('Réservation déplacée ✓'); }
         catch(err) { showToast('Erreur : ' + err.message); }
       }
     });
@@ -598,6 +608,7 @@ const CAL = {
         isRec:    drag?.dataset.isRec === '1',
         occDate:  cell.dataset.occDate || '',
         localId:  parseInt(cell.dataset.local),
+        deskId:   cell.dataset.desk || null,
         startSlot: parseInt(cell.dataset.slot),
         origSpan:  parseInt(cell.dataset.span) || 1,
         curEndSlot: parseInt(cell.dataset.slot) + (parseInt(cell.dataset.span) || 1) - 1,
@@ -651,12 +662,12 @@ const CAL = {
       endDT.setHours(endInfo.h, endInfo.m + slotMin, 0, 0);
       const newEnd    = `${isoDate(endDT)}T${pad(endDT.getHours())}:${pad(endDT.getMinutes())}`;
 
-      // Vérifier conflits — même local
+      // Vérifier conflits — même unité (local/desk)
       const _rzNewStart = new Date(`${newStart}:00`);
       const _rzNewEnd   = new Date(`${newEnd}:00`);
       const clashCheck = DB.getInRange(_rzNewStart, _rzNewEnd)
-        .filter(r => parseInt(r.localId) === rz.localId && r.id !== rz.resId);
-      if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé dans ce local.'); self.render(); return; }
+        .filter(r => DB.unitOccupies(r, rz.localId, rz.deskId) && r.id !== rz.resId);
+      if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé dans cette unité.'); self.render(); return; }
       // Vérifier conflits — agent dans un autre local
       const _rzRes = DB.getReservationById?.(rz.resId);
       if (_rzRes) {
@@ -683,19 +694,19 @@ const CAL = {
           info: `Voulez-vous modifier seulement l'occurrence du <strong>${fromDate}</strong>, ou toute la série ?`,
           okLabel: 'Cette occurrence', okClass: 'ok-open',
           onOk: async () => {
-            try { await DB.moveOccurrence(rz.resId, rz.occDate, rz.localId, newStart, newEnd); showToast('Occurrence redimensionnée ✓'); }
+            try { await DB.moveOccurrence(rz.resId, rz.occDate, rz.localId, newStart, newEnd, rz.deskId); showToast('Occurrence redimensionnée ✓'); }
             catch(err) { showToast('Erreur : ' + err.message); }
             self.render();
           },
           ok2Label: 'Toute la série', ok2Class: 'ok-close',
           onOk2: async () => {
-            try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd); showToast('Série redimensionnée ✓'); }
+            try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd, rz.deskId); showToast('Série redimensionnée ✓'); }
             catch(err) { showToast('Erreur : ' + err.message); }
             self.render();
           },
         });
       } else {
-        try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd); showToast('Réservation redimensionnée ✓'); }
+        try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd, rz.deskId); showToast('Réservation redimensionnée ✓'); }
         catch(err) { showToast('Erreur : ' + err.message); }
         self.render();
       }
@@ -713,7 +724,7 @@ const CAL = {
         if (act === 'detail') {
           MODAL.openDetail(cell.dataset.id, cell.dataset.occ || '');
         } else if (act === 'new') {
-          MODAL.openNew({ local: parseInt(cell.dataset.local), date: cell.dataset.date, time: cell.dataset.time });
+          MODAL.openNew({ local: parseInt(cell.dataset.local), desk: cell.dataset.desk || null, date: cell.dataset.date, time: cell.dataset.time });
         } else if (act === 'new-week') {
           MODAL.openNew({ date: cell.dataset.date, time: cell.dataset.time });
         } else if (act === 'go-day') {

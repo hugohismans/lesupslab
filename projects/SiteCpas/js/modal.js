@@ -40,12 +40,30 @@ const MODAL = {
 
     // Mettre à jour les créneaux horaires selon les horaires du lieu actif
     this._refreshTimeOpts();
+    this._refreshDeskSelect();
 
     // Re-rendre la liste paramètres uniquement si aucun input n'est en cours d'édition
     const overlay = g('settingsOverlay');
     if (!overlay.classList.contains('hidden')) {
       const focused = overlay.querySelector('input:focus');
       if (!focused) this._renderSettingsList();
+    }
+  },
+
+  // Mettre à jour le select desk selon le local sélectionné
+  _refreshDeskSelect() {
+    const localId = parseInt(g('fLocal').value);
+    const wrap = g('fDeskWrap'), sel = g('fDesk');
+    if (!wrap || !sel) return;
+    if (localId && DB.localHasDesks(localId)) {
+      sel.innerHTML = '<option value="">— Sélectionner un desk —</option>' +
+        DB.getLocalDesks(localId).map(d =>
+          `<option value="${d}">${escapeHtml(DB.getDeskLabel(d))}</option>`
+        ).join('');
+      wrap.style.display = '';
+    } else {
+      sel.innerHTML = '';
+      wrap.style.display = 'none';
     }
   },
 
@@ -333,7 +351,16 @@ const MODAL = {
     const localIds = currentLieu?.localIds || [];
 
     g('stLocalList').innerHTML = localIds.length
-      ? localIds.map(id => `
+      ? localIds.map(id => {
+          const desks = DB.getLocalDesks(id);
+          const deskRows = desks.map(deskId => `
+            <div class="st-desk-row">
+              <input class="st-desk-input" type="text" data-localid="${id}" data-deskid="${deskId}"
+                     value="${escapeHtml(DB.getDeskLabel(deskId))}" placeholder="Nom du desk">
+              <button class="st-desk-save" data-localid="${id}" data-deskid="${deskId}" title="Renommer">✓</button>
+              <button class="st-desk-del" data-localid="${id}" data-deskid="${deskId}" title="Supprimer">✕</button>
+            </div>`).join('');
+          return `
           <div class="st-local-row">
             <div class="st-local-labels">
               <input class="st-local-input" type="text" data-localid="${id}"
@@ -347,7 +374,16 @@ const MODAL = {
             </div>
             <button class="st-local-save" data-localid="${id}" title="Enregistrer">✓</button>
             <button class="st-local-del" data-localid="${id}" data-lieu="${currentLieuId}" title="Supprimer">✕</button>
-          </div>`).join('')
+            <div class="st-desk-section">
+              <div class="st-desk-title">Desks${desks.length ? '' : ' <span class="st-no-desk">(aucun)</span>'}</div>
+              ${deskRows}
+              <div class="st-desk-add-row">
+                <input class="st-desk-add-input" type="text" data-localid="${id}" placeholder="Nouveau desk…">
+                <button class="st-desk-add-btn" data-localid="${id}">+ Desk</button>
+              </div>
+            </div>
+          </div>`;
+        }).join('')
       : '<p class="st-empty">Aucun local dans ce lieu.</p>';
 
     g('settingsOverlay').querySelectorAll('.st-local-save').forEach(btn => {
@@ -386,6 +422,49 @@ const MODAL = {
         btn.disabled = true;
         await DB.removeLocal(lieuId, localId);
         showToast('Local supprimé ✓');
+      }));
+    });
+
+    // ── Desks ────────────────────────────────────────────────────
+    g('settingsOverlay').querySelectorAll('.st-desk-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const deskId  = btn.dataset.deskid;
+        const row     = btn.closest('.st-desk-row');
+        const input   = row?.querySelector('.st-desk-input');
+        if (!input) return;
+        btn.disabled = true;
+        await DB.setDeskLabel(deskId, input.value);
+        showToast('Desk renommé ✓');
+        btn.disabled = false;
+      }));
+    });
+    g('settingsOverlay').querySelectorAll('.st-desk-input').forEach(input => {
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') input.closest('.st-desk-row')?.querySelector('.st-desk-save')?.click();
+      });
+    });
+    g('settingsOverlay').querySelectorAll('.st-desk-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const localId = parseInt(btn.dataset.localid);
+        const deskId  = btn.dataset.deskid;
+        if (!confirm(`Supprimer ce desk ? Les réservations existantes ne seront pas supprimées.`)) return;
+        btn.disabled = true;
+        await DB.removeDesk(localId, deskId);
+        showToast('Desk supprimé ✓');
+      }));
+    });
+    g('settingsOverlay').querySelectorAll('.st-desk-add-btn').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const localId = parseInt(btn.dataset.localid);
+        const row     = btn.closest('.st-desk-add-row');
+        const input   = row?.querySelector('.st-desk-add-input');
+        const label   = input?.value.trim();
+        if (!label) return;
+        btn.disabled = true;
+        await DB.addDeskToLocal(localId, label);
+        if (input) input.value = '';
+        showToast('Desk ajouté ✓');
+        btn.disabled = false;
       }));
     });
 
@@ -1413,6 +1492,12 @@ const MODAL = {
     // Basculer UI back-office si un local est pré-sélectionné
     if (opts.local) this._onLocalChange();
 
+    // Pré-sélectionner le desk si fourni
+    if (opts.desk) {
+      this._refreshDeskSelect();
+      if (g('fDesk')) g('fDesk').value = opts.desk;
+    }
+
     // Pré-remplir avec l'agent connecté (mode non back-office uniquement)
     const _connectedAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
     if (_connectedAgentName && g('fAgent') && !DB.isLocalBackoffice(parseInt(opts.local))) {
@@ -1454,7 +1539,7 @@ const MODAL = {
     const recL  = { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle' };
 
     let html = `
-      <div class="det-row"><span class="det-l">Local</span>   <span class="det-v">${DB.getLocalLabel(res.localId)}</span></div>
+      <div class="det-row"><span class="det-l">Local</span>   <span class="det-v">${DB.getUnitLabel(parseInt(res.localId), res.deskId || null)}</span></div>
       <div class="det-row"><span class="det-l">Service</span> <span class="det-v">${svc}</span></div>
       <div class="det-row"><span class="det-l">Agent</span>   <span class="det-v">${fmtAgent(agt)}</span></div>
       ${res.agents && res.agents.length > 1
@@ -1518,6 +1603,9 @@ const MODAL = {
       return alert('Veuillez préciser le service personnalisé.');
     if (!isBO && agent === 'Autre' && !g('fAgentCustom').value.trim())
       return alert("Veuillez préciser l'agent.");
+
+    const deskId = DB.localHasDesks(localId) ? (g('fDesk')?.value || null) : null;
+    if (DB.localHasDesks(localId) && !deskId) return alert('Veuillez sélectionner un desk.');
 
     let startDT = null, endDT = null;
     let exceptionDates = {}; // dates à exclure si l'utilisateur choisit "avec exceptions"
@@ -1584,7 +1672,7 @@ const MODAL = {
       const conflicts = [];
       myOccs.forEach(occ => {
         const clash = DB.getInRange(occ._start, occ._end).filter(r =>
-          parseInt(r.localId) === localId && r.id !== this._editId
+          DB.unitOccupies(r, localId, deskId) && r.id !== this._editId
           && (r.isPermanent || (r._start < occ._end && r._end > occ._start))
         );
         if (clash.length) conflicts.push({ occ, clash });
@@ -1663,7 +1751,7 @@ const MODAL = {
       const permStart = new Date(startDT);
       const permEnd   = new Date(permStart); permEnd.setFullYear(permEnd.getFullYear() + 5);
       const allOccs   = DB.getInRange(permStart, permEnd).filter(r =>
-        parseInt(r.localId) === localId && r.id !== this._editId
+        DB.unitOccupies(r, localId, deskId) && r.id !== this._editId
       );
 
       if (allOccs.length) {
@@ -1713,6 +1801,7 @@ const MODAL = {
 
     const data = {
       localId,
+      deskId: deskId || null,
       service,    services,   serviceCustom: g('fServiceCustom').value.trim(),
       agent,      agentCustom:   isBO ? '' : g('fAgentCustom').value.trim(),
       comment:    g('fComment').value.trim(),
@@ -1870,6 +1959,8 @@ const MODAL = {
     g('resTitle').textContent = 'Modifier la réservation';
 
     g('fLocal').value    = res.localId;
+    this._refreshDeskSelect();
+    if (res.deskId && g('fDesk')) g('fDesk').value = res.deskId;
     g('fComment').value  = res.comment || '';
     g('fPermanent').checked = res.isPermanent;
 
@@ -1961,6 +2052,9 @@ const MODAL = {
     cls('fAgentSingleWrap', false);
     cls('fAgentsListWrap',  true);
     if (g('fAgentsList')) g('fAgentsList').innerHTML = '';
+    // Réinitialiser le desk
+    if (g('fDesk'))     g('fDesk').value = '';
+    if (g('fDeskWrap')) g('fDeskWrap').style.display = 'none';
   },
 
   // Basculer entre mode agent unique et liste multi-agents selon le local
@@ -1971,6 +2065,7 @@ const MODAL = {
     cls('fAgentsListWrap',  !isBO);  // hidden si normal
     cls('fInviteWrap',      isBO);   // cacher les invités en backoffice
     if (isBO) this._populateBoAgents();
+    this._refreshDeskSelect();
   },
 
   // Remplir la liste de chips d'agents pour un local back-office
@@ -2018,6 +2113,7 @@ const MODAL = {
     const de      = g('fDateEnd').value;
     const te      = g('fTimeEnd').value;
     const localId = parseInt(g('fLocal').value);
+    const deskId  = DB.localHasDesks(localId) ? (g('fDesk')?.value || null) : null;
     const hint    = g('localHint');
 
     if (!ds || !ts || !de || !te) { hint.innerHTML = ''; hint.className = 'hint'; return; }
@@ -2044,37 +2140,32 @@ const MODAL = {
         : e;
     const myOccs = expandReservation('__hint__', tempRes, s, checkEnd);
 
-    // Locaux occupés sur au moins une occurrence
-    const bookedOnAny = new Set();
-    myOccs.forEach(occ => {
-      DB.getInRange(occ._start, occ._end)
-        .filter(r => r.id !== this._editId)
-        .forEach(r => bookedOnAny.add(parseInt(r.localId)));
-    });
+    const allUnits = DB.getDisplayUnits();
 
-    // Locaux occupés uniquement sur la 1ère occurrence (pour la liste "libres")
-    const bookedFirst = new Set(
-      DB.getInRange(s, e).filter(r => r.id !== this._editId).map(r => parseInt(r.localId))
+    // Unités libres sur la 1ère occurrence (pour la liste "libres")
+    const takenFirst = new Set(
+      DB.getInRange(s, e).filter(r => r.id !== this._editId)
+        .map(r => r.deskId || String(r.localId))
     );
-    const free = CONFIG.LOCALS.filter(l => !bookedFirst.has(l));
+    const freeUnits = allUnits.filter(u => !takenFirst.has(u.deskId || String(u.localId)));
 
-    // Compter les conflits si un local est sélectionné
+    // Compter les conflits si une unité est sélectionnée
     if (localId) {
       const conflictOccs = myOccs.filter(occ =>
         DB.getInRange(occ._start, occ._end).some(r =>
-          parseInt(r.localId) === localId && r.id !== this._editId
+          DB.unitOccupies(r, localId, deskId) && r.id !== this._editId
           && (r.isPermanent || (r._start < occ._end && r._end > occ._start))
         )
       );
       if (conflictOccs.length) {
-        const label = DB.getLocalLabel(localId);
-        const freeList = free.length
-          ? '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>'
-          : '<em>Aucun local disponible</em>';
+        const label = DB.getUnitLabel(localId, deskId);
+        const freeList = freeUnits.length
+          ? '<ul class="hint-list">' + freeUnits.map(u => `<li>${escapeHtml(u.fullLabel)}</li>`).join('') + '</ul>'
+          : '<em>Aucune unité disponible</em>';
 
         // Vérifier si le conflit est dû à une réservation permanente
         const permConflict = DB.getInRange(conflictOccs[0]._start, conflictOccs[0]._end).find(r =>
-          parseInt(r.localId) === localId && r.id !== this._editId && r.isPermanent
+          DB.unitOccupies(r, localId, deskId) && r.id !== this._editId && r.isPermanent
         );
 
         let suffix;
@@ -2093,24 +2184,21 @@ const MODAL = {
           suffix = ` à partir du <b>${firstDate}</b> (${recLbls[recType2] || 'récurrent'} · ${conflictOccs.length} occurrence${conflictOccs.length > 1 ? 's' : ''})`;
         }
 
-        const freeTitle = permConflict ? 'Locaux libres :' : 'Locaux libres (1ère date conflictuelle) :';
-        hint.innerHTML = `⚠️ <b>${label}</b>${permConflict ? '' : ' est déjà réservé'}${suffix}.<br>${freeTitle}${freeList}`;
+        const freeTitle = permConflict ? 'Unités libres :' : 'Unités libres (1ère date conflictuelle) :';
+        hint.innerHTML = `⚠️ <b>${escapeHtml(label)}</b>${permConflict ? '' : ' est déjà réservé'}${suffix}.<br>${freeTitle}${freeList}`;
         hint.className = 'hint hint-warn';
         return;
       }
     }
 
-    if (!free.length) {
-      hint.innerHTML = '❌ Aucun local disponible sur cette plage.';
+    if (!freeUnits.length) {
+      hint.innerHTML = '❌ Aucune unité disponible sur cette plage.';
       hint.className = 'hint hint-err';
       return;
     }
 
-    // Avertir si des conflits de série existent même si le local sélectionné est libre
-    const seriesWarn = isRec && localId && bookedOnAny.has(localId) ? '' : '';
-
-    const freeList = '<ul class="hint-list">' + free.map(l => `<li>${DB.getLocalLabel(l)}</li>`).join('') + '</ul>';
-    hint.innerHTML = '✅ Locaux libres sur cette plage :' + freeList;
+    const freeList = '<ul class="hint-list">' + freeUnits.map(u => `<li>${escapeHtml(u.fullLabel)}</li>`).join('') + '</ul>';
+    hint.innerHTML = '✅ Unités libres sur cette plage :' + freeList;
     hint.className = 'hint hint-ok';
   }
 };
