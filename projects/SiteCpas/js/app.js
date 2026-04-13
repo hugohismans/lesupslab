@@ -1832,16 +1832,16 @@ function updateOrgName() {
 
 // ── Widget Manager — personnalisation de la page d'accueil ───────────────────
 const WIDGETS = [
-  { id: 'agenda',    label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda' },
-  { id: 'presence',  label: '🗺 Qui est où',                      selector: '.hs-widget-presence' },
-  { id: 'declare',   label: '📍 Me déclarer dans un bureau',      selector: '.hs-widget-declare' },
-  { id: 'qgroups',   label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups' },
-  { id: 'weather',   label: '🌤 Météo',                           selector: '.hs-widget-weather' },
-  { id: 'stats',     label: '📊 Stats du jour',                   selector: '.hs-widget-stats' },
-  { id: 'upcoming',  label: '⏰ Prochaines réservations',         selector: '.hs-widget-upcoming' },
-  { id: 'notifs',    label: '🔔 Dernières notifications',         selector: '.hs-widget-notifs' },
-  { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week' },
-  { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts' },
+  { id: 'agenda',    label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda',    width: 'half' },
+  { id: 'presence',  label: '🗺 Qui est où',                      selector: '.hs-widget-presence',  width: 'half' },
+  { id: 'declare',   label: '📍 Me déclarer dans un bureau',      selector: '.hs-widget-declare',   width: 'full' },
+  { id: 'qgroups',   label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups',   width: 'full' },
+  { id: 'weather',   label: '🌤 Météo',                           selector: '.hs-widget-weather',   width: 'half' },
+  { id: 'stats',     label: '📊 Stats du jour',                   selector: '.hs-widget-stats',     width: 'half' },
+  { id: 'upcoming',  label: '⏰ Prochaines réservations',         selector: '.hs-widget-upcoming',  width: 'full' },
+  { id: 'notifs',    label: '🔔 Dernières notifications',         selector: '.hs-widget-notifs',    width: 'half' },
+  { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week',      width: 'full' },
+  { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts', width: 'full' },
 ];
 
 // ── Définition des raccourcis disponibles ───────────────────────────
@@ -2134,18 +2134,24 @@ function _openCustomizeModal(agentKey) {
   const ordered = [...WIDGETS].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   const n = ordered.length;
 
-  list.innerHTML = ordered.map((w, idx) => `
+  list.innerHTML = ordered.map((w, idx) => {
+    const widthBadge = w.width === 'half'
+      ? `<span class="hs-cust-badge hs-cust-badge-half">½ largeur</span>`
+      : `<span class="hs-cust-badge hs-cust-badge-full">↔ pleine</span>`;
+    return `
     <div class="hs-customize-row">
       <label class="hs-customize-chk-label">
         <input type="checkbox" class="hs-customize-cb" data-widget="${w.id}"
           ${!hidden.includes(w.id) ? 'checked' : ''}>
         <span>${w.label}</span>
       </label>
+      ${widthBadge}
       <div class="hs-customize-arrows">
         <button class="hs-cust-arrow" data-dir="up"   data-widget="${w.id}"${idx === 0     ? ' disabled' : ''}>▲</button>
         <button class="hs-cust-arrow" data-dir="down" data-widget="${w.id}"${idx === n - 1 ? ' disabled' : ''}>▼</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   list.querySelectorAll('.hs-customize-cb').forEach(cb => {
     cb.addEventListener('change', () => {

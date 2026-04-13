@@ -4165,6 +4165,12 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 }
 .hs-cust-arrow:hover:not(:disabled) { background: #f1f5f9; color: #1e293b; }
 .hs-cust-arrow:disabled { opacity: .3; cursor: default; }
+.hs-cust-badge {
+  font-size: .68rem; font-weight: 600; border-radius: 5px;
+  padding: .15rem .45rem; white-space: nowrap; flex-shrink: 0;
+}
+.hs-cust-badge-half { background: #e0f2fe; color: #0369a1; }
+.hs-cust-badge-full { background: #f0fdf4; color: #15803d; }
 .hs-customize-footer { margin-top: 1rem; display: flex; justify-content: flex-end; }
 
 /* ── Raccourcis ──────────────────────────────────────────────────── */
