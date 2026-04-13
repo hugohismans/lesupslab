@@ -318,8 +318,9 @@ function render() {
 
   const bureauCards = _locals.map(l => {
     const pref = _preferredPending[String(l)];
+    const _prefLabel = pref ? (pref.ticketLabel ? `${pref.ticketLabel} · ${pref.displayName || '?'}` : (pref.displayName || '?')) : '';
     const prefBanner = pref
-      ? `<div class="pub-pref-banner">👤 <strong>${escapeHtml(pref.displayName || '?')}</strong> sera reçu(e) par ${escapeHtml(pref.agentPublicName || '?')}</div>`
+      ? `<div class="pub-pref-banner">👤 <strong>${escapeHtml(_prefLabel)}</strong> sera reçu(e) par ${escapeHtml(pref.agentPublicName || '?')}</div>`
       : '';
     const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
     const res  = occs.find(r => parseInt(r.localId) === l && !r.isPermanent && r._start <= now && r._end > now);
