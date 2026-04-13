@@ -479,20 +479,45 @@ async function main() {
   // Écouter les réservations en temps réel → re-rendre les créneaux à chaque changement
   const integratorName = agentsData[integratorKey] || 'Intégrateur';
   const expandedSlots  = expandSlots(rawSlots);
+  let   _lastResData   = {};
+
+  function _rebuildAndRender() {
+    const localVal    = document.getElementById('localSelect').value;
+    const selectedLid = localVal ? localVal.split('|')[1] : null;
+    const taken = new Set();
+
+    Object.values(_lastResData).forEach(r => {
+      if (!r.startDateTime || r.isPermanent) return;
+      const rS = r.startDateTime;
+      const rE = r.endDateTime || '';
+      // Hugo est dans la resa
+      const isHugo = r.agent === integratorName ||
+                     (Array.isArray(r.agents) && r.agents.includes(integratorName));
+      // Le local sélectionné est occupé (chevauchement de plage)
+      const isLocalBusy = selectedLid && String(r.localId) === String(selectedLid) && rE;
+      if (!isHugo && !isLocalBusy) return;
+      // Marquer tous les chunks qui chevauchent cette réservation
+      expandedSlots.forEach(slot => {
+        splitInto30(slot).forEach(chunk => {
+          if (chunk.startDateTime < rE && chunk.endDateTime > rS) {
+            taken.add(chunk.startDateTime);
+          }
+        });
+      });
+    });
+    renderSlots(expandedSlots, taken);
+  }
+
+  // Re-rendre quand le local change
+  document.getElementById('localSelect').addEventListener('change', _rebuildAndRender);
 
   showScreen('screenBook');
   renderColleagues(agentsData, agentKey, integratorKey);
 
   ref('reservations').on('value', snap => {
-    const takenSlots = new Set();
-    snap.forEach(child => {
-      const r = child.val();
-      if (!r.startDateTime || r.isPermanent) return;
-      const isHugo = (r.agent === integratorName) ||
-                     (Array.isArray(r.agents) && r.agents.includes(integratorName));
-      if (isHugo) takenSlots.add(r.startDateTime);
-    });
-    renderSlots(expandedSlots, takenSlots);
+    _lastResData = {};
+    snap.forEach(c => { _lastResData[c.key] = c.val(); });
+    _rebuildAndRender();
   });
 
   // Bouton confirmer
