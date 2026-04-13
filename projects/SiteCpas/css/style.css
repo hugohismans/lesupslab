@@ -5277,6 +5277,12 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .rdv-time-picker { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: .75rem 1rem; }
 .rdv-time-picker label { font-size: .85rem; font-weight: 600; color: #374151; margin-bottom: .5rem; display: block; }
 .rdv-tp-hint { font-weight: 400; color: #94a3b8; font-size: .78rem; }
+
+/* Secret RDV */
+.rdv-secret-label { display: flex; align-items: center; gap: .45rem; cursor: pointer; font-size: .88rem; font-weight: 500; color: #374151; }
+.rdv-secret-label input[type="checkbox"] { accent-color: #7c3aed; width: 15px; height: 15px; }
+.rdv-secret-hint   { font-size: .78rem; color: #94a3b8; margin: .25rem 0 0 1.6rem; }
+.det-secret        { color: #7c3aed; font-style: italic; }
 .rdv-tp-slots { display: flex; flex-wrap: wrap; gap: .35rem; }
 .rdv-tp-slot-btn {
   padding: .3rem .8rem;

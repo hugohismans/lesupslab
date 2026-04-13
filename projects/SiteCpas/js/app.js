@@ -3628,7 +3628,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Créer la réservation RDV
-    await DB._ref('reservations').push({ localId: String(localId), agent: myName, services: [], type: 'rendez-vous', startDateTime: startDT, endDateTime: endDT, note: rdvNote, recurrence: { type: 'none' }, createdAt: Date.now() });
+    await DB._ref('reservations').push({ localId: String(localId), agent: myName, services: [], type: 'rendez-vous', startDateTime: startDT, endDateTime: endDT, note: rdvNote, secret: req.secret ? true : null, requesterAgentKey: req.requesterAgentKey || null, targetAgentKey: _myKey || null, recurrence: { type: 'none' }, createdAt: Date.now() });
 
     // Mettre à jour la demande
     await DB.acceptAppointmentRequest(requestId, localId);

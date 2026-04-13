@@ -1439,7 +1439,12 @@ const MODAL = {
     const res = DB.getAll()[id];
     if (!res) return;
 
-    const svc  = res.type === 'rendez-vous' ? '📅 Rendez-vous' : DB.getSvcLabel(res);
+    const myKey      = sessionStorage.getItem('cpas_current_agent_key');
+    const isConcerned = !res.secret || (myKey && (myKey === res.requesterAgentKey || myKey === res.targetAgentKey));
+    const isSecret   = res.type === 'rendez-vous' && !!res.secret;
+    const svc  = res.type === 'rendez-vous'
+      ? (isSecret ? (isConcerned ? '📅 Rendez-vous 🔒' : '📅 Rendez-vous 🔒') : '📅 Rendez-vous')
+      : DB.getSvcLabel(res);
     const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
     const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
     const recL  = { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle' };
@@ -1469,7 +1474,11 @@ const MODAL = {
     }
 
     if (res.note) {
-      html += `<div class="det-row"><span class="det-l">Note</span><span class="det-v">${res.note}</span></div>`;
+      if (isConcerned) {
+        html += `<div class="det-row"><span class="det-l">Note</span><span class="det-v">${res.note}</span></div>`;
+      } else {
+        html += `<div class="det-row"><span class="det-l">Note</span><span class="det-v det-secret">🔒 Confidentiel</span></div>`;
+      }
     } else if (res.comment) {
       html += `<div class="det-row"><span class="det-l">Note</span><span class="det-v">${res.comment}</span></div>`;
     }

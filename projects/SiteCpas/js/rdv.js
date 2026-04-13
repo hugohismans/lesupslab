@@ -650,6 +650,7 @@
     }
 
     const message = document.getElementById('rdvMessage')?.value.trim() || '';
+    const secret  = !!document.getElementById('rdvSecret')?.checked;
 
     const btn = document.getElementById('rdvSendRequest');
     if (btn) btn.disabled = true;
@@ -662,6 +663,7 @@
         endDateTime:       _selectedSlot.selectedEnd,
         withPerson,
         message,
+        secret,
       });
     } catch (e) {
       _showError('rdvRequestError', 'Erreur : ' + e.message);
@@ -670,7 +672,7 @@
     }
   }
 
-  async function _processRequest({ targetAgentKey, slotId, startDateTime, endDateTime, withPerson, message }) {
+  async function _processRequest({ targetAgentKey, slotId, startDateTime, endDateTime, withPerson, message, secret }) {
     // Vérifier qu'il n'est pas déjà pris
     const taken = await DB.isSlotTaken(targetAgentKey, slotId);
     if (taken) {
@@ -694,6 +696,7 @@
         requesterName,
         withPerson,
         message,
+        secret: secret || null,
       });
 
       // Stocker startDateTime/endDateTime dans la demande pour affichage ultérieur
@@ -730,7 +733,7 @@
         // Auto-accept avec local favori dispo
         const requestId = await DB.createAppointmentRequest({
           slotId, targetAgentKey,
-          requesterAgentKey: _agentKey, requesterName, withPerson, message,
+          requesterAgentKey: _agentKey, requesterName, withPerson, message, secret: secret || null,
         });
         await DB._ref(`appState/appointmentRequests/${requestId}`).update({
           startDateTime, endDateTime,
@@ -741,7 +744,7 @@
         // Auto-accept mais le demandeur doit choisir le local
         const requestId = await DB.createAppointmentRequest({
           slotId, targetAgentKey,
-          requesterAgentKey: _agentKey, requesterName, withPerson, message,
+          requesterAgentKey: _agentKey, requesterName, withPerson, message, secret: secret || null,
         });
         await DB._ref(`appState/appointmentRequests/${requestId}`).update({
           startDateTime, endDateTime,
@@ -905,16 +908,20 @@
     }
 
     // 3. Créer la réservation RDV
+    const req0 = await DB.getAppointmentRequest(requestId);
     await DB._ref('reservations').push({
-      localId:       String(localId),
-      agent:         agentDisplayName,
-      services:      [],
-      type:          'rendez-vous',
-      startDateTime: startDT,
-      endDateTime:   endDT,
-      note:          rdvNote,
-      recurrence:    { type: 'none' },
-      createdAt:     Date.now(),
+      localId:            String(localId),
+      agent:              agentDisplayName,
+      services:           [],
+      type:               'rendez-vous',
+      startDateTime:      startDT,
+      endDateTime:        endDT,
+      note:               rdvNote,
+      secret:             req0?.secret ? true : null,
+      requesterAgentKey:  req0?.requesterAgentKey || null,
+      targetAgentKey:     targetAgentKey,
+      recurrence:         { type: 'none' },
+      createdAt:          Date.now(),
     });
 
     // 4. Mettre à jour le statut de la demande

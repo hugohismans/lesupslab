@@ -206,6 +206,13 @@
           <label>Message <span class="rdv-opt">(optionnel)</span></label>
           <textarea id="rdvMessage" class="rdv-textarea" rows="3" placeholder="Contexte, objet du rendez-vous…"></textarea>
         </div>
+        <div class="rdv-field">
+          <label class="rdv-secret-label">
+            <input type="checkbox" id="rdvSecret">
+            <span>🔒 Rendez-vous confidentiel</span>
+          </label>
+          <p class="rdv-secret-hint">Si coché, seuls les agents concernés voient avec qui est le rendez-vous.</p>
+        </div>
 
         <div class="rdv-error hidden" id="rdvRequestError"></div>
         <button class="btn-primary" id="rdvSendRequest">📨 Envoyer la demande</button>
