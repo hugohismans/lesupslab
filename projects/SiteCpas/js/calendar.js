@@ -1418,13 +1418,15 @@ const LIVE = {
         const recallBtn = lastCallAny
           ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
           : '';
+        const _prefDisplay = preferred ? (preferred.ticketLabel ? `${preferred.ticketLabel} · ${preferred.displayName || '?'}` : (preferred.displayName || '?')) : '';
         const preferredBtn = preferred
-          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(preferred.displayName || '?')} qui ne souhaite voir que moi</button>`
+          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(_prefDisplay)} qui ne souhaite voir que moi</button>`
           : '';
         // Rappel preferred côté accueil (rappeler l'annonce publique)
         const pendingForAccueil = isAccueil ? DB.getPreferredPending(l) : null;
+        const _prefRecallDisplay = pendingForAccueil ? (pendingForAccueil.ticketLabel ? `${pendingForAccueil.ticketLabel} · ${pendingForAccueil.displayName || '?'}` : (pendingForAccueil.displayName || '?')) : '';
         const preferredRecallBtn = pendingForAccueil
-          ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(pendingForAccueil.displayName || '?')}" data-agent="${escapeHtml(pendingForAccueil.agentPublicName || '')}">📢 Rappeler ${escapeHtml(pendingForAccueil.displayName || '?')}</button>`
+          ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(pendingForAccueil.displayName || '?')}" data-agent="${escapeHtml(pendingForAccueil.agentPublicName || '')}">📢 Rappeler ${escapeHtml(_prefRecallDisplay)}</button>`
           : '';
         queueHtml = `<div class="lv-queue lv-queue-agent${optedOut ? ' lv-queue-opted-out' : ''}">
           ${grpHint}
@@ -1442,12 +1444,14 @@ const LIVE = {
           ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — Inscris-toi à une file d'attente !</div>`
           : '';
         const noGrpPreferred = amIHere ? DB.getPreferredPending(l) : null;
+        const _ngPrefDisp = noGrpPreferred ? (noGrpPreferred.ticketLabel ? `${noGrpPreferred.ticketLabel} · ${noGrpPreferred.displayName || '?'}` : (noGrpPreferred.displayName || '?')) : '';
         const noGrpPrefBtn = noGrpPreferred
-          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}">📥 Recevoir ${escapeHtml(noGrpPreferred.displayName || '?')} qui ne souhaite voir que moi</button>`
+          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}">📥 Recevoir ${escapeHtml(_ngPrefDisp)} qui ne souhaite voir que moi</button>`
           : '';
         const noGrpPrefRecall = isAccueil ? DB.getPreferredPending(l) : null;
+        const _ngRecallDisp = noGrpPrefRecall ? (noGrpPrefRecall.ticketLabel ? `${noGrpPrefRecall.ticketLabel} · ${noGrpPrefRecall.displayName || '?'}` : (noGrpPrefRecall.displayName || '?')) : '';
         const noGrpPrefRecallBtn = noGrpPrefRecall
-          ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(noGrpPrefRecall.displayName || '?')}" data-agent="${escapeHtml(noGrpPrefRecall.agentPublicName || '')}">📢 Rappeler ${escapeHtml(noGrpPrefRecall.displayName || '?')}</button>`
+          ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(noGrpPrefRecall.displayName || '?')}" data-agent="${escapeHtml(noGrpPrefRecall.agentPublicName || '')}">📢 Rappeler ${escapeHtml(_ngRecallDisp)}</button>`
           : '';
         const noGrpDismissBtn = (amIHere && busyWithPref)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
