@@ -515,6 +515,7 @@ async function loadOrgs() {
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="resetPostTest('${orgId}', '${name}')">🔄 Reset accueil</button>
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeQueueDay('${orgId}', '${name}')">🗑 Purger tickets</button>
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeCalendar('${orgId}', '${name}')">🗓 Vider calendrier</button>
+        <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="purgeNotifications('${orgId}', '${name}')">🔔 Vider notifs</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
       </div>
     </div>
@@ -775,6 +776,17 @@ async function purgeQueueDay(orgId, orgName) {
     await db.ref(`orgs/${orgId}/queues/${target}`).remove();
     await db.ref(`orgs/${orgId}/queueHistory/${target}`).remove();
     alert(`✅ Tickets du ${target} supprimés pour "${orgName}".`);
+  } catch (e) {
+    alert(`❌ Erreur : ${e.message}`);
+  }
+}
+
+// ── Vider les notifications de tout le monde ─────────────────────
+async function purgeNotifications(orgId, orgName) {
+  if (!confirm(`⚠️ Supprimer TOUTES les notifications de "${orgName}" ?\n\nCela vide la cloche de tous les agents.\nLes réservations, files et configuration ne sont PAS affectées.`)) return;
+  try {
+    await db.ref(`orgs/${orgId}/notifications`).remove();
+    alert(`✅ Toutes les notifications supprimées pour "${orgName}".`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
   }
