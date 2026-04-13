@@ -3846,6 +3846,10 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-status-done    { background: #0f172a; color: #94a3b8; border-color: #1e293b; font-style: italic; }
 .hs-status-absent  { background: #1f0808; color: #f87171; border-color: #7f1d1d44; }
 .hs-status-late    { background: #1a1208; color: #fbbf24; border-color: #78350f44; }
+.hs-status-cancel  { margin-left: auto; background: none; border: 1px solid currentColor;
+  border-radius: 6px; color: inherit; opacity: .6; cursor: pointer; padding: .1rem .45rem;
+  font-size: .78rem; line-height: 1.4; }
+.hs-status-cancel:hover { opacity: 1; }
 .hs-status-open    { background: #081f10; color: #4ade80; border-color: #14532d44; }
 .hs-status-bo      { background: #0c1629; color: #60a5fa; border-color: #1e3a5f44; }
 .hs-status-present { background: #081f10; color: #4ade80; border-color: #14532d44; }

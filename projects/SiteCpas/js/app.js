@@ -1167,6 +1167,14 @@ const HOME = {
         icon = '❌'; text = 'Absent aujourd\'hui'; cls = 'hs-status-absent';
       } else if (st?.status === 'late') {
         icon = '🚶'; text = st.arrivalTime ? `En route — arrivée prévue ${st.arrivalTime}` : 'J\'arrive !'; cls = 'hs-status-late';
+        // Permettre d'annuler le statut "en route" manuellement
+        setTimeout(() => {
+          const _cancelLate = document.getElementById('hsCancelLate');
+          if (_cancelLate) _cancelLate.onclick = async () => {
+            const _ak = sessionStorage.getItem('cpas_current_agent_key');
+            if (_ak) { await DB.setAgentStatus(_ak, null); }
+          };
+        }, 0);
       } else if (myBureauLabel) {
         icon = '🟢'; text = `Bureau ouvert — ${myBureauLabel}${myBureauLieu ? ` · ${myBureauLieu}` : ''}`; cls = 'hs-status-open';
       } else if (boLabel) {
@@ -1176,7 +1184,8 @@ const HOME = {
       }
 
       myStatusEl.className = `hs-my-status ${cls}`;
-      myStatusEl.innerHTML = `<span class="hs-status-icon">${icon}</span><span class="hs-status-text">${text}</span>`;
+      const _cancelBtn = cls === 'hs-status-late' ? `<button class="hs-status-cancel" id="hsCancelLate" title="Annuler le statut En route">✕</button>` : '';
+      myStatusEl.innerHTML = `<span class="hs-status-icon">${icon}</span><span class="hs-status-text">${text}</span>${_cancelBtn}`;
       myStatusEl.classList.remove('hidden');
 
       // Bouton au revoir / rebonjour selon statut
