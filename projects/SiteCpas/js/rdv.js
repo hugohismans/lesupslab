@@ -1236,27 +1236,32 @@
     }
 
     // ── Découper la plage RDV parent si elle provient du calendrier ──
-    const parentSlots = DB.getInRange(startDT, endDT).filter(r =>
-      r.isRdvSlot && r.agent === agentDisplayName &&
-      r._start <= new Date(startDT) && r._end >= new Date(endDT)
-    );
-    for (const ps of parentSlots) {
-      const psStart = ps.startDateTime;
-      const psEnd   = ps.endDateTime;
-      const psData  = DB.getAll()[ps.id];
-      if (!psData) continue;
+    const _allData = DB.getAll();
+    const parentSlots = Object.entries(_allData).filter(([, r]) => {
+      if (!r.isRdvSlot) return false;
+      const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
+      if (a !== agentDisplayName) return false;
+      return r.startDateTime <= startDT && r.endDateTime >= endDT;
+    });
+    for (const [psId, psData] of parentSlots) {
+      const psStart = psData.startDateTime;
+      const psEnd   = psData.endDateTime;
       // Supprimer la plage parent
-      await DB.remove(ps.id);
+      await DB.remove(psId);
       // Recréer le morceau avant (si nécessaire)
       if (psStart < startDT) {
+        const before = { ...psData };
+        delete before._start; delete before._end; delete before._occDate;
         await DB._ref('reservations').push({
-          ...psData, startDateTime: psStart, endDateTime: startDT, createdAt: Date.now(),
+          ...before, startDateTime: psStart, endDateTime: startDT, createdAt: Date.now(),
         });
       }
       // Recréer le morceau après (si nécessaire)
       if (psEnd > endDT) {
+        const after = { ...psData };
+        delete after._start; delete after._end; delete after._occDate;
         await DB._ref('reservations').push({
-          ...psData, startDateTime: endDT, endDateTime: psEnd, createdAt: Date.now(),
+          ...after, startDateTime: endDT, endDateTime: psEnd, createdAt: Date.now(),
         });
       }
     }
@@ -1281,8 +1286,12 @@
     });
     _pendingDeskId = null;
 
-    // Mettre à jour le statut de la demande
+    // Mettre à jour le statut de la demande puis la supprimer (éviter les blocages résiduels)
     await DB.acceptAppointmentRequest(requestId, localId);
+    // Supprimer la request après un court délai pour laisser les listeners se mettre à jour
+    setTimeout(() => {
+      DB._ref(`appState/appointmentRequests/${requestId}`).remove().catch(() => {});
+    }, 2000);
 
     // Notifications
     if (isAutoRequester) {
