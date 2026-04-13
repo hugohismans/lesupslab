@@ -2600,6 +2600,9 @@ const LIVE = {
             customInput.value = grp.name;
             customInput.classList.remove('hidden');
           }
+          // Préfixe ticket
+          g('qgroupPrefix').value = grp.ticketPrefix || '';
+          g('qgroupPrefixPreview').textContent = grp.ticketPrefix ? `→ ${grp.ticketPrefix}01` : '';
           // Toggle local buttons
           g('qgroupLocals').querySelectorAll('.lv-qg-local-btn').forEach(b => {
             b.classList.toggle('active', (grp.localIds || []).map(Number).includes(parseInt(b.dataset.local)));
@@ -2650,6 +2653,8 @@ const LIVE = {
     g('btnQgroupAdd').textContent = '+ Créer';
     g('btnQgroupCancel').classList.add('hidden');
     g('qgroupNameCustom').value = '';
+    g('qgroupPrefix').value = '';
+    g('qgroupPrefixPreview').textContent = '';
     g('qgroupLocals').querySelectorAll('.lv-qg-local-btn').forEach(b => b.classList.remove('active'));
     this._renderQueueGroupPanel();
   },
@@ -2682,12 +2687,20 @@ const LIVE = {
         : sel.value;
       if (!name) return;
       const selected = [...g('qgroupLocals').querySelectorAll('.lv-qg-local-btn.active')].map(b => parseInt(b.dataset.local));
+      const prefix = g('qgroupPrefix').value.trim() || null;
 
       const id = this._editingGroupId || ('qg_' + Date.now());
-      await DB.saveQueueGroup(id, name, selected);
+      await DB.saveQueueGroup(id, name, selected, [], prefix);
       this._editingGroupId = null;
       g('qgroupNameCustom').value = '';
+      g('qgroupPrefix').value = '';
       this._renderQueueGroupPanel();
+    });
+
+    // Preview du préfixe
+    g('qgroupPrefix').addEventListener('input', () => {
+      const val = g('qgroupPrefix').value.trim();
+      g('qgroupPrefixPreview').textContent = val ? `→ ${val}01` : '';
     });
 
     g('btnQgroupCancel').addEventListener('click', () => this._cancelEdit());

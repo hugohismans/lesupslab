@@ -5722,6 +5722,13 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .lp-desk-booked    { background:#fee2e2; color:#991b1b; }
 .lp-desk-perm      { background:#e2e8f0; color:#64748b; }
 
+/* ─── Préfixe ticket (queue group form) ───────────────────────── */
+.lv-qg-prefix-row    { display:flex; align-items:center; gap:.5rem; margin:.5rem 0; flex-wrap:wrap; }
+.lv-qg-prefix-label  { font-size:.78rem; font-weight:600; color:#94a3b8; white-space:nowrap; }
+.lv-qg-prefix-label small { font-weight:400; }
+.lv-qg-prefix-input  { max-width:80px !important; text-transform:uppercase; font-weight:700; letter-spacing:.05em; }
+.lv-qg-prefix-preview { font-size:.78rem; color:#64748b; font-weight:600; }
+
 /* ─── Toggles lieu (vue Direct) ───────────────────────────────── */
 .lv-lieu-toggles   { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
 .lv-lieu-toggle    { padding:.3rem .7rem; border:1.5px solid rgba(255,255,255,.2); border-radius:8px; background:transparent; color:rgba(255,255,255,.7); font-size:.78rem; font-weight:600; cursor:pointer; transition:all .15s; }

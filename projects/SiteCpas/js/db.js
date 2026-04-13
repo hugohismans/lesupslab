@@ -815,6 +815,9 @@ const DB = {
     const grp    = groups[groupId];
     if (!grp?.name) return 'T';
 
+    // Préfixe personnalisé → prioritaire
+    if (grp.ticketPrefix) return grp.ticketPrefix;
+
     const _base = (name) => {
       const stop  = new Set(['de', 'du', 'des', 'le', 'la', 'les', 'et', 'en', 'à', 'au', 'aux', 'un', 'une']);
       const words = name.trim().split(/\s+/).filter(w => !stop.has(w.toLowerCase()));
@@ -826,9 +829,9 @@ const DB = {
 
     // Détecter les conflits de préfixe entre groupes → numéroter à partir du 2e
     const conflicting = Object.entries(groups)
-      .filter(([, g]) => g?.name && _base(g.name) === base)
+      .filter(([, g]) => g?.name && !g.ticketPrefix && _base(g.name) === base)
       .map(([id]) => id)
-      .sort();                       // tri stable par groupId
+      .sort();
 
     const idx = conflicting.indexOf(groupId);
     return idx <= 0 ? base : `${base}${idx + 1}`;
@@ -1009,12 +1012,14 @@ const DB = {
     ]);
   },
 
-  async saveQueueGroup(id, name, localIds, services = []) {
-    await this._ref(`appConfig/queueGroups/${id}`).set({
+  async saveQueueGroup(id, name, localIds, services = [], ticketPrefix = null) {
+    const data = {
       name,
       localIds: localIds.map(Number),
       services: services.length ? services : null,
-    });
+    };
+    if (ticketPrefix) data.ticketPrefix = ticketPrefix;
+    await this._ref(`appConfig/queueGroups/${id}`).set(data);
   },
 
   // Vérifie si un nom de service correspond au groupe d'un local
