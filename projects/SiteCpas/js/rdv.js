@@ -577,7 +577,6 @@
           selectedStart: null,
           selectedEnd:   null,
         };
-        _selectedDuration = null;
         _showTimePicker(radio.dataset.start, radio.dataset.end);
       });
     });
