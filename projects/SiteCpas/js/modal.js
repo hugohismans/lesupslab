@@ -1439,7 +1439,7 @@ const MODAL = {
     const res = DB.getAll()[id];
     if (!res) return;
 
-    const svc  = DB.getSvcLabel(res);
+    const svc  = res.type === 'rendez-vous' ? '📅 Rendez-vous' : DB.getSvcLabel(res);
     const agt  = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
     const isRec = res.recurrence?.type && res.recurrence.type !== 'none';
     const recL  = { daily: 'Quotidienne', weekly: 'Hebdomadaire', monthly: 'Mensuelle' };
@@ -1468,7 +1468,9 @@ const MODAL = {
         <span class="det-v">${res.recurrence.endDate || '♾ Pour toujours'}</span></div>`;
     }
 
-    if (res.comment) {
+    if (res.note) {
+      html += `<div class="det-row"><span class="det-l">Note</span><span class="det-v">${res.note}</span></div>`;
+    } else if (res.comment) {
       html += `<div class="det-row"><span class="det-l">Note</span><span class="det-v">${res.comment}</span></div>`;
     }
 
