@@ -1033,11 +1033,18 @@ const LIVE = {
       const st       = DB.getAgentStatus(key);
       const connected = DB.isConnectedToday(key);
 
-      // Bureau ouvert : chercher si cet agent est dans un bureau
-      const openLocal = (CONFIG.LOCALS || []).find(lid =>
-        DB.isBureauOpen(lid) && DB.getBureauAgentKey(lid) === key
+      // Bureau ouvert ou présence backoffice : chercher où est cet agent
+      const allLieux = DB.getLieux();
+      const allLids  = Object.values(allLieux).flatMap(l => l.localIds || []).map(Number);
+      const openLocal = allLids.find(lid =>
+        (DB.isBureauOpen(lid) && DB.getBureauAgentKey(lid) === key) ||
+        (DB.getBackofficePresence(lid)[key])
       );
-      const localLabel = openLocal != null ? DB.getLocalLabel(openLocal) : null;
+      let localLabel = null;
+      if (openLocal != null) {
+        const deskId = DB.getBureauDeskId(openLocal);
+        localLabel = DB.getUnitLabel(openLocal, deskId);
+      }
 
       let icon, statusClass, statusTxt;
       if (absEntry) {
