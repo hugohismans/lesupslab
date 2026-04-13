@@ -516,6 +516,7 @@ async function loadOrgs() {
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeQueueDay('${orgId}', '${name}')">🗑 Purger tickets</button>
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeCalendar('${orgId}', '${name}')">🗓 Vider calendrier</button>
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="purgeNotifications('${orgId}', '${name}')">🔔 Vider notifs</button>
+        <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="purgeRdvRequests('${orgId}', '${name}')">📨 Vider demandes RDV</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
       </div>
     </div>
@@ -776,6 +777,17 @@ async function purgeQueueDay(orgId, orgName) {
     await db.ref(`orgs/${orgId}/queues/${target}`).remove();
     await db.ref(`orgs/${orgId}/queueHistory/${target}`).remove();
     alert(`✅ Tickets du ${target} supprimés pour "${orgName}".`);
+  } catch (e) {
+    alert(`❌ Erreur : ${e.message}`);
+  }
+}
+
+// ── Vider les demandes de rendez-vous ─────────────────────────────
+async function purgeRdvRequests(orgId, orgName) {
+  if (!confirm(`Supprimer TOUTES les demandes de rendez-vous de "${orgName}" ?\n\nCela débloque tous les créneaux verrouillés par des demandes en attente.`)) return;
+  try {
+    await db.ref(`orgs/${orgId}/appState/appointmentRequests`).remove();
+    alert(`✅ Demandes de RDV supprimées pour "${orgName}".`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
   }

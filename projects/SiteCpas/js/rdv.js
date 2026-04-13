@@ -660,7 +660,7 @@
         _targetRequests = [];
         snap.forEach(c => {
           const v = c.val();
-          if (v.status !== 'refused' && v.startDateTime && v.endDateTime) {
+          if (v.status === 'pending' && v.startDateTime && v.endDateTime) {
             _targetRequests.push({ id: c.key, ...v });
           }
         });
