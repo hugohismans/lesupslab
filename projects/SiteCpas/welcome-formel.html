@@ -30,11 +30,6 @@
     .role-title { font-size: 1.6rem; font-weight: 800; color: #0f172a; }
     .role-badge { display: inline-block; background: #dbeafe; color: #1d4ed8; border-radius: 6px; padding: .22rem .7rem; font-size: .76rem; font-weight: 600; margin-top: .4rem; }
     .role-intro { color: #475569; margin-top: .75rem; font-size: .95rem; background: #f8fafc; border-left: 4px solid #2563eb; padding: .85rem 1rem; border-radius: 0 8px 8px 0; }
-    .integrator-cta { background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 10px; padding: .85rem 1.1rem; margin-top: 1.25rem; display: flex; align-items: center; gap: .85rem; }
-    .integrator-cta-text { flex: 1; font-size: .85rem; color: #7f1d1d; line-height: 1.5; }
-    .integrator-cta-text strong { display: block; margin-bottom: .1rem; color: #dc2626; }
-    .btn-integrator { display: inline-flex; align-items: center; gap: .3rem; background: #dc2626; color: #fff; border-radius: 8px; padding: .55rem .9rem; font-size: .82rem; font-weight: 700; text-decoration: none; white-space: nowrap; transition: background .15s; }
-    .btn-integrator:hover { background: #b91c1c; }
 
     .section { background: #fff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #e2e8f0; }
     .section-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: .45rem; }
@@ -666,20 +661,17 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ── CTA intégrateur après chaque bloc d'intro ────────────────────
-  const CTA_HTML = `
-    <div class="integrator-cta">
-      <div style="font-size:1.4rem">🙋</div>
-      <div class="integrator-cta-text">
-        <strong>Un intégrateur sera présent sur site lors du lancement</strong>
-        Hugo sera disponible pour vous accompagner dans la prise en main de l'outil.
-        Vous pouvez dès maintenant réserver un passage à votre poste.
-      </div>
-      <a href="rdv-integrateur.html" class="btn-integrator">📅 Prendre RDV</a>
+  // ── Bouton "Se connecter" en fin de chaque rôle ────────────────────
+  const SIGNIN_HTML = `
+    <div style="text-align:center;padding:1.5rem 0 .5rem">
+      <a href="index.html" style="display:inline-flex;align-items:center;gap:.5rem;background:#1e3a5f;color:#fff;border-radius:10px;padding:.8rem 2rem;font-size:.95rem;font-weight:700;text-decoration:none;letter-spacing:.01em;transition:background .15s" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1e3a5f'">
+        Accéder à moncompagnon →
+      </a>
+      <div style="font-size:.75rem;color:#94a3b8;margin-top:.55rem">Un bouton de prise de rendez-vous avec l'intégrateur sera disponible sur votre écran d'accueil lors du lancement.</div>
     </div>`;
 
-  document.querySelectorAll('.role-intro').forEach(intro => {
-    intro.insertAdjacentHTML('afterend', CTA_HTML);
+  document.querySelectorAll('.role-content').forEach(role => {
+    role.insertAdjacentHTML('beforeend', SIGNIN_HTML);
   });
 </script>
 </body>
