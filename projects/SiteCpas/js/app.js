@@ -1875,6 +1875,8 @@ function applyFeatureFlags() {
   show('notifBell',           DB.getFeature('enableNotif'));
   show('btnDnd',              DB.getFeature('enableNotif'));
   show('btnCalendarExport',   DB.getFeature('enableCalendarSync') && !!sessionStorage.getItem('cpas_current_agent_key'));
+  show('btnTechIssue',        DB.getFeature('enableTechRequests') !== false);
+  show('btnBroadcast',        DB.getFeature('enableBroadcast') !== false && (DB.hasPermission?.('sendNotif') || false));
   // Bouton personnaliser — visible uniquement si connecté
   const _customizeBtn = document.getElementById('hsCustomizeBtn');
   if (_customizeBtn) {
@@ -1882,13 +1884,10 @@ function applyFeatureFlags() {
     _customizeBtn.classList.toggle('hidden', !_ak || _ak === 'anon');
     if (_ak && _ak !== 'anon') { _applyRoleDefaultWidgets(_ak); _applyWidgetPrefs(_ak); }
   }
-  // Bannière RDV intégrateur — visible par défaut, cachée si explicitement désactivée
+  // Bannière RDV intégrateur
   const _intBanner = document.getElementById('hsIntegratorBanner');
   if (_intBanner) {
-    _intBanner.style.display = 'block'; // montrer immédiatement
-    DB._ref('appConfig/integratorRdvEnabled').once('value').then(snap => {
-      if (snap.val() === false) _intBanner.style.display = 'none';
-    }).catch(() => {}); // erreur silencieuse — bannière reste visible
+    _intBanner.style.display = DB.getFeature('enableRdvIntegrateur') !== false ? 'block' : 'none';
   }
   // Bouton météo (visible uniquement si météo activée et coords configurées)
   const wxBtn = document.getElementById('hsAskWeather');
@@ -1927,8 +1926,6 @@ function applyFeatureFlags() {
     document.getElementById('plBtnAdd')?.classList.remove('hidden');
   }
 
-  // Bouton Diffuser — permission sendNotif
-  show('btnBroadcast', DB.hasPermission?.('sendNotif') || false);
 }
 
 // ─── Export iCal (Phase 5.6) ───────────────────────────────────

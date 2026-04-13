@@ -618,6 +618,9 @@ const MODAL = {
           { key: 'enableNamedTickets',   label: 'Tickets nominatifs',             desc: 'Remplacer le numéro de ticket par le nom du bénéficiaire (accueil saisit le nom à l\'émission)' },
           { key: 'enableTicketPrint',    label: 'Impression de ticket',           desc: 'Bouton imprimer le numéro de ticket dans la vue Direct' },
           { key: 'enableCalendarSync',   label: 'Export iCal (Google/Apple)',     desc: 'Lien .ics pour importer les RDV dans un agenda externe' },
+          { key: 'enableTechRequests',   label: 'Requêtes techniques',            desc: 'Bouton 📤 Requête — permet aux agents de signaler un souci technique' },
+          { key: 'enableBroadcast',      label: 'Diffusion de messages',          desc: 'Bouton 📢 Diffuser — envoyer un message à tous les agents connectés' },
+          { key: 'enableRdvIntegrateur', label: 'Prise de rendez-vous',           desc: 'Bannière de prise de rendez-vous avec l\'intégrateur sur l\'accueil' },
         ]
       },
       {
