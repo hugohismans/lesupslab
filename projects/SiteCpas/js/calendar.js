@@ -1047,8 +1047,12 @@ const LIVE = {
       const pubLabel = DB.getPublicLocalLabel(l);
       const grp      = DB.getLocalGroup(l);   // premier groupe (rétro-compat)
       const grps     = DB.getLocalGroups(l);  // tous les groupes
-      const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
-      const amIHere    = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && !!myAgentKey;
+      const myAgentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+      const _bureauOpener = !isAccueil && DB.getBureauAgentKey(l) === myAgentKey && !!myAgentKey;
+      // Si une réservation en cours appartient à un autre agent, l'ouvreur de bureau n'a pas accès
+      const _resAgent   = res ? (res.agent === 'Autre' ? res.agentCustom : res.agent) : null;
+      const amIHere     = _bureauOpener && (!_resAgent || !myAgentName || _resAgent === myAgentName);
       const labelHtml = (pubLabel !== label ? `${label}<span class="lv-pub-label">${pubLabel}</span>` : label)
         + grps.map(g => `<span class="lv-qg-badge">🔗 ${g.name}</span>`).join('');
 
