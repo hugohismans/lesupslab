@@ -1885,14 +1885,40 @@ const LIVE = {
             Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
           );
           const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
-          const _grp      = DB.getQueueGroups()[grpId];
+
+          // Vérifier si le premier de la file globale est un preferred (plus ancien que le prochain ticket groupe)
+          const _pendPref = DB.getPreferredPending(localId);
+          const _prefQueue = DB.getPreferredQueue(localId);
+          const _oldestPref = _pendPref || (_prefQueue.length ? _prefQueue[0] : null);
+          const _grp = DB.getQueueGroups()[grpId];
+
+          if (_oldestPref) {
+            // Comparer l'ancienneté : preferred vs prochain ticket du groupe
+            const _nextTicketTs = DB.getTicketIssuedAt(grpId, DB.getTicketCalled(grpId) + 1) || Infinity;
+            const _prefTs = _oldestPref.ts || 0;
+            if (_prefTs <= _nextTicketTs) {
+              // Le preferred est plus ancien → le recevoir en priorité
+              const _prefTicket = { display: _oldestPref.displayName || '?', label: _oldestPref.ticketLabel || 'SP', name: _oldestPref.displayName || null };
+              LIVE._storeCall(localId, _prefTicket, _occ);
+              await DB.setBureauBusyWithPreferred(localId, true);
+              if (_pendPref) {
+                await DB._ref(`appState/preferredRequests/${_pendPref.requestId}`).update({ status: 'done', benefName: null });
+                await DB._ref(`appState/preferredPending/${localId}`).remove();
+                await DB.shiftPreferredQueue(localId);
+              }
+              showAgentCallNotif(_prefTicket.label, _prefTicket.name);
+              await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _prefTicket.display, _prefTicket.label, _prefTicket.name);
+              LIVE.render();
+              return;
+            }
+          }
+
+          // Sinon : appeler le prochain ticket du groupe normalement
           const _ticket   = await DB.callNextTicket(grpId);
-          // _storeCall AVANT les awaits suivants : les renders Firebase intermédiaires
-          // (setQueue, writeLastCall) verront déjà _lastCalled peuplé → "En cours" immédiat
           LIVE._storeCall(localId, _ticket, _occ);
           await DB.setQueue(localId, 1);
           await DB.absorbGroupOverflow(grpId);
-          // Si ce ticket correspond à une demande spécifique, fermer proprement sans re-avancer tcall/wait
+          // Si ce ticket correspond à une demande spécifique, fermer proprement
           const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
           if (_prefMatch) {
             await DB._ref(`appState/preferredRequests/${_prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
@@ -1901,7 +1927,7 @@ const LIVE = {
           }
           showAgentCallNotif(_ticket.label, _ticket.name);
           await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
-          LIVE.render(); // forcer un rendu final après tous les writes
+          LIVE.render();
         };
         if (isAccueilBtn) {
           showBureauConfirm({
