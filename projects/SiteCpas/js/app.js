@@ -2015,6 +2015,7 @@ function _applyRoleDefaultWidgets(agentKey) {
 const WIDGETS = [
   { id: 'agenda',    label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda',    width: 'half' },
   { id: 'presence',  label: '🗺 Qui est où',                      selector: '.hs-widget-presence',  width: 'half' },
+  { id: 'presencecal', label: '📅 Qui est où ? (calendrier)',     selector: '.hs-widget-presencecal', width: 'half' },
   { id: 'declare',   label: '📍 Me déclarer dans un bureau',      selector: '.hs-widget-declare',   width: 'full' },
   { id: 'qgroups',   label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups',   width: 'full' },
   { id: 'weather',   label: '🌤 Météo',                           selector: '.hs-widget-weather',   width: 'half' },
@@ -2400,9 +2401,60 @@ function _renderRemindersWidget(agentKey) {
   render();
 }
 
+function _renderPresenceCalWidget() {
+  const el = document.getElementById('hsPresenceCal');
+  if (!el) return;
+
+  const now  = new Date();
+  const dayS = new Date(now); dayS.setHours(0, 0, 0, 0);
+  const dayE = new Date(now); dayE.setHours(23, 59, 59, 999);
+  const occs = DB.getInRange(dayS, dayE).filter(r => !r.isPermanent && r._start <= now && r._end > now);
+
+  if (!occs.length) {
+    el.innerHTML = '<div class="hs-agenda-empty">Aucune réservation en cours actuellement</div>';
+    return;
+  }
+
+  // Grouper par local (+ desk)
+  const byUnit = {};
+  occs.forEach(r => {
+    const localId = parseInt(r.localId);
+    const deskId  = r.deskId || null;
+    const unitKey = deskId || String(localId);
+    if (!byUnit[unitKey]) byUnit[unitKey] = { localId, deskId, label: DB.getUnitLabel(localId, deskId), lieu: DB.getLocalLieuName?.(localId) || '', agents: [] };
+    const agt = r.agent === 'Autre' ? (r.agentCustom || 'Autre') : (r.agent || '');
+    if (agt && !byUnit[unitKey].agents.includes(agt)) byUnit[unitKey].agents.push(agt);
+    // Agents invités
+    if (r.invitedAgents) {
+      const allAgents = DB.getAgentsWithKeys();
+      Object.keys(r.invitedAgents).forEach(k => {
+        const a = allAgents.find(a => a.key === k);
+        if (a?.name && !byUnit[unitKey].agents.includes(a.name)) byUnit[unitKey].agents.push(a.name);
+      });
+    }
+    // Multi-agents
+    if (Array.isArray(r.agents)) {
+      r.agents.forEach(n => { if (n && !byUnit[unitKey].agents.includes(n)) byUnit[unitKey].agents.push(n); });
+    }
+  });
+
+  el.innerHTML = Object.values(byUnit).map(u => {
+    const agentChips = u.agents.map(n => {
+      const color = DB.getAgentRoleColor(n);
+      return `<span class="hs-pres-chip" ${color ? `style="border-color:${color};color:${color}"` : ''}>${escapeHtml(n)}</span>`;
+    }).join('');
+    return `<div class="hs-pres-row">
+      <span class="hs-pres-local">📍 ${escapeHtml(u.label)}</span>
+      <span class="hs-pres-lieu">${escapeHtml(u.lieu)}</span>
+      <span class="hs-pres-agents">${agentChips}</span>
+    </div>`;
+  }).join('');
+}
+
 function _renderExtraWidgets() {
   const agentKey = sessionStorage.getItem('cpas_current_agent_key');
   [
+    [_renderPresenceCalWidget, []],
     [_renderWeatherWidget,    []],
     [_renderStatsWidget,      []],
     [_renderWaitStatsWidget,  []],
