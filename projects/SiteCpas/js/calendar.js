@@ -185,6 +185,7 @@ const CAL = {
               ${comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
               ${invitedNames ? `<small class="ct-invited" title="Agents invités : ${escapeHtml(invitedNames)}">👥 ${escapeHtml(invitedNames)}</small>` : ''}
             </span>
+            <div class="ct-resize" title="Étirer la réservation"></div>
           </td>`;
 
         } else {
@@ -538,6 +539,103 @@ const CAL = {
         showToast('Erreur : ' + err.message);
       }
     });
+
+    // ── Resize (étirer) ──────────────────────────────────────────────
+    // Nettoyage des anciens listeners document si présents
+    if (self._resizeMoveFn) document.removeEventListener('mousemove', self._resizeMoveFn);
+    if (self._resizeUpFn)   document.removeEventListener('mouseup',   self._resizeUpFn);
+
+    let _rz = null; // état resize en cours
+
+    table.addEventListener('mousedown', e => {
+      const handle = e.target.closest('.ct-resize');
+      if (!handle) return;
+      e.preventDefault(); e.stopPropagation();
+      const cell = handle.closest('.cv-cell.is-booked');
+      if (!cell) return;
+      const drag = cell.querySelector('.ct-drag');
+      _rz = {
+        resId:    cell.dataset.id,
+        isRec:    drag?.dataset.isRec === '1',
+        occDate:  cell.dataset.occDate || '',
+        localId:  parseInt(cell.dataset.local),
+        startSlot: parseInt(cell.dataset.slot),
+        origSpan:  parseInt(cell.dataset.span) || 1,
+        curEndSlot: parseInt(cell.dataset.slot) + (parseInt(cell.dataset.span) || 1) - 1,
+        cell,
+        previewed: new Set(),
+      };
+      cell.classList.add('ct-resizing');
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    self._resizeMoveFn = e => {
+      if (!_rz) return;
+      const rows = [...table.querySelectorAll('tr[data-slot]')];
+      const row  = rows.find(r => {
+        const rect = r.getBoundingClientRect();
+        return e.clientY >= rect.top && e.clientY < rect.bottom;
+      });
+      if (!row) return;
+      const targetSlot  = parseInt(row.dataset.slot);
+      const newEndSlot  = Math.max(_rz.startSlot, targetSlot);
+      if (newEndSlot === _rz.curEndSlot) return;
+      _rz.curEndSlot = newEndSlot;
+      // Preview : colorer les lignes du span
+      table.querySelectorAll('.cv-row.rz-preview').forEach(r => r.classList.remove('rz-preview'));
+      for (let s = _rz.startSlot; s <= newEndSlot; s++) {
+        table.querySelector(`tr[data-slot="${s}"]`)?.classList.add('rz-preview');
+      }
+    };
+
+    self._resizeUpFn = async e => {
+      if (!_rz) return;
+      const rz = _rz; _rz = null;
+      rz.cell.classList.remove('ct-resizing');
+      table.querySelectorAll('.cv-row.rz-preview').forEach(r => r.classList.remove('rz-preview'));
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      const allSlots  = getSlots();
+      const { slotMin } = DB.getLieuConfig();
+      const newSpan   = rz.curEndSlot - rz.startSlot + 1;
+      if (newSpan === rz.origSpan) return;
+
+      const startInfo = allSlots[rz.startSlot];
+      const endInfo   = allSlots[rz.curEndSlot];
+      if (!startInfo || !endInfo) return;
+
+      const dateStr   = isoDate(d);
+      const newStart  = `${dateStr}T${pad(startInfo.h)}:${pad(startInfo.m)}`;
+      const endDT     = new Date(d);
+      endDT.setHours(endInfo.h, endInfo.m + slotMin, 0, 0);
+      const newEnd    = `${isoDate(endDT)}T${pad(endDT.getHours())}:${pad(endDT.getMinutes())}`;
+
+      // Vérifier conflits
+      const clashCheck = DB.getInRange(new Date(`${newStart}:00`), new Date(`${newEnd}:00`))
+        .filter(r => parseInt(r.localId) === rz.localId && r.id !== rz.resId);
+      if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé.'); self.render(); return; }
+
+      try {
+        if (rz.isRec) {
+          const fromDate = new Date(rz.occDate + 'T00:00:00')
+            .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+          const ok = confirm(`Réservation récurrente.\n\nOK = modifier seulement l'occurrence du ${fromDate}\nAnnuler = ne rien faire`);
+          if (!ok) { self.render(); return; }
+          await DB.moveOccurrence(rz.resId, rz.occDate, rz.localId, newStart, newEnd);
+        } else {
+          await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd);
+        }
+        showToast('Réservation redimensionnée ✓');
+      } catch(err) {
+        showToast('Erreur : ' + err.message);
+      }
+      self.render();
+    };
+
+    document.addEventListener('mousemove', self._resizeMoveFn);
+    document.addEventListener('mouseup',   self._resizeUpFn);
   },
 
   _bind(el) {

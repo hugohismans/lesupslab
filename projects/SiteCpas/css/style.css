@@ -853,6 +853,21 @@ body {
 .ct-drag:active        { cursor: grabbing; }
 .cv-cell.dnd-dragging  { opacity: .35; }
 .cv-cell.dnd-over      { background: #bfdbfe !important; outline: 2px dashed #2563eb; outline-offset: -2px; }
+
+/* ── Resize handle ──────────────────────────────────────────────── */
+.ct-resize {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 9px;
+  cursor: ns-resize; background: transparent; border-radius: 0 0 4px 4px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ct-resize::after {
+  content: ''; display: block; width: 24px; height: 3px;
+  background: rgba(0,0,0,.2); border-radius: 2px;
+  transition: background .15s;
+}
+.cv-cell.is-booked:hover .ct-resize::after { background: rgba(0,0,0,.4); }
+.cv-cell.ct-resizing { outline: 2px dashed #2563eb; outline-offset: -2px; }
+.cv-row.rz-preview { background: #dbeafe88; }
 .cv-cell.is-booked        { background: #dbeafe; border-left: 3px solid #2a6496; position: relative; }
 .cv-cell.is-booked.is-rec { background: #e0f2fe; border-left-color: #0284c7; }
 .cv-cell.is-perm          { background: #ede9fe; border-left: 3px solid #7c3aed; }
