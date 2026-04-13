@@ -1830,7 +1830,7 @@ function applyFeatureFlags() {
   if (_customizeBtn) {
     const _ak = sessionStorage.getItem('cpas_current_agent_key');
     _customizeBtn.classList.toggle('hidden', !_ak || _ak === 'anon');
-    if (_ak && _ak !== 'anon') _applyWidgetPrefs(_ak);
+    if (_ak && _ak !== 'anon') { _applyRoleDefaultWidgets(_ak); _applyWidgetPrefs(_ak); }
   }
   // Bouton météo (visible uniquement si météo activée et coords configurées)
   const wxBtn = document.getElementById('hsAskWeather');
@@ -1934,6 +1934,29 @@ function updateOrgName() {
 }
 
 // ── Widget Manager — personnalisation de la page d'accueil ───────────────────
+
+// Widgets affichés par défaut selon le rôle (premier login uniquement)
+// Les IDs listés sont ceux qui seront CACHÉS — tout le reste est visible.
+const WIDGET_ROLE_DEFAULTS = {
+  '__accueil__':      ['agenda','declare','weather','upcoming','week','shortcuts','mission','notes','reminders'],
+  '__as__':           ['presence','qgroups','weather','stats','waitstats','week','shortcuts','notes'],
+  '__admin__':        ['agenda','declare','qgroups','weather','stats','waitstats','mission','notes','reminders'],
+  '__direction__':    ['agenda','declare','qgroups','weather','upcoming','shortcuts','mission','notes','reminders'],
+  '__chef_service__': ['declare','qgroups','weather','stats','waitstats','shortcuts','mission','notes','reminders'],
+  '__technicien__':   ['presence','qgroups','weather','stats','waitstats','upcoming','week','shortcuts','notes','reminders'],
+  '__entretien__':    ['agenda','presence','declare','qgroups','weather','stats','waitstats','shortcuts','mission','notes','reminders'],
+  '__juriste__':      ['presence','declare','qgroups','weather','stats','waitstats','week','shortcuts','mission','notes'],
+  '__agent__':        ['presence','qgroups','weather','stats','waitstats','week','shortcuts','mission','notes','reminders'],
+};
+
+function _applyRoleDefaultWidgets(agentKey) {
+  // N'intervenir que si aucune préférence n'a jamais été sauvegardée (premier login)
+  if (localStorage.getItem(_widgetKey(agentKey)) !== null) return;
+  const role    = DB.getAgentPermRole(agentKey) || '__agent__';
+  const hidden  = WIDGET_ROLE_DEFAULTS[role] || WIDGET_ROLE_DEFAULTS['__agent__'];
+  _setHiddenWidgets(agentKey, hidden);
+}
+
 const WIDGETS = [
   { id: 'agenda',    label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda',    width: 'half' },
   { id: 'presence',  label: '🗺 Qui est où',                      selector: '.hs-widget-presence',  width: 'half' },
