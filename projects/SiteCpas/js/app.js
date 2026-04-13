@@ -1208,15 +1208,25 @@ const HOME = {
       if (todays.length === 0) {
         agendaEl.innerHTML = '<div class="hs-agenda-empty">Aucune réservation aujourd\'hui</div>';
       } else {
+        const now = new Date();
+        // Trouver l'index avant lequel insérer la barre "maintenant"
+        // Si now est pendant le créneau i → barre avant i
+        // Si now est entre i et i+1 → barre après i (avant i+1)
+        // Si now est après tout → pas de barre
+        let nowLineIdx = -1;
+        for (let i = 0; i < todays.length; i++) {
+          if (now < todays[i]._end) { nowLineIdx = i; break; }
+        }
+        const nowLine = `<div class="hs-agenda-nowline"><span class="hs-agenda-nowdot"></span></div>`;
         agendaEl.innerHTML = todays.map((r, i) => {
-          const svc = DB.getSvcLabel(r);
-          const loc = DB.getLocalLabel(r.localId);
-          const hm  = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
-          const hme = r._end?.toLocaleTimeString('fr-BE',   { hour:'2-digit', minute:'2-digit' }) || '';
-          const now = new Date();
+          const svc    = DB.getSvcLabel(r);
+          const loc    = DB.getLocalLabel(r.localId);
+          const hm     = r._start?.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) || '';
+          const hme    = r._end?.toLocaleTimeString('fr-BE',   { hour:'2-digit', minute:'2-digit' }) || '';
           const active = r._start <= now && (r._end === null || r._end >= now);
           const warn   = warnSet.has(i);
-          return `<div class="hs-agenda-item${active ? ' hs-agenda-active' : ''}${warn ? ' hs-agenda-warn' : ''}">
+          const line   = i === nowLineIdx ? nowLine : '';
+          return `${line}<div class="hs-agenda-item${active ? ' hs-agenda-active' : ''}${warn ? ' hs-agenda-warn' : ''}">
             <div class="hs-agenda-time">${hm}${hme ? ` – ${hme}` : ''}</div>
             <div class="hs-agenda-info">
               <span class="hs-agenda-svc">${escapeHtml(svc)}</span>

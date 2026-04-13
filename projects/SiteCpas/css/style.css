@@ -3998,6 +3998,17 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 /* ── Agenda du jour ──────────────────────────────────────────────── */
 .hs-agenda-list { display: flex; flex-direction: column; gap: .5rem; }
 .hs-agenda-empty { font-size: .85rem; color: #94a3b8; font-style: italic; padding: .25rem 0; }
+.hs-agenda-nowline {
+  display: flex; align-items: center; gap: .5rem;
+  margin: .25rem 0; position: relative;
+}
+.hs-agenda-nowline::after {
+  content: ''; flex: 1; height: 2px; background: #ef4444; border-radius: 1px;
+}
+.hs-agenda-nowdot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #ef4444; flex-shrink: 0;
+}
 .hs-agenda-item {
   display: flex; gap: .75rem; align-items: flex-start;
   padding: .5rem .65rem; border-radius: 8px;
