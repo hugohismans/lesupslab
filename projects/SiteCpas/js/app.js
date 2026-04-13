@@ -1835,7 +1835,7 @@ function applyFeatureFlags() {
   const _intBanner = document.getElementById('hsIntegratorBanner');
   if (_intBanner) {
     DB._ref('appConfig/integratorRdvEnabled').once('value').then(snap => {
-      _intBanner.classList.toggle('hidden', snap.val() === false);
+      _intBanner.style.display = (snap.val() === false) ? 'none' : 'block';
     });
   }
   }
