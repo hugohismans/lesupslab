@@ -1771,9 +1771,10 @@ const MODAL = {
         }
         if (firstAgentClash) {
           const clashLoc   = DB.getLocalLabel(parseInt(firstAgentClash.localId));
+          const clashDate  = firstAgentClash._start.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
           const clashStart = firstAgentClash._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const clashEnd   = firstAgentClash._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
-          alert(`⚠️ Conflit d'agenda pour ${clashAgent} !\n\nDéjà réservé en "${clashLoc}" de ${clashStart} à ${clashEnd}.\n\nImpossible d'être dans deux locaux à la fois.`);
+          alert(`⚠️ Conflit d'agenda pour ${clashAgent} !\n\nDéjà réservé en "${clashLoc}" le ${clashDate} de ${clashStart} à ${clashEnd}.\n\nImpossible d'être dans deux locaux à la fois.`);
           return;
         }
       }
