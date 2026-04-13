@@ -89,6 +89,27 @@
       .cori-wrap { flex-direction: column; }
       .role-title { font-size: 1.35rem; }
     }
+
+    /* ── Animations idle Cori ──────────────────────────────────────── */
+    .cori-avatar svg { animation: mascot-float 3.5s ease-in-out infinite; }
+    .mc-pupil { animation: mascot-blink 5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    .mc-t { transform-box: fill-box; transform-origin: top center; }
+    .mc-t1 { animation: tent-sway 3.2s ease-in-out infinite 0s; }
+    .mc-t2 { animation: tent-sway 3.2s ease-in-out infinite .18s; }
+    .mc-t3 { animation: tent-sway 3.2s ease-in-out infinite .36s; }
+    .mc-t4 { animation: tent-sway 3.2s ease-in-out infinite .18s; }
+    @keyframes mascot-float {
+      0%, 100% { transform: translateY(0px); }
+      45%       { transform: translateY(-8px); }
+    }
+    @keyframes mascot-blink {
+      0%, 87%, 100% { transform: scaleY(1); }
+      92%            { transform: scaleY(.08); }
+    }
+    @keyframes tent-sway {
+      0%, 100% { transform: rotate(0deg); }
+      50%       { transform: rotate(3.5deg); }
+    }
   </style>
 </head>
 <body>
@@ -96,11 +117,20 @@
 <!-- HEADER -->
 <div class="mc-header">
   <div class="mc-header-logo">
-    <svg viewBox="0 0 100 95" width="58" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 16px rgba(229,62,62,.5))">
-      <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-      <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-      <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-      <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <svg viewBox="0 0 100 118" width="58" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 16px rgba(220,38,38,.45))">
+      <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+      <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+      <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+      <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+      <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+      <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+      <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+      <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+      <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
     </svg>
     <div>
       <div class="mc-header-title">moncompagnon</div>
@@ -133,11 +163,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -256,11 +295,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -369,11 +417,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -452,11 +509,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -523,11 +589,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -584,11 +659,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -666,11 +750,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
@@ -728,11 +821,20 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
-        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
-        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
-        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
-        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
       </svg>
     </div>
     <div class="cori-right">
