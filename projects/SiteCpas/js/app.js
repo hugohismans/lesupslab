@@ -2213,7 +2213,7 @@ function _renderWeekWidget() {
     if (r.isPermanent) return false;
     if (!agentName) return false;
     const a = r.agent === 'Autre' ? (r.agentCustom || 'Autre') : r.agent;
-    return a === agentName;
+    return a === agentName || (Array.isArray(r.agents) && r.agents.includes(agentName));
   });
   const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
   el.innerHTML = `<div class="hs-week-cols">${days.map((d, i) => {
