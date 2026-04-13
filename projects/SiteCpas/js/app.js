@@ -2046,6 +2046,7 @@ function _renderNotifsWidget(agentKey) {
 function _renderWeekWidget() {
   const el = document.getElementById('hsWeekPlan');
   if (!el) return;
+  const agentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const days  = [];
   for (let i = 0; i < 5; i++) {
@@ -2064,7 +2065,12 @@ function _renderWeekWidget() {
     }
   }
   const weekEnd = new Date(days[days.length - 1]); weekEnd.setHours(23, 59, 59, 999);
-  const allOccs = DB.getInRange(today, weekEnd).filter(r => !r.isPermanent);
+  const allOccs = DB.getInRange(today, weekEnd).filter(r => {
+    if (r.isPermanent) return false;
+    if (!agentName) return false;
+    const a = r.agent === 'Autre' ? (r.agentCustom || 'Autre') : r.agent;
+    return a === agentName;
+  });
   const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
   el.innerHTML = `<div class="hs-week-cols">${days.map((d, i) => {
     const dEnd  = new Date(d); dEnd.setHours(23, 59, 59, 999);
