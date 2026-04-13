@@ -1603,6 +1603,29 @@ const MODAL = {
           for (const id of toDelete) await DB.remove(id);
         }
       }
+
+      // ── Vérifier les chevauchements de l'agent dans d'autres locaux ──
+      const agentName = agent === 'Autre' ? g('fAgentCustom').value.trim() : agent;
+      if (agentName) {
+        let firstAgentClash = null;
+        for (const occ of myOccs) {
+          const clash = DB.getInRange(occ._start, occ._end).find(r =>
+            !r.isPermanent &&
+            parseInt(r.localId) !== localId &&
+            r.id !== this._editId &&
+            (r.agent === agentName || (r.agent === 'Autre' && r.agentCustom === agentName)) &&
+            r._start < occ._end && r._end > occ._start
+          );
+          if (clash) { firstAgentClash = clash; break; }
+        }
+        if (firstAgentClash) {
+          const clashLoc   = DB.getLocalLabel(parseInt(firstAgentClash.localId));
+          const clashStart = firstAgentClash._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+          const clashEnd   = firstAgentClash._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+          alert(`⚠️ Conflit d'agenda pour ${agentName} !\n\nDéjà réservé en "${clashLoc}" de ${clashStart} à ${clashEnd}.\n\nImpossible d'être dans deux locaux à la fois.`);
+          return;
+        }
+      }
     } else {
       // Réservation permanente — vérifier les réservations existantes sur ce local
       const ds = g('fDateStart').value || isoDate(new Date());
