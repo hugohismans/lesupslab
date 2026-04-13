@@ -2134,6 +2134,12 @@ function _renderMissionWidget(agentKey) {
         placeholder="Destination / motif (optionnel)" maxlength="80">
       <button class="hs-mission-go-btn" id="hsMissionGoBtn">🚗 Partir en mission</button>`;
     document.getElementById('hsMissionGoBtn')?.addEventListener('click', async () => {
+      const openLocal = DB.getOpenBureauForCurrentAgent();
+      if (openLocal !== null) {
+        const localLabel = DB.getLocalLabel(openLocal);
+        alert(`⚠️ Vous êtes actuellement dans le local "${localLabel}".\n\nVeuillez quitter votre local avant de partir en mission.`);
+        return;
+      }
       const btn     = document.getElementById('hsMissionGoBtn');
       const comment = document.getElementById('hsMissionComment')?.value.trim() || null;
       if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
