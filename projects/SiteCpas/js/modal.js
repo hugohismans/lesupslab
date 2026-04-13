@@ -4,6 +4,7 @@
 
 const MODAL = {
   _editId: null,
+  _settingsLieuId: null,  // lieu sélectionné dans les paramètres (null = lieu actif du calendrier)
 
   // Recharge les listes locaux/agents/services depuis Firebase
   refreshSelects() {
@@ -80,6 +81,7 @@ const MODAL = {
 
   // Ouvrir le panneau paramètres
   openSettings() {
+    this._settingsLieuId = null; // reset → démarrer sur le lieu actif du calendrier
     const isAdmin = DB.hasPermission('editSettings');
     g('settingsTitle').textContent = isAdmin ? '⚙ Paramètres' : '🎨 Mes réglages';
     g('settingsOverlay').querySelectorAll('.st-admin-section').forEach(el => {
@@ -190,8 +192,28 @@ const MODAL = {
 
     // ── Lieux ──────────────────────────────────────────────────────
     const lieux = DB.getLieux();
-    const currentLieuId = DB.getCurrentLieuId();
     const lieuEntries   = Object.entries(lieux);
+
+    // Sélecteur du lieu à configurer (horaires + locaux)
+    const stLieuSel = g('stLieuSelect');
+    if (stLieuSel) {
+      const prevVal = stLieuSel.value;
+      stLieuSel.innerHTML = lieuEntries.map(([id, l]) =>
+        `<option value="${id}">${escapeHtml(l.name)}</option>`
+      ).join('');
+      // Restaurer la sélection ou prendre le lieu du calendrier par défaut
+      const targetLieu = this._settingsLieuId || DB.getCurrentLieuId();
+      if ([...stLieuSel.options].some(o => o.value === targetLieu)) stLieuSel.value = targetLieu;
+      this._settingsLieuId = stLieuSel.value;
+      if (!stLieuSel._bound) {
+        stLieuSel._bound = true;
+        stLieuSel.addEventListener('change', () => {
+          this._settingsLieuId = stLieuSel.value;
+          this._renderSettingsList();
+        });
+      }
+    }
+    const currentLieuId = this._settingsLieuId || DB.getCurrentLieuId();
     const backofficeEnabled = DB.getFeature('enableBackoffice');
     const publicPermLieux = DB.getPublicPermLieux();
     g('stLieuList').innerHTML = lieuEntries.length
@@ -1324,11 +1346,11 @@ const MODAL = {
     }));
     g('stLieuInput').addEventListener('keydown', e => { if (e.key === 'Enter') g('stLieuAdd').click(); });
 
-    // Paramètres — ajouter local au lieu courant (admin)
+    // Paramètres — ajouter local au lieu sélectionné (admin)
     g('stLocalAdd').addEventListener('click', () => this._requireAdmin(async () => {
       const label   = g('stLocalInput').value.trim();
-      const lieuId  = DB.getCurrentLieuId();
-      if (!lieuId) return alert('Aucun lieu actif.');
+      const lieuId  = this._settingsLieuId || DB.getCurrentLieuId();
+      if (!lieuId) return alert('Aucun lieu sélectionné.');
       g('stLocalAdd').disabled = true;
       await DB.addLocalToLieu(lieuId, label);
       g('stLocalInput').value = '';
