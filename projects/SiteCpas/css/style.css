@@ -790,6 +790,22 @@ body {
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
 }
 .tc-hd { width: 56px; }
+.my-agenda-hd {
+  background: #f0f7ff;
+  color: #1d4ed8 !important;
+  border-right: 2px solid #bfdbfe;
+  white-space: nowrap;
+}
+.my-agenda-cell {
+  background: #f8faff;
+  border-right: 2px solid #bfdbfe;
+}
+.my-agenda-free {
+  background: repeating-linear-gradient(
+    135deg, #f0f7ff 0px, #f0f7ff 4px, #e8f0fe 4px, #e8f0fe 8px
+  );
+  opacity: .6;
+}
 .loc-hd {
   text-align: center; padding: .5rem .2rem;
   font-size: .75rem; font-weight: 900; color: #1a3a5c;

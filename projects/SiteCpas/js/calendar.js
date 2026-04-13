@@ -63,6 +63,14 @@ const CAL = {
     const coveredUntil = {};
     CONFIG.LOCALS.forEach(l => coveredUntil[l] = 0);
 
+    // ── Colonne "Mon agenda" ──────────────────────────────────────────
+    const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+    const myOccs = myAgentName
+      ? occs.filter(r => !r.isPermanent && (r.agent === myAgentName || (r.agent === 'Autre' && r.agentCustom === myAgentName)))
+      : [];
+    const myAgentColor = myAgentName ? DB.getAgentColor(myAgentName) : null;
+    let coveredUntilMe = 0;
+
     const dateLabel = d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const isToday   = sameDay(d, new Date());
 
@@ -73,6 +81,7 @@ const CAL = {
     </div>`;
     h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
+    if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
     CONFIG.LOCALS.forEach(l => h += `<th class="loc-hd">${DB.getLocalLabel(l)}</th>`);
     h += '</tr></thead><tbody>';
 
@@ -82,6 +91,38 @@ const CAL = {
 
       h += `<tr class="cv-row${i % 2 ? ' alt' : ''}" data-slot="${i}">`;
       h += `<td class="tc">${slot.label}</td>`;
+
+      // ── Colonne Mon agenda ─────────────────────────────────────────
+      if (myAgentName) {
+        if (coveredUntilMe <= i) {
+          const myRes = myOccs.find(r => r._start < sE && r._end > sS);
+          if (myRes) {
+            let span = 0;
+            for (let j = i; j < total; j++) {
+              const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+              const jE = new Date(jS.getTime() + slotMinDay * 60000);
+              if (myRes._start < jE && myRes._end > jS) span++;
+              else if (jS >= myRes._end) break;
+            }
+            span = Math.max(1, span);
+            coveredUntilMe = i + span;
+            const mySvc  = DB.getSvcLabel(myRes);
+            const myLoc  = DB.getLocalLabel(parseInt(myRes.localId));
+            const myStartH = myRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+            const myEndH   = myRes._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+            const myStyle  = myAgentColor ? ` style="background:${myAgentColor}20;border-left:3px solid ${myAgentColor}"` : '';
+            h += `<td class="cv-cell is-booked my-agenda-cell" rowspan="${span}"
+              data-id="${myRes.id}" data-occ="${myRes._occDate || ''}" data-act="detail"
+              data-occ-date="${isoDate(myRes._start)}"${myStyle}>
+              <span class="ct"><b>${escapeHtml(mySvc)}</b><br>
+              <small>${escapeHtml(myLoc)}</small><br>
+              <small class="ct-time">${myStartH} – ${myEndH}</small></span>
+            </td>`;
+          } else {
+            h += `<td class="cv-cell my-agenda-cell my-agenda-free"></td>`;
+          }
+        }
+      }
 
       CONFIG.LOCALS.forEach(l => {
         // Cette cellule est couverte par un rowspan précédent → on l'ignore
