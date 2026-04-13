@@ -3913,13 +3913,14 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 #hsDeclLieuSelect:focus { outline: none; border-color: #6366f1; }
 
 /* Cartes toggle */
-.hs-decl-cards   { display: flex; flex-wrap: wrap; gap: .5rem; }
+.hs-decl-cards   { display: flex; flex-direction: column; gap: .5rem; }
 
 .hs-decl-local {
   cursor: pointer;
   border: 2px solid #e2e8f0; border-radius: 10px;
   padding: .5rem .85rem; background: #f8fafc;
-  min-width: 120px; transition: border-color .14s, background .14s;
+  width: 100%; box-sizing: border-box;
+  transition: border-color .14s, background .14s;
   user-select: none;
 }
 .hs-decl-local:hover                              { border-color: #94a3b8; background: #f1f5f9; }
