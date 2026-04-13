@@ -208,7 +208,13 @@ const DB = {
   },
   getResSvcs(res)         { return res.services?.length ? res.services : (res.service ? [res.service] : []); },
   // Retourne le libellé affichable des services (ex: "Aide sociale + Médiation")
-  getSvcLabel(res)        { if (res?.type === 'rendez-vous') return '📅 Rendez-vous'; return this.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s).join(' + ') || ''; },
+  getSvcLabel(res) {
+    if (res?.type === 'rendez-vous') {
+      const svcs = this.getResSvcs(res);
+      return svcs.length && svcs[0] !== '' ? `📅 ${svcs[0]}` : '📅 Rendez-vous';
+    }
+    return this.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s).join(' + ') || '';
+  },
   getById(id)             { return this._data[id] ? { id, ...this._data[id] } : null; },
   getLocalLabel(id)       { return this._config.localLabels[id]       || `Local ${id}`; },
   getPublicLocalLabel(id) { return this._config.publicLabels[id]      || this.getLocalLabel(id); },
