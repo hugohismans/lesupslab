@@ -2615,7 +2615,7 @@ body {
 }
 .lv-bureau-modal-icon  { font-size: 2.5rem; text-align: center; }
 .lv-bureau-modal-title { font-size: 1.4rem; font-weight: 800; color: #f1f5f9; text-align: center; }
-.lv-bureau-modal-info  { background: #0f172a; border-radius: 12px; padding: 1rem; }
+.lv-bureau-modal-info  { background: #0f172a; border-radius: 12px; padding: 1rem; color: #cbd5e1; font-size: .9rem; line-height: 1.5; }
 .lv-bm-label  { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: .3rem; }
 .lv-bm-svc    { font-size: 1rem; font-weight: 700; color: #e2e8f0; }
 .lv-bm-agt    { font-size: .95rem; color: #94a3b8; margin-top: .15rem; }
