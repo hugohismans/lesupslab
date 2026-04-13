@@ -1307,7 +1307,7 @@ const HOME = {
           </div>`;
         }).join('');
         agendaEl.querySelectorAll('[data-res-id]').forEach(el => {
-          el.addEventListener('click', () => Modal.openDetail(el.dataset.resId));
+          el.addEventListener('click', () => MODAL.openDetail(el.dataset.resId));
         });
       }
     } else {
@@ -2242,7 +2242,7 @@ function _renderWeekWidget() {
     </div>`;
   }).join('')}</div>`;
   el.querySelectorAll('[data-res-id]').forEach(item => {
-    item.addEventListener('click', () => Modal.openDetail(item.dataset.resId));
+    item.addEventListener('click', () => MODAL.openDetail(item.dataset.resId));
   });
 }
 
