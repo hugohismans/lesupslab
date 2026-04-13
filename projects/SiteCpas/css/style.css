@@ -3893,9 +3893,10 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-pres-row.hs-pres-free { background: #fefce8; }
 .hs-pres-chip-free { background: #fef3c7; color: #92400e; }
 .hs-pres-row.hs-pres-mission { background: #eff6ff; }
-.hs-pres-chip-mission { background: #dbeafe; color: #1e40af; }
+.hs-pres-chip-mission { background: #dbeafe; color: #1e40af; border-radius: 8px; }
 .hs-pres-row.hs-pres-formation { background: #f0fdf4; }
-.hs-pres-chip-formation { background: #dcfce7; color: #166534; }
+.hs-pres-chip-formation { background: #dcfce7; color: #166534; border-radius: 8px; }
+.hs-pres-chip-comment { font-weight: 400; opacity: .85; }
 
 /* ── Déclaration présence ────────────────────────────────────────── */
 .hs-declare-card { background: #fff; }

@@ -1305,12 +1305,11 @@ const HOME = {
       </div>`);
     }
 
-    // Agents en mission ou formation (absents du bureau mais au travail)
+    // Agents en mission ou formation — tous les agents, bureau ou non
     const _today = new Date().toISOString().slice(0, 10);
     const _missionAgents = [];
     const _formationAgents = [];
     agents.forEach(({ key, name }) => {
-      if (_assignedKeys.has(key)) return; // déjà affiché dans un bureau
       const absEntry = DB.getAgentAbsenceOn(key, _today);
       if (!absEntry) return;
       const [, abs] = absEntry;
@@ -1320,15 +1319,19 @@ const HOME = {
     if (_missionAgents.length > 0) {
       presRows.push(`<div class="hs-pres-row hs-pres-mission">
         <span class="hs-pres-local">🚗 En mission</span>
-        <span class="hs-pres-lieu">Hors bureau</span>
-        <span class="hs-pres-agents">${_missionAgents.map(a => `<span class="hs-pres-chip hs-pres-chip-mission" title="${escapeHtml(a.comment || '')}">${escapeHtml(a.name)}</span>`).join('')}</span>
+        <span class="hs-pres-lieu"></span>
+        <span class="hs-pres-agents">${_missionAgents.map(a =>
+          `<span class="hs-pres-chip hs-pres-chip-mission">${escapeHtml(a.name)}${a.comment ? `<span class="hs-pres-chip-comment"> — ${escapeHtml(a.comment)}</span>` : ''}</span>`
+        ).join('')}</span>
       </div>`);
     }
     if (_formationAgents.length > 0) {
       presRows.push(`<div class="hs-pres-row hs-pres-formation">
         <span class="hs-pres-local">📚 En formation</span>
-        <span class="hs-pres-lieu">Hors bureau</span>
-        <span class="hs-pres-agents">${_formationAgents.map(a => `<span class="hs-pres-chip hs-pres-chip-formation" title="${escapeHtml(a.comment || '')}">${escapeHtml(a.name)}</span>`).join('')}</span>
+        <span class="hs-pres-lieu"></span>
+        <span class="hs-pres-agents">${_formationAgents.map(a =>
+          `<span class="hs-pres-chip hs-pres-chip-formation">${escapeHtml(a.name)}${a.comment ? `<span class="hs-pres-chip-comment"> — ${escapeHtml(a.comment)}</span>` : ''}</span>`
+        ).join('')}</span>
       </div>`);
     }
 
