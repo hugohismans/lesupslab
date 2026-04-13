@@ -2324,9 +2324,12 @@ function _renderMissionWidget(agentKey) {
       <button class="hs-mission-go-btn" id="hsMissionGoBtn">🚗 Partir en mission</button>`;
     document.getElementById('hsMissionGoBtn')?.addEventListener('click', async () => {
       const openLocal = DB.getOpenBureauForCurrentAgent();
-      if (openLocal !== null) {
-        const localLabel = DB.getLocalLabel(openLocal);
-        alert(`⚠️ Vous êtes actuellement dans le local "${localLabel}".\n\nVeuillez quitter votre local avant de partir en mission.`);
+      const boLocal   = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;
+      const curLocal  = openLocal ?? boLocal;
+      if (curLocal !== null) {
+        const deskId     = DB.getBureauDeskId(curLocal) || (agentKey ? DB.getAgentDeskInLocal(curLocal, agentKey) : null);
+        const localLabel = DB.getUnitLabel(curLocal, deskId);
+        alert(`⚠️ Vous êtes actuellement dans "${localLabel}".\n\nVeuillez quitter votre local avant de partir en mission.`);
         return;
       }
       const btn     = document.getElementById('hsMissionGoBtn');
