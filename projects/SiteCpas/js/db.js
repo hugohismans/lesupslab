@@ -466,7 +466,12 @@ const DB = {
     });
   },
   onAgentStatusChange(fn) { this._statusCbs.push(fn); },
-  getAgentStatus(agentKey)  { return this._agentStatus[agentKey] || null; },
+  getAgentStatus(agentKey) {
+    const s = this._agentStatus[agentKey] || null;
+    // Si l'agent est connecté et encore marqué "late", ignorer le statut late
+    if (s?.status === 'late' && s?.connectedAt) return null;
+    return s;
+  },
   getAgentDnd(agentKey)     { return !!(this._agentStatus[agentKey]?.dnd); },
   async setAgentStatus(agentKey, status, arrivalTime) {
     const today = isoDate(new Date());
@@ -508,7 +513,10 @@ const DB = {
   async markConnectedToday(agentKey) {
     if (this.isConnectedToday(agentKey)) return; // déjà marqué
     const today = isoDate(new Date());
-    await this._ref(`agentStatus/${today}/${agentKey}/connectedAt`).set(Date.now());
+    const updates = { connectedAt: Date.now() };
+    // Effacer le statut "en route" quand l'agent arrive
+    if (this._agentStatus[agentKey]?.status === 'late') updates.status = null;
+    await this._ref(`agentStatus/${today}/${agentKey}`).update(updates);
   },
   async fetchPresenceLog(date) {
     const snap = await this._ref(`agentStatus/${date}`).once('value');
