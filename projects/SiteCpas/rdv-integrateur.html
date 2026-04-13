@@ -8,7 +8,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #fef2f2; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 2rem 1rem 4rem; }
 
-    .page { width: 100%; max-width: 520px; }
+    .page { width: 100%; max-width: 560px; }
 
     /* ── Header ─────────────────────────────────────────────────── */
     .hdr { text-align: center; margin-bottom: 2rem; }
@@ -29,7 +29,7 @@
 
     /* ── Card ────────────────────────────────────────────────────── */
     .card { background: #fff; border-radius: 18px; padding: 1.5rem; box-shadow: 0 2px 20px rgba(0,0,0,.08); margin-bottom: 1.25rem; }
-    .card-title { font-size: 1rem; font-weight: 700; color: #1e1b4b; margin-bottom: .75rem; display: flex; align-items: center; gap: .4rem; }
+    .card-title { font-size: .95rem; font-weight: 700; color: #1e1b4b; margin-bottom: 1rem; display: flex; align-items: center; gap: .4rem; }
 
     /* ── Agent badge ─────────────────────────────────────────────── */
     .agent-badge { display: flex; align-items: center; gap: .75rem; background: #f5f3ff; border-radius: 12px; padding: .75rem 1rem; margin-bottom: 1.25rem; }
@@ -38,17 +38,44 @@
     .agent-name { font-weight: 700; color: #1e1b4b; font-size: .95rem; }
     .agent-role { font-size: .78rem; color: #64748b; }
 
-    /* ── Slots ───────────────────────────────────────────────────── */
-    .slots-list { display: flex; flex-direction: column; gap: .75rem; }
-    .slot-btn { display: flex; align-items: center; gap: 1rem; background: #fff; border: 2px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.25rem; cursor: pointer; text-align: left; width: 100%; font-family: inherit; transition: border-color .15s, background .15s, transform .1s; }
-    .slot-btn:hover { border-color: #ef4444; background: #fff5f5; transform: translateY(-1px); }
-    .slot-btn:active { transform: scale(.98); }
-    .slot-icon { font-size: 1.6rem; flex-shrink: 0; }
-    .slot-date { font-weight: 700; color: #1e1b4b; font-size: .95rem; }
-    .slot-time { font-size: .85rem; color: #ef4444; font-weight: 600; margin-top: .1rem; }
-    .slot-label { font-size: .78rem; color: #94a3b8; margin-top: .1rem; }
+    /* ── Jour groupe ─────────────────────────────────────────────── */
+    .day-group { margin-bottom: 1.25rem; }
+    .day-label { font-size: .8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid #f1f5f9; }
+
+    /* ── Chunk buttons (30 min) ──────────────────────────────────── */
+    .chunks { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .chunk-btn {
+      background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px;
+      padding: .45rem .9rem; font-size: .88rem; font-weight: 600; color: #334155;
+      cursor: pointer; font-family: inherit; transition: all .15s;
+    }
+    .chunk-btn:hover { border-color: #ef4444; background: #fff5f5; color: #ef4444; }
+    .chunk-btn.selected { background: #ef4444; border-color: #ef4444; color: #fff; }
+    .chunk-btn:disabled { opacity: .4; cursor: not-allowed; }
 
     .slots-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+
+    /* ── Collègues ───────────────────────────────────────────────── */
+    .colleague-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+    .colleague-chip {
+      background: #f1f5f9; border: 2px solid #e2e8f0; border-radius: 20px;
+      padding: .35rem .9rem; font-size: .82rem; font-weight: 600; color: #475569;
+      cursor: pointer; font-family: inherit; transition: all .15s; user-select: none;
+    }
+    .colleague-chip:hover { border-color: #7c3aed; color: #7c3aed; }
+    .colleague-chip.selected { background: #ede9fe; border-color: #7c3aed; color: #5b21b6; }
+
+    /* ── Confirm bar ─────────────────────────────────────────────── */
+    .confirm-bar { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: .75rem; }
+    .confirm-slot-info { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: .6rem 1rem; font-size: .88rem; color: #991b1b; font-weight: 600; text-align: center; }
+    .confirm-btn {
+      background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; border: none;
+      border-radius: 14px; padding: 1rem; font-size: 1rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: opacity .15s, transform .1s;
+      width: 100%;
+    }
+    .confirm-btn:hover { opacity: .9; transform: translateY(-1px); }
+    .confirm-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
     /* ── States ──────────────────────────────────────────────────── */
     .screen { display: none; }
@@ -118,7 +145,7 @@
       <div class="info-screen">
         <div class="info-icon">🔒</div>
         <div class="info-title">Service temporairement indisponible</div>
-        <div class="info-msg">Ce service de prise de rendez-vous avec l'intégrateur n'est plus actif.<br>Contactez votre administrateur si vous avez besoin d'aide.</div>
+        <div class="info-msg">Ce service n'est plus actif.<br>Contactez votre administrateur si vous avez besoin d'aide.</div>
         <a href="javascript:history.back()" class="back-link">← Retour</a>
       </div>
     </div>
@@ -130,7 +157,7 @@
       <div class="info-screen">
         <div class="info-icon">👤</div>
         <div class="info-title">Connexion requise</div>
-        <div class="info-msg">Veuillez vous connecter à moncompagnon avant de prendre rendez-vous avec l'intégrateur.</div>
+        <div class="info-msg">Veuillez vous connecter à moncompagnon avant de prendre rendez-vous.</div>
         <a href="index.html" class="back-link">← Se connecter</a>
       </div>
     </div>
@@ -139,16 +166,36 @@
   <!-- Écran : réservation -->
   <div class="screen" id="screenBook">
     <div class="card">
-      <div id="agentBadge" class="agent-badge">
+      <!-- Badge agent connecté -->
+      <div class="agent-badge">
         <div class="agent-avatar" id="agentInitial">?</div>
         <div class="agent-info">
           <div class="agent-name" id="agentName">Chargement…</div>
           <div class="agent-role">Votre rendez-vous sera enregistré à votre nom</div>
         </div>
       </div>
-      <div class="card-title">📅 Créneaux disponibles</div>
-      <div class="slots-list" id="slotsList">
-        <div class="slots-empty">Aucun créneau disponible pour le moment.</div>
+
+      <!-- Quel local -->
+      <div class="card-title">📍 Dans quel local serez-vous ?</div>
+      <select id="localSelect" style="width:100%;padding:.65rem .9rem;border:2px solid #e2e8f0;border-radius:10px;font-family:inherit;font-size:.92rem;color:#1e293b;margin-bottom:1.25rem;background:#f8fafc;appearance:auto;">
+        <option value="">— Sélectionnez votre local —</option>
+      </select>
+
+      <!-- Créneaux 30 min -->
+      <div class="card-title">📅 Choisissez un créneau de 30 minutes</div>
+      <div id="slotsList"></div>
+
+      <!-- Formation groupée -->
+      <div style="margin-top:1.5rem;">
+        <div class="card-title" style="margin-bottom:.25rem;">👥 Formation groupée <span style="font-weight:400;color:#94a3b8;font-size:.82rem;">(optionnel)</span></div>
+        <div style="font-size:.82rem;color:#64748b;margin-bottom:.5rem;">Invitez des collègues si vous souhaitez une session collective.</div>
+        <div class="colleague-chips" id="colleagueChips"></div>
+      </div>
+
+      <!-- Barre de confirmation -->
+      <div class="confirm-bar" id="confirmBar" style="display:none;">
+        <div class="confirm-slot-info" id="confirmSlotInfo"></div>
+        <button class="confirm-btn" id="confirmBtn">✅ Confirmer le rendez-vous</button>
       </div>
     </div>
   </div>
@@ -160,10 +207,11 @@
         <div class="success-icon">🎉</div>
         <div class="success-title">Bravo, c'est réservé !</div>
         <div class="success-slot" id="successSlotInfo"></div>
-        <div class="success-msg">
+        <div class="success-msg" id="successMsg">
           L'intégrateur arrivera au créneau demandé.<br>
           En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l'utiliser !
         </div>
+        <a href="app.html" class="back-link" style="color:#15803d;margin-top:1.25rem;display:inline-block;">← Retour à l'accueil</a>
       </div>
     </div>
   </div>
@@ -185,7 +233,6 @@ const FIREBASE_CONFIG = {
   appId:             '1:1028628915813:web:dbca4db8ed5b511321c88c'
 };
 
-// ── Init Firebase ─────────────────────────────────────────────────────
 firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
 const ref = path => db.ref(`orgs/${ORG_ID}/${path}`);
@@ -196,6 +243,12 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
+// Heure locale (évite le décalage UTC de toISOString)
+function localISO(d) {
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function fmtDate(iso) {
   const d = new Date(iso);
   const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
@@ -204,10 +257,13 @@ function fmtDate(iso) {
 }
 
 function fmtTime(iso) {
-  return iso.slice(11, 16).replace(':', 'h');
+  const d = new Date(iso);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}h${m}`;
 }
 
-// ── Expansion des slots récurrents (même logique que rdv.js) ──────────
+// ── Expansion des slots récurrents ────────────────────────────────────
 function expandSlots(slots) {
   const expanded = [];
   const now = new Date();
@@ -235,14 +291,14 @@ function expandSlots(slots) {
     }
     let safe = 0;
     while (cursor <= endDate && cursor <= horizon && safe++ < 200) {
-      const occDate = cursor.toISOString().slice(0, 10);
+      const occDate = localISO(cursor).slice(0, 10);
       if (!exceptions[occDate]) {
         const s = new Date(cursor);
         const e = new Date(cursor.getTime() + duration);
         expanded.push({
           ...slot,
-          startDateTime: s.toISOString().slice(0, 16),
-          endDateTime:   e.toISOString().slice(0, 16),
+          startDateTime: localISO(s),
+          endDateTime:   localISO(e),
           _occDate: occDate,
           _seriesSlotId: slot.id,
         });
@@ -257,57 +313,107 @@ function expandSlots(slots) {
   return expanded;
 }
 
-// ── Render slots ──────────────────────────────────────────────────────
-function renderSlots(slots, integratorKey, agentKey, agentName) {
+// ── Découper une plage en créneaux de 30 min ──────────────────────────
+function splitInto30(slot) {
+  const chunks = [];
+  const end = new Date(slot.endDateTime);
+  let cursor = new Date(slot.startDateTime);
+  while (cursor.getTime() + 30 * 60000 <= end.getTime()) {
+    const s = new Date(cursor);
+    const e = new Date(cursor.getTime() + 30 * 60000);
+    chunks.push({
+      startDateTime: localISO(s),
+      endDateTime:   localISO(e),
+      _slotId: slot._seriesSlotId || slot.id,
+    });
+    cursor.setMinutes(cursor.getMinutes() + 30);
+  }
+  return chunks;
+}
+
+// ── State ─────────────────────────────────────────────────────────────
+let _selectedChunk = null; // { startDateTime, endDateTime, _slotId }
+let _selectedColleagues = new Set();
+
+function selectChunk(chunk, btn) {
+  _selectedChunk = chunk;
+  // Reset all buttons
+  document.querySelectorAll('.chunk-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  // Afficher la barre de confirmation
+  const bar = document.getElementById('confirmBar');
+  bar.style.display = 'flex';
+  document.getElementById('confirmSlotInfo').textContent =
+    `📅 ${fmtDate(chunk.startDateTime)} de ${fmtTime(chunk.startDateTime)} à ${fmtTime(chunk.endDateTime)}`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+function renderSlots(slots) {
   const el = document.getElementById('slotsList');
-  const now = new Date().toISOString().slice(0, 16);
-  const future = slots.filter(s => s.startDateTime > now);
+  const nowStr = localISO(new Date());
+  const future = slots.filter(s => s.startDateTime > nowStr);
 
   if (!future.length) {
     el.innerHTML = '<div class="slots-empty">Aucun créneau disponible pour le moment.<br>Réessayez plus tard ou contactez l\'intégrateur directement.</div>';
     return;
   }
 
-  el.innerHTML = future.map((slot, i) => `
-    <button class="slot-btn" data-idx="${i}">
-      <div class="slot-icon">🗓</div>
-      <div>
-        <div class="slot-date">${fmtDate(slot.startDateTime)}</div>
-        <div class="slot-time">${fmtTime(slot.startDateTime)} → ${fmtTime(slot.endDateTime)}</div>
-        ${slot.label ? `<div class="slot-label">${slot.label}</div>` : ''}
+  // Découper en chunks 30 min et grouper par jour
+  const byDay = {};
+  future.forEach(slot => {
+    splitInto30(slot).forEach(chunk => {
+      const day = chunk.startDateTime.slice(0, 10);
+      if (!byDay[day]) byDay[day] = [];
+      byDay[day].push(chunk);
+    });
+  });
+
+  el.innerHTML = Object.entries(byDay).map(([day, chunks]) => `
+    <div class="day-group">
+      <div class="day-label">${fmtDate(day + 'T00:00')}</div>
+      <div class="chunks">
+        ${chunks.map((chunk, i) => `
+          <button class="chunk-btn" data-day="${day}" data-idx="${i}">
+            ${fmtTime(chunk.startDateTime)} – ${fmtTime(chunk.endDateTime)}
+          </button>
+        `).join('')}
       </div>
-    </button>
+    </div>
   `).join('');
 
-  el.querySelectorAll('.slot-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const idx = parseInt(btn.dataset.idx);
-      const slot = future[idx];
-      btn.disabled = true;
-      btn.style.opacity = '.5';
+  // Stocker les chunks pour retrouver au clic
+  const allChunksByDay = byDay;
+  el.querySelectorAll('.chunk-btn').forEach(btn => {
+    const day = btn.dataset.day;
+    const idx = parseInt(btn.dataset.idx);
+    btn.addEventListener('click', () => selectChunk(allChunksByDay[day][idx], btn));
+  });
+}
 
-      try {
-        const reqRef = db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push();
-        await reqRef.set({
-          slotId:            slot._seriesSlotId || slot.id,
-          targetAgentKey:    integratorKey,
-          requesterAgentKey: agentKey,
-          requesterName:     agentName,
-          withPerson:        agentName,
-          message:           'Demande via la page de bienvenue — visite intégrateur',
-          status:            'pending',
-          localId:           null,
-          createdAt:         Date.now(),
-          respondedAt:       null,
-        });
+function renderColleagues(agentsData, myKey, integratorKey) {
+  const container = document.getElementById('colleagueChips');
+  const others = Object.entries(agentsData)
+    .filter(([key]) => key !== myKey && key !== integratorKey);
 
-        document.getElementById('successSlotInfo').textContent =
-          `📅 ${fmtDate(slot.startDateTime)} de ${fmtTime(slot.startDateTime)} à ${fmtTime(slot.endDateTime)}`;
-        showScreen('screenSuccess');
-      } catch(e) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        alert('Erreur lors de la réservation : ' + e.message);
+  if (!others.length) {
+    container.innerHTML = '<span style="font-size:.82rem;color:#94a3b8;">Aucun autre agent disponible.</span>';
+    return;
+  }
+
+  container.innerHTML = others.map(([key, name]) =>
+    `<button class="colleague-chip" data-key="${key}">${name}</button>`
+  ).join('');
+
+  container.querySelectorAll('.colleague-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const key = chip.dataset.key;
+      if (_selectedColleagues.has(key)) {
+        _selectedColleagues.delete(key);
+        chip.classList.remove('selected');
+      } else {
+        _selectedColleagues.add(key);
+        chip.classList.add('selected');
       }
     });
   });
@@ -315,39 +421,102 @@ function renderSlots(slots, integratorKey, agentKey, agentName) {
 
 // ── Main ──────────────────────────────────────────────────────────────
 async function main() {
-  // 1. Vérifier si le service est actif
   const enabledSnap = await ref('appConfig/integratorRdvEnabled').once('value');
   if (enabledSnap.val() === false) { showScreen('screenDisabled'); return; }
 
-  // 2. Vérifier si l'agent est connecté
   const agentKey = sessionStorage.getItem('cpas_current_agent_key');
   if (!agentKey) { showScreen('screenNotLogged'); return; }
 
-  // 3. Récupérer le nom de l'agent
   const agentsSnap = await ref('appConfig/agents').once('value');
   const agentsData = agentsSnap.val() || {};
-  const agentName = agentsData[agentKey] || agentKey;
+  const agentName  = agentsData[agentKey] || agentKey;
 
-  // 4. Afficher le badge agent
   document.getElementById('agentInitial').textContent = agentName.charAt(0).toUpperCase();
   document.getElementById('agentName').textContent = agentName;
 
-  // 5. Récupérer la clé de l'intégrateur
   const intKeySnap = await ref('appConfig/integratorAgentKey').once('value');
   const integratorKey = intKeySnap.val();
   if (!integratorKey) { showScreen('screenDisabled'); return; }
 
-  // 6. Charger les slots de l'intégrateur
   const slotsSnap = await ref(`appState/availabilitySlots/${integratorKey}`).once('value');
   const rawSlots = [];
   slotsSnap.forEach(c => {
     if (c.key !== '_settings') rawSlots.push({ id: c.key, ...c.val() });
   });
 
-  const expanded = expandSlots(rawSlots);
+  // Charger les lieux pour le sélecteur de local
+  const lieuxSnap = await ref('appConfig/lieux').once('value');
+  const lieuxData = lieuxSnap.val() || {};
+  const lieuxList = Object.entries(lieuxData)
+    .map(([id, l]) => ({ id, name: l.name || 'Sans nom', order: l.order ?? 999, localIds: l.localIds ? Object.keys(l.localIds).map(Number).sort((a,b)=>a-b) : [] }))
+    .sort((a, b) => a.order - b.order);
+
+  const sel = document.getElementById('localSelect');
+  lieuxList.forEach(lieu => {
+    if (!lieu.localIds.length) return;
+    const grp = document.createElement('optgroup');
+    grp.label = lieu.name;
+    lieu.localIds.forEach(id => {
+      const opt = document.createElement('option');
+      opt.value = `${lieu.name}|${id}`;
+      opt.textContent = `Local ${id}`;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
 
   showScreen('screenBook');
-  renderSlots(expanded, integratorKey, agentKey, agentName);
+  renderSlots(expandSlots(rawSlots));
+  renderColleagues(agentsData, agentKey, integratorKey);
+
+  // Bouton confirmer
+  document.getElementById('confirmBtn').addEventListener('click', async () => {
+    if (!_selectedChunk) return;
+    const localVal = document.getElementById('localSelect').value;
+    if (!localVal) { alert('Veuillez sélectionner votre local.'); return; }
+    const [localLieu, localId] = localVal.split('|');
+
+    const btn = document.getElementById('confirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Envoi…';
+
+    const colleagues = Array.from(_selectedColleagues).map(key => ({
+      key, name: agentsData[key] || key
+    }));
+
+    try {
+      await db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
+        slotId:            _selectedChunk._slotId,
+        startDateTime:     _selectedChunk.startDateTime,
+        endDateTime:       _selectedChunk.endDateTime,
+        targetAgentKey:    integratorKey,
+        requesterAgentKey: agentKey,
+        requesterName:     agentName,
+        withPerson:        agentName,
+        colleagues:        colleagues.length ? colleagues : null,
+        message:           `Demande via la page de bienvenue — visite intégrateur — Local ${localId} (${localLieu})`,
+        localId:           Number(localId),
+        localLieu:         localLieu,
+        status:            'pending',
+        createdAt:         Date.now(),
+        respondedAt:       null,
+      });
+
+      document.getElementById('successSlotInfo').textContent =
+        `📅 ${fmtDate(_selectedChunk.startDateTime)} de ${fmtTime(_selectedChunk.startDateTime)} à ${fmtTime(_selectedChunk.endDateTime)} — Local ${localId} (${localLieu})`;
+
+      let msg = 'L\'intégrateur arrivera au créneau demandé à votre local.<br>En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l\'utiliser !';
+      if (colleagues.length) {
+        msg += `<br><br>👥 <strong>Formation groupée</strong> — ${colleagues.map(c => c.name).join(', ')} seront également notifiés.`;
+      }
+      document.getElementById('successMsg').innerHTML = msg;
+      showScreen('screenSuccess');
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = '✅ Confirmer le rendez-vous';
+      alert('Erreur lors de la réservation : ' + e.message);
+    }
+  });
 }
 
 main().catch(e => {
