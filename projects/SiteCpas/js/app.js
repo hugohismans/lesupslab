@@ -1846,7 +1846,7 @@ function applyFeatureFlags() {
   show('btnLive',             DB.getFeature('enableTickets'));
   show('btnPublic',           DB._config.features['enablePublicView'] !== false);
   show('btnPresenceHd',       DB.getFeature('enablePresence'));
-  show('btnAnalytics',        DB.getFeature('enableAnalytics'));
+  show('btnAnalytics',        DB.getFeature('enableAnalytics') && DB.hasPermission('viewAnalytics'));
   show('notifBell',           DB.getFeature('enableNotif'));
   show('btnDnd',              DB.getFeature('enableNotif'));
   show('btnCalendarExport',   DB.getFeature('enableCalendarSync') && !!sessionStorage.getItem('cpas_current_agent_key'));
