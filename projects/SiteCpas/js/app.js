@@ -3610,20 +3610,26 @@ document.addEventListener('DOMContentLoaded', async function () {
       return;
     }
 
-    // Split des réservations backoffice
-    const boRes = conflicts.filter(r =>
-      r.agent === myName &&
-      DB.isLocalBackoffice(r.localId) &&
-      r.startDateTime < endDT &&
-      r.endDateTime > startDT
-    );
+    // Split des réservations backoffice (utilise _start/_end pour les récurrentes)
+    const rdvS = new Date(startDT).getTime();
+    const rdvE = new Date(endDT).getTime();
+    const boRes = conflicts.filter(r => {
+      const boS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
+      const boE = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
+      return r.agent === myName && DB.isLocalBackoffice(r.localId) && boS < rdvE && boE > rdvS;
+    });
     for (const bo of boRes) {
-      if (bo.id) await DB.remove(bo.id);
-      if (bo.startDateTime < startDT) {
-        await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: bo.startDateTime, endDateTime: startDT, recurrence: { type: 'none' }, createdAt: Date.now() });
-      }
-      if (bo.endDateTime > endDT) {
-        await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: endDT, endDateTime: bo.endDateTime, recurrence: { type: 'none' }, createdAt: Date.now() });
+      const boActualStart = bo._start ? bo._start.toISOString().slice(0, 16) : bo.startDateTime;
+      const boActualEnd   = bo._end   ? bo._end.toISOString().slice(0, 16)   : bo.endDateTime;
+      const isRec = bo.recurrence && bo.recurrence.type && bo.recurrence.type !== 'none';
+      if (isRec && bo._occDate) {
+        await DB.addException(bo.id, bo._occDate);
+        if (boActualStart < startDT) await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: boActualStart, endDateTime: startDT, recurrence: { type: 'none' }, createdAt: Date.now() });
+        if (boActualEnd > endDT)   await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: endDT, endDateTime: boActualEnd, recurrence: { type: 'none' }, createdAt: Date.now() });
+      } else {
+        if (bo.id) await DB.remove(bo.id);
+        if (boActualStart < startDT) await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: boActualStart, endDateTime: startDT, recurrence: { type: 'none' }, createdAt: Date.now() });
+        if (boActualEnd > endDT)   await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: endDT, endDateTime: boActualEnd, recurrence: { type: 'none' }, createdAt: Date.now() });
       }
     }
 

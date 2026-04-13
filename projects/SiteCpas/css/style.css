@@ -5188,6 +5188,8 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   max-width: 760px;
   margin: 0 auto;
   padding: 1rem 1rem 3rem;
+  flex: 1;
+  overflow-y: auto;
 }
 .rdv-page-header { margin-bottom: 1rem; }
 .rdv-page-title  { font-size: 1.3rem; font-weight: 700; color: #1e293b; }
@@ -5450,8 +5452,11 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   margin-bottom: .3rem;
 }
 .rdv-req-status { font-weight: 700; font-size: .88rem; }
-.rdv-req-who    { font-size: .82rem; color: #64748b; }
+.rdv-req-who    { font-size: .82rem; color: #64748b; flex: 1; }
 .rdv-req-details { font-size: .84rem; color: #475569; }
+.rdv-req-clean-btn { background: none; border: none; cursor: pointer; font-size: .95rem;
+  color: #94a3b8; padding: .1rem .3rem; border-radius: 4px; line-height: 1; }
+.rdv-req-clean-btn:hover { color: #ef4444; background: #fee2e2; }
 .rdv-req-actions { display: flex; gap: .5rem; margin-top: .6rem; }
 .rdv-btn-accept {
   background: #22c55e; color: #fff; border: none; border-radius: 8px;
@@ -5552,7 +5557,8 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .btn-rdv:hover { background: #f1f5f9; color: #334155; }
 
 /* Réservations de type rendez-vous dans le calendrier */
-.cal-event[data-type="rendez-vous"] { border-left: 3px solid #2563eb; }
+.cv-cell.is-rdv,
+.cv-cell.is-booked.is-rdv { background: #fdf4ff !important; border-left: 3px solid #9333ea !important; }
 
 /* Badge récurrence slot */
 .rdv-rec-badge {

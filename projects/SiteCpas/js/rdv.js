@@ -14,6 +14,7 @@
   let _selectedSlot  = null;  // { id, startDateTime, endDateTime, selectedStart, selectedEnd }
   let _pendingAccept    = null;  // { requestId, localId } en attente si local picker
   let _pendingDelWithRdv = null; // { slotId, occDate, rdvResIds } en attente de confirmation
+  let _pendingCleanReq   = null; // { req, linkedResId } en attente de confirmation nettoyage
   let _targetRequests   = [];   // demandes pending/accepted pour l'agent cible (conflit)
   let _targetReqListener = null;
 
@@ -322,11 +323,13 @@
       const statusLabel = { pending: 'En attente', accepted: 'Accepté', refused: 'Refusé' }[r.status] || r.status;
       const localStr = r.localId ? ` — ${escHtml(DB.getLocalName(r.localId))}` : '';
 
+      const canClean = r.status === 'accepted' || r.status === 'refused';
       return `
         <div class="rdv-req-item rdv-req-${r.status}">
           <div class="rdv-req-header">
             <span class="rdv-req-status">${statusIcon} ${statusLabel}</span>
             <span class="rdv-req-who">→ ${escHtml(targetName)}</span>
+            ${canClean ? `<button class="rdv-req-clean-btn" data-req-id="${r.id}" title="Supprimer cette demande">🗑</button>` : ''}
           </div>
           <div class="rdv-req-details">
             ${withStr}${localStr}
@@ -334,6 +337,10 @@
           </div>
         </div>`;
     }).join('');
+
+    el.querySelectorAll('.rdv-req-clean-btn').forEach(btn => {
+      btn.addEventListener('click', () => _startCleanRequest(btn.dataset.reqId));
+    });
   }
 
   // ── Rendu — Demandes reçues (onglet 2) ────────────────────────────
@@ -380,6 +387,76 @@
     });
     el.querySelectorAll('.rdv-btn-refuse').forEach(btn => {
       btn.addEventListener('click', () => _doRefuse(btn.dataset.reqId));
+    });
+  }
+
+  // ── Nettoyage demandes acceptées / refusées ───────────────────────
+  function _startCleanRequest(reqId) {
+    const req = _allRequests.find(r => r.id === reqId);
+    if (!req) return;
+
+    // Chercher une réservation liée (type rendez-vous, mêmes start/end)
+    let linkedResId = null;
+    if (req.status === 'accepted' && req.startDateTime && req.endDateTime) {
+      const all = DB.Reservations?.getAll ? DB.Reservations.getAll() : (DB.getAll ? DB.getAll() : {});
+      for (const [id, r] of Object.entries(all)) {
+        if (r.type === 'rendez-vous' &&
+            r.startDateTime === req.startDateTime &&
+            r.endDateTime   === req.endDateTime) {
+          linkedResId = id;
+          break;
+        }
+      }
+    }
+
+    _pendingCleanReq = { req, linkedResId };
+
+    const overlay = document.getElementById('rdvCleanReqOverlay');
+    const msgEl   = document.getElementById('rdvCleanReqMsg');
+    const withRdvBtn = document.getElementById('rdvCleanWithRdvBtn');
+    if (!overlay) return;
+
+    const slotStr = req.startDateTime ? `${_fmtDT(req.startDateTime)} – ${_fmtTime(req.endDateTime)}` : '';
+    msgEl.textContent = slotStr
+      ? `Demande du ${slotStr}${req.withPerson?.name ? ' · avec ' + req.withPerson.name : ''}`
+      : `Demande avec ${req.withPerson?.name || '?'}`;
+
+    // Afficher le bouton "et RDV" uniquement si une réservation est liée
+    withRdvBtn.classList.toggle('hidden', !linkedResId);
+
+    overlay.classList.remove('hidden');
+  }
+
+  function _initCleanReqModal() {
+    const overlay   = document.getElementById('rdvCleanReqOverlay');
+    if (!overlay) return;
+
+    document.getElementById('rdvCleanWithRdvBtn').addEventListener('click', async () => {
+      if (!_pendingCleanReq) return;
+      const { req, linkedResId } = _pendingCleanReq;
+      overlay.classList.add('hidden');
+      _pendingCleanReq = null;
+      try {
+        if (linkedResId) await DB.Reservations.remove(linkedResId);
+        await DB._ref(`appState/appointmentRequests/${req.id}`).remove();
+        _showToast('Demande et réservation supprimées.');
+      } catch (e) { _showToast('Erreur : ' + e.message, true); }
+    });
+
+    document.getElementById('rdvCleanOnlyBtn').addEventListener('click', async () => {
+      if (!_pendingCleanReq) return;
+      const { req } = _pendingCleanReq;
+      overlay.classList.add('hidden');
+      _pendingCleanReq = null;
+      try {
+        await DB._ref(`appState/appointmentRequests/${req.id}`).remove();
+        _showToast('Demande supprimée.');
+      } catch (e) { _showToast('Erreur : ' + e.message, true); }
+    });
+
+    document.getElementById('rdvCleanCancelBtn').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      _pendingCleanReq = null;
     });
   }
 
@@ -955,12 +1032,13 @@
     }
   }
 
-  // ── Finaliser l'acceptation (split backoffice + créer RDV) ────────
+  // ── Finaliser l'acceptation — étape 1 : vérif conflits + confirmation split ──
+  let _pendingBoSplit = null;
+
   async function _finalizeAccept(requestId, localId, targetAgentKey, startDT, endDT, withPerson, message, isAutoRequester) {
     const agentDisplayName = DB.getAgentDisplayNameByKey(targetAgentKey);
-    const localName        = DB.getLocalName(localId);
-    const withStr          = withPerson.type === 'agent' ? withPerson.name : `(ext.) ${withPerson.name}`;
-    const rdvNote          = `RDV avec ${withStr}${message ? ' — ' + message : ''}`;
+    const rdvS = new Date(startDT).getTime();
+    const rdvE = new Date(endDT).getTime();
 
     // 1. Vérifier conflit RDV (même agent, type rendez-vous)
     const conflicts = DB.getInRange(startDT, endDT);
@@ -973,80 +1051,107 @@
       if (req?.requesterAgentKey) {
         await DB.sendNotif(
           `❌ RDV refusé automatiquement — ${agentDisplayName} a déjà un rendez-vous sur ce créneau.`,
-          'rdv_refused',
-          req.requesterAgentKey,
-          { requestId }
+          'rdv_refused', req.requesterAgentKey, { requestId }
         );
       }
       _showToast('RDV refusé : conflit de rendez-vous pour cet agent.', 'warn');
       return;
     }
 
-    // 2. Découper les réservations backoffice qui chevauchent
-    const boRes = conflicts.filter(r =>
-      r.agent === agentDisplayName &&
-      DB.isLocalBackoffice(r.localId) &&
-      r.startDateTime < endDT &&
-      r.endDateTime > startDT
-    );
+    // 2. Détecter réservations backoffice qui chevauchent (utilise _start/_end pour les récurrentes)
+    const boRes = conflicts.filter(r => {
+      const boS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
+      const boE = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
+      return r.agent === agentDisplayName &&
+        DB.isLocalBackoffice(r.localId) &&
+        boS < rdvE && boE > rdvS;
+    });
 
+    // 3. Si chevauchement BO → demander confirmation avant de découper
+    if (boRes.length > 0) {
+      const localRdvName = DB.getLocalName(localId);
+      const lines = boRes.map(bo => {
+        const boS = bo._start || new Date(bo.startDateTime);
+        const boE = bo._end   || new Date(bo.endDateTime);
+        const fmt = d => d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        return `📍 ${DB.getLocalLabel(bo.localId)} de ${fmt(boS)} à ${fmt(boE)}`;
+      }).join('\n');
+      const msgEl = document.getElementById('rdvBoSplitMsg');
+      if (msgEl) msgEl.textContent =
+        `Vous avez déjà une présence réservée :\n${lines}\n\nAccepter le RDV dans "${localRdvName}" découpera cette réservation autour du rendez-vous.`;
+
+      _pendingBoSplit = { requestId, localId, targetAgentKey, startDT, endDT, withPerson, message, isAutoRequester, boRes };
+      document.getElementById('rdvBoSplitOverlay')?.classList.remove('hidden');
+      return;
+    }
+
+    await _executeFinalize({ requestId, localId, targetAgentKey, startDT, endDT, withPerson, message, isAutoRequester, boRes: [] });
+  }
+
+  function _initBoSplitModal() {
+    const overlay = document.getElementById('rdvBoSplitOverlay');
+    if (!overlay) return;
+    document.getElementById('rdvBoSplitConfirmBtn').addEventListener('click', async () => {
+      overlay.classList.add('hidden');
+      if (!_pendingBoSplit) return;
+      const params = _pendingBoSplit;
+      _pendingBoSplit = null;
+      await _executeFinalize(params);
+    });
+    document.getElementById('rdvBoSplitCancelBtn').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      _pendingBoSplit = null;
+    });
+  }
+
+  // ── Finaliser l'acceptation — étape 2 : split + créer RDV ─────────
+  async function _executeFinalize({ requestId, localId, targetAgentKey, startDT, endDT, withPerson, message, isAutoRequester, boRes }) {
+    const agentDisplayName = DB.getAgentDisplayNameByKey(targetAgentKey);
+    const localName        = DB.getLocalName(localId);
+    const withStr          = withPerson.type === 'agent' ? withPerson.name : `(ext.) ${withPerson.name}`;
+    const rdvNote          = `RDV avec ${withStr}${message ? ' — ' + message : ''}`;
+
+    // Découper chaque réservation backoffice qui chevauche
     for (const bo of boRes) {
-      // Supprimer l'occurrence BO originale (si récurrente, on utilise moveOccurrence logic)
-      if (bo.recurrenceOriginId) {
-        // C'est une occurrence développée — marquer comme exception sur la récurrence
-        await DB.addException(bo.recurrenceOriginId, bo.startDateTime.slice(0, 10));
-        // Recréer les tronçons comme réservations ponctuelles
-        if (bo.startDateTime < startDT) {
+      // Dates réelles de l'occurrence (utilisées pour le split)
+      const boActualStart = bo._start ? bo._start.toISOString().slice(0, 16) : bo.startDateTime;
+      const boActualEnd   = bo._end   ? bo._end.toISOString().slice(0, 16)   : bo.endDateTime;
+      const isRec = bo.recurrence && bo.recurrence.type && bo.recurrence.type !== 'none';
+
+      if (isRec && bo._occDate) {
+        // Occurrence récurrente : marquer exception + recréer les tronçons ponctuels
+        await DB.addException(bo.id, bo._occDate);
+        if (boActualStart < startDT) {
           await DB._ref('reservations').push({
-            localId:       String(bo.localId),
-            agent:         bo.agent,
-            services:      bo.services || [],
-            startDateTime: bo.startDateTime,
-            endDateTime:   startDT,
-            recurrence:    { type: 'none' },
-            createdAt:     Date.now(),
+            localId: String(bo.localId), agent: bo.agent, services: bo.services || [],
+            startDateTime: boActualStart, endDateTime: startDT, recurrence: { type: 'none' }, createdAt: Date.now(),
           });
         }
-        if (bo.endDateTime > endDT) {
+        if (boActualEnd > endDT) {
           await DB._ref('reservations').push({
-            localId:       String(bo.localId),
-            agent:         bo.agent,
-            services:      bo.services || [],
-            startDateTime: endDT,
-            endDateTime:   bo.endDateTime,
-            recurrence:    { type: 'none' },
-            createdAt:     Date.now(),
+            localId: String(bo.localId), agent: bo.agent, services: bo.services || [],
+            startDateTime: endDT, endDateTime: boActualEnd, recurrence: { type: 'none' }, createdAt: Date.now(),
           });
         }
       } else {
-        // Réservation simple : la modifier/split
+        // Réservation simple : supprimer + recréer les tronçons
         await DB.remove(bo.id);
-        if (bo.startDateTime < startDT) {
+        if (boActualStart < startDT) {
           await DB._ref('reservations').push({
-            localId:       String(bo.localId),
-            agent:         bo.agent,
-            services:      bo.services || [],
-            startDateTime: bo.startDateTime,
-            endDateTime:   startDT,
-            recurrence:    { type: 'none' },
-            createdAt:     Date.now(),
+            localId: String(bo.localId), agent: bo.agent, services: bo.services || [],
+            startDateTime: boActualStart, endDateTime: startDT, recurrence: { type: 'none' }, createdAt: Date.now(),
           });
         }
-        if (bo.endDateTime > endDT) {
+        if (boActualEnd > endDT) {
           await DB._ref('reservations').push({
-            localId:       String(bo.localId),
-            agent:         bo.agent,
-            services:      bo.services || [],
-            startDateTime: endDT,
-            endDateTime:   bo.endDateTime,
-            recurrence:    { type: 'none' },
-            createdAt:     Date.now(),
+            localId: String(bo.localId), agent: bo.agent, services: bo.services || [],
+            startDateTime: endDT, endDateTime: boActualEnd, recurrence: { type: 'none' }, createdAt: Date.now(),
           });
         }
       }
     }
 
-    // 3. Créer la réservation RDV
+    // Créer la réservation RDV
     const req0 = await DB.getAppointmentRequest(requestId);
     await DB._ref('reservations').push({
       localId:            String(localId),
@@ -1064,29 +1169,22 @@
       createdAt:          Date.now(),
     });
 
-    // 4. Mettre à jour le statut de la demande
+    // Mettre à jour le statut de la demande
     await DB.acceptAppointmentRequest(requestId, localId);
 
-    // 5. Notifications
+    // Notifications
     const req = await DB.getAppointmentRequest(requestId);
     if (isAutoRequester) {
-      // Le demandeur était en mode auto : notif informative à la cible
       await DB.sendNotif(
         `📅 RDV auto-accepté avec ${escHtml(req?.requesterName || '')} — ${_fmtDT(startDT)} au ${localName}`,
-        'rdv_info',
-        targetAgentKey,
-        { requestId }
+        'rdv_info', targetAgentKey, { requestId }
       );
-      // Confirmation au demandeur
       _showToast(`✅ RDV confirmé au ${localName} — ${_fmtDT(startDT)}`);
     } else {
-      // Mode manuel : notif retour au demandeur
       if (req?.requesterAgentKey) {
         await DB.sendNotif(
           `✅ RDV accepté par ${agentDisplayName} — ${_fmtDT(startDT)} au ${localName}`,
-          'rdv_accepted',
-          req.requesterAgentKey,
-          { requestId, localId }
+          'rdv_accepted', req.requesterAgentKey, { requestId, localId }
         );
       }
       _showToast(`RDV accepté et réservation créée au ${localName} ✓`);
@@ -1242,6 +1340,10 @@
       document.getElementById('rdvDelRecOverlay')?.classList.add('hidden');
       _pendingDelete = null;
     });
+
+    // Modales
+    _initBoSplitModal();
+    _initCleanReqModal();
 
     // Local picker — fermeture
     document.getElementById('rdvLocalClose')?.addEventListener('click', () => {

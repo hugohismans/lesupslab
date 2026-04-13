@@ -285,6 +285,35 @@
   </div>
 </div>
 
+<!-- Modale confirmation split backoffice -->
+<div class="rdv-overlay hidden" id="rdvBoSplitOverlay">
+  <div class="rdv-modal" style="max-width:400px">
+    <div class="rdv-modal-hd">
+      <h3>📅 Confirmer le rendez-vous</h3>
+    </div>
+    <p class="rdv-modal-hint" id="rdvBoSplitMsg"></p>
+    <div class="rdv-modal-ft" style="flex-direction:column;gap:.5rem;align-items:stretch">
+      <button class="btn-primary" id="rdvBoSplitConfirmBtn">✅ Accepter et découper la réservation</button>
+      <button class="btn-cancel" id="rdvBoSplitCancelBtn">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale nettoyage demande acceptée / refusée -->
+<div class="rdv-overlay hidden" id="rdvCleanReqOverlay">
+  <div class="rdv-modal" style="max-width:360px">
+    <div class="rdv-modal-hd">
+      <h3>🗑 Supprimer la demande</h3>
+    </div>
+    <p class="rdv-modal-hint" id="rdvCleanReqMsg"></p>
+    <div class="rdv-modal-ft" style="flex-direction:column;gap:.5rem;align-items:stretch">
+      <button class="btn-danger" id="rdvCleanWithRdvBtn">Supprimer la demande et le RDV de l'agenda</button>
+      <button class="btn-cancel" id="rdvCleanOnlyBtn">Supprimer la demande uniquement</button>
+      <button class="btn-cancel" id="rdvCleanCancelBtn">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="rdvToast" class="rdv-toast hidden"></div>
 
