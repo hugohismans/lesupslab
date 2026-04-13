@@ -1235,6 +1235,32 @@
       }
     }
 
+    // ── Découper la plage RDV parent si elle provient du calendrier ──
+    const parentSlots = DB.getInRange(startDT, endDT).filter(r =>
+      r.isRdvSlot && r.agent === agentDisplayName &&
+      r._start <= new Date(startDT) && r._end >= new Date(endDT)
+    );
+    for (const ps of parentSlots) {
+      const psStart = ps.startDateTime;
+      const psEnd   = ps.endDateTime;
+      const psData  = DB.getAll()[ps.id];
+      if (!psData) continue;
+      // Supprimer la plage parent
+      await DB.remove(ps.id);
+      // Recréer le morceau avant (si nécessaire)
+      if (psStart < startDT) {
+        await DB._ref('reservations').push({
+          ...psData, startDateTime: psStart, endDateTime: startDT, createdAt: Date.now(),
+        });
+      }
+      // Recréer le morceau après (si nécessaire)
+      if (psEnd > endDT) {
+        await DB._ref('reservations').push({
+          ...psData, startDateTime: endDT, endDateTime: psEnd, createdAt: Date.now(),
+        });
+      }
+    }
+
     // Créer la réservation RDV
     const req0 = await DB.getAppointmentRequest(requestId);
     await DB._ref('reservations').push({
