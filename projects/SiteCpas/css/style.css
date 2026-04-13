@@ -5701,6 +5701,12 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .lp-desk-booked    { background:#fee2e2; color:#991b1b; }
 .lp-desk-perm      { background:#e2e8f0; color:#64748b; }
 
+/* ─── Toggles lieu (vue Direct) ───────────────────────────────── */
+.lv-lieu-toggles   { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+.lv-lieu-toggle    { padding:.3rem .7rem; border:1.5px solid rgba(255,255,255,.2); border-radius:8px; background:transparent; color:rgba(255,255,255,.7); font-size:.78rem; font-weight:600; cursor:pointer; transition:all .15s; }
+.lv-lieu-toggle:hover { background:rgba(255,255,255,.1); color:#fff; }
+.lv-lieu-toggle.active { background:#2563eb; color:#fff; border-color:#2563eb; }
+
 /* ─── Toggles desk filter (calendrier jour) ──────────────────── */
 .cv-desk-filter    { display:flex; gap:.4rem; padding:.5rem .25rem; flex-wrap:wrap; }
 .cv-desk-toggle    { padding:.35rem .8rem; border:1.5px solid #e2e8f0; border-radius:8px; background:#f8fafc; color:#475569; font-size:.82rem; font-weight:600; cursor:pointer; transition:all .15s; }

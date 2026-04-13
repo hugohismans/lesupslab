@@ -845,17 +845,6 @@ const LIVE = {
 
   _initRoleSelect() {
     const sel = g('liveRoleSelect');
-    // Peupler avec les locaux du lieu courant
-    CONFIG.LOCALS.forEach(l => {
-      const opt = document.createElement('option');
-      opt.value = `bureau_${l}`;
-      opt.textContent = `🏢 Bureau — ${DB.getLocalLabel(l)}`;
-      sel.appendChild(opt);
-    });
-    // Restaurer la valeur sauvegardée
-    const saved = this.getRole();
-    if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
-    else sel.value = 'accueil';
 
     sel.addEventListener('change', () => {
       this.setRole(sel.value);
@@ -871,7 +860,53 @@ const LIVE = {
       this.render();
     });
 
+    this._renderLieuToggles();
+    this._refreshRoleLocals();
     this._applyRoleUI();
+  },
+
+  // Toggles lieux (non backoffice) dans l'en-tête Direct
+  _renderLieuToggles() {
+    const bar = g('liveLieuToggles');
+    if (!bar) return;
+    const lieux = DB.getLieux();
+    const entries = Object.entries(lieux).filter(([, l]) => !l.isBackoffice);
+    bar.innerHTML = entries.map(([id, l]) =>
+      `<button class="lv-lieu-toggle${this._filterLieuId === id ? ' active' : ''}" data-lieu="${id}">${escapeHtml(l.name)}</button>`
+    ).join('');
+    bar.querySelectorAll('.lv-lieu-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.lieu;
+        this._filterLieuId = this._filterLieuId === id ? null : id;
+        this._renderLieuToggles();
+        this._refreshRoleLocals();
+        this.render();
+      });
+    });
+  },
+
+  // Mettre à jour les locaux dans le select rôle selon le lieu sélectionné
+  _refreshRoleLocals() {
+    const sel = g('liveRoleSelect');
+    // Supprimer les anciennes options bureau
+    [...sel.options].forEach(o => { if (o.value.startsWith('bureau_')) o.remove(); });
+    // Ajouter les locaux du lieu filtré (ou tous les non-backoffice)
+    const lieux = DB.getLieux();
+    const lieuEntries = Object.entries(lieux).filter(([id, l]) =>
+      !l.isBackoffice && (!this._filterLieuId || id === this._filterLieuId)
+    );
+    lieuEntries.forEach(([, lieu]) => {
+      (lieu.localIds ? Object.keys(lieu.localIds).map(Number).sort((a, b) => a - b) : []).forEach(localId => {
+        const opt = document.createElement('option');
+        opt.value = `bureau_${localId}`;
+        opt.textContent = `🏢 Bureau — ${DB.getLocalLabel(localId)}`;
+        sel.appendChild(opt);
+      });
+    });
+    // Restaurer la valeur sauvegardée
+    const saved = this.getRole();
+    if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
+    else sel.value = 'accueil';
   },
 
   _showAllBureaux: false,
@@ -879,15 +914,7 @@ const LIVE = {
   _filterLieuId: null,
 
   _renderLieuSelector() {
-    const sel = g('liveLieuSelector');
-    if (!sel) return;
-    const lieux = DB.getLieux();
-    sel.innerHTML = '<option value="">🏢 Tous les lieux</option>' +
-      Object.entries(lieux)
-        .filter(([, l]) => !l.isBackoffice)
-        .map(([id, l]) => `<option value="${id}"${id === this._filterLieuId ? ' selected' : ''}>${escapeHtml(l.name)}</option>`)
-        .join('');
-    sel.onchange = () => { this._filterLieuId = sel.value || null; this.render(); };
+    // Remplacé par _renderLieuToggles — noop pour compat
   },
 
   _renderLieuFilters() {
