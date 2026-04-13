@@ -186,6 +186,21 @@ const DB = {
   },
   getServicesWithKeys()   { return this._config.services; },
   // Retourne la liste des services d'une réservation (compat ancien format champ unique)
+  // Retourne TOUS les noms d'agents impliqués dans une réservation (agent, agents[], invitedAgents)
+  getResAgentNames(res) {
+    const names = new Set();
+    const main = res.agent === 'Autre' ? (res.agentCustom || '') : (res.agent || '');
+    if (main) names.add(main);
+    if (Array.isArray(res.agents)) res.agents.forEach(n => { if (n) names.add(n); });
+    if (res.invitedAgents) {
+      const agents = this.getAgentsWithKeys();
+      Object.keys(res.invitedAgents).forEach(k => {
+        const a = agents.find(a => a.key === k);
+        if (a?.name) names.add(a.name);
+      });
+    }
+    return names;
+  },
   getResSvcs(res)         { return res.services?.length ? res.services : (res.service ? [res.service] : []); },
   // Retourne le libellé affichable des services (ex: "Aide sociale + Médiation")
   getSvcLabel(res)        { if (res?.type === 'rendez-vous') return '📅 Rendez-vous'; return this.getResSvcs(res).map(s => s === 'Autre' ? (res.serviceCustom || 'Autre') : s).join(' + ') || ''; },

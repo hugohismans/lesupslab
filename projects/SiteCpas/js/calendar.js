@@ -595,19 +595,21 @@ const CAL = {
         showToast('⚠ Conflit : créneau déjà occupé pour cette unité.');
         return;
       }
-      // Vérification des conflits — agent dans un autre local
+      // Vérification des conflits — agents (principal + invités) dans un autre local
       const _dndRes = DB.getReservationById?.(dnd.resId);
       if (_dndRes) {
-        const _dndAgent = _dndRes.agent === 'Autre' ? (_dndRes.agentCustom || '') : (_dndRes.agent || '');
-        if (_dndAgent) {
-          const agentClash = DB.getInRange(newStart, newEnd).find(r =>
-            !r.isPermanent && r.id !== dnd.resId &&
-            parseInt(r.localId) !== newLocalId &&
-            (r.agent === _dndAgent || (r.agent === 'Autre' && r.agentCustom === _dndAgent))
-          );
+        const _dndNames = DB.getResAgentNames(_dndRes);
+        if (_dndNames.size) {
+          const agentClash = DB.getInRange(newStart, newEnd).find(r => {
+            if (r.isPermanent || r.id === dnd.resId) return false;
+            const rNames = DB.getResAgentNames(r);
+            for (const n of _dndNames) { if (rNames.has(n)) return true; }
+            return false;
+          });
           if (agentClash) {
+            const overlap = [..._dndNames].find(n => DB.getResAgentNames(agentClash).has(n));
             const clashLoc = DB.getLocalLabel(parseInt(agentClash.localId));
-            showToast(`⚠ Conflit agenda : ${_dndAgent} est déjà dans "${clashLoc}" sur ce créneau.`);
+            showToast(`⚠ Conflit agenda : ${overlap} est déjà dans "${clashLoc}" sur ce créneau.`);
             return;
           }
         }
@@ -715,19 +717,21 @@ const CAL = {
       const clashCheck = DB.getInRange(_rzNewStart, _rzNewEnd)
         .filter(r => DB.unitOccupies(r, rz.localId, rz.deskId) && r.id !== rz.resId);
       if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé dans cette unité.'); self.render(); return; }
-      // Vérifier conflits — agent dans un autre local
+      // Vérifier conflits — agents (principal + invités) dans un autre local
       const _rzRes = DB.getReservationById?.(rz.resId);
       if (_rzRes) {
-        const _rzAgent = _rzRes.agent === 'Autre' ? (_rzRes.agentCustom || '') : (_rzRes.agent || '');
-        if (_rzAgent) {
-          const agentClash = DB.getInRange(_rzNewStart, _rzNewEnd).find(r =>
-            !r.isPermanent && r.id !== rz.resId &&
-            parseInt(r.localId) !== rz.localId &&
-            (r.agent === _rzAgent || (r.agent === 'Autre' && r.agentCustom === _rzAgent))
-          );
+        const _rzNames = DB.getResAgentNames(_rzRes);
+        if (_rzNames.size) {
+          const agentClash = DB.getInRange(_rzNewStart, _rzNewEnd).find(r => {
+            if (r.isPermanent || r.id === rz.resId) return false;
+            const rNames = DB.getResAgentNames(r);
+            for (const n of _rzNames) { if (rNames.has(n)) return true; }
+            return false;
+          });
           if (agentClash) {
+            const overlap = [..._rzNames].find(n => DB.getResAgentNames(agentClash).has(n));
             const clashLoc = DB.getLocalLabel(parseInt(agentClash.localId));
-            showToast(`⚠ Conflit agenda : ${_rzAgent} est déjà dans "${clashLoc}" sur ce créneau.`);
+            showToast(`⚠ Conflit agenda : ${overlap} est déjà dans "${clashLoc}" sur ce créneau.`);
             self.render(); return;
           }
         }
