@@ -1831,6 +1831,13 @@ function applyFeatureFlags() {
     const _ak = sessionStorage.getItem('cpas_current_agent_key');
     _customizeBtn.classList.toggle('hidden', !_ak || _ak === 'anon');
     if (_ak && _ak !== 'anon') { _applyRoleDefaultWidgets(_ak); _applyWidgetPrefs(_ak); }
+  // Bannière RDV intégrateur
+  const _intBanner = document.getElementById('hsIntegratorBanner');
+  if (_intBanner) {
+    DB._ref('appConfig/integratorRdvEnabled').once('value').then(snap => {
+      _intBanner.classList.toggle('hidden', snap.val() === false);
+    });
+  }
   }
   // Bouton météo (visible uniquement si météo activée et coords configurées)
   const wxBtn = document.getElementById('hsAskWeather');
