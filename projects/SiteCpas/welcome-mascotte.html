@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue sur moncompagnon — avec Cori</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f1effe; color: #1e293b; line-height: 1.65; }
+
+    .mc-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+      color: #fff; padding: 2.5rem 2rem 2rem; text-align: center;
+    }
+    .mc-header-logo { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: .5rem; }
+    .mc-header-title { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; }
+    .mc-header-sub { font-size: .95rem; opacity: .65; margin-top: .2rem; }
+    .mc-version-badge { display: inline-block; background: #7c3aed; color: #fff; border-radius: 20px; padding: .3rem 1rem; font-size: .78rem; font-weight: 600; margin-top: .75rem; letter-spacing: .04em; }
+
+    .role-nav { background: #fff; border-bottom: 2px solid #e2e8f0; display: flex; overflow-x: auto; padding: 0 .5rem; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,.1); scrollbar-width: thin; }
+    .role-tab { padding: .9rem 1.1rem; cursor: pointer; font-size: .85rem; color: #64748b; border-bottom: 3px solid transparent; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; font-weight: 500; transition: color .15s, border-color .15s; }
+    .role-tab:hover { color: #7c3aed; }
+    .role-tab.active { color: #7c3aed; border-bottom-color: #7c3aed; font-weight: 700; }
+
+    .role-content { display: none; max-width: 860px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+    .role-content.active { display: block; }
+
+    .role-header { margin-bottom: 2rem; }
+    .role-title { font-size: 1.65rem; font-weight: 800; color: #1e1b4b; }
+    .role-badge { display: inline-block; background: #ede9fe; color: #6d28d9; border-radius: 20px; padding: .22rem .75rem; font-size: .76rem; font-weight: 600; margin-top: .4rem; }
+    .role-tagline { color: #64748b; margin-top: .5rem; font-size: .95rem; font-style: italic; }
+
+    .cori-wrap { display: flex; gap: 1.25rem; align-items: flex-start; background: #fff; border-radius: 18px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 18px rgba(124,58,237,.13); }
+    .cori-avatar { flex-shrink: 0; }
+    .cori-right { flex: 1; min-width: 0; }
+    .cori-name-tag { font-size: .7rem; font-weight: 700; color: #7c3aed; text-transform: uppercase; letter-spacing: .08em; margin-bottom: .45rem; }
+    .cori-bubble { background: #f5f3ff; border-radius: 12px 12px 12px 4px; padding: 1.1rem 1.25rem; border-left: 4px solid #7c3aed; font-size: .92rem; color: #334155; }
+    .cori-bubble p { margin-bottom: .65rem; }
+    .cori-bubble p:last-child { margin-bottom: 0; }
+    .cori-bubble strong { color: #1e1b4b; }
+
+    .section { background: #fff; border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    .section-title { font-size: 1.05rem; font-weight: 700; color: #1e1b4b; margin-bottom: 1rem; padding-bottom: .6rem; border-bottom: 2px solid #f1effe; display: flex; align-items: center; gap: .45rem; }
+    .section-text { font-size: .92rem; color: #475569; }
+    .section-text p { margin-bottom: .65rem; }
+    .section-text p:last-child { margin-bottom: 0; }
+    .section-text strong { color: #1e293b; }
+
+    .screenshot { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 3rem 1rem; text-align: center; margin: 1.25rem 0; }
+    .screenshot-icon { font-size: 2.2rem; margin-bottom: .5rem; }
+    .screenshot-label { font-weight: 700; color: #64748b; font-size: .92rem; }
+    .screenshot-hint { font-size: .76rem; color: #94a3b8; margin-top: .35rem; }
+
+    .steps { display: flex; flex-direction: column; gap: .85rem; margin: 1rem 0; }
+    .step { display: flex; gap: 1rem; align-items: flex-start; }
+    .step-num { background: #7c3aed; color: #fff; border-radius: 50%; width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 700; margin-top: .05rem; }
+    .step-action { font-weight: 700; color: #1e293b; margin-bottom: .2rem; font-size: .93rem; }
+    .step-desc { font-size: .87rem; color: #64748b; }
+
+    .tip { background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 10px 10px 0; padding: .75rem 1rem; margin: .75rem 0; font-size: .88rem; color: #1e40af; }
+    .tip strong { display: block; margin-bottom: .15rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+    .note { background: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 0 10px 10px 0; padding: .75rem 1rem; margin: .75rem 0; font-size: .88rem; color: #14532d; }
+    .note strong { display: block; margin-bottom: .15rem; }
+    .highlight { background: linear-gradient(135deg, #f5f3ff, #ede9fe); border: 1px solid #c4b5fd; border-radius: 12px; padding: 1rem 1.25rem; margin: 1rem 0; font-size: .9rem; color: #4c1d95; }
+    .highlight strong { color: #6d28d9; display: block; margin-bottom: .3rem; font-size: .95rem; }
+
+    .btn-s { display: inline-flex; align-items: center; gap: .3rem; border-radius: 7px; padding: .3rem .7rem; font-size: .82rem; font-weight: 600; vertical-align: middle; cursor: default; border: none; margin: .1rem; }
+    .btn-s.blue { background: #2563eb; color: #fff; }
+    .btn-s.purple { background: #7c3aed; color: #fff; }
+    .btn-s.green { background: #16a34a; color: #fff; }
+    .btn-s.orange { background: #d97706; color: #fff; }
+    .btn-s.red { background: #dc2626; color: #fff; }
+
+    .widget-list { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+    .widget-chip { display: flex; align-items: center; gap: .3rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: .28rem .7rem; font-size: .8rem; color: #475569; }
+    .widget-chip.hi { background: #ede9fe; border-color: #c4b5fd; color: #6d28d9; font-weight: 600; }
+
+    @media print {
+      .role-nav { display: none !important; }
+      .role-content { display: block !important; page-break-before: always; max-width: 100%; padding: 1.5rem; }
+      .role-content:first-of-type { page-break-before: auto; }
+      body { background: #fff; }
+      .section { box-shadow: none; border: 1px solid #e2e8f0; }
+      .cori-wrap { box-shadow: none; border: 1px solid #e2e8f0; }
+    }
+    @media (max-width: 620px) {
+      .cori-wrap { flex-direction: column; }
+      .role-title { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="mc-header">
+  <div class="mc-header-logo">
+    <svg viewBox="0 0 100 118" width="58" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 16px rgba(167,139,250,.7))">
+      <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+      <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+      <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+      <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="mc-header-title">moncompagnon</div>
+      <div class="mc-header-sub">CPAS de Quaregnon · Guide de bienvenue</div>
+    </div>
+  </div>
+  <div class="mc-version-badge">✨ Version Cori — Mascotte officielle</div>
+</div>
+
+<!-- ROLE NAV -->
+<nav class="role-nav" id="roleNav">
+  <button class="role-tab active" data-role="accueil">👋 Accueil</button>
+  <button class="role-tab" data-role="social">🤝 Assist. social·e</button>
+  <button class="role-tab" data-role="admin">🖥️ Admin</button>
+  <button class="role-tab" data-role="direction">🏢 Direction</button>
+  <button class="role-tab" data-role="chef">👔 Chef de service</button>
+  <button class="role-tab" data-role="technicien">🔧 Technicien·ne</button>
+  <button class="role-tab" data-role="entretien">🧹 Entretien</button>
+  <button class="role-tab" data-role="juriste">⚖️ Juriste</button>
+</nav>
+
+
+<!-- ═══════════════════════════════ ACCUEIL ══════════════════════════════ -->
+<div class="role-content active" id="role-accueil">
+  <div class="role-header">
+    <div class="role-title">Agent·e d'accueil</div>
+    <div class="role-badge">Rôle : Accueil</div>
+    <div class="role-tagline">Tu es le premier visage que voit chaque bénéficiaire. Je suis là pour que ça se passe sans accroc.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Salut ! Je suis <strong>Cori</strong>, ton nouveau compagnon numérique au CPAS de Quaregnon. Je serai là tous les jours sur ton écran — enfin, sur ton écran, pas physiquement à côté de toi, faut pas exagérer.</p>
+        <p>En tant qu'agent d'accueil, tu as un rôle central : tu accueilles, tu orientes, tu mets les bénéficiaires dans la bonne file. Et pour ça, je ne te demande de maîtriser que <strong>deux choses</strong> : ton écran d'accueil, et la vue DIRECT. C'est tout. Promis.</p>
+        <p>Allez, je t'explique tout ça tranquillement.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — ta base de départ</div>
+    <div class="section-text">
+      <p>Chaque matin, après ta connexion, tu arrives ici. C'est <strong>ta page personnelle</strong>. D'un coup d'œil, tu vois les infos qui t'intéressent : combien de personnes sont en attente en ce moment, qui est présent dans les bureaux, et les dernières notifications.</p>
+      <p>Cet écran est fait de <strong>widgets</strong> — de petites cartes d'information que tu peux garder, cacher, ou déplacer selon tes préférences. Pour toi, les plus utiles sont les stats de file d'attente, le tableau "Qui est où", et les permanences de service ouvertes.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📊 Stats du jour</div>
+      <div class="widget-chip hi">🗺 Qui est où</div>
+      <div class="widget-chip hi">🔗 Permanences ouvertes</div>
+      <div class="widget-chip">⏱ Temps d'attente moyen</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Accueil)</div>
+      <div class="screenshot-hint">Affiche les stats du jour, le tableau des présences, et les files actives</div>
+    </div>
+    <div class="tip"><strong>Astuce Cori</strong> Tu peux personnaliser cet écran : clique sur le crayon ✏️ en haut à droite pour afficher, masquer ou réorganiser les widgets. Chaque agent a son propre agencement.</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Ton outil principal — la vue DIRECT</div>
+    <div class="section-text">
+      <p>Ton <strong>vrai terrain de jeu</strong>, c'est la vue DIRECT. C'est l'écran que tu garderas ouvert toute la journée. Il s'ouvre depuis le bouton <span class="btn-s purple">📋 Voir les bureaux</span> dans le menu.</p>
+      <p>Là, tu vois en temps réel l'état de chaque bureau : <strong>vert = libre</strong>, <strong>orange = occupé</strong>, <strong>gris = fermé</strong>. Plus besoin de téléphoner pour savoir si l'assistante sociale est disponible — tu le vois directement ici !</p>
+      <p>Si le CPAS a plusieurs sites, tu peux filtrer par lieu grâce au menu déroulant en haut à droite. La vue se recentre automatiquement sur le lieu choisi.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (tous les bureaux)</div>
+      <div class="screenshot-hint">Chaque bureau affiche son état en temps réel, avec les files d'attente actives</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🎟 La file d'attente — 3 gestes, et c'est tout</div>
+    <div class="section-text">
+      <p>Un bénéficiaire arrive à l'accueil et veut voir un travailleur social ? Voilà <strong>tout</strong> ce que tu dois faire :</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Tu repères la bonne file dans la vue DIRECT</div>
+          <div class="step-desc">Chaque service a sa file (ex : "Aide générale", "Médiation de dettes"…). Elle est visible dans la vue DIRECT, en bas de la carte du service.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Tu cliques sur <span class="btn-s green">➕ Ajouter</span></div>
+          <div class="step-desc">Une petite fenêtre s'ouvre. Tu peux entrer le prénom du bénéficiaire — mais c'est <strong>entièrement optionnel</strong>. Si tu ne mets rien, ça marche quand même.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Tu lui annonces son numéro de ticket</div>
+          <div class="step-desc">Un numéro s'affiche à l'écran (ex : "A03"). Tu le communiques au bénéficiaire. Il s'assoit et attend. <strong>Ton rôle s'arrête là.</strong></div>
+        </div>
+      </div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Bouton "Ajouter à la file" dans la vue DIRECT</div>
+      <div class="screenshot-hint">Le bouton + se trouve dans la carte de chaque file de service</div>
+    </div>
+    <div class="highlight">
+      <strong>Et ensuite ?</strong>
+      Dans quelques minutes, un travailleur social appellera son numéro depuis son bureau. Le bénéficiaire entendra son numéro et se lèvera. Tu n'as plus rien à faire — le système gère tout automatiquement.
+    </div>
+    <div class="tip"><strong>Cas particulier</strong> Si un bénéficiaire demande à voir <em>quelqu'un en particulier</em> (ex : "Je veux voir Madame Dupont"), utilise le bouton <span class="btn-s blue">📌 Envoyer vers un agent</span>. L'agent en question reçoit une notification et peut accepter, proposer un délai, ou rediriger.</div>
+  </div>
+
+  <div class="section" style="border-top: 4px solid #1e1b4b;">
+    <div class="section-title">🔒 Ma vie privée, c'est sacré — Cori s'explique</div>
+    <div class="cori-bubble" style="margin-bottom: 0;">
+      <p>Je sens que tu te demandes peut-être si je te surveille. Je vais être honnête avec toi : <strong>non, je ne suis pas un agent secret sous couverture.</strong></p>
+      <p>Les seules données que je collecte sont des données de fonctionnement, et elles sont <strong>entièrement anonymisées</strong>. Par exemple : quand un ticket de file d'attente est appelé, j'enregistre uniquement le temps qu'il a attendu — sans nom, sans prénom, sans aucune identité. C'est uniquement pour estimer les temps d'attente moyens et améliorer le service. Si la file du mercredi matin prend toujours 20 minutes de plus, ça se verra, et on pourra agir.</p>
+      <p>Tes notes personnelles, tes messages, ta connexion — tout ça, <strong>c'est à toi, et ça reste confidentiel</strong>. Promis, juré, je ne suis qu'un assistant numérique, pas un rapporteur.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ ASSISTANT·E SOCIAL·E ═════════════════════ -->
+<div class="role-content" id="role-social">
+  <div class="role-header">
+    <div class="role-title">Assistant·e social·e</div>
+    <div class="role-badge">Rôle : Travailleur·euse social·e</div>
+    <div class="role-tagline">Ton quotidien, c'est les gens — pas les outils. Je m'occupe du reste.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Salut ! Moi c'est Cori. Je sais que ton emploi du temps est chargé et que la dernière chose dont tu as besoin, c'est d'un nouvel outil compliqué. Bonne nouvelle : je t'ai préparé quelque chose de vraiment simple.</p>
+        <p>Pour toi, il y a <strong>quatre gestes à connaître</strong> : te déclarer dans ton bureau, rejoindre ta file d'attente, appeler ton prochain bénéficiaire, et partir en mission. C'est littéralement tout ce que tu dois maîtriser. Je me charge du reste.</p>
+        <p>Allez, on y va pas à pas.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — ce qui compte pour toi</div>
+    <div class="section-text">
+      <p>Quand tu arrives, ton écran d'accueil te donne une vue d'ensemble personnalisée. Tu y vois <strong>ton agenda du jour</strong> (tes réservations de bureau, tes rendez-vous), tes prochaines permanences, et les dernières notifications qui te concernent.</p>
+      <p>Tout est en temps réel et automatiquement mis à jour. Tu n'as rien à faire pour que les informations soient à jour — elles le sont toujours.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip hi">🚗 Partir en mission</div>
+      <div class="widget-chip">✅ Rappels du jour</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Assistant·e social·e)</div>
+      <div class="screenshot-hint">Agenda du jour, prochaines permanences, et widget Mission mis en avant</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Ta vue principale — la permanence en temps réel</div>
+    <div class="section-text">
+      <p>Quand tu es en permanence, tu ouvres la <strong>vue DIRECT</strong>. Tu y vois tous les bureaux du CPAS. Mais toi, tu travailles dans un local bien précis — tu peux le sélectionner directement dans le menu en haut, et la vue se concentre sur ton espace.</p>
+      <p>C'est là que tu vois combien de bénéficiaires attendent pour te voir, qui est en salle d'attente, et tu peux appeler le suivant d'un seul clic.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT avec ton local sélectionné et ta file d'attente</div>
+      <div class="screenshot-hint">Ton bureau, ta file active, et le bouton "Appeler le suivant" bien visible</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚡ Tes 4 actions essentielles</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Te déclarer présent·e dans ton bureau</div>
+          <div class="step-desc">Depuis la vue DIRECT ou le widget "Me déclarer" sur ton écran d'accueil, clique sur ton bureau (ex : "Bureau 3") et sélectionne ton service. Tu apparais immédiatement comme disponible pour tous tes collègues.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Rejoindre la file de ton service</div>
+          <div class="step-desc">Clique sur le bouton <span class="btn-s green">▶ Ouvrir ma permanence</span> dans ta carte de bureau. Dès cet instant, les bénéficiaires ajoutés par l'accueil arrivent dans ta file.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Appeler le suivant</div>
+          <div class="step-desc">Un bénéficiaire attend ? Clique sur <span class="btn-s purple">📣 Appeler le suivant</span>. Son numéro de ticket s'affiche sur l'écran public. Il se lève et vient te voir. Aussi simple que ça.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-action">Partir en mission (visite à domicile, réunion externe…)</div>
+          <div class="step-desc">Tu quittes le CPAS ? Utilise le widget <strong>Mission</strong> sur ton écran d'accueil. Tu notes une adresse ou un bref commentaire, tu cliques, et c'est parti. Tous tes collègues voient instantanément que tu es en mission et où tu te rends. Quand tu reviens, un clic sur "Je suis de retour" et tu es de nouveau disponible.</div>
+        </div>
+      </div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Widget "Partir en mission" sur l'écran d'accueil</div>
+      <div class="screenshot-hint">Le widget Mission permet de noter ton adresse de destination en quelques secondes</div>
+    </div>
+    <div class="highlight">
+      <strong>Et les rendez-vous planifiés ?</strong>
+      Si tu as des rendez-vous organisés à l'avance avec des bénéficiaires ou des collègues, tu peux gérer tes créneaux de disponibilité depuis la page <em>Rendez-vous</em>. Tu définis tes plages libres, et les demandes arrivent directement dans tes notifications. Tu acceptes ou refuses en un clic.
+    </div>
+  </div>
+
+  <div class="section" style="border-top: 4px solid #1e1b4b;">
+    <div class="section-title">🔒 Sur la confidentialité — Cori tient à être clair</div>
+    <div class="cori-bubble" style="margin-bottom: 0;">
+      <p>Petite mise au point importante : <strong>je ne suis pas un agent secret sous couverture.</strong> Les seules données que je collecte sont anonymisées et purement fonctionnelles. Par exemple, quand tu appelles un bénéficiaire, j'enregistre juste combien de temps il a attendu — sans aucun nom, sans identité. C'est pour les stats de file d'attente, rien d'autre.</p>
+      <p>Tes notes, tes messages, ta connexion — tout ça reste strictement confidentiel. Je suis un outil de travail, pas un mouchard.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ ADMIN ════════════════════════════════ -->
+<div class="role-content" id="role-admin">
+  <div class="role-header">
+    <div class="role-title">Administrateur·rice</div>
+    <div class="role-badge">Rôle : Admin</div>
+    <div class="role-tagline">Tu es la mémoire organisationnelle du CPAS. Je suis là pour te faire gagner du temps.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Salut ! Je suis Cori, et toi et moi, on va beaucoup travailler ensemble. En tant qu'admin, tu es la cheville ouvrière de l'organisation : c'est toi qui réserves les locaux, qui enregistres les absences, qui t'assures que le planning tient la route.</p>
+        <p>Pour ça, ton outil principal c'est le <strong>calendrier</strong>. Il te donne une vue complète de toutes les réservations de tous les locaux, pour tous les agents. Tu peux créer, modifier ou annuler une réservation en quelques clics. Et quand quelqu'un est absent, tu l'enregistres une fois — tout le reste se met à jour automatiquement.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — ce qui t'aide à planifier</div>
+    <div class="section-text">
+      <p>Ton écran d'accueil est centré sur le <strong>planning</strong>. Tu vois d'un coup d'œil les prochaines réservations, le planning de la semaine, et les notifications importantes (absences déclarées, demandes de RDV en attente, etc.).</p>
+      <p>C'est aussi depuis ici que tu accèdes rapidement au calendrier et à la gestion des absences.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip hi">🔔 Notifications</div>
+      <div class="widget-chip">📅 Mon agenda du jour</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Admin (planning de la semaine)</div>
+      <div class="screenshot-hint">Vue hebdomadaire des réservations et des présences</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📅 Ton outil principal — le calendrier</div>
+    <div class="section-text">
+      <p>Le <strong>calendrier</strong> est ton espace de travail. Tu y vois toutes les réservations de locaux, toutes les permanences planifiées, et les réservations de type "Rendez-vous". Tu peux filtrer par local, par agent, par jour, semaine ou mois.</p>
+      <p>Pour créer une réservation, tu cliques sur un créneau libre dans le calendrier : une fenêtre s'ouvre, tu choisis le local, l'agent, le service, et les horaires. En quelques secondes, c'est enregistré et visible par tout le monde.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Calendrier complet (vue semaine)</div>
+      <div class="screenshot-hint">Toutes les réservations de locaux, filtrables par bureau ou par agent</div>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Créer une réservation de local</div>
+          <div class="step-desc">Clique sur un créneau vide dans le calendrier → choisis le local, l'agent et le service → confirme. C'est tout.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Gérer une absence</div>
+          <div class="step-desc">Depuis le menu de présences, sélectionne l'agent absent, la raison (maladie, congé, formation…) et les dates. L'agent apparaît automatiquement comme absent dans toute l'application.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Modifier ou supprimer une réservation existante</div>
+          <div class="step-desc">Clique sur la réservation dans le calendrier → une fenêtre propose Modifier ou Supprimer. Pour une série récurrente, tu peux choisir de modifier uniquement cette occurrence ou toute la série.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ DIRECTION ════════════════════════════ -->
+<div class="role-content" id="role-direction">
+  <div class="role-header">
+    <div class="role-title">Direction</div>
+    <div class="role-badge">Rôle : Direction</div>
+    <div class="role-tagline">Tout voir, tout savoir, en temps réel — sans avoir à appeler personne.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Bonjour ! Je suis Cori. Mon objectif pour toi est simple : tu dois pouvoir savoir en temps réel ce qui se passe dans le CPAS, sans avoir à envoyer d'e-mails ni à demander à quiconque.</p>
+        <p>Ton écran d'accueil est ton <strong>tableau de bord de direction</strong> : qui est présent, combien de personnes attendent, quel service est sous pression en ce moment. Et la vue DIRECT te donne une photographie complète et instantanée de tous les sites. En lecture, sans manipulation requise.</p>
+        <p>Bienvenue dans moncompagnon. Je crois que tu vas apprécier.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton tableau de bord — l'essentiel d'un regard</div>
+    <div class="section-text">
+      <p>Ton écran d'accueil est conçu pour te donner les <strong>chiffres clés en temps réel</strong> : nombre de bureaux ouverts, nombre de bénéficiaires en attente, services actifs, temps d'attente moyen par service. Tout est mis à jour automatiquement, à la seconde.</p>
+      <p>Tu vois aussi qui est présent et où, qui est en mission, et qui est absent. Plus besoin de téléphoner ou d'envoyer un e-mail pour avoir un état des lieux — il est là, devant toi, en permanence.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📊 Stats du jour</div>
+      <div class="widget-chip hi">🗺 Qui est où</div>
+      <div class="widget-chip hi">⏱ Temps d'attente moyen</div>
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Direction (tableau de bord)</div>
+      <div class="screenshot-hint">Stats en temps réel, présences, temps d'attente moyen par service</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 La vue DIRECT — radiographie instantanée du CPAS</div>
+    <div class="section-text">
+      <p>La vue DIRECT est ta fenêtre sur l'activité en cours. Tu y vois l'état de chaque bureau sur chaque site, les files d'attente en cours, et les agents présents. En quelques secondes, tu as une image complète de la charge de travail réelle.</p>
+      <p>Tu peux filtrer par lieu si le CPAS a plusieurs sites. Cette vue est en lecture — tu n'as pas à manipuler quoi que ce soit. Elle se met à jour automatiquement en temps réel.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (tous les sites, tous les bureaux)</div>
+      <div class="screenshot-hint">Vue d'ensemble de l'activité en temps réel sur l'ensemble des lieux</div>
+    </div>
+    <div class="note"><strong>Et le planning à long terme ?</strong> Le calendrier te permet de consulter les réservations de n'importe quel local, pour n'importe quelle période. Utile pour anticiper les surcharges ou les périodes creuses.</div>
+  </div>
+
+  <div class="section" style="border-top: 4px solid #1e1b4b;">
+    <div class="section-title">🔒 Sur la confidentialité — Cori s'explique</div>
+    <div class="cori-bubble" style="margin-bottom: 0;">
+      <p>En tant que direction, tu vois des données agrégées sur l'activité du CPAS. Pour être tout à fait transparent : <strong>je ne suis pas un outil d'espionnage.</strong> Les stats que tu consultes — temps d'attente moyen, nombre de permanences actives — sont des <strong>données anonymisées</strong>. Aucune information n'identifie un bénéficiaire ou un agent individuellement dans ces indicateurs.</p>
+      <p>Ce que je fais, c'est donner une image de la charge de travail réelle. Pour mieux organiser, pas pour surveiller.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ CHEF DE SERVICE ══════════════════════════ -->
+<div class="role-content" id="role-chef">
+  <div class="role-header">
+    <div class="role-title">Chef·fe de service</div>
+    <div class="role-badge">Rôle : Chef de service</div>
+    <div class="role-tagline">Ton équipe, ses permanences, son planning — tout ça, visible en un clin d'œil.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Salut ! Je suis Cori. En tant que chef de service, tu jonglles entre ta propre pratique et la supervision de ton équipe. Je suis là pour que la partie organisationnelle te prenne le moins de temps possible.</p>
+        <p>Tu as accès à tout ce dont tu as besoin : le planning de ton équipe, les présences en temps réel, les réservations de bureaux. Et comme tous tes collègues, tu peux toi aussi te déclarer présent, ouvrir ta propre permanence et gérer ta file si tu vois toi-même des bénéficiaires.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — supervision et terrain</div>
+    <div class="section-text">
+      <p>Ton écran d'accueil combine deux dimensions : la supervision (qui est présent dans ton service, quelles permanences sont actives) et le terrain (ton propre agenda si tu as des permanences ou des rendez-vous). Tu peux personnaliser les widgets selon ce qui compte le plus pour toi.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">🗺 Qui est où</div>
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip">📊 Stats du jour</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Chef de service</div>
+      <div class="screenshot-hint">Présences de l'équipe, planning hebdomadaire, agenda personnel</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Ta vue de supervision — la vue DIRECT</div>
+    <div class="section-text">
+      <p>La vue DIRECT te montre en temps réel quelles permanences de ton service sont actives, combien de bénéficiaires attendent, et quels agents sont à leur poste. Si une file est sous pression, tu le vois immédiatement.</p>
+      <p>Et si tu assures toi-même une permanence ce jour-là, tu retrouves ici les mêmes outils que tes collègues : te déclarer dans un bureau, rejoindre la file, appeler le suivant.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (focus sur les bureaux de ton service)</div>
+      <div class="screenshot-hint">Permanences actives, files d'attente, présences en temps réel</div>
+    </div>
+    <div class="tip"><strong>Gestion des absences</strong> Si un membre de ton équipe te prévient d'une absence de dernière minute, tu peux l'enregistrer directement dans moncompagnon. L'agent apparaîtra comme absent dans toute l'application, et ses permanences seront signalées.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ TECHNICIEN·NE ════════════════════════════ -->
+<div class="role-content" id="role-technicien">
+  <div class="role-header">
+    <div class="role-title">Technicien·ne</div>
+    <div class="role-badge">Rôle : Technicien·ne</div>
+    <div class="role-tagline">Toujours en mouvement — je m'assure que tout le monde sait où tu es.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Salut ! Moi c'est Cori. En tant que technicien·ne, tu passes ta journée à bouger entre les bureaux, les sites, et parfois l'extérieur. Pas de souci — j'ai exactement ce qu'il faut pour ça.</p>
+        <p>Mon outil star pour toi, c'est le <strong>widget Mission</strong>. En deux clics, tu signales à tout le monde où tu te trouves et ce que tu fais. Plus de "t'as vu le technicien ?" dans les couloirs. Et quand tu es au bureau, tu peux te déclarer présent pour que tes collègues sachent te trouver.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — organisé pour le mouvement</div>
+    <div class="section-text">
+      <p>Ton écran d'accueil met en avant <strong>le widget Mission et ton agenda du jour</strong>. Tu vois en un coup d'œil tes interventions planifiées, et tu peux lancer ou terminer une mission en quelques secondes.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">🚗 Partir en mission</div>
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip">🔔 Notifications</div>
+      <div class="widget-chip">📝 Notes rapides</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Technicien·ne (widget Mission)</div>
+      <div class="screenshot-hint">Le widget Mission est bien visible, avec le bouton "Partir en mission"</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🚗 Le widget Mission — ton meilleur allié</div>
+    <div class="section-text">
+      <p>Chaque fois que tu quittes ton poste pour une intervention — que ce soit dans un autre bureau, un autre site, ou à l'extérieur — tu utilises le widget Mission :</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Clique sur <span class="btn-s orange">🚗 Partir en mission</span></div>
+          <div class="step-desc">Une petite fenêtre s'ouvre. Tu peux noter l'adresse ou une description rapide de ton intervention (ex : "Intervention réseau — Bureau 4 du site B").</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Tout le monde est prévenu automatiquement</div>
+          <div class="step-desc">Dès que tu confirmes, ton statut passe à "En mission" dans toute l'application. Tes collègues voient où tu es sans avoir à te chercher ou t'appeler.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Au retour : <span class="btn-s green">✓ Je suis de retour</span></div>
+          <div class="step-desc">Un clic suffit. Tu redeviens disponible immédiatement.</div>
+        </div>
+      </div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Widget Mission actif (en cours de mission)</div>
+      <div class="screenshot-hint">Affiche le statut "En mission" avec le commentaire visible par tous les collègues</div>
+    </div>
+    <div class="tip"><strong>Quand tu es au bureau</strong> Utilise le bouton <span class="btn-s blue">📍 Me déclarer</span> pour signaler dans quel bureau tu travailles. Tes collègues savent alors précisément où te trouver.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ ENTRETIEN ════════════════════════════ -->
+<div class="role-content" id="role-entretien">
+  <div class="role-header">
+    <div class="role-title">Agent·e d'entretien</div>
+    <div class="role-badge">Rôle : Entretien</div>
+    <div class="role-tagline">Tu fais en sorte que tout soit prêt. Je te dis ce qui va se passer dans les locaux.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Salut ! Je m'appelle Cori. Pour que les bureaux soient toujours impeccables au bon moment, tu as besoin de savoir ce qui s'y passe : qui les réserve, quand, pour combien de temps.</p>
+        <p>C'est exactement ce que je te montre. Le calendrier te donne une vue des réservations de tous les locaux — tu sais ainsi quelles salles préparer, quand, et lesquelles sont libres pour un nettoyage plus approfondi.</p>
+        <p>Simple, non ? Allez, je t'explique.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — le planning du jour</div>
+    <div class="section-text">
+      <p>Ton écran d'accueil te montre le <strong>planning du jour</strong> : quels locaux sont réservés, à quelle heure, et jusqu'à quand. Tu sais d'un coup d'œil quels espaces sont libres en ce moment et lesquels seront occupés dans l'heure.</p>
+      <p>Les notifications importantes t'arrivent aussi ici — par exemple si une réservation de dernière minute est ajoutée pour un local que tu es en train de préparer.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip">🔔 Notifications</div>
+      <div class="widget-chip">🚗 Partir en mission</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Entretien (planning des locaux)</div>
+      <div class="screenshot-hint">Prochaines réservations et planning hebdomadaire des locaux</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📅 Consulter le planning des locaux</div>
+    <div class="section-text">
+      <p>Depuis l'onglet <strong>Calendrier</strong>, tu vois les réservations de tous les bureaux et salles, pour la journée ou la semaine. Tu peux filtrer par local pour voir uniquement les réservations d'un bureau précis.</p>
+      <p>Cette vue est en lecture — tu n'as pas à créer ni à modifier des réservations. Tu consultes, tu planifies ton travail, et c'est tout.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Calendrier (vue journalière, filtré par local)</div>
+      <div class="screenshot-hint">Réservations du local sélectionné sur la journée — pratique pour planifier l'entretien</div>
+    </div>
+    <div class="tip"><strong>Signaler une intervention</strong> Si tu dois signaler une intervention ou prévenir tes collègues que tu travailles dans un local, utilise le widget Mission : "Nettoyage profond — Salle de réunion A". Tout le monde est prévenu en un clic.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ JURISTE ══════════════════════════════ -->
+<div class="role-content" id="role-juriste">
+  <div class="role-header">
+    <div class="role-title">Juriste</div>
+    <div class="role-badge">Rôle : Juriste</div>
+    <div class="role-tagline">Consultations, permanences, rendez-vous — je gère l'agenda pour que tu te concentres sur l'essentiel.</div>
+  </div>
+
+  <div class="cori-wrap">
+    <div class="cori-avatar">
+      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="cori-right">
+      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-bubble">
+        <p>Bonjour ! Je suis Cori. En tant que juriste, tu alternes entre les permanences de consultation et les rendez-vous planifiés. Mon rôle est de t'éviter toute friction administrative autour de ton agenda.</p>
+        <p>Ton outil principal, c'est la combinaison <strong>calendrier + rendez-vous</strong>. Tu définis tes plages de disponibilité, les demandes arrivent directement dans tes notifications, tu acceptes en un clic. Et pendant tes permanences, la vue DIRECT te montre qui t'attend.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Ton écran d'accueil — centré sur ton agenda</div>
+    <div class="section-text">
+      <p>Ton écran d'accueil te donne une vue claire de <strong>ta journée et de ta semaine</strong> : tes permanences planifiées, tes rendez-vous, et les demandes de RDV en attente de ta réponse. Les notifications importantes arrivent directement ici.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip hi">🔔 Notifications</div>
+      <div class="widget-chip">📋 Planning de la semaine</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Juriste (agenda et notifications)</div>
+      <div class="screenshot-hint">Agenda du jour avec permanences et rendez-vous, notifications de demandes de RDV</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚡ Tes actions essentielles</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Pendant une permanence : te déclarer et ouvrir ta file</div>
+          <div class="step-desc">Dans la vue DIRECT, déclare-toi présent dans ton bureau de consultation et ouvre ta file. Les bénéficiaires envoyés par l'accueil arrivent automatiquement dans ta file. Tu les appelles un par un avec <span class="btn-s purple">📣 Appeler le suivant</span>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Gérer tes rendez-vous planifiés</div>
+          <div class="step-desc">Depuis la page <em>Rendez-vous</em>, tu définis tes plages de disponibilité. Un collègue peut alors demander un créneau — tu reçois une notification et tu acceptes ou refuses en un clic. Le rendez-vous s'inscrit automatiquement dans ton calendrier et dans la réservation du local.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Consulter ton planning</div>
+          <div class="step-desc">Le calendrier te donne une vue complète de toutes tes permanences et rendez-vous, pour la journée, la semaine ou le mois. Tu vois d'un coup d'œil tes créneaux libres et occupés.</div>
+        </div>
+      </div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Page Rendez-vous (créneaux de disponibilité)</div>
+      <div class="screenshot-hint">Définition des plages de disponibilité et gestion des demandes de RDV reçues</div>
+    </div>
+    <div class="highlight">
+      <strong>Confidentialité</strong>
+      Si tu as un rendez-vous confidentiel, tu peux le marquer comme tel lors de la création. Seuls toi et l'autre personne concernée en verrez les détails — pour les autres collègues, le créneau apparaît simplement comme "occupé".
+    </div>
+  </div>
+</div>
+
+
+<script>
+  document.getElementById('roleNav').addEventListener('click', e => {
+    const tab = e.target.closest('.role-tab');
+    if (!tab) return;
+    const role = tab.dataset.role;
+    document.querySelectorAll('.role-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll('.role-content').forEach(c => c.classList.toggle('active', c.id === 'role-' + role));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>

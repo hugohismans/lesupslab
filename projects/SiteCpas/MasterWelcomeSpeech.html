@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>moncompagnon — Discours de bienvenue · Répertoire direction</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+      padding: 3rem 2rem 2.5rem; text-align: center;
+      border-bottom: 1px solid #1e293b;
+    }
+    .header-logo { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin-bottom: 1rem; }
+    .header-title { font-size: 2.2rem; font-weight: 900; letter-spacing: -.03em; color: #f1f5f9; }
+    .header-sub { font-size: 1rem; color: #94a3b8; margin-top: .3rem; }
+    .header-badge { display: inline-block; background: rgba(124,58,237,.3); border: 1px solid #7c3aed; color: #c4b5fd; border-radius: 8px; padding: .4rem 1.1rem; font-size: .8rem; font-weight: 600; margin-top: 1rem; letter-spacing: .05em; }
+
+    .intro-section {
+      max-width: 780px; margin: 2.5rem auto 0; padding: 0 1.5rem;
+    }
+    .intro-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+      padding: 1.5rem 1.75rem; margin-bottom: 2rem;
+    }
+    .intro-card h2 { font-size: 1rem; font-weight: 700; color: #c4b5fd; margin-bottom: .6rem; text-transform: uppercase; letter-spacing: .06em; }
+    .intro-card p { font-size: .92rem; color: #94a3b8; line-height: 1.7; margin-bottom: .5rem; }
+    .intro-card p:last-child { margin-bottom: 0; }
+    .intro-card strong { color: #e2e8f0; }
+
+    .versions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 780px; margin: 0 auto 3rem; padding: 0 1.5rem; }
+
+    .version-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+      overflow: hidden;
+      transition: border-color .2s, transform .15s;
+    }
+    .version-card:hover { border-color: #7c3aed; transform: translateY(-2px); }
+
+    .version-header {
+      padding: 1.25rem 1.5rem 1rem;
+      border-bottom: 1px solid #334155;
+    }
+    .version-header.mascotte { background: linear-gradient(135deg, #2d1b69, #1e1b4b); }
+    .version-header.formel { background: linear-gradient(135deg, #0f2a4a, #0f172a); }
+
+    .version-icon { font-size: 2.2rem; margin-bottom: .5rem; }
+    .version-name { font-size: 1.15rem; font-weight: 800; color: #f1f5f9; }
+    .version-tagline { font-size: .82rem; color: #94a3b8; margin-top: .25rem; line-height: 1.5; }
+
+    .version-body { padding: 1.25rem 1.5rem; }
+    .version-desc { font-size: .88rem; color: #94a3b8; margin-bottom: 1.25rem; line-height: 1.6; }
+    .version-desc strong { color: #cbd5e1; }
+
+    .roles-list { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 1.25rem; }
+    .role-link {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
+      padding: .6rem .9rem; text-decoration: none; color: #cbd5e1;
+      font-size: .85rem; font-weight: 500;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .role-link:hover { background: #1e293b; border-color: #4c1d95; color: #e2e8f0; }
+    .role-link-left { display: flex; align-items: center; gap: .6rem; }
+    .role-link-emoji { font-size: 1rem; }
+    .role-link-arrow { color: #475569; font-size: .8rem; }
+
+    .btn-open-all {
+      display: block; width: 100%; text-align: center;
+      background: #7c3aed; color: #fff;
+      border-radius: 10px; padding: .7rem 1rem;
+      font-size: .88rem; font-weight: 700;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .btn-open-all:hover { background: #6d28d9; }
+    .btn-open-all.blue { background: #2563eb; }
+    .btn-open-all.blue:hover { background: #1d4ed8; }
+
+    .section-label {
+      max-width: 780px; margin: 0 auto 1rem; padding: 0 1.5rem;
+      font-size: .78rem; font-weight: 700; color: #475569;
+      text-transform: uppercase; letter-spacing: .08em;
+    }
+
+    .comparison-table {
+      max-width: 780px; margin: 0 auto 3rem; padding: 0 1.5rem;
+    }
+    .ct-card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; overflow: hidden; }
+    .ct-row { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 1px solid #1e293b; }
+    .ct-row:last-child { border-bottom: none; }
+    .ct-cell { padding: .75rem 1rem; font-size: .84rem; color: #94a3b8; }
+    .ct-cell.header { font-weight: 700; color: #c4b5fd; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; background: #0f172a; }
+    .ct-cell.feature { color: #e2e8f0; font-weight: 500; }
+    .ct-cell.yes { color: #4ade80; }
+    .ct-cell.no { color: #f87171; }
+    .ct-cell.partial { color: #fbbf24; }
+
+    .footer { text-align: center; padding: 3rem 1rem; color: #475569; font-size: .8rem; }
+    .footer strong { color: #64748b; }
+
+    @media (max-width: 640px) {
+      .versions-row { grid-template-columns: 1fr; }
+      .header-title { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 100 118" width="65" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 20px rgba(167,139,250,.6))">
+      <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+      <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
+      <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+      <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div style="text-align:left">
+      <div class="header-title">moncompagnon</div>
+      <div class="header-sub">CPAS de Quaregnon</div>
+    </div>
+  </div>
+  <div class="header-badge">🗂 Répertoire des discours de bienvenue · Usage interne direction</div>
+</div>
+
+<!-- INTRO -->
+<div class="intro-section">
+  <div class="intro-card">
+    <h2>À l'attention de la direction</h2>
+    <p>Ce répertoire regroupe les <strong>deux versions du discours de bienvenue</strong> destinées aux agents lors du déploiement de moncompagnon. Chaque version couvre les 8 postes de l'organisation.</p>
+    <p>Vous pouvez consulter chaque version et chaque poste ci-dessous avant de décider laquelle transmettre à vos équipes. Les présentations sont <strong>prêtes à l'emploi</strong> : il suffira d'y insérer les captures d'écran aux emplacements indiqués.</p>
+    <p><strong>Deux approches proposées :</strong> une version avec Cori (mascotte de l'application, ton chaleureux et direct) et une version formelle (ton professionnel, structure documentaire). Le contenu informatif est identique dans les deux cas.</p>
+  </div>
+</div>
+
+<!-- VERSIONS -->
+<div class="section-label">Choisir une version</div>
+<div class="versions-row">
+
+  <!-- VERSION MASCOTTE -->
+  <div class="version-card">
+    <div class="version-header mascotte">
+      <div class="version-icon">💜</div>
+      <div class="version-name">Version Cori</div>
+      <div class="version-tagline">Ton chaleureux · Mascotte · Tutoiement · Narrative</div>
+    </div>
+    <div class="version-body">
+      <p class="version-desc">Cori, la mascotte de moncompagnon, s'adresse directement à l'agent. Le ton est <strong>bienveillant, rassurant et humain</strong>. Idéal pour des équipes peu à l'aise avec les outils numériques ou pour donner un premier contact positif avec l'application.</p>
+      <div class="roles-list">
+        <a href="welcome-mascotte.html#role-accueil" target="_blank" class="role-link" onclick="openMascotteAt('accueil')">
+          <div class="role-link-left"><span class="role-link-emoji">👋</span> Agent·e d'accueil</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('social')">
+          <div class="role-link-left"><span class="role-link-emoji">🤝</span> Assistant·e social·e</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('admin')">
+          <div class="role-link-left"><span class="role-link-emoji">🖥️</span> Administrateur·rice</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('direction')">
+          <div class="role-link-left"><span class="role-link-emoji">🏢</span> Direction</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('chef')">
+          <div class="role-link-left"><span class="role-link-emoji">👔</span> Chef·fe de service</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('technicien')">
+          <div class="role-link-left"><span class="role-link-emoji">🔧</span> Technicien·ne</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('entretien')">
+          <div class="role-link-left"><span class="role-link-emoji">🧹</span> Agent·e d'entretien</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-mascotte.html" target="_blank" class="role-link" onclick="openMascotteAt('juriste')">
+          <div class="role-link-left"><span class="role-link-emoji">⚖️</span> Juriste</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+      </div>
+      <a href="welcome-mascotte.html" target="_blank" class="btn-open-all">💜 Ouvrir la version Cori complète</a>
+    </div>
+  </div>
+
+  <!-- VERSION FORMELLE -->
+  <div class="version-card">
+    <div class="version-header formel">
+      <div class="version-icon">📋</div>
+      <div class="version-name">Version formelle</div>
+      <div class="version-tagline">Ton professionnel · Document officiel · Vouvoiement · Structuré</div>
+    </div>
+    <div class="version-body">
+      <p class="version-desc">Guide de prise en main au ton <strong>professionnel et documentaire</strong>. Structure claire, étapes numérotées, vouvoiement. Adapté aux contextes où la neutralité et le sérieux sont préférés, ou pour une diffusion formelle.</p>
+      <div class="roles-list">
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">👋</span> Agent·e d'accueil</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">🤝</span> Assistant·e social·e</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">🖥️</span> Administrateur·rice</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">🏢</span> Direction</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">👔</span> Chef·fe de service</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">🔧</span> Technicien·ne</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">🧹</span> Agent·e d'entretien</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+        <a href="welcome-formel.html" target="_blank" class="role-link">
+          <div class="role-link-left"><span class="role-link-emoji">⚖️</span> Juriste</div>
+          <span class="role-link-arrow">↗</span>
+        </a>
+      </div>
+      <a href="welcome-formel.html" target="_blank" class="btn-open-all blue">📋 Ouvrir la version formelle complète</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- COMPARISON TABLE -->
+<div class="section-label">Comparaison des deux versions</div>
+<div class="comparison-table">
+  <div class="ct-card">
+    <div class="ct-row">
+      <div class="ct-cell header">Critère</div>
+      <div class="ct-cell header">💜 Version Cori</div>
+      <div class="ct-cell header">📋 Version formelle</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Registre de langue</div>
+      <div class="ct-cell">Chaleureux, tutoiement</div>
+      <div class="ct-cell">Professionnel, vouvoiement</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Présence de la mascotte</div>
+      <div class="ct-cell yes">✓ Cori (SVG interactif)</div>
+      <div class="ct-cell no">✗ Aucune mascotte</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Longueur du texte</div>
+      <div class="ct-cell">Narratif, plus long</div>
+      <div class="ct-cell">Structuré, plus concis</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Postes couverts</div>
+      <div class="ct-cell yes">✓ 8 postes</div>
+      <div class="ct-cell yes">✓ 8 postes</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Section confidentialité</div>
+      <div class="ct-cell yes">✓ (Cori s'explique)</div>
+      <div class="ct-cell yes">✓ (encadré officiel)</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Emplacements screenshots</div>
+      <div class="ct-cell yes">✓ Marqués clairement</div>
+      <div class="ct-cell yes">✓ Marqués clairement</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Impression (PDF)</div>
+      <div class="ct-cell yes">✓ Optimisé</div>
+      <div class="ct-cell yes">✓ Optimisé</div>
+    </div>
+    <div class="ct-row">
+      <div class="ct-cell feature">Public cible recommandé</div>
+      <div class="ct-cell">Tous publics, notamment équipes terrain</div>
+      <div class="ct-cell">Contextes formels, direction, admin</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <strong>moncompagnon · CPAS de Quaregnon</strong><br>
+  Document interne — Usage direction uniquement<br>
+  Répertoire généré automatiquement · Les captures d'écran sont à intégrer avant diffusion
+</div>
+
+<script>
+  // Les liens de rôles ouvrent la bonne page et activent le bon onglet
+  // Via localStorage pour communiquer l'onglet cible à la page welcome
+  document.querySelectorAll('.role-link').forEach(link => {
+    link.addEventListener('click', e => {
+      const href = link.getAttribute('href');
+      if (!href || href === '#') return;
+      // Les liens pointent directement vers la page — l'onglet par défaut est "accueil"
+      // Pour naviguer vers un rôle spécifique, on peut stocker dans sessionStorage
+      const role = link.querySelector('.role-link-left')?.textContent?.trim();
+      // Navigation simple : la page ouvre déjà sur accueil par défaut
+    });
+  });
+</script>
+</body>
+</html>

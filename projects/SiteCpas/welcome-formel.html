@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue sur moncompagnon — Guide officiel</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #1e293b; line-height: 1.65; }
+
+    .mc-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #1e4074 100%);
+      color: #fff; padding: 2.5rem 2rem 2rem; text-align: center;
+    }
+    .mc-header-inner { display: flex; align-items: center; justify-content: center; gap: 1.25rem; margin-bottom: .5rem; }
+    .mc-header-monogram { width: 52px; height: 52px; background: #2563eb; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: -.05em; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,.4); }
+    .mc-header-title { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; }
+    .mc-header-sub { font-size: .9rem; opacity: .65; margin-top: .2rem; }
+    .mc-version-badge { display: inline-block; background: #2563eb; color: #fff; border-radius: 6px; padding: .28rem 1rem; font-size: .78rem; font-weight: 600; margin-top: .75rem; letter-spacing: .03em; }
+
+    .role-nav { background: #fff; border-bottom: 2px solid #e2e8f0; display: flex; overflow-x: auto; padding: 0 .5rem; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,.1); scrollbar-width: thin; }
+    .role-tab { padding: .9rem 1.1rem; cursor: pointer; font-size: .85rem; color: #64748b; border-bottom: 3px solid transparent; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; font-weight: 500; transition: color .15s, border-color .15s; }
+    .role-tab:hover { color: #2563eb; }
+    .role-tab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 700; }
+
+    .role-content { display: none; max-width: 860px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+    .role-content.active { display: block; }
+
+    .role-header { margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 2px solid #e2e8f0; }
+    .role-title { font-size: 1.6rem; font-weight: 800; color: #0f172a; }
+    .role-badge { display: inline-block; background: #dbeafe; color: #1d4ed8; border-radius: 6px; padding: .22rem .7rem; font-size: .76rem; font-weight: 600; margin-top: .4rem; }
+    .role-intro { color: #475569; margin-top: .75rem; font-size: .95rem; background: #f8fafc; border-left: 4px solid #2563eb; padding: .85rem 1rem; border-radius: 0 8px 8px 0; }
+
+    .section { background: #fff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #e2e8f0; }
+    .section-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: .45rem; }
+    .section-text { font-size: .92rem; color: #475569; }
+    .section-text p { margin-bottom: .6rem; }
+    .section-text p:last-child { margin-bottom: 0; }
+    .section-text strong { color: #1e293b; }
+
+    .screenshot { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 10px; padding: 2.75rem 1rem; text-align: center; margin: 1.25rem 0; }
+    .screenshot-icon { font-size: 2rem; margin-bottom: .5rem; }
+    .screenshot-label { font-weight: 700; color: #64748b; font-size: .9rem; }
+    .screenshot-hint { font-size: .76rem; color: #94a3b8; margin-top: .35rem; }
+
+    .steps { display: flex; flex-direction: column; gap: .8rem; margin: 1rem 0; }
+    .step { display: flex; gap: 1rem; align-items: flex-start; }
+    .step-num { background: #1e3a5f; color: #fff; border-radius: 6px; width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 700; margin-top: .1rem; }
+    .step-action { font-weight: 700; color: #1e293b; margin-bottom: .15rem; font-size: .92rem; }
+    .step-desc { font-size: .86rem; color: #64748b; }
+
+    .info-box { border-left: 4px solid; border-radius: 0 8px 8px 0; padding: .7rem 1rem; margin: .75rem 0; font-size: .87rem; }
+    .info-box.blue { border-color: #2563eb; background: #eff6ff; color: #1e40af; }
+    .info-box.green { border-color: #16a34a; background: #f0fdf4; color: #14532d; }
+    .info-box.gray { border-color: #94a3b8; background: #f8fafc; color: #475569; }
+    .info-box strong { display: block; margin-bottom: .2rem; font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
+
+    .widget-list { display: flex; flex-wrap: wrap; gap: .45rem; margin: .75rem 0; }
+    .widget-chip { display: flex; align-items: center; gap: .3rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: .25rem .65rem; font-size: .8rem; color: #475569; }
+    .widget-chip.hi { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; font-weight: 600; }
+
+    .btn-s { display: inline-flex; align-items: center; gap: .3rem; border-radius: 6px; padding: .28rem .65rem; font-size: .8rem; font-weight: 600; vertical-align: middle; cursor: default; border: none; margin: .1rem; }
+    .btn-s.blue { background: #2563eb; color: #fff; }
+    .btn-s.green { background: #16a34a; color: #fff; }
+    .btn-s.navy { background: #1e3a5f; color: #fff; }
+    .btn-s.orange { background: #d97706; color: #fff; }
+
+    .privacy-section { background: #fff; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #e2e8f0; border-top: 4px solid #0f172a; }
+
+    @media print {
+      .role-nav { display: none !important; }
+      .role-content { display: block !important; page-break-before: always; max-width: 100%; padding: 1.5rem; }
+      .role-content:first-of-type { page-break-before: auto; }
+      body { background: #fff; }
+    }
+    @media (max-width: 620px) { .role-title { font-size: 1.3rem; } }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="mc-header">
+  <div class="mc-header-inner">
+    <div class="mc-header-monogram">mc</div>
+    <div>
+      <div class="mc-header-title">moncompagnon</div>
+      <div class="mc-header-sub">CPAS de Quaregnon · Guide de bienvenue officiel</div>
+    </div>
+  </div>
+  <div class="mc-version-badge">📋 Version formelle — Prise en main par poste</div>
+</div>
+
+<!-- ROLE NAV -->
+<nav class="role-nav" id="roleNav">
+  <button class="role-tab active" data-role="accueil">👋 Accueil</button>
+  <button class="role-tab" data-role="social">🤝 Assist. social·e</button>
+  <button class="role-tab" data-role="admin">🖥️ Admin</button>
+  <button class="role-tab" data-role="direction">🏢 Direction</button>
+  <button class="role-tab" data-role="chef">👔 Chef de service</button>
+  <button class="role-tab" data-role="technicien">🔧 Technicien·ne</button>
+  <button class="role-tab" data-role="entretien">🧹 Entretien</button>
+  <button class="role-tab" data-role="juriste">⚖️ Juriste</button>
+</nav>
+
+
+<!-- ═══════════════════════════════ ACCUEIL ══════════════════════════════ -->
+<div class="role-content active" id="role-accueil">
+  <div class="role-header">
+    <div class="role-title">Agent·e d'accueil</div>
+    <div class="role-badge">Rôle : Accueil</div>
+    <div class="role-intro">
+      Bienvenue dans <strong>moncompagnon</strong>. Ce guide vous présente les fonctionnalités essentielles de votre poste. En tant qu'agent d'accueil, votre utilisation de l'application se limite à deux outils : l'écran d'accueil et la vue DIRECT. L'objectif est que chaque bénéficiaire soit orienté correctement, rapidement et sans friction.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>L'écran d'accueil est votre tableau de bord personnalisé. Il présente en temps réel les informations pertinentes pour votre poste : état des files d'attente, présences des agents, permanences actives, et notifications.</p>
+      <p>Cet écran est composé de <strong>widgets</strong> — des blocs d'information que vous pouvez afficher, masquer ou réorganiser selon vos préférences. La personnalisation s'effectue via le bouton ✏️ en haut à droite. Chaque agent dispose de sa propre configuration.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📊 Stats du jour</div>
+      <div class="widget-chip hi">🗺 Qui est où</div>
+      <div class="widget-chip hi">🔗 Permanences ouvertes</div>
+      <div class="widget-chip">⏱ Temps d'attente moyen</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Agent d'accueil)</div>
+      <div class="screenshot-hint">Stats du jour, tableau des présences, permanences actives</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Votre outil principal — la vue DIRECT</div>
+    <div class="section-text">
+      <p>La vue DIRECT est l'écran que vous maintiendrez ouvert en permanence pendant votre service. Elle présente l'état de chaque bureau en temps réel : <strong>vert = libre</strong>, <strong>orange = occupé</strong>, <strong>gris = fermé</strong>.</p>
+      <p>Si le CPAS dispose de plusieurs sites, un menu déroulant vous permet de filtrer la vue par lieu. Les files d'attente actives s'affichent sous la carte de chaque service.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (tous les bureaux)</div>
+      <div class="screenshot-hint">État en temps réel de chaque bureau, avec les files d'attente actives</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🎟 Procédure — Ajout d'un bénéficiaire à la file d'attente</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Identifier le service concerné</div>
+          <div class="step-desc">Demandez au bénéficiaire le service qu'il souhaite. Repérez la file correspondante dans la vue DIRECT (ex. : "Aide générale", "Médiation de dettes").</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Ajouter le bénéficiaire</div>
+          <div class="step-desc">Cliquez sur <span class="btn-s green">➕ Ajouter</span> dans la carte du service. La saisie du nom du bénéficiaire est <strong>facultative</strong>.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Communiquer le numéro de ticket</div>
+          <div class="step-desc">Un numéro s'affiche (ex. : "A03"). Communiquez-le au bénéficiaire. Il sera appelé par un agent de permanence dans les minutes suivantes. Votre intervention s'arrête ici.</div>
+        </div>
+      </div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Ajout à la file dans la vue DIRECT</div>
+      <div class="screenshot-hint">Bouton d'ajout dans la carte de la file de service</div>
+    </div>
+    <div class="info-box blue"><strong>Cas particulier</strong> Si un bénéficiaire demande à rencontrer un agent spécifique, utilisez la fonction <span class="btn-s blue">📌 Envoyer vers un agent</span>. L'agent reçoit une notification et peut accepter ou proposer un délai.</div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>moncompagnon collecte exclusivement des <strong>données fonctionnelles anonymisées</strong>, nécessaires au bon fonctionnement de l'application. Exemple : lorsqu'un ticket de file est appelé, seul le temps d'attente (en secondes) est enregistré — sans nom, sans identité, sans information personnelle.</p>
+      <p>Ces données servent uniquement à améliorer l'estimation des temps d'attente. Vos connexions, vos notes et toute information à caractère personnel restent strictement confidentielles.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ ASSISTANT·E SOCIAL·E ═════════════════════ -->
+<div class="role-content" id="role-social">
+  <div class="role-header">
+    <div class="role-title">Assistant·e social·e</div>
+    <div class="role-badge">Rôle : Travailleur·euse social·e</div>
+    <div class="role-intro">
+      moncompagnon centralise la gestion de vos permanences, de votre agenda et de vos déplacements. Quatre actions suffisent à couvrir l'essentiel de votre utilisation quotidienne.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>Votre écran d'accueil présente votre agenda du jour, vos prochaines réservations de bureau, et vos notifications. Le widget <strong>Mission</strong> y est également accessible directement pour signaler vos déplacements en temps réel.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip hi">🚗 Partir en mission</div>
+      <div class="widget-chip">✅ Rappels du jour</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Assistant·e social·e)</div>
+      <div class="screenshot-hint">Agenda, prochaines permanences, widget Mission</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Votre vue principale — la vue DIRECT avec votre local</div>
+    <div class="section-text">
+      <p>Lors de vos permanences, la vue DIRECT vous montre l'état de votre file d'attente. Sélectionnez votre lieu dans le menu déroulant en haut pour concentrer la vue sur votre bureau.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (votre bureau et votre file d'attente)</div>
+      <div class="screenshot-hint">File d'attente active, bouton "Appeler le suivant" visible</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚡ Vos 4 actions essentielles</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-action">Se déclarer présent·e dans son bureau</div>
+          <div class="step-desc">Via la vue DIRECT ou le widget "Me déclarer" sur l'écran d'accueil — sélectionnez votre bureau et votre service. Votre statut devient immédiatement visible pour tous les collègues.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-action">Ouvrir sa permanence</div>
+          <div class="step-desc">Cliquez sur <span class="btn-s green">▶ Ouvrir ma permanence</span>. Les bénéficiaires ajoutés par l'accueil apparaissent dans votre file d'attente.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-action">Appeler le bénéficiaire suivant</div>
+          <div class="step-desc">Cliquez sur <span class="btn-s navy">📣 Appeler le suivant</span>. Le numéro de ticket s'affiche sur l'écran public. Le bénéficiaire se présente à votre bureau.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-action">Signaler un déplacement (mission)</div>
+          <div class="step-desc">Via le widget Mission sur l'écran d'accueil : <span class="btn-s orange">🚗 Partir en mission</span>. Saisissez une adresse ou un bref commentaire. Tous les collègues voient votre statut instantanément. Au retour : <span class="btn-s green">✓ Je suis de retour</span>.</div>
+        </div>
+      </div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Widget Mission (déplacement en cours)</div>
+      <div class="screenshot-hint">Statut "En mission" visible par tous les collègues, avec commentaire</div>
+    </div>
+    <div class="info-box green"><strong>Rendez-vous planifiés</strong> La page Rendez-vous vous permet de définir vos plages de disponibilité. Les demandes de rendez-vous de collègues arrivent dans vos notifications — vous les acceptez ou refusez en un clic.</div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>moncompagnon collecte exclusivement des <strong>données fonctionnelles anonymisées</strong> : par exemple, la durée d'attente d'un ticket (sans nom ni identité associée), ou le nombre de permanences actives. Ces données servent uniquement à améliorer l'estimation des temps d'attente.</p>
+      <p>Vos notes, vos connexions et toute information à caractère personnel restent strictement confidentielles et ne sont jamais partagées sans votre consentement explicite.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ ADMIN ════════════════════════════════ -->
+<div class="role-content" id="role-admin">
+  <div class="role-header">
+    <div class="role-title">Administrateur·rice</div>
+    <div class="role-badge">Rôle : Admin</div>
+    <div class="role-intro">
+      En tant qu'administrateur·rice, vous gérez les réservations de locaux, les plannings et les absences pour l'ensemble de l'organisation. Le calendrier est votre outil central.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>Votre tableau de bord est orienté planning : vous y consultez les prochaines réservations, le planning hebdomadaire complet, et les notifications importantes (absences déclarées, demandes de modification).</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip hi">🔔 Notifications</div>
+      <div class="widget-chip">📅 Mon agenda du jour</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Admin (planning hebdomadaire)</div>
+      <div class="screenshot-hint">Vue des réservations de la semaine et notifications en attente</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📅 Votre outil principal — le calendrier</div>
+    <div class="section-text">
+      <p>Le calendrier offre une vue complète de toutes les réservations de locaux pour l'ensemble des agents. Il est filtrable par local, par agent, par jour, semaine ou mois.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Calendrier (vue semaine, tous locaux)</div>
+      <div class="screenshot-hint">Réservations de tous les bureaux, filtrables par agent ou par local</div>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div><div class="step-action">Créer une réservation</div><div class="step-desc">Cliquez sur un créneau disponible dans le calendrier → sélectionnez le local, l'agent, le service et les horaires → confirmez.</div></div></div>
+      <div class="step"><div class="step-num">2</div><div><div class="step-action">Enregistrer une absence</div><div class="step-desc">Depuis le menu de présences : sélectionnez l'agent, la raison (maladie, congé, formation…) et les dates. Le statut se propage automatiquement dans toute l'application.</div></div></div>
+      <div class="step"><div class="step-num">3</div><div><div class="step-action">Modifier une réservation existante</div><div class="step-desc">Cliquez sur la réservation dans le calendrier → choisissez de modifier uniquement cette occurrence ou l'ensemble de la série (pour les réservations récurrentes).</div></div></div>
+    </div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>moncompagnon collecte exclusivement des données fonctionnelles anonymisées. En tant qu'administrateur·rice, vous avez accès aux données de planification de l'organisation (réservations, présences déclarées), mais aucune donnée personnelle identifiable n'est collectée ou transmise à des tiers.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ DIRECTION ════════════════════════════ -->
+<div class="role-content" id="role-direction">
+  <div class="role-header">
+    <div class="role-title">Direction</div>
+    <div class="role-badge">Rôle : Direction</div>
+    <div class="role-intro">
+      moncompagnon met à votre disposition un tableau de bord en temps réel présentant l'ensemble de l'activité du CPAS. Votre utilisation est principalement en lecture : consultation des présences, des files d'attente et des indicateurs de charge.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre tableau de bord</div>
+    <div class="section-text">
+      <p>Votre écran d'accueil présente en continu les indicateurs clés : nombre de bureaux ouverts, nombre de bénéficiaires en attente, services actifs, temps d'attente moyen par service. Ces données sont mises à jour automatiquement, sans action de votre part.</p>
+      <p>Vous disposez également d'une vue complète des présences : qui est dans quel bureau, qui est en mission, qui est absent.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📊 Stats du jour</div>
+      <div class="widget-chip hi">🗺 Qui est où</div>
+      <div class="widget-chip hi">⏱ Temps d'attente moyen</div>
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Tableau de bord Direction</div>
+      <div class="screenshot-hint">Indicateurs en temps réel, présences, temps d'attente moyen par service</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Vue DIRECT — état opérationnel en temps réel</div>
+    <div class="section-text">
+      <p>La vue DIRECT vous offre une photographie instantanée de l'activité sur l'ensemble des sites : état des bureaux, files actives, bénéficiaires en attente. Elle est filtrable par lieu. Cette vue se met à jour automatiquement et ne requiert aucune manipulation.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (vue d'ensemble tous sites)</div>
+      <div class="screenshot-hint">État opérationnel complet en temps réel</div>
+    </div>
+    <div class="info-box gray"><strong>Planning à long terme</strong> Le calendrier vous permet de consulter les réservations de n'importe quel local sur n'importe quelle période, pour anticiper les périodes de forte activité ou les sous-effectifs.</div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>Les données affichées dans le tableau de bord sont des <strong>données agrégées et anonymisées</strong> (temps d'attente moyens, nombre de permanences actives, statistiques de charge). Aucune donnée permettant d'identifier individuellement un bénéficiaire n'est accessible depuis cette interface.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ CHEF DE SERVICE ══════════════════════════ -->
+<div class="role-content" id="role-chef">
+  <div class="role-header">
+    <div class="role-title">Chef·fe de service</div>
+    <div class="role-badge">Rôle : Chef de service</div>
+    <div class="role-intro">
+      En tant que chef·fe de service, vous disposez d'une vue sur l'activité de votre équipe et pouvez, si nécessaire, participer vous-même aux permanences. moncompagnon combine supervision et terrain.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>Votre tableau de bord combine la supervision de votre service (présences, permanences actives) et votre agenda personnel. Vous pouvez personnaliser les widgets selon vos priorités.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">🗺 Qui est où</div>
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip">📊 Stats du jour</div>
+      <div class="widget-chip">🔔 Notifications</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Chef de service</div>
+      <div class="screenshot-hint">Présences de l'équipe, planning hebdomadaire, agenda personnel</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📋 Supervision via la vue DIRECT</div>
+    <div class="section-text">
+      <p>La vue DIRECT vous montre en temps réel les permanences actives de votre service, la charge des files d'attente, et les agents présents. Si vous assurez vous-même une permanence, vous retrouvez les mêmes fonctionnalités que vos collaborateurs : déclaration de présence, gestion de file, appel du suivant.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Vue DIRECT (focus sur les bureaux du service)</div>
+      <div class="screenshot-hint">Permanences actives, files d'attente, agents présents en temps réel</div>
+    </div>
+    <div class="info-box blue"><strong>Gestion des absences</strong> Vous pouvez enregistrer directement les absences de votre équipe. L'agent concerné apparaît automatiquement comme absent dans toute l'application, et ses permanences sont signalées.</div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>Les données de présence et de permanence que vous consultez sont des données de fonctionnement déclarées par les agents eux-mêmes. Aucune donnée n'est collectée à leur insu. Les informations relatives aux bénéficiaires (noms de tickets, si saisis) sont conservées le temps de la permanence uniquement.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════ TECHNICIEN·NE ════════════════════════════ -->
+<div class="role-content" id="role-technicien">
+  <div class="role-header">
+    <div class="role-title">Technicien·ne</div>
+    <div class="role-badge">Rôle : Technicien·ne</div>
+    <div class="role-intro">
+      Votre utilisation de moncompagnon est centrée sur la visibilité de vos déplacements et interventions. Le widget Mission vous permet de tenir vos collègues informés en temps réel, sans communication additionnelle.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>Votre écran d'accueil met en avant le <strong>widget Mission</strong> et votre agenda du jour. Vous pouvez démarrer ou terminer une mission en quelques secondes depuis cet écran.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">🚗 Partir en mission</div>
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip">🔔 Notifications</div>
+      <div class="widget-chip">📝 Notes rapides</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Technicien·ne</div>
+      <div class="screenshot-hint">Widget Mission et agenda du jour au premier plan</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🚗 Procédure — Déclarer et terminer une mission</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div><div class="step-action">Démarrer une mission</div><div class="step-desc">Cliquez sur <span class="btn-s orange">🚗 Partir en mission</span> → saisissez une adresse ou un bref descriptif de l'intervention (facultatif) → confirmez. Votre statut passe à "En mission" dans toute l'application.</div></div></div>
+      <div class="step"><div class="step-num">2</div><div><div class="step-action">Retour sur site</div><div class="step-desc">Cliquez sur <span class="btn-s green">✓ Je suis de retour</span>. Votre statut redevient disponible immédiatement.</div></div></div>
+      <div class="step"><div class="step-num">3</div><div><div class="step-action">Se déclarer dans un bureau</div><div class="step-desc">Quand vous travaillez dans un bureau fixe, utilisez <span class="btn-s blue">📍 Me déclarer</span> pour indiquer votre localisation précise à vos collègues.</div></div></div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Widget Mission actif</div>
+      <div class="screenshot-hint">Statut "En mission" avec commentaire visible par tous les collègues</div>
+    </div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>Les informations de mission que vous saisissez (adresse, commentaire) sont visibles par vos collègues connectés pendant la durée de la mission uniquement. Elles ne sont pas archivées de façon permanente. moncompagnon ne collecte aucune donnée de géolocalisation.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ ENTRETIEN ════════════════════════════ -->
+<div class="role-content" id="role-entretien">
+  <div class="role-header">
+    <div class="role-title">Agent·e d'entretien</div>
+    <div class="role-badge">Rôle : Entretien</div>
+    <div class="role-intro">
+      moncompagnon vous offre une visibilité sur les réservations de locaux afin de planifier vos interventions d'entretien en cohérence avec l'occupation des espaces.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>Votre écran d'accueil présente le planning des réservations du jour et de la semaine, ainsi que les prochaines occupations de locaux. Les notifications vous alertent en cas de réservation de dernière minute dans un local que vous préparez.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📋 Planning de la semaine</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip">🔔 Notifications</div>
+      <div class="widget-chip">🚗 Partir en mission</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Entretien (planning des locaux)</div>
+      <div class="screenshot-hint">Réservations du jour et de la semaine par local</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📅 Consultation du planning des locaux</div>
+    <div class="section-text">
+      <p>Depuis l'onglet Calendrier, vous consultez les réservations par local pour la journée ou la semaine. Vous identifiez ainsi les créneaux libres disponibles pour les nettoyages approfondi, et les moments d'occupation à respecter.</p>
+      <p>Cette consultation est en <strong>lecture seule</strong> — vous ne créez ni ne modifiez de réservations.</p>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Calendrier filtré par local (vue journalière)</div>
+      <div class="screenshot-hint">Créneaux d'occupation et créneaux libres pour le local sélectionné</div>
+    </div>
+    <div class="info-box blue"><strong>Signaler une intervention</strong> Utilisez le widget Mission pour signaler à vos collègues que vous intervenez dans un local donné : "Nettoyage approfondi — Salle B". Cela évite toute interruption non souhaitée.</div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>Vous n'avez accès qu'aux données de réservation des locaux (horaires et types de service), sans information identifiant les bénéficiaires. moncompagnon ne collecte aucune donnée personnelle vous concernant au-delà de votre statut de présence déclaré.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════ JURISTE ══════════════════════════════ -->
+<div class="role-content" id="role-juriste">
+  <div class="role-header">
+    <div class="role-title">Juriste</div>
+    <div class="role-badge">Rôle : Juriste</div>
+    <div class="role-intro">
+      moncompagnon centralise la gestion de vos permanences de consultation et de vos rendez-vous planifiés. Votre agenda est intégré au système de réservation des locaux et au système de file d'attente.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🏠 Votre écran d'accueil</div>
+    <div class="section-text">
+      <p>Votre tableau de bord présente votre agenda du jour, vos prochaines permanences et rendez-vous, ainsi que les demandes de rendez-vous en attente de votre réponse. Les notifications importantes sont centralisées ici.</p>
+    </div>
+    <div class="widget-list">
+      <div class="widget-chip hi">📅 Mon agenda du jour</div>
+      <div class="widget-chip hi">⏰ Prochaines réservations</div>
+      <div class="widget-chip hi">🔔 Notifications</div>
+      <div class="widget-chip">📋 Planning de la semaine</div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil Juriste (agenda et notifications de RDV)</div>
+      <div class="screenshot-hint">Agenda du jour avec permanences et rendez-vous planifiés</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚡ Vos actions essentielles</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div><div class="step-action">Ouvrir une permanence de consultation</div><div class="step-desc">Dans la vue DIRECT, déclarez-vous présent dans votre bureau de consultation et ouvrez votre file. Les bénéficiaires orientés par l'accueil arrivent dans votre file. Appelez-les avec <span class="btn-s navy">📣 Appeler le suivant</span>.</div></div></div>
+      <div class="step"><div class="step-num">2</div><div><div class="step-action">Gérer vos rendez-vous planifiés</div><div class="step-desc">Depuis la page Rendez-vous, définissez vos plages de disponibilité. Les demandes de RDV de vos collègues arrivent dans vos notifications. Acceptez ou refusez en un clic — le créneau s'inscrit automatiquement dans le calendrier.</div></div></div>
+      <div class="step"><div class="step-num">3</div><div><div class="step-action">Consulter votre planning</div><div class="step-desc">Le calendrier présente l'ensemble de vos permanences et rendez-vous pour la journée, la semaine ou le mois. Vous identifiez vos créneaux libres et réservés d'un coup d'œil.</div></div></div>
+    </div>
+    <div class="screenshot">
+      <div class="screenshot-icon">📸</div>
+      <div class="screenshot-label">Capture d'écran — Page Rendez-vous (gestion des disponibilités)</div>
+      <div class="screenshot-hint">Définition des plages de disponibilité et demandes de RDV reçues</div>
+    </div>
+    <div class="info-box blue"><strong>Confidentialité des rendez-vous</strong> Un rendez-vous peut être marqué comme confidentiel lors de sa création. Seules les parties concernées en voient les détails — pour les autres, le créneau apparaît simplement comme "occupé".</div>
+  </div>
+
+  <div class="privacy-section">
+    <div class="section-title">🔒 Données et confidentialité</div>
+    <div class="section-text">
+      <p>moncompagnon collecte exclusivement des données fonctionnelles anonymisées. Les informations relatives à vos consultations (noms de bénéficiaires, notes de dossier) ne transitent pas par moncompagnon et ne sont pas stockées dans le système. Vos données de planning restent strictement dans le périmètre du CPAS.</p>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  document.getElementById('roleNav').addEventListener('click', e => {
+    const tab = e.target.closest('.role-tab');
+    if (!tab) return;
+    const role = tab.dataset.role;
+    document.querySelectorAll('.role-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll('.role-content').forEach(c => c.classList.toggle('active', c.id === 'role-' + role));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+</body>
+</html>
