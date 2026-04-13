@@ -526,17 +526,14 @@
     el.innerHTML = '<div class="rdv-empty rdv-empty-sm">Chargement…</div>';
     _targetListener = targetAgentKey;
 
-    DB.listenAvailabilitySlots(targetAgentKey, async slots => {
+    DB.listenAvailabilitySlots(targetAgentKey, slots => {
       _targetSlots = slots;
-      // Expandre les slots récurrents pour l'affichage
       const expanded = _expandSlots(slots);
-      // Récupérer les slots déjà pris (par slotId d'origine)
-      const takenMap = await DB.getRequestsBySlotIds(slots.map(s => s.id));
-      _renderTargetSlots(expanded, takenMap);
+      _renderTargetSlots(expanded, targetAgentKey);
     });
   }
 
-  function _renderTargetSlots(slots, takenMap) {
+  function _renderTargetSlots(slots, targetAgentKey) {
     const el = document.getElementById('rdvSlotPicker');
     if (!el) return;
 
@@ -549,21 +546,19 @@
     }
 
     el.innerHTML = future.map(slot => {
-      const origId = slot._seriesSlotId || slot.id;
-      const taken  = !!takenMap[origId];
-      const start  = _fmtDT(slot.startDateTime);
-      const end    = _fmtTime(slot.endDateTime);
-      const label  = slot.label ? ` · ${slot.label}` : '';
+      const origId   = slot._seriesSlotId || slot.id;
+      const start    = _fmtDT(slot.startDateTime);
+      const end      = _fmtTime(slot.endDateTime);
+      const label    = slot.label ? ` · ${slot.label}` : '';
       const autoIcon = slot.autoAccept ? ' ⚡' : '';
 
       return `
-        <label class="rdv-slot-pick${taken ? ' rdv-slot-pick-taken' : ''}">
+        <label class="rdv-slot-pick">
           <input type="radio" name="rdvSlotChoice" value="${origId}"
             data-start="${slot.startDateTime}" data-end="${slot.endDateTime}"
-            ${taken ? 'disabled' : ''}>
+            data-target="${targetAgentKey}">
           <span class="rdv-slot-pick-label">
             ${start} – ${end}${label}${autoIcon}
-            ${taken ? ' <span class="rdv-taken-badge">Déjà pris</span>' : ''}
           </span>
         </label>`;
     }).join('');
@@ -577,19 +572,26 @@
           selectedStart: null,
           selectedEnd:   null,
         };
-        _showTimePicker(radio.dataset.start, radio.dataset.end);
+        _showTimePicker(radio.dataset.start, radio.dataset.end, radio.dataset.target);
       });
     });
   }
 
   // ── Sous-sélection horaire : créneaux fixes de 30 min ───────────
-  function _showTimePicker(slotStart, slotEnd) {
+  function _showTimePicker(slotStart, slotEnd, targetAgentKey) {
     const tp      = document.getElementById('rdvTimePicker');
     const slotsEl = document.getElementById('rdvTpSlots');
     if (!tp || !slotsEl) return;
     tp.classList.remove('hidden');
     slotsEl.innerHTML = '';
     if (_selectedSlot) { _selectedSlot.selectedStart = null; _selectedSlot.selectedEnd = null; }
+
+    // Réservations existantes de l'agent cible sur cette plage (agenda global)
+    const agentName   = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
+    const existingRes = DB.getInRange(slotStart, slotEnd).filter(r => {
+      const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
+      return a === agentName;
+    });
 
     const endLim = new Date(slotEnd);
     const cursor = new Date(slotStart);
@@ -599,20 +601,34 @@
       const mm  = String(cursor.getMinutes()).padStart(2, '0');
       const dateStr  = cursor.toISOString().slice(0, 10);
       const startDT  = `${dateStr}T${hh}:${mm}`;
-      const endObj   = new Date(cursor.getTime() + 30 * 60000);
+      const btnStart = cursor.getTime();
+      const endObj   = new Date(btnStart + 30 * 60000);
       const eh  = String(endObj.getHours()).padStart(2, '0');
       const em  = String(endObj.getMinutes()).padStart(2, '0');
       const endDT    = `${endObj.toISOString().slice(0, 10)}T${eh}:${em}`;
+      const btnEnd   = endObj.getTime();
+
+      // Vérifier si ce créneau chevauche une réservation existante
+      const busy = existingRes.some(r => {
+        const rStart = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
+        const rEnd   = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
+        return btnStart < rEnd && btnEnd > rStart;
+      });
 
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'rdv-tp-slot-btn';
+      btn.className = 'rdv-tp-slot-btn' + (busy ? ' busy' : '');
       btn.textContent = `${hh}:${mm} – ${eh}:${em}`;
-      btn.addEventListener('click', () => {
-        slotsEl.querySelectorAll('.rdv-tp-slot-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        if (_selectedSlot) { _selectedSlot.selectedStart = startDT; _selectedSlot.selectedEnd = endDT; }
-      });
+      if (busy) {
+        btn.disabled = true;
+        btn.title = 'Déjà réservé dans l\'agenda';
+      } else {
+        btn.addEventListener('click', () => {
+          slotsEl.querySelectorAll('.rdv-tp-slot-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (_selectedSlot) { _selectedSlot.selectedStart = startDT; _selectedSlot.selectedEnd = endDT; }
+        });
+      }
       slotsEl.appendChild(btn);
       cursor.setMinutes(cursor.getMinutes() + 30);
     }
@@ -673,10 +689,14 @@
   }
 
   async function _processRequest({ targetAgentKey, slotId, startDateTime, endDateTime, withPerson, message, secret }) {
-    // Vérifier qu'il n'est pas déjà pris
-    const taken = await DB.isSlotTaken(targetAgentKey, slotId);
-    if (taken) {
-      _showError('rdvRequestError', 'Ce créneau est déjà confirmé pour quelqu\'un d\'autre.');
+    // Vérifier via l'agenda global si le créneau 30min est déjà pris
+    const agentName = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
+    const conflicts = DB.getInRange(startDateTime, endDateTime).filter(r => {
+      const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
+      return a === agentName;
+    });
+    if (conflicts.length) {
+      _showError('rdvRequestError', 'Ce créneau est déjà réservé dans l\'agenda.');
       return;
     }
 
