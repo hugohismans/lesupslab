@@ -171,7 +171,11 @@ const CAL = {
             svc   = svcs.join(' + ');
           }
           const agt   = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
-          const agtFmt = fmtAgent(agt);
+          // Afficher tous les participants (agents[]) sans doublon avec agent principal
+          const allAgts = Array.isArray(res.agents) && res.agents.length > 1
+            ? res.agents
+            : (agt ? [agt] : []);
+          const agtFmt = allAgts.map(n => fmtAgent(n)).join(', ');
           const recType = res.recurrence?.type;
           const isRec   = recType && recType !== 'none';
           const recLabels = { daily: 'Quotidien', weekly: 'Hebdomadaire', monthly: 'Mensuel' };
