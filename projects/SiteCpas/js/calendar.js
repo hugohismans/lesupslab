@@ -1356,7 +1356,7 @@ const LIVE = {
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
         const infoHint  = lastCallAny
-          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallAny.ticket ? `<strong>n°${escapeHtml(lastCallAny.ticket)}</strong>` : 'ticket en cours'}${lastCallAny.svc ? ` · ${escapeHtml(lastCallAny.svc)}` : ''}${dismissBtn}</div>`
+          ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallAny.ticketLabel ? `<strong>n°${escapeHtml(lastCallAny.ticketLabel)}</strong>` : 'ticket en cours'}${lastCallAny.ticketName ? ` · ${escapeHtml(lastCallAny.ticketName)}` : ''}${lastCallAny.svc ? ` · ${escapeHtml(lastCallAny.svc)}` : ''}${dismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
         const prefQueueLen = amIHere ? DB.getPreferredQueue(l).length : 0;
         const prefQueueHint = prefQueueLen > 0
@@ -1416,7 +1416,7 @@ const LIVE = {
           : '';
         // Rappel disponible dès qu'un ticket a été appelé, même si quelqu'un est en salle
         const recallBtn = lastCallAny
-          ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticket || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticket ? `n°${escapeHtml(lastCallAny.ticket)}` : 'le dernier'}</button>`
+          ? `<button class="lv-q-recall" data-local="${l}" title="Relancer la notification publique pour ${lastCallAny.ticketLabel || 'le dernier ticket'}">📢 Rappeler ${lastCallAny.ticketLabel ? `n°${escapeHtml(lastCallAny.ticketLabel)}` : 'le dernier'}</button>`
           : '';
         const _prefDisplay = preferred ? (preferred.ticketLabel ? `${preferred.ticketLabel} · ${preferred.displayName || '?'}` : (preferred.displayName || '?')) : '';
         const preferredBtn = preferred
@@ -1458,7 +1458,7 @@ const LIVE = {
           : '';
         const noGrpLastCall = amIHere ? (this._lastCalled[l] || null) : null;
         const noGrpInfoHint = noGrpLastCall
-          ? `<div class="lv-current-beneficiary">🟡 En cours — ${noGrpLastCall.ticket ? `<strong>n°${escapeHtml(noGrpLastCall.ticket)}</strong>` : 'ticket en cours'}${noGrpLastCall.svc ? ` · ${escapeHtml(noGrpLastCall.svc)}` : ''}${noGrpDismissBtn}</div>`
+          ? `<div class="lv-current-beneficiary">🟡 En cours — ${noGrpLastCall.ticketLabel ? `<strong>n°${escapeHtml(noGrpLastCall.ticketLabel)}</strong>` : 'ticket en cours'}${noGrpLastCall.ticketName ? ` · ${escapeHtml(noGrpLastCall.ticketName)}` : ''}${noGrpLastCall.svc ? ` · ${escapeHtml(noGrpLastCall.svc)}` : ''}${noGrpDismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${noGrpDismissBtn}</div>` : '');
         const noGrpPrefQueueLen = amIHere ? DB.getPreferredQueue(l).length : 0;
         const noGrpPrefQueueHint = noGrpPrefQueueLen > 0
