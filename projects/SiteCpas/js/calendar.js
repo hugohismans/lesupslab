@@ -2714,45 +2714,66 @@ function updateStatusBar() {
   const occs = DB.getInRange(dayS, dayE);
 
   pills.innerHTML = CONFIG.LOCALS.map(l => {
-    const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
-    const res  = occs.find(r =>
-      parseInt(r.localId) === l && !r.isPermanent && r._start <= dt && r._end > dt
-    );
+    const hasDesks = DB.localHasDesks(l);
+    const desks    = hasDesks ? DB.getLocalDesks(l) : [];
 
-    if (perm) {
-      const svc = DB.getSvcLabel(perm);
-      return `<div class="lpill is-perm" title="${svc}">
+    // ── Local SANS desk — comportement existant ──
+    if (!hasDesks) {
+      const perm = occs.find(r => parseInt(r.localId) === l && r.isPermanent);
+      const res  = occs.find(r =>
+        parseInt(r.localId) === l && !r.isPermanent && r._start <= dt && r._end > dt
+      );
+      if (perm) {
+        const svc = DB.getSvcLabel(perm);
+        return `<div class="lpill is-perm" title="${svc}">
+          <div class="lp-num">${DB.getLocalLabel(l)}</div>
+          <div class="lp-status">🔒 Permanent</div>
+          <div class="lp-detail">${svc}</div>
+        </div>`;
+      }
+      if (res) {
+        const svc = DB.getSvcLabel(res);
+        const agt = res.agent === 'Autre' ? res.agentCustom : res.agent;
+        const agtFmt = fmtAgent(agt);
+        const endH = res._end ? res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
+        return `<div class="lpill is-booked" title="${svc} — ${agt}">
+          <div class="lp-num">${DB.getLocalLabel(l)}</div>
+          <div class="lp-status">🔴 Réservé</div>
+          <div class="lp-detail">${svc}</div>
+          <div class="lp-agent" style="${DB.getAgentRoleColor(agt) ? `color:${DB.getAgentRoleColor(agt)}` : ''}">${agtFmt}</div>
+          ${endH ? `<div class="lp-until">jusqu'à ${endH}</div>` : ''}
+        </div>`;
+      }
+      const next = occs.filter(r => parseInt(r.localId) === l && !r.isPermanent && r._start > dt).sort((a, b) => a._start - b._start)[0];
+      const nextH = next ? next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : null;
+      return `<div class="lpill is-free">
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
-        <div class="lp-status">🔒 Permanent</div>
-        <div class="lp-detail">${svc}</div>
+        <div class="lp-status">🟢 Libre</div>
+        ${nextH ? `<div class="lp-free-until">jusqu'à ${nextH}</div>` : '<div class="lp-free-until">toute la journée</div>'}
       </div>`;
     }
-    if (res) {
-      const svc = DB.getSvcLabel(res);
-      const agt = res.agent   === 'Autre' ? res.agentCustom  : res.agent;
-      const agtFmt = fmtAgent(agt);
-      const endH = res._end
-        ? res._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
-        : '';
-      return `<div class="lpill is-booked" title="${svc} — ${agt}">
+
+    // ── Local AVEC desks — carte parent + sous-cartes desk ──
+    const deskStates = desks.map((dId, idx) => {
+      const perm = occs.find(r => DB.unitOccupies(r, l, dId) && r.isPermanent);
+      const res  = occs.find(r => DB.unitOccupies(r, l, dId) && !r.isPermanent && r._start <= dt && r._end > dt);
+      const cls  = perm ? 'lp-desk-perm' : res ? 'lp-desk-booked' : 'lp-desk-free';
+      const title = perm ? `${DB.getDeskLabel(dId)} — 🔒 Permanent`
+        : res ? `${DB.getDeskLabel(dId)} — Réservé (${DB.getSvcLabel(res)})`
+        : `${DB.getDeskLabel(dId)} — Libre`;
+      return `<span class="lp-desk ${cls}" title="${title}">${idx + 1}</span>`;
+    });
+    const nFree = desks.filter(dId => {
+      return !occs.some(r => DB.unitOccupies(r, l, dId) && (r.isPermanent || (r._start <= dt && r._end > dt)));
+    }).length;
+    const pillClass = nFree === 0 ? 'is-booked' : nFree === desks.length ? 'is-free' : 'is-partial';
+    const statusTxt = nFree === 0 ? '🔴 Complet' : nFree === desks.length ? '🟢 Libre' : `🟠 ${nFree}/${desks.length}`;
+    return `<div class="lpill-wrap">
+      <div class="lpill ${pillClass}">
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
-        <div class="lp-status">🔴 Réservé</div>
-        <div class="lp-detail">${svc}</div>
-        <div class="lp-agent" style="${DB.getAgentRoleColor(agt) ? `color:${DB.getAgentRoleColor(agt)}` : ''}">${agtFmt}</div>
-        ${endH ? `<div class="lp-until">jusqu'à ${endH}</div>` : ''}
-      </div>`;
-    }
-    // Prochaine réservation après dt pour ce local
-    const next = occs
-      .filter(r => parseInt(r.localId) === l && !r.isPermanent && r._start > dt)
-      .sort((a, b) => a._start - b._start)[0];
-    const nextH = next
-      ? next._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
-      : null;
-    return `<div class="lpill is-free">
-      <div class="lp-num">${DB.getLocalLabel(l)}</div>
-      <div class="lp-status">🟢 Libre</div>
-      ${nextH ? `<div class="lp-free-until">jusqu'à ${nextH}</div>` : '<div class="lp-free-until">toute la journée</div>'}
+        <div class="lp-status">${statusTxt}</div>
+      </div>
+      <div class="lp-desks">${deskStates.join('')}</div>
     </div>`;
   }).join('');
 }
