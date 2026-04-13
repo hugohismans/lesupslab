@@ -1138,8 +1138,8 @@ const LIVE = {
         const oldestGrp   = DB.getOldestOverflowGroup(l) || grp;
         const overflow    = grps.reduce((sum, g) => sum + DB.getGroupOverflowQueue(g.id), 0);
         const optedOut    = DB.getBureauOptedOut(l);
-        const callNextBtn = queue === 0 && overflow > 0 && !busyWithPref
-          ? `<button class="lv-q-next${isAccueil ? ' lv-q-next-accueil' : ''}" data-local="${l}" data-grp="${oldestGrp.id}">${isAccueil ? '⚠️ Ticket coincé ?' : '🔔 Appeler le suivant'}</button>`
+        const callNextBtn = amIHere && queue === 0 && overflow > 0 && !busyWithPref
+          ? `<button class="lv-q-next" data-local="${l}" data-grp="${oldestGrp.id}">🔔 Appeler le suivant</button>`
           : '';
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
         // Fermer bloqué si : en cours de permanence (sauf accueil) OU pas l'agent connecté
@@ -1152,30 +1152,30 @@ const LIVE = {
         // Disparaît uniquement quand l'agent clique "Je suis disponible" / "Bénéficiaire parti"
         // (false = sentinelle "effacé volontairement" → traiter comme null)
         // NE PAS conditionner sur isBusyLocal/overflow → comportement aléatoire lié à Firebase
-        const lastCallOngoing = !isAccueil && busyWithPref ? (this._lastCalled[l] || null) : null;
-        const lastCallAny     = !isAccueil ? (this._lastCalled[l] || null) : null;
+        const lastCallOngoing = amIHere && busyWithPref ? (this._lastCalled[l] || null) : null;
+        const lastCallAny     = amIHere ? (this._lastCalled[l] || null) : null;
         // Bouton "Bénéficiaire parti" : flux preferred uniquement (busyWithPref)
         // Le cas queue>0 sans busyWithPref est géré par "Je suis disponible"
-        const dismissBtn = (!isAccueil && busyWithPref)
+        const dismissBtn = (!isAccueil && amIHere && busyWithPref)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
         const infoHint  = lastCallAny
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${lastCallAny.ticket ? `<strong>n°${escapeHtml(lastCallAny.ticket)}</strong>` : 'ticket en cours'}${lastCallAny.svc ? ` · ${escapeHtml(lastCallAny.svc)}` : ''}${dismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${dismissBtn}</div>` : '');
-        const prefQueueLen = !isAccueil ? DB.getPreferredQueue(l).length : 0;
+        const prefQueueLen = amIHere ? DB.getPreferredQueue(l).length : 0;
         const prefQueueHint = prefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${prefQueueLen} personne${prefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
         // pending preferred — toujours récupéré pour la liste d'attente
-        const _preferredPending = !isAccueil ? DB.getPreferredPending(l) : null;
+        const _preferredPending = amIHere ? DB.getPreferredPending(l) : null;
         // Bouton "Recevoir X" : uniquement si l'agent est libre (pas busyWithPref/permanence)
         const preferred = _preferredPending && !isBusyLocal ? _preferredPending : null;
         // Liste complète des tickets en attente — tous les groupes + preferred pending + preferred queue
         const _gcCfgL = DB.getTicketDisplay('groupCard');
-        const _prefQueueItems = !isAccueil ? DB.getPreferredQueue(l) : [];
+        const _prefQueueItems = amIHere ? DB.getPreferredQueue(l) : [];
         const _allWaitItems = [];
         // Ajouter le preferred pending (ex: cxx) avec flag isPref — même pendant permanence
-        if (!isAccueil && _preferredPending) {
+        if (amIHere && _preferredPending) {
           _allWaitItems.push({ isPref: true, ts: preferred.ts || 0, prefName: preferred.displayName || '?', prefTicket: preferred.ticketLabel || preferred.displayName || '?' });
         }
         // Ajouter les personnes en attente derrière le preferred pending
@@ -1196,7 +1196,7 @@ const LIVE = {
         // Trier par timestamp d'émission (ordre d'arrivée global)
         _allWaitItems.sort((a, b) => a.ts - b.ts);
         const totalWaiting = overflow + (_preferredPending ? 1 : 0) + _prefQueueItems.length;
-        const overflowBadge = !isAccueil && totalWaiting > 0
+        const overflowBadge = amIHere && totalWaiting > 0
           ? `<div class="lv-grp-queue-list">
                <div class="lv-grp-queue-header">
                  <span class="lv-grp-queue-arrow">↓</span>
@@ -1215,7 +1215,7 @@ const LIVE = {
                }).join('')}
              </div>`
           : '';
-        const grpHint = !isAccueil
+        const grpHint = amIHere
           ? `<div class="lv-queue-group-hint">🔗 ${escapeHtml(grp.name)}${optedOut ? ' · <em>retiré</em>' : ''}</div>${overflowBadge}${infoHint}`
           : '';
         // Rappel disponible dès qu'un ticket a été appelé, même si quelqu'un est en salle
@@ -1234,7 +1234,7 @@ const LIVE = {
           ${grpHint}
           ${preferredBtn}
           ${preferredRecallBtn}
-          ${!busyWithPref && (queue > 0 || (overflow > 0 && !pendingPref)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${amIHere && !busyWithPref && (queue > 0 || (overflow > 0 && !pendingPref)) ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           ${recallBtn}
           ${callNextBtn}
           <div class="lv-queue-actions">${leaveBtn}${printBtnHtml}${pauseBtn}${fermerBtn}</div>
@@ -1242,10 +1242,10 @@ const LIVE = {
       } else {
         const fermerLabel = isAccueil ? '🔴 Forcer fermeture' : '🔴 Je pars, fermer le bureau';
         const fermerBtn   = (!isAccueil && (isBusyLocal || !amIHere)) ? '' : `<button class="lv-bureau-close${isAccueil ? ' lv-bureau-force' : ''}" data-local="${l}">${fermerLabel}</button>`;
-        const noQueueWarn = !isAccueil && isOpen && l === currentAgentOpenLocal
+        const noQueueWarn = amIHere && isOpen && l === currentAgentOpenLocal
           ? `<div class="lv-no-queue-warn">⚠️ Tu n'es pas lié à une file d'attente — Inscris-toi à une file d'attente !</div>`
           : '';
-        const noGrpPreferred = !isAccueil ? DB.getPreferredPending(l) : null;
+        const noGrpPreferred = amIHere ? DB.getPreferredPending(l) : null;
         const noGrpPrefBtn = noGrpPreferred
           ? `<button class="lv-pref-receive" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}">📥 Recevoir ${escapeHtml(noGrpPreferred.displayName || '?')} qui ne souhaite voir que moi</button>`
           : '';
@@ -1253,14 +1253,14 @@ const LIVE = {
         const noGrpPrefRecallBtn = noGrpPrefRecall
           ? `<button class="lv-pref-recall" data-local="${l}" data-name="${escapeHtml(noGrpPrefRecall.displayName || '?')}" data-agent="${escapeHtml(noGrpPrefRecall.agentPublicName || '')}">📢 Rappeler ${escapeHtml(noGrpPrefRecall.displayName || '?')}</button>`
           : '';
-        const noGrpDismissBtn = (!isAccueil && busyWithPref)
+        const noGrpDismissBtn = (amIHere && busyWithPref)
           ? `<button class="lv-q-done" data-local="${l}" title="Marquer le bénéficiaire comme parti">✅ Bénéficiaire parti</button>`
           : '';
-        const noGrpLastCall = !isAccueil ? (this._lastCalled[l] || null) : null;
+        const noGrpLastCall = amIHere ? (this._lastCalled[l] || null) : null;
         const noGrpInfoHint = noGrpLastCall
           ? `<div class="lv-current-beneficiary">🟡 En cours — ${noGrpLastCall.ticket ? `<strong>n°${escapeHtml(noGrpLastCall.ticket)}</strong>` : 'ticket en cours'}${noGrpLastCall.svc ? ` · ${escapeHtml(noGrpLastCall.svc)}` : ''}${noGrpDismissBtn}</div>`
           : (!isAccueil && busyWithPref ? `<div class="lv-current-beneficiary">${noGrpDismissBtn}</div>` : '');
-        const noGrpPrefQueueLen = !isAccueil ? DB.getPreferredQueue(l).length : 0;
+        const noGrpPrefQueueLen = amIHere ? DB.getPreferredQueue(l).length : 0;
         const noGrpPrefQueueHint = noGrpPrefQueueLen > 0
           ? `<div class="lv-pref-queue-hint">👥 ${noGrpPrefQueueLen} personne${noGrpPrefQueueLen > 1 ? 's' : ''} en attente de rendez-vous spécifique</div>`
           : '';
@@ -1270,7 +1270,7 @@ const LIVE = {
           ${noGrpPrefQueueHint}
           ${noGrpPrefBtn}
           ${noGrpPrefRecallBtn}
-          ${queue > 0 && !noGrpPreferred && !noGrpPrefRecall ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
+          ${amIHere && queue > 0 && !noGrpPreferred && !noGrpPrefRecall ? `<button class="lv-q-avail" data-local="${l}" data-delta="-1">✅ Je suis disponible</button>` : ''}
           <div class="lv-queue-actions">${printBtnHtml}${pauseBtn}${fermerBtn}</div>
         </div>`;
       }

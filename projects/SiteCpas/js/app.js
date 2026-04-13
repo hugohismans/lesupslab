@@ -1534,7 +1534,7 @@ const HOME = {
         lines.push(`<div class="hs-decl-grps">🔗 ${grpBadges}<span class="hs-decl-grp-legend">= personnes en attente</span></div>`);
       }
 
-      const isAdmin    = DB.hasPermission('editSettings');
+      const isAdmin    = DB.hasPermission('kickFromLocal');
       const kickTarget = !isBO && isOccupied && !isCurrent && isAdmin
         ? DB.getBureauAgentKey(localId) : null;
       const kickBtn = kickTarget
