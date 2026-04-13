@@ -452,7 +452,8 @@ async function main() {
   const lieuxData  = lieuxSnap.val()  || {};
   const localLabels = labelsSnap.val() || {};
   const lieuxList = Object.entries(lieuxData)
-    .map(([id, l]) => ({ id, name: l.name || 'Sans nom', order: l.order ?? 999, localIds: l.localIds ? Object.keys(l.localIds).map(Number).sort((a,b)=>a-b) : [] }))
+    .map(([id, l]) => ({ id, name: l.name || 'Sans nom', order: l.order ?? 999, isBackoffice: !!l.isBackoffice, localIds: l.localIds ? Object.keys(l.localIds).map(Number).sort((a,b)=>a-b) : [] }))
+    .filter(l => l.isBackoffice)   // RDV intégrateur = back-office uniquement
     .sort((a, b) => a.order - b.order);
 
   const sel = document.getElementById('localSelect');
@@ -482,36 +483,64 @@ async function main() {
 
     const btn = document.getElementById('confirmBtn');
     btn.disabled = true;
-    btn.textContent = 'Envoi…';
+    btn.textContent = 'Vérification…';
 
     const colleagues = Array.from(_selectedColleagues).map(key => ({
       key, name: agentsData[key] || key
     }));
 
     try {
-      await db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
-        slotId:            _selectedChunk._slotId,
-        startDateTime:     _selectedChunk.startDateTime,
-        endDateTime:       _selectedChunk.endDateTime,
-        targetAgentKey:    integratorKey,
-        requesterAgentKey: agentKey,
-        requesterName:     agentName,
-        withPerson:        agentName,
-        colleagues:        colleagues.length ? colleagues : null,
-        message:           `Demande via la page de bienvenue — visite intégrateur — Local ${localId} (${localLieu})`,
-        localId:           Number(localId),
-        localLieu:         localLieu,
-        status:            'pending',
-        createdAt:         Date.now(),
-        respondedAt:       null,
+      // ── Vérification conflit de local ─────────────────────────────
+      const resSnap = await ref('reservations').once('value');
+      const resData = resSnap.val() || {};
+      const sStart  = _selectedChunk.startDateTime;
+      const sEnd    = _selectedChunk.endDateTime;
+      const conflict = Object.values(resData).some(r => {
+        if (String(r.localId) !== String(localId)) return false;
+        const rS = r.startDateTime || '';
+        const rE = r.endDateTime   || '';
+        return rS < sEnd && rE > sStart;
       });
+      if (conflict) {
+        btn.disabled = false;
+        btn.textContent = '✅ Confirmer le rendez-vous';
+        alert(`⚠️ Ce local est déjà occupé à ce créneau.\nChoisissez un autre créneau ou un autre local.`);
+        return;
+      }
+
+      // ── Créer une demande par participant ─────────────────────────
+      const allParticipants = [{ key: agentKey, name: agentName }, ...colleagues];
+      const groupNames = allParticipants.map(p => p.name);
+      const isGroup = allParticipants.length > 1;
+      const baseMsg = `Demande via la page de bienvenue — visite intégrateur — Local ${localId} (${localLieu})`;
+
+      btn.textContent = 'Envoi…';
+      await Promise.all(allParticipants.map(p =>
+        db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
+          slotId:            _selectedChunk._slotId,
+          startDateTime:     sStart,
+          endDateTime:       sEnd,
+          targetAgentKey:    integratorKey,
+          requesterAgentKey: p.key,
+          requesterName:     p.name,
+          withPerson:        p.name,
+          groupSession:      isGroup,
+          groupParticipants: isGroup ? groupNames : null,
+          message:           baseMsg,
+          localId:           Number(localId),
+          localLieu:         localLieu,
+          status:            'pending',
+          createdAt:         Date.now(),
+          respondedAt:       null,
+        })
+      ));
 
       document.getElementById('successSlotInfo').textContent =
-        `📅 ${fmtDate(_selectedChunk.startDateTime)} de ${fmtTime(_selectedChunk.startDateTime)} à ${fmtTime(_selectedChunk.endDateTime)} — Local ${localId} (${localLieu})`;
+        `📅 ${fmtDate(sStart)} de ${fmtTime(sStart)} à ${fmtTime(sEnd)} — Local ${localId} (${localLieu})`;
 
       let msg = 'L\'intégrateur arrivera au créneau demandé à votre local.<br>En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l\'utiliser !';
-      if (colleagues.length) {
-        msg += `<br><br>👥 <strong>Formation groupée</strong> — ${colleagues.map(c => c.name).join(', ')} seront également notifiés.`;
+      if (isGroup) {
+        msg += `<br><br>👥 <strong>Formation groupée</strong> — ${groupNames.join(', ')} ont chacun·e leur demande enregistrée.`;
       }
       document.getElementById('successMsg').innerHTML = msg;
       showScreen('screenSuccess');
