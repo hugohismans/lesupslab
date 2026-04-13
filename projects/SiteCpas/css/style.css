@@ -3833,14 +3833,121 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
   min-width: 240px;
 }
 .hs-widget-declare,
-.hs-widget-qgroups {
+.hs-widget-qgroups,
+.hs-widget-upcoming,
+.hs-widget-week,
+.hs-widget-shortcuts {
   flex: 1 1 100%;
   width: 100%;
 }
+.hs-widget-weather,
+.hs-widget-stats,
+.hs-widget-notifs {
+  flex: 1 1 calc(50% - .5rem);
+  min-width: 220px;
+}
 @media (max-width: 640px) {
   .hs-widget-agenda,
-  .hs-widget-presence { flex: 1 1 100%; }
+  .hs-widget-presence,
+  .hs-widget-weather,
+  .hs-widget-stats,
+  .hs-widget-notifs { flex: 1 1 100%; }
 }
+
+/* ── Widget Météo ─────────────────────────────────────────────────── */
+.hs-weather-body { padding: .25rem 0; }
+.hs-weather-main { display: flex; align-items: center; gap: .75rem; margin-bottom: .25rem; }
+.hs-weather-emoji { font-size: 2.2rem; line-height: 1; }
+.hs-weather-temp  { font-size: 1.8rem; font-weight: 700; color: #1e293b; }
+.hs-weather-label { font-size: .9rem; color: #64748b; text-transform: capitalize; margin-bottom: .2rem; }
+.hs-weather-details { font-size: .82rem; color: #94a3b8; }
+.hs-weather-empty { font-size: .85rem; color: #94a3b8; padding: .5rem 0; }
+
+/* ── Widget Stats ─────────────────────────────────────────────────── */
+.hs-stats-body  { padding: .25rem 0; }
+.hs-stats-row   { display: flex; gap: .75rem; margin-bottom: .5rem; }
+.hs-stat-card   { flex: 1; background: #f8fafc; border-radius: 10px; padding: .6rem .5rem; text-align: center; }
+.hs-stat-val    { font-size: 1.6rem; font-weight: 700; color: #1e3a5f; line-height: 1.1; }
+.hs-stat-lbl    { font-size: .72rem; color: #64748b; margin-top: .1rem; }
+.hs-stats-last  { font-size: .82rem; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: .4rem; }
+
+/* ── Widget Prochaines réservations ───────────────────────────────── */
+.hs-upcoming-list  { display: flex; flex-direction: column; gap: .2rem; }
+.hs-upcoming-empty { font-size: .85rem; color: #94a3b8; padding: .4rem 0; }
+.hs-upcoming-row   {
+  display: grid; grid-template-columns: 7rem 1fr 1fr 1fr;
+  gap: .4rem; padding: .35rem .5rem; border-radius: 7px;
+  font-size: .88rem; border-left: 3px solid #e2e8f0;
+}
+.hs-upcoming-row:hover { background: #f8fafc; }
+.hs-upcoming-time { font-weight: 700; color: #1e293b; white-space: nowrap; }
+.hs-upcoming-svc  { color: #1e293b; }
+.hs-upcoming-agt  { color: #64748b; }
+.hs-upcoming-loc  { color: #94a3b8; font-size: .82rem; }
+
+/* ── Widget Dernières notifications ───────────────────────────────── */
+.hs-notifs-list  { display: flex; flex-direction: column; gap: .15rem; }
+.hs-notifs-empty { font-size: .85rem; color: #94a3b8; padding: .4rem 0; }
+.hs-notif-row    {
+  display: grid; grid-template-columns: 1.4rem 1fr auto;
+  gap: .4rem; align-items: center;
+  padding: .35rem .3rem; border-radius: 7px; font-size: .85rem;
+}
+.hs-notif-row:hover { background: #f8fafc; }
+.hs-notif-unread { background: #eff6ff; }
+.hs-notif-icon   { font-size: 1rem; text-align: center; }
+.hs-notif-msg    { color: #334155; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.hs-notif-time   { color: #94a3b8; font-size: .78rem; white-space: nowrap; }
+
+/* ── Widget Planning semaine ──────────────────────────────────────── */
+.hs-week-list  { overflow-x: auto; }
+.hs-week-cols  { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; min-width: 480px; }
+.hs-week-col   { display: flex; flex-direction: column; gap: .15rem; }
+.hs-week-today { background: #eff6ff; border-radius: 8px; padding: .2rem .3rem; }
+.hs-week-day-hd { font-size: .78rem; font-weight: 700; color: #64748b; text-align: center;
+                  text-transform: uppercase; padding-bottom: .25rem;
+                  border-bottom: 2px solid #e2e8f0; margin-bottom: .2rem; }
+.hs-week-today .hs-week-day-hd { color: #1e3a5f; border-color: #3b82f6; }
+.hs-week-item  { display: flex; flex-direction: column; padding: .2rem .25rem;
+                 border-radius: 5px; background: #f8fafc; font-size: .75rem; }
+.hs-week-item:hover { background: #e0e7ff; }
+.hs-week-time  { font-weight: 600; color: #64748b; font-size: .7rem; }
+.hs-week-svc   { color: #1e293b; }
+.hs-week-empty { font-size: .78rem; color: #cbd5e1; text-align: center; padding: .3rem; }
+.hs-week-more  { font-size: .72rem; color: #94a3b8; text-align: center; padding-top: .15rem; }
+
+/* ── Widget Raccourcis ────────────────────────────────────────────── */
+.hs-card-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: .5rem; }
+.hs-card-title-row .hs-card-title { margin-bottom: 0; }
+.hs-sc-edit-btn {
+  background: none; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: .2rem .45rem; font-size: .8rem; cursor: pointer; color: #64748b;
+}
+.hs-sc-edit-btn:hover { background: #f1f5f9; }
+.hs-cust-sc-grid { display: flex; flex-wrap: wrap; gap: .6rem; }
+.hs-sc-btn {
+  display: flex; flex-direction: column; align-items: center; gap: .15rem;
+  padding: .65rem 1rem; border-radius: 10px; border: 1.5px solid #e2e8f0;
+  background: #f8fafc; cursor: pointer; min-width: 80px; flex: 1 1 auto;
+  transition: background .12s, border-color .12s;
+}
+.hs-sc-btn:hover { background: #eff6ff; border-color: #93c5fd; }
+.hs-sc-icon  { font-size: 1.4rem; line-height: 1; }
+.hs-sc-label { font-size: .82rem; font-weight: 600; color: #1e293b; }
+.hs-sc-sub   { font-size: .72rem; color: #94a3b8; }
+.hs-sc-empty { font-size: .85rem; color: #94a3b8; padding: .4rem 0; }
+.hs-sc-popover {
+  position: absolute; right: 0; top: 2rem; z-index: 300;
+  background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+  padding: .6rem .8rem; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  display: flex; flex-direction: column; gap: .3rem; min-width: 180px;
+}
+.hs-sc-pop-row {
+  display: flex; align-items: center; gap: .5rem; font-size: .88rem;
+  cursor: pointer; padding: .2rem 0;
+}
+.hs-sc-pop-row input { width: 1rem; height: 1rem; cursor: pointer; }
+.hs-widget-shortcuts .hs-card-title-row { position: relative; }
 
 /* ── Cartes ──────────────────────────────────────────────────────── */
 .hs-card {

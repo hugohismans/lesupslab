@@ -1393,6 +1393,7 @@ const HOME = {
 
     this._renderDeclCards();
     this._renderQueueGroups();
+    _renderExtraWidgets(agentKey);
   },
 
   _renderQueueGroups() {
@@ -1851,11 +1852,247 @@ function updateOrgName() {
 
 // ── Widget Manager — personnalisation de la page d'accueil ───────────────────
 const WIDGETS = [
-  { id: 'agenda',   label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda' },
-  { id: 'presence', label: '🗺 Qui est où',                      selector: '.hs-widget-presence' },
-  { id: 'declare',  label: '📍 Me déclarer dans un bureau',      selector: '.hs-widget-declare' },
-  { id: 'qgroups',  label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups' },
+  { id: 'agenda',    label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda' },
+  { id: 'presence',  label: '🗺 Qui est où',                      selector: '.hs-widget-presence' },
+  { id: 'declare',   label: '📍 Me déclarer dans un bureau',      selector: '.hs-widget-declare' },
+  { id: 'qgroups',   label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups' },
+  { id: 'weather',   label: '🌤 Météo',                           selector: '.hs-widget-weather' },
+  { id: 'stats',     label: '📊 Stats du jour',                   selector: '.hs-widget-stats' },
+  { id: 'upcoming',  label: '⏰ Prochaines réservations',         selector: '.hs-widget-upcoming' },
+  { id: 'notifs',    label: '🔔 Dernières notifications',         selector: '.hs-widget-notifs' },
+  { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week' },
+  { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts' },
 ];
+
+// ── Définition des raccourcis disponibles ───────────────────────────
+const HS_SC_DEFS = [
+  { id: 'calendar', label: '📅 Calendrier',  sub: 'Planning',      click: () => document.getElementById('hsGoCalendar')?.click() },
+  { id: 'live',     label: '📋 Vue direct',  sub: 'File d\'attente', click: () => document.getElementById('hsGoLive')?.click() },
+  { id: 'new',      label: '➕ Réserver',    sub: 'Nouveau créneau', click: () => document.getElementById('hsGoNew')?.click() },
+  { id: 'status',   label: '👤 Statut',      sub: 'Ma présence',    click: () => document.getElementById('hsGoStatus')?.click() },
+  { id: 'notifs',   label: '🔔 Notifs',      sub: 'Notifications',  click: () => NOTIF.togglePanel?.() },
+  { id: 'panic',    label: '🚨 Urgence',     sub: 'Bouton panique', click: () => document.getElementById('panicBtn')?.click() },
+];
+const HS_SC_DEFAULT = ['calendar', 'new', 'live', 'status'];
+
+function _scKey(agentKey)       { return `cpas_sc_${agentKey}`; }
+function _getScPrefs(agentKey)  {
+  try { const s = localStorage.getItem(_scKey(agentKey)); return s ? JSON.parse(s) : HS_SC_DEFAULT; }
+  catch { return HS_SC_DEFAULT; }
+}
+function _setScPrefs(agentKey, ids) { localStorage.setItem(_scKey(agentKey), JSON.stringify(ids)); }
+
+function _renderShortcutsWidget(agentKey) {
+  const el = document.getElementById('hsCustomShortcuts');
+  if (!el) return;
+  const enabled = _getScPrefs(agentKey);
+  const visible = HS_SC_DEFS.filter(s => enabled.includes(s.id));
+  if (!visible.length) {
+    el.innerHTML = '<div class="hs-sc-empty">Aucun raccourci sélectionné — cliquez ✏️ pour en ajouter.</div>';
+    return;
+  }
+  el.innerHTML = visible.map(s => `
+    <button class="hs-sc-btn" data-sc="${s.id}">
+      <span class="hs-sc-icon">${s.label.split(' ')[0]}</span>
+      <span class="hs-sc-label">${s.label.split(' ').slice(1).join(' ')}</span>
+      <span class="hs-sc-sub">${escapeHtml(s.sub)}</span>
+    </button>`).join('');
+  el.querySelectorAll('.hs-sc-btn').forEach(btn => {
+    const def = HS_SC_DEFS.find(s => s.id === btn.dataset.sc);
+    if (def) btn.addEventListener('click', def.click);
+  });
+}
+
+let _scEditOpen = false;
+function _initShortcutsEdit() {
+  const btn = document.getElementById('hsScEditBtn');
+  if (!btn) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (_scEditOpen) { document.getElementById('hsScPopover')?.remove(); _scEditOpen = false; return; }
+    const agentKey = sessionStorage.getItem('cpas_current_agent_key') || 'anon';
+    const enabled = _getScPrefs(agentKey);
+    const pop = document.createElement('div');
+    pop.id = 'hsScPopover';
+    pop.className = 'hs-sc-popover';
+    pop.innerHTML = HS_SC_DEFS.map(s => `
+      <label class="hs-sc-pop-row">
+        <input type="checkbox" data-sc="${s.id}" ${enabled.includes(s.id) ? 'checked' : ''}>
+        <span>${s.label}</span>
+      </label>`).join('');
+    pop.querySelectorAll('input').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const ak2 = sessionStorage.getItem('cpas_current_agent_key') || 'anon';
+        const newEnabled = HS_SC_DEFS.filter(s => pop.querySelector(`[data-sc="${s.id}"]`)?.checked).map(s => s.id);
+        _setScPrefs(ak2, newEnabled);
+        _renderShortcutsWidget(ak2);
+      });
+    });
+    btn.parentElement.appendChild(pop);
+    _scEditOpen = true;
+    setTimeout(() => document.addEventListener('click', function _close() {
+      pop.remove(); _scEditOpen = false; document.removeEventListener('click', _close);
+    }), 0);
+  });
+}
+
+// ── Widget Météo ───────────────────────────────────────────────────
+function _renderWeatherWidget() {
+  const el = document.getElementById('hsWeather');
+  if (!el) return;
+  if (typeof WEATHER === 'undefined' || !DB.getFeature('enableWeather')) {
+    el.innerHTML = '<div class="hs-weather-empty">Météo non activée</div>'; return;
+  }
+  const w = WEATHER.get();
+  if (!w) { el.innerHTML = '<div class="hs-weather-empty">Données indisponibles</div>'; return; }
+  const details = [];
+  if (w.wind > 0)   details.push(`💨 ${w.wind} km/h`);
+  if (w.precip > 0) details.push(`🌧 ${w.precip} mm`);
+  el.innerHTML = `
+    <div class="hs-weather-main">
+      <span class="hs-weather-emoji">${w.emoji}</span>
+      <span class="hs-weather-temp">${w.temp}°C</span>
+    </div>
+    <div class="hs-weather-label">${escapeHtml(w.label)}</div>
+    ${details.length ? `<div class="hs-weather-details">${details.join(' · ')}</div>` : ''}`;
+}
+
+// ── Widget Stats du jour ───────────────────────────────────────────
+function _renderStatsWidget() {
+  const el = document.getElementById('hsStats');
+  if (!el) return;
+  const locals     = (CONFIG.LOCALS || []).map(Number);
+  const openCount  = locals.filter(l => DB.isBureauOpen(l)).length;
+  const groups     = Object.entries(DB.getQueueGroups() || {});
+  const totalQueue = groups.reduce((acc, [id]) => acc + DB.getGroupOverflowQueue(id), 0);
+  const lastCalls  = locals
+    .map(l => DB.getLastCallForLocal(l)).filter(Boolean)
+    .sort((a, b) => (b.calledAt || 0) - (a.calledAt || 0));
+  const last = lastCalls[0];
+  el.innerHTML = `
+    <div class="hs-stats-row">
+      <div class="hs-stat-card">
+        <div class="hs-stat-val">${openCount}</div>
+        <div class="hs-stat-lbl">bureau${openCount !== 1 ? 'x' : ''} ouvert${openCount !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="hs-stat-card">
+        <div class="hs-stat-val">${totalQueue}</div>
+        <div class="hs-stat-lbl">en attente</div>
+      </div>
+      <div class="hs-stat-card">
+        <div class="hs-stat-val">${groups.filter(([,g]) => (g.localIds||[]).some(l => DB.isBureauOpen(Number(l)))).length}</div>
+        <div class="hs-stat-lbl">service${groups.length !== 1 ? 's' : ''} actif${groups.length !== 1 ? 's' : ''}</div>
+      </div>
+    </div>
+    ${last ? `<div class="hs-stats-last">Dernier ticket : <strong>${escapeHtml(last.ticketLabel || String(last.ticketNum || '?'))}</strong>${last.ticketName ? ` — ${escapeHtml(last.ticketName)}` : ''}</div>` : ''}`;
+}
+
+// ── Widget Prochaines réservations ─────────────────────────────────
+function _renderUpcomingWidget() {
+  const el = document.getElementById('hsUpcoming');
+  if (!el) return;
+  const now  = new Date();
+  const dayE = new Date(now); dayE.setHours(23, 59, 59, 999);
+  const occs = DB.getInRange(now, dayE)
+    .filter(r => !r.isPermanent && r._start > now)
+    .sort((a, b) => a._start - b._start)
+    .slice(0, 6);
+  if (!occs.length) {
+    el.innerHTML = '<div class="hs-upcoming-empty">Aucune réservation à venir aujourd\'hui</div>'; return;
+  }
+  el.innerHTML = occs.map(r => {
+    const hm  = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+    const hme = r._end?.toLocaleTimeString('fr-BE',  { hour: '2-digit', minute: '2-digit' }) || '';
+    const svc = DB.getSvcLabel(r);
+    const agt = r.agent === 'Autre' ? (r.agentCustom || 'Autre') : (r.agent || '');
+    const loc = DB.getLocalLabel(Number(r.localId));
+    return `<div class="hs-upcoming-row">
+      <span class="hs-upcoming-time">${hm}${hme ? `–${hme}` : ''}</span>
+      <span class="hs-upcoming-svc">${escapeHtml(svc)}</span>
+      <span class="hs-upcoming-agt">${escapeHtml(agt)}</span>
+      <span class="hs-upcoming-loc">📍 ${escapeHtml(loc)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Widget Dernières notifications ─────────────────────────────────
+function _renderNotifsWidget(agentKey) {
+  const el = document.getElementById('hsRecentNotifs');
+  if (!el) return;
+  const notifs = (typeof NOTIF !== 'undefined' && NOTIF.getAll) ? NOTIF.getAll() : {};
+  const list = Object.entries(notifs)
+    .filter(([, n]) => !n.targetAgentKey || n.targetAgentKey === agentKey)
+    .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0))
+    .slice(0, 5);
+  if (!list.length) { el.innerHTML = '<div class="hs-notifs-empty">Aucune notification récente</div>'; return; }
+  el.innerHTML = list.map(([, n]) => {
+    const time  = n.createdAt ? new Date(n.createdAt).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' }) : '';
+    const icon  = n.type === 'panic' ? '🚨' : n.urgent ? '❗' : n.type === 'alert' ? '⚠️' : 'ℹ️';
+    const isRead = n.readBy?.[agentKey] || n._read;
+    const msg   = (n.message || '').replace(/\n/g, ' ');
+    return `<div class="hs-notif-row${isRead ? '' : ' hs-notif-unread'}">
+      <span class="hs-notif-icon">${icon}</span>
+      <span class="hs-notif-msg">${escapeHtml(msg.slice(0, 70))}${msg.length > 70 ? '…' : ''}</span>
+      <span class="hs-notif-time">${time}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Widget Planning de la semaine ──────────────────────────────────
+function _renderWeekWidget() {
+  const el = document.getElementById('hsWeekPlan');
+  if (!el) return;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days  = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(today); d.setDate(today.getDate() + i);
+    if (d.getDay() === 0 || d.getDay() === 6) continue; // skip weekend
+    if (days.length >= 5) break;
+    days.push(d);
+    if (days.length === 1 && i === 0 && today.getDay() !== 0 && today.getDay() !== 6) { /* ok */ }
+  }
+  // Ensure we have 5 working days
+  if (days.length < 5) {
+    let d = days.length ? new Date(days[days.length - 1]) : new Date(today);
+    while (days.length < 5) {
+      d = new Date(d); d.setDate(d.getDate() + 1);
+      if (d.getDay() !== 0 && d.getDay() !== 6) days.push(new Date(d));
+    }
+  }
+  const weekEnd = new Date(days[days.length - 1]); weekEnd.setHours(23, 59, 59, 999);
+  const allOccs = DB.getInRange(today, weekEnd).filter(r => !r.isPermanent);
+  const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+  el.innerHTML = `<div class="hs-week-cols">${days.map((d, i) => {
+    const dEnd  = new Date(d); dEnd.setHours(23, 59, 59, 999);
+    const occs  = allOccs.filter(r => r._start >= d && r._start <= dEnd).sort((a, b) => a._start - b._start);
+    const isToday = i === 0;
+    const label = isToday ? "Auj." : `${dayNames[d.getDay()]} ${d.getDate()}`;
+    const rows = occs.slice(0, 4).map(r => {
+      const hm  = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      const svc = DB.getSvcLabel(r);
+      const loc = DB.getLocalLabel(Number(r.localId));
+      return `<div class="hs-week-item" title="${escapeHtml(svc)} — ${escapeHtml(loc)}">
+        <span class="hs-week-time">${hm}</span>
+        <span class="hs-week-svc">${escapeHtml(svc.slice(0, 22))}${svc.length > 22 ? '…' : ''}</span>
+      </div>`;
+    }).join('');
+    const extra = occs.length > 4 ? `<div class="hs-week-more">+${occs.length - 4} autre${occs.length - 4 > 1 ? 's' : ''}</div>` : '';
+    return `<div class="hs-week-col${isToday ? ' hs-week-today' : ''}">
+      <div class="hs-week-day-hd">${label}</div>
+      ${rows || '<div class="hs-week-empty">—</div>'}${extra}
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Appel groupé des nouveaux widgets (depuis HOME.render) ──────────
+function _renderExtraWidgets(agentKey) {
+  _renderWeatherWidget();
+  _renderStatsWidget();
+  _renderUpcomingWidget();
+  _renderNotifsWidget(agentKey);
+  _renderWeekWidget();
+  _renderShortcutsWidget(agentKey);
+}
 
 function _widgetKey(agentKey)      { return `cpas_widgets_${agentKey}`; }
 function _widgetOrderKey(agentKey) { return `cpas_widgets_order_${agentKey}`; }
@@ -2180,6 +2417,13 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Rendu initial (écran d'accueil par défaut)
   HOME.init();
   HOME.render();
+
+  // Widgets supplémentaires — callbacks
+  NOTIF.onWidgetUpdate(() => {
+    const ak = sessionStorage.getItem('cpas_current_agent_key');
+    if (ak) _renderNotifsWidget(ak);
+  });
+  _initShortcutsEdit();
 
   // Initialiser le cerveau de la mascotte
   if (typeof MascotBrain !== 'undefined') {

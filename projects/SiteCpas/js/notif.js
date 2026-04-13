@@ -13,6 +13,7 @@ const NOTIF = {
   _bell:          null,
   _badge:         null,
   _dndBtn:        null,
+  _widgetCbs:     [],   // callbacks widget home screen
   _panelOpen:     false,
   _livePanel:     null,
   _liveBell:      null,
@@ -144,6 +145,8 @@ const NOTIF = {
     // Rafraîchir les panels si ouverts
     if (this._panelOpen) this._render();
     if (this._livePanelOpen) this._renderLive();
+    // Widget home screen
+    this._widgetCbs.forEach(fn => fn(this._notifs));
   },
 
   // ── Son — jouer un son selon le type de notif ───────────────────
@@ -653,6 +656,10 @@ const NOTIF = {
       this._addLocal(message, type);
     }
   },
+
+  // ── API widget home screen ───────────────────────────────────────
+  getAll()              { return this._notifs; },
+  onWidgetUpdate(fn)    { this._widgetCbs.push(fn); },
 
   // ── Couche D.2 — Service Worker (stub PWA) ───────────────────────
   _registerServiceWorker() {
