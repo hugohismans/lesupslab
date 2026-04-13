@@ -167,6 +167,12 @@
     }
   }
 
+  // ── Helper : ISO local (évite le décalage UTC de toISOString) ───────
+  function _localISO(d) {
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
   // ── Expansion des slots récurrents ───────────────────────────────
   function _expandSlots(slots) {
     const expanded = [];
@@ -200,14 +206,14 @@
 
       let safetyCount = 0;
       while (cursor <= endDate && cursor <= horizon && safetyCount++ < 200) {
-        const occDate = cursor.toISOString().slice(0, 10);
+        const occDate = _localISO(cursor).slice(0, 10);
         if (!exceptions[occDate]) {
           const occStart = new Date(cursor);
           const occEnd   = new Date(cursor.getTime() + duration);
           expanded.push({
             ...slot,
-            startDateTime: occStart.toISOString().slice(0, 16),
-            endDateTime:   occEnd.toISOString().slice(0, 16),
+            startDateTime: _localISO(occStart),
+            endDateTime:   _localISO(occEnd),
             _occDate:      occDate,
             _isOccurrence: true,
             _seriesSlotId: slot.id,
@@ -233,7 +239,7 @@
       return;
     }
 
-    const now      = new Date().toISOString().slice(0, 16);
+    const now      = _localISO(new Date());
     const expanded = _expandSlots(_mySlots);
 
     if (!expanded.length) {
@@ -675,7 +681,7 @@
     const el = document.getElementById('rdvSlotPicker');
     if (!el) return;
 
-    const now = new Date().toISOString().slice(0, 16);
+    const now = _localISO(new Date());
     const future = slots.filter(s => s.endDateTime > now);
 
     if (!future.length) {
@@ -738,13 +744,13 @@
     while (cursor.getTime() + 30 * 60000 <= endLim.getTime()) {
       const hh = String(cursor.getHours()).padStart(2, '0');
       const mm = String(cursor.getMinutes()).padStart(2, '0');
-      const dateStr = cursor.toISOString().slice(0, 10);
+      const dateStr = _localISO(cursor).slice(0, 10);
       const startDT = `${dateStr}T${hh}:${mm}`;
       const btnStart = cursor.getTime();
       const endObj  = new Date(btnStart + 30 * 60000);
       const eh = String(endObj.getHours()).padStart(2, '0');
       const em = String(endObj.getMinutes()).padStart(2, '0');
-      const endDT = `${endObj.toISOString().slice(0, 10)}T${eh}:${em}`;
+      const endDT = `${_localISO(endObj).slice(0, 10)}T${eh}:${em}`;
       const btnEnd30 = btnStart + 30 * 60000;
       // Conflit agenda global (réservations déjà créées)
       const calBusy = existingRes.some(r => {
