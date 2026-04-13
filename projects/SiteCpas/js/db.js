@@ -881,7 +881,7 @@ const DB = {
     }
     await this._ref(`queues/${today}`).update(writes);
     // Retourne { label: numéro formaté, resolvedName: nom résolu (null si pas de nom) }
-    return { label: this.formatTicket(groupId, n), resolvedName };
+    return { label: this.formatTicket(groupId, n), number: n, resolvedName };
   },
 
   // Timestamp d'émission du ticket N d'un groupe (pour comparer l'ancienneté inter-groupes)
@@ -1200,8 +1200,9 @@ const DB = {
       let resolvedName  = displayName;
       if (grp) {
         const result = await this.issueTicket(grp.id, displayName || null);
-        ticketLabel  = result.label;
-        resolvedName = result.resolvedName || displayName; // nom dédupliqué = cohérent avec EN ATTENTE
+        // Préfixe "SP" pour les demandes spécifiques (au lieu du préfixe du groupe)
+        ticketLabel  = `SP${String(result.number).padStart(2, '0')}`;
+        resolvedName = result.resolvedName || displayName;
         await this.incrementGroupOverflow(grp.id);
       }
       await this._ref(`appState/preferredPending/${localId}`).set({
