@@ -514,12 +514,29 @@ const CAL = {
       const newStartISO = `${dateStr}T${pad(hh)}:${pad(mm)}`;
       const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
 
-      // Vérification des conflits
+      // Vérification des conflits — même local
       const conflicts = DB.getInRange(newStart, newEnd)
         .filter(r => parseInt(r.localId) === newLocalId && r.id !== dnd.resId);
       if (conflicts.length) {
         showToast('⚠ Conflit : créneau déjà occupé pour ce local.');
         return;
+      }
+      // Vérification des conflits — agent dans un autre local
+      const _dndRes = DB.getReservationById?.(dnd.resId);
+      if (_dndRes) {
+        const _dndAgent = _dndRes.agent === 'Autre' ? (_dndRes.agentCustom || '') : (_dndRes.agent || '');
+        if (_dndAgent) {
+          const agentClash = DB.getInRange(newStart, newEnd).find(r =>
+            !r.isPermanent && r.id !== dnd.resId &&
+            parseInt(r.localId) !== newLocalId &&
+            (r.agent === _dndAgent || (r.agent === 'Autre' && r.agentCustom === _dndAgent))
+          );
+          if (agentClash) {
+            const clashLoc = DB.getLocalLabel(parseInt(agentClash.localId));
+            showToast(`⚠ Conflit agenda : ${_dndAgent} est déjà dans "${clashLoc}" sur ce créneau.`);
+            return;
+          }
+        }
       }
 
       try {
@@ -612,10 +629,29 @@ const CAL = {
       endDT.setHours(endInfo.h, endInfo.m + slotMin, 0, 0);
       const newEnd    = `${isoDate(endDT)}T${pad(endDT.getHours())}:${pad(endDT.getMinutes())}`;
 
-      // Vérifier conflits
-      const clashCheck = DB.getInRange(new Date(`${newStart}:00`), new Date(`${newEnd}:00`))
+      // Vérifier conflits — même local
+      const _rzNewStart = new Date(`${newStart}:00`);
+      const _rzNewEnd   = new Date(`${newEnd}:00`);
+      const clashCheck = DB.getInRange(_rzNewStart, _rzNewEnd)
         .filter(r => parseInt(r.localId) === rz.localId && r.id !== rz.resId);
-      if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé.'); self.render(); return; }
+      if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé dans ce local.'); self.render(); return; }
+      // Vérifier conflits — agent dans un autre local
+      const _rzRes = DB.getReservationById?.(rz.resId);
+      if (_rzRes) {
+        const _rzAgent = _rzRes.agent === 'Autre' ? (_rzRes.agentCustom || '') : (_rzRes.agent || '');
+        if (_rzAgent) {
+          const agentClash = DB.getInRange(_rzNewStart, _rzNewEnd).find(r =>
+            !r.isPermanent && r.id !== rz.resId &&
+            parseInt(r.localId) !== rz.localId &&
+            (r.agent === _rzAgent || (r.agent === 'Autre' && r.agentCustom === _rzAgent))
+          );
+          if (agentClash) {
+            const clashLoc = DB.getLocalLabel(parseInt(agentClash.localId));
+            showToast(`⚠ Conflit agenda : ${_rzAgent} est déjà dans "${clashLoc}" sur ce créneau.`);
+            self.render(); return;
+          }
+        }
+      }
 
       try {
         if (rz.isRec) {

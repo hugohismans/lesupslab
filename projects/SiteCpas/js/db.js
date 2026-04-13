@@ -1830,6 +1830,8 @@ const DB = {
     return result;
   },
 
+  getReservationById(id) { return this._data[id] ? { id, ...this._data[id] } : null; },
+
   async add(data) {
     const ref = this._ref('reservations').push();
     const needsSeries = !data.isPermanent && data.recurrence?.type !== 'none';
