@@ -514,6 +514,7 @@ async function loadOrgs() {
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleIntegratorPanel('${orgId}')">🔧 Intégrateur</button>
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="resetPostTest('${orgId}', '${name}')">🔄 Reset accueil</button>
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeQueueDay('${orgId}', '${name}')">🗑 Purger tickets</button>
+        <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeCalendar('${orgId}', '${name}')">🗓 Vider calendrier</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
       </div>
     </div>
@@ -774,6 +775,26 @@ async function purgeQueueDay(orgId, orgName) {
     await db.ref(`orgs/${orgId}/queues/${target}`).remove();
     await db.ref(`orgs/${orgId}/queueHistory/${target}`).remove();
     alert(`✅ Tickets du ${target} supprimés pour "${orgName}".`);
+  } catch (e) {
+    alert(`❌ Erreur : ${e.message}`);
+  }
+}
+
+// ── Vider le calendrier (UNIQUEMENT les réservations) ────────────
+async function purgeCalendar(orgId, orgName) {
+  const msg = `⚠️ VIDER LE CALENDRIER — "${orgName}"\n\n` +
+    `UNIQUEMENT les réservations seront supprimées.\n\n` +
+    `NE SERONT PAS affectés :\n` +
+    `• Configuration (lieux, locaux, desks, agents, services…)\n` +
+    `• Files d'attente et tickets\n` +
+    `• Présences et statuts agents\n` +
+    `• Demandes de rendez-vous\n\n` +
+    `⚠️ Cette action est IRRÉVERSIBLE.\n\nTapez "SUPPRIMER" pour confirmer :`;
+  const input = prompt(msg);
+  if (input !== 'SUPPRIMER') { if (input !== null) alert('Annulé — vous devez taper exactement "SUPPRIMER".'); return; }
+  try {
+    await db.ref(`orgs/${orgId}/reservations`).remove();
+    alert(`✅ Toutes les réservations supprimées pour "${orgName}".\nLe calendrier est vide.`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
   }
