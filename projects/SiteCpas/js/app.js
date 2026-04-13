@@ -1930,7 +1930,8 @@ function _initShortcutsEdit() {
     });
     btn.parentElement.appendChild(pop);
     _scEditOpen = true;
-    setTimeout(() => document.addEventListener('click', function _close() {
+    setTimeout(() => document.addEventListener('click', function _close(e) {
+      if (pop.contains(e.target)) return;
       pop.remove(); _scEditOpen = false; document.removeEventListener('click', _close);
     }), 0);
   });
