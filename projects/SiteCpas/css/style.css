@@ -2845,6 +2845,11 @@ body {
   background: #1e293b; border-radius: 12px; padding: 1rem 1.25rem;
   border-left: 4px solid #334155;
 }
+.lv-day-sep {
+  font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: #64748b; padding: .4rem .2rem .1rem; border-top: 1px solid #1e293b; margin-top: .25rem;
+}
+.lv-agent-rows .lv-day-sep:first-child { border-top: none; margin-top: 0; }
 .lv-ar-now    { border-left-color: #22c55e; background: #0f1f14; }
 .lv-ar-future { border-left-color: #6366f1; }
 .lv-ar-perm   { border-left-color: #78716c; }

@@ -2108,20 +2108,13 @@ const LIVE = {
       const startH = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
       const endH   = r._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
       const isCurrent = r._start <= now && r._end > now;
-      const todayStr  = now.toISOString().slice(0, 10);
-      const startStr  = r._start.toISOString().slice(0, 10);
-      const isToday   = startStr === todayStr;
-      const dayNames  = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-      const dateLabel = !isToday
-        ? `${dayNames[r._start.getDay()]} ${r._start.getDate()}/${r._start.getMonth() + 1} · `
-        : '';
       return `<div class="lv-agent-row ${isCurrent ? 'lv-ar-now' : 'lv-ar-future'}" style="${cardColor ? `border-left:4px solid ${cardColor}` : ''}">
         <div class="lv-ar-dot">${isCurrent ? '🟢' : '🕐'}</div>
         <div class="lv-ar-info">
           <div class="lv-ar-loc">${escapeHtml(loc)}</div>
           <div class="lv-ar-svc">${escapeHtml(svc)}</div>
           <div class="lv-ar-agt" style="${roleColor ? `color:${roleColor}` : ''}">${fmtAgent(agt)}</div>
-          <div class="lv-ar-time">${dateLabel}${startH} – ${endH}</div>
+          <div class="lv-ar-time">${startH} – ${endH}</div>
         </div>
       </div>`;
     };
@@ -2223,13 +2216,35 @@ const LIVE = {
       titleHtml = `<div class="lv-agent-name lv-svc-title">🗂 ${escapeHtml(firstSvc)}</div>`;
     }
 
+    // Grouper les résultats futurs par jour avec des séparateurs
+    const _dayNamesLong = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const todayItems = [...now_occs, ...perm_occs];
+    const _groupedByDay = {};
+    future_occs.forEach(r => {
+      const ds = r._start.toISOString().slice(0, 10);
+      if (!_groupedByDay[ds]) _groupedByDay[ds] = [];
+      _groupedByDay[ds].push(r);
+    });
+    const hasFuture = Object.keys(_groupedByDay).length > 0;
+    let rowsHtml = '';
+    if (todayItems.length) {
+      if (hasFuture) rowsHtml += `<div class="lv-day-sep">Aujourd'hui</div>`;
+      rowsHtml += todayItems.map(fmt).join('');
+    }
+    Object.entries(_groupedByDay).forEach(([ds, items]) => {
+      const _d = new Date(ds + 'T12:00:00');
+      const _dayLabel = `${_dayNamesLong[_d.getDay()]} ${_d.getDate()}/${_d.getMonth() + 1}`;
+      rowsHtml += `<div class="lv-day-sep">${_dayLabel}</div>`;
+      rowsHtml += items.map(fmt).join('');
+    });
+
     g('liveAgentResult').innerHTML = `
       <div class="lv-agent-header">
         ${titleHtml}
         ${statusBadge}
       </div>
       ${locationHtml}
-      <div class="lv-agent-rows">${all.map(fmt).join('')}</div>`;
+      <div class="lv-agent-rows">${rowsHtml}</div>`;
   },
 
   _renderAgentSuggestions(q) {
