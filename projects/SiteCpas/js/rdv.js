@@ -11,7 +11,7 @@
   let _mySlots       = [];
   let _targetSlots   = [];
   let _allRequests   = [];
-  let _selectedSlot  = null;  // { id, agentKey, slot } choisi dans l'onglet 2
+  let _selectedSlot  = null;  // { id, startDateTime, endDateTime, selectedStart, selectedEnd }
   let _pendingAccept = null;  // { requestId, localId } en attente si local picker
 
   // ── Init ─────────────────────────────────────────────────────────
@@ -510,6 +510,7 @@
     const el = document.getElementById('rdvSlotPicker');
     if (!el) return;
     _selectedSlot = null;
+    document.getElementById('rdvTimePicker')?.classList.add('hidden');
 
     if (_targetListener) {
       DB._ref(`appState/availabilitySlots/${_targetListener}`).off();
@@ -573,9 +574,49 @@
           id:            radio.value,
           startDateTime: radio.dataset.start,
           endDateTime:   radio.dataset.end,
+          selectedStart: null,
+          selectedEnd:   null,
         };
+        _selectedDuration = null;
+        _showTimePicker(radio.dataset.start, radio.dataset.end);
       });
     });
+  }
+
+  // ── Sous-sélection horaire : créneaux fixes de 30 min ───────────
+  function _showTimePicker(slotStart, slotEnd) {
+    const tp      = document.getElementById('rdvTimePicker');
+    const slotsEl = document.getElementById('rdvTpSlots');
+    if (!tp || !slotsEl) return;
+    tp.classList.remove('hidden');
+    slotsEl.innerHTML = '';
+    if (_selectedSlot) { _selectedSlot.selectedStart = null; _selectedSlot.selectedEnd = null; }
+
+    const endLim = new Date(slotEnd);
+    const cursor = new Date(slotStart);
+
+    while (cursor.getTime() + 30 * 60000 <= endLim.getTime()) {
+      const hh  = String(cursor.getHours()).padStart(2, '0');
+      const mm  = String(cursor.getMinutes()).padStart(2, '0');
+      const dateStr  = cursor.toISOString().slice(0, 10);
+      const startDT  = `${dateStr}T${hh}:${mm}`;
+      const endObj   = new Date(cursor.getTime() + 30 * 60000);
+      const eh  = String(endObj.getHours()).padStart(2, '0');
+      const em  = String(endObj.getMinutes()).padStart(2, '0');
+      const endDT    = `${endObj.toISOString().slice(0, 10)}T${eh}:${em}`;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'rdv-tp-slot-btn';
+      btn.textContent = `${hh}:${mm} – ${eh}:${em}`;
+      btn.addEventListener('click', () => {
+        slotsEl.querySelectorAll('.rdv-tp-slot-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (_selectedSlot) { _selectedSlot.selectedStart = startDT; _selectedSlot.selectedEnd = endDT; }
+      });
+      slotsEl.appendChild(btn);
+      cursor.setMinutes(cursor.getMinutes() + 30);
+    }
   }
 
   // ── Onglet 2 : Envoyer la demande ────────────────────────────────
@@ -589,6 +630,10 @@
     }
     if (!_selectedSlot) {
       _showError('rdvRequestError', 'Veuillez sélectionner un créneau.');
+      return;
+    }
+    if (!_selectedSlot.selectedStart || !_selectedSlot.selectedEnd) {
+      _showError('rdvRequestError', 'Veuillez choisir une durée et une heure de début.');
       return;
     }
 
@@ -614,8 +659,8 @@
       await _processRequest({
         targetAgentKey,
         slotId:            _selectedSlot.id,
-        startDateTime:     _selectedSlot.startDateTime,
-        endDateTime:       _selectedSlot.endDateTime,
+        startDateTime:     _selectedSlot.selectedStart,
+        endDateTime:       _selectedSlot.selectedEnd,
         withPerson,
         message,
       });
@@ -942,6 +987,7 @@
     if (sel) sel.value = '';
     _selectedSlot = null;
     _targetSlots  = [];
+    document.getElementById('rdvTimePicker')?.classList.add('hidden');
     document.getElementById('rdvMessage').value = '';
     document.getElementById('rdvSlotPicker').innerHTML =
       '<div class="rdv-empty rdv-empty-sm">Sélectionnez un agent pour voir ses créneaux.</div>';

@@ -5272,6 +5272,25 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 }
 .rdv-fav-local-btn:hover   { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
 .rdv-fav-local-btn.active  { border-color: #2563eb; background: #2563eb; color: #fff; font-weight: 600; }
+
+/* Time picker — créneaux 30 min */
+.rdv-time-picker { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: .75rem 1rem; }
+.rdv-time-picker label { font-size: .85rem; font-weight: 600; color: #374151; margin-bottom: .5rem; display: block; }
+.rdv-tp-hint { font-weight: 400; color: #94a3b8; font-size: .78rem; }
+.rdv-tp-slots { display: flex; flex-wrap: wrap; gap: .35rem; }
+.rdv-tp-slot-btn {
+  padding: .3rem .8rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  background: #fff;
+  color: #475569;
+  font-size: .82rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.rdv-tp-slot-btn:hover  { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
+.rdv-tp-slot-btn.active { border-color: #2563eb; background: #2563eb; color: #fff; font-weight: 600; }
 .rdv-select {
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
