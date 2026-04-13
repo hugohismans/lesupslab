@@ -8,13 +8,23 @@ const MODAL = {
 
   // Recharge les listes locaux/agents/services depuis Firebase
   refreshSelects() {
+    const curLieu    = g('fLieu').value;
     const curLocal   = g('fLocal').value;
     const curAgent   = g('fAgent').value;
     // Mémoriser les services actuellement actifs avant de re-rendre les boutons
     const curServices = [...g('fServiceBtns').querySelectorAll('.fs-svc-btn.active')].map(b => b.dataset.svc);
 
-    g('fLocal').innerHTML = '<option value="">— Sélectionner —</option>' +
-      CONFIG.LOCALS.map(l => `<option value="${l}">${DB.getLocalLabel(l)}</option>`).join('');
+    // Peupler les lieux
+    const lieux = DB.getLieux();
+    g('fLieu').innerHTML = Object.entries(lieux).map(([id, l]) =>
+      `<option value="${id}">${escapeHtml(l.name)}</option>`
+    ).join('');
+    if (curLieu && [...g('fLieu').options].some(o => o.value === curLieu)) g('fLieu').value = curLieu;
+    else g('fLieu').value = DB.getCurrentLieuId() || Object.keys(lieux)[0] || '';
+
+    // Peupler les locaux du lieu sélectionné
+    this._refreshLocalsByLieu();
+    if (curLocal && [...g('fLocal').options].some(o => o.value === curLocal)) g('fLocal').value = curLocal;
 
     // Boutons toggle pour les services (multi-sélection)
     g('fServiceBtns').innerHTML = DB.getServices().map(s =>
@@ -25,7 +35,6 @@ const MODAL = {
     g('fAgent').innerHTML = '<option value="">— Sélectionner —</option>' +
       DB.getAgents().map(a => `<option value="${a}">${a}</option>`).join('');
 
-    if (curLocal)  g('fLocal').value  = curLocal;
     if (curAgent)  g('fAgent').value  = curAgent;
 
     // Mettre à jour la liste d'agents dans le select d'invitation
@@ -49,6 +58,16 @@ const MODAL = {
       const focused = overlay.querySelector('input:focus');
       if (!focused) this._renderSettingsList();
     }
+  },
+
+  // Mettre à jour les locaux selon le lieu sélectionné
+  _refreshLocalsByLieu() {
+    const lieuId = g('fLieu').value;
+    const lieux  = DB.getLieux();
+    const lieu   = lieux[lieuId];
+    const localIds = lieu?.localIds || [];
+    g('fLocal').innerHTML = '<option value="">— Sélectionner —</option>' +
+      localIds.map(l => `<option value="${l}">${DB.getLocalLabel(l)}</option>`).join('');
   },
 
   // Mettre à jour le select desk selon le local sélectionné
@@ -1229,6 +1248,11 @@ const MODAL = {
     g('fAgent').addEventListener('change', function() {
       cls('fAgentCustomWrap', this.value !== 'Autre');
     });
+    g('fLieu').addEventListener('change', () => {
+      this._refreshLocalsByLieu();
+      g('fLocal').value = '';
+      this._onLocalChange();
+    });
     g('fLocal').addEventListener('change', () => this._onLocalChange());
     g('fPermanent').addEventListener('change', function() {
       g('fDatesWrap').style.display = this.checked ? 'none' : '';
@@ -1509,10 +1533,15 @@ const MODAL = {
     g('resTitle').textContent = 'Nouvelle réservation';
     this._initInviteField(null);
 
-    if (opts.local) g('fLocal').value = opts.local;
-
-    // Basculer UI back-office si un local est pré-sélectionné
-    if (opts.local) this._onLocalChange();
+    if (opts.local) {
+      // Trouver le lieu qui contient ce local et le sélectionner
+      const lieux = DB.getLieux();
+      const lieuOfLocal = Object.entries(lieux).find(([, l]) => l.localIds.includes(Number(opts.local)));
+      if (lieuOfLocal) g('fLieu').value = lieuOfLocal[0];
+      this._refreshLocalsByLieu();
+      g('fLocal').value = opts.local;
+      this._onLocalChange();
+    }
 
     // Pré-sélectionner le desk si fourni
     if (opts.desk) {
@@ -1994,6 +2023,11 @@ const MODAL = {
     this._reset();
     g('resTitle').textContent = 'Modifier la réservation';
 
+    // Sélectionner le lieu qui contient ce local
+    const _lieux = DB.getLieux();
+    const _lieuOf = Object.entries(_lieux).find(([, l]) => l.localIds.includes(Number(res.localId)));
+    if (_lieuOf) g('fLieu').value = _lieuOf[0];
+    this._refreshLocalsByLieu();
     g('fLocal').value    = res.localId;
     this._refreshDeskSelect();
     if (res.deskId && g('fDesk')) g('fDesk').value = res.deskId;
@@ -2068,6 +2102,10 @@ const MODAL = {
      'fDateStart','fTimeStart','fDateEnd','fTimeEnd','fRecEndDate'].forEach(id => {
       const e = g(id); if (e) e.value = '';
     });
+    // Réinitialiser le lieu au lieu actif du calendrier
+    const _curLieu = DB.getCurrentLieuId();
+    if (_curLieu && g('fLieu')) g('fLieu').value = _curLieu;
+    this._refreshLocalsByLieu();
     // Désélectionner tous les boutons service
     g('fServiceBtns').querySelectorAll('.fs-svc-btn').forEach(b => b.classList.remove('active'));
     g('fPermanent').checked = false;
