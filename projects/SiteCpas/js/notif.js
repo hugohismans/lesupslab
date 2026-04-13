@@ -118,18 +118,24 @@ const NOTIF = {
     }
 
     // Notifs navigateur pour les nouvelles non-DND
+    // Seuil max d'âge pour déclencher son/popup (évite les replays Firebase après reconnexion)
+    const ALERT_MAX_AGE_MS = { panic: 5 * 60 * 1000, default: 10 * 60 * 1000 };
+    const now = Date.now();
     if (!this._dnd) {
       Object.entries(this._notifs).forEach(([id, n]) => {
         if (!this._shownIds.has(id)) {
+          this._shownIds.add(id); // marquer immédiatement pour éviter tout double déclenchement
           const isUnread = n._local ? !n._read : !n.readBy?.[agentKey];
-          if (isUnread) {
-            this._shownIds.add(id);
-            this._showBrowserNotif(n);
-            this._playSound(n.type === 'panic' ? 'panic' : (n.urgent ? 'urgent' : (n.type || 'info')));
-            // Panic : ouvrir la modal d'alerte plein écran (pas à l'émetteur)
-            if (n.type === 'panic' && n.sourceAgentKey !== agentKey) {
-              window._showPanicAlert?.(n);
-            }
+          if (!isUnread) return;
+          // Si la notif est trop vieille, l'ajouter silencieusement à la liste sans déclencher son/popup
+          const maxAge = n.type === 'panic' ? ALERT_MAX_AGE_MS.panic : ALERT_MAX_AGE_MS.default;
+          const age = n.createdAt ? (now - n.createdAt) : 0;
+          if (age > maxAge) return;
+          this._showBrowserNotif(n);
+          this._playSound(n.type === 'panic' ? 'panic' : (n.urgent ? 'urgent' : (n.type || 'info')));
+          // Panic : ouvrir la modal d'alerte plein écran (pas à l'émetteur)
+          if (n.type === 'panic' && n.sourceAgentKey !== agentKey) {
+            window._showPanicAlert?.(n);
           }
         }
       });
