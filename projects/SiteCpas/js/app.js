@@ -1941,6 +1941,7 @@ const WIDGETS = [
   { id: 'qgroups',   label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups',   width: 'full' },
   { id: 'weather',   label: '🌤 Météo',                           selector: '.hs-widget-weather',   width: 'half' },
   { id: 'stats',     label: '📊 Stats du jour',                   selector: '.hs-widget-stats',     width: 'half' },
+  { id: 'waitstats', label: '⏱ Temps d\'attente moyen',          selector: '.hs-widget-waitstats', width: 'half' },
   { id: 'upcoming',  label: '⏰ Prochaines réservations',         selector: '.hs-widget-upcoming',  width: 'full' },
   { id: 'notifs',    label: '🔔 Dernières notifications',         selector: '.hs-widget-notifs',    width: 'half' },
   { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week',      width: 'full' },
@@ -2076,6 +2077,31 @@ function _renderStatsWidget() {
       </div>
     </div>
     ${last ? `<div class="hs-stats-last">Dernier ticket : <strong>${escapeHtml(last.ticketLabel || String(last.ticketNum || '?'))}</strong>${last.ticketName ? ` — ${escapeHtml(last.ticketName)}` : ''}</div>` : ''}`;
+}
+
+// ── Widget Temps d'attente moyen par service ────────────────────────
+async function _renderWaitStatsWidget() {
+  const el = g('hsWaitStats');
+  if (!el) return;
+  const groups = DB.getQueueGroups() || {};
+  const entries = Object.entries(groups);
+  if (!entries.length) { el.innerHTML = '<div class="hs-wait-empty">Aucun groupe de file configuré.</div>'; return; }
+  el.innerHTML = '<div class="hs-wait-empty">Chargement…</div>';
+  const stats = await DB.fetchWaitStats(7);
+  if (!Object.keys(stats).length) {
+    el.innerHTML = '<div class="hs-wait-empty">Données en cours de collecte — disponibles dès demain.</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([id, grp]) => {
+    const s = stats[id];
+    if (!s?.count) return `<div class="hs-wait-row"><span class="hs-wait-grp">${escapeHtml(grp.name)}</span><span class="hs-wait-val">—</span></div>`;
+    const avgMin = Math.round(s.totalMs / s.count / 60000);
+    return `<div class="hs-wait-row">
+      <span class="hs-wait-grp">${escapeHtml(grp.name)}</span>
+      <span class="hs-wait-val">~${avgMin} min</span>
+      <span class="hs-wait-n">${s.count} ticket${s.count > 1 ? 's' : ''}</span>
+    </div>`;
+  }).join('') + '<div class="hs-wait-footer">Moyenne sur 7 jours</div>';
 }
 
 // ── Widget Prochaines réservations ─────────────────────────────────
@@ -2293,8 +2319,9 @@ function _renderRemindersWidget(agentKey) {
 function _renderExtraWidgets() {
   const agentKey = sessionStorage.getItem('cpas_current_agent_key');
   [
-    [_renderWeatherWidget,   []],
-    [_renderStatsWidget,     []],
+    [_renderWeatherWidget,    []],
+    [_renderStatsWidget,      []],
+    [_renderWaitStatsWidget,  []],
     [_renderUpcomingWidget,  []],
     [_renderNotifsWidget,    [agentKey]],
     [_renderWeekWidget,      []],

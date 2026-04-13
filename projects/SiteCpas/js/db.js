@@ -694,6 +694,27 @@ const DB = {
     return snap.val() || {};
   },
 
+  async fetchWaitStats(days = 7) {
+    const results = {};
+    const today = new Date();
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = isoDate(d);
+      const snap = await this._ref(`queueHistory/${dateStr}`).once('value');
+      if (!snap.exists()) continue;
+      snap.forEach(groupSnap => {
+        const id = groupSnap.key;
+        if (!results[id]) results[id] = { totalMs: 0, count: 0 };
+        groupSnap.forEach(ticketSnap => {
+          const v = ticketSnap.val();
+          if (v?.waitMs > 0) { results[id].totalMs += v.waitMs; results[id].count++; }
+        });
+      });
+    }
+    return results;
+  },
+
   // ── Tickets journaliers ──────────────────────────────────────────
   getTicketIssued(groupId) {
     return this._queueData[`tick_${groupId}`] || 0;
@@ -803,11 +824,20 @@ const DB = {
     }
     writes[`tcall_${groupId}`] = called;
 
-    // Lire le nom AVANT suppression
-    const name = this.getTicketName(groupId, called);
+    // Lire le nom et le timestamp AVANT suppression
+    const name     = this.getTicketName(groupId, called);
+    const issuedAt = this.getTicketIssuedAt(groupId, called);
     await this._ref(`queues/${today}`).update(writes);
     if (name) await this._ref(`queues/${today}/names_${groupId}/${called}`).remove();
     await this._ref(`queues/${today}/times_${groupId}/${called}`).remove();
+
+    // Archiver dans queueHistory pour les stats de temps d'attente (fire-and-forget)
+    const calledAt = Date.now();
+    if (issuedAt && issuedAt > 0) {
+      this._ref(`queueHistory/${today}/${groupId}/${called}`)
+        .set({ issuedAt, calledAt, waitMs: calledAt - issuedAt })
+        .catch(() => {});
+    }
 
     const label   = this.formatTicket(groupId, called);
     const display = name || label;

@@ -512,6 +512,7 @@ async function loadOrgs() {
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleFlagsPanel('${orgId}')">⚙ Flags</button>
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleMetaPanel('${orgId}')">✏️ Infos</button>
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="resetPostTest('${orgId}', '${name}')">🔄 Reset accueil</button>
+        <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeQueueDay('${orgId}', '${name}')">🗑 Purger tickets</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
       </div>
     </div>
@@ -720,6 +721,26 @@ async function resetPostTest(orgId, orgName) {
     await db.ref(`orgs/${orgId}/appConfig/agentPasswords`).remove();
     alert(`✅ Reset effectué pour "${orgName}".\nLe prochain connecté sera admin.`);
     loadOrgs();
+  } catch (e) {
+    alert(`❌ Erreur : ${e.message}`);
+  }
+}
+
+// ── Purger les tickets d'une journée ─────────────────────────────────
+async function purgeQueueDay(orgId, orgName) {
+  const today = new Date().toISOString().slice(0, 10);
+  const date = prompt(`Purger les tickets de quelle date pour "${orgName}" ?\nFormat YYYY-MM-DD\n(laisser vide = aujourd'hui : ${today})`) ?? '';
+  const target = date.trim() || today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(target)) { alert('Format de date invalide.'); return; }
+  const msg = `⚠️ PURGE TICKETS — "${orgName}"\n\nDate : ${target}\n\n` +
+    `Seront supprimés :\n• File d'attente active (queues/${target})\n` +
+    `• Historique temps d'attente (queueHistory/${target})\n\n` +
+    `La configuration, les réservations et les autres jours NE SONT PAS affectés.\n\nConfirmer ?`;
+  if (!confirm(msg)) return;
+  try {
+    await db.ref(`orgs/${orgId}/queues/${target}`).remove();
+    await db.ref(`orgs/${orgId}/queueHistory/${target}`).remove();
+    alert(`✅ Tickets du ${target} supprimés pour "${orgName}".`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
   }
