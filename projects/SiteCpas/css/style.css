@@ -1906,6 +1906,14 @@ body {
 }
 .lv-grp-card.lv-grp-empty .lv-grp-title { color: #fca5a5; }
 .lv-grp-card.lv-grp-empty .lv-grp-status { color: #f87171; }
+.lv-grp-next-res {
+  margin-top: .6rem; padding-top: .6rem; border-top: 1px solid #374151;
+  display: flex; flex-direction: column; gap: .15rem;
+}
+.lv-grp-next-label { font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: #6b7280; }
+.lv-grp-next-when  { font-size: .82rem; font-weight: 600; color: #e5e7eb; }
+.lv-grp-next-who   { font-size: .78rem; color: #9ca3af; }
 .lv-grp-card.lv-grp-closed .lv-grp-add:disabled {
   background: #1e293b; color: #64748b; cursor: not-allowed; border-color: #334155;
 }

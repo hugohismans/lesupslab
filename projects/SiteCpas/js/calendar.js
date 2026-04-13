@@ -1056,6 +1056,30 @@ const LIVE = {
         ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
         : '';
       const isEmpty = !hasOpen && overflow === 0;
+      // Prochaine réservation correspondant à ce groupe (si vide)
+      let nextResHtml = '';
+      if (isEmpty) {
+        const _dayE7 = new Date(now); _dayE7.setDate(_dayE7.getDate() + 7); _dayE7.setHours(23,59,59,999);
+        const _nextRes = DB.getInRange(now, _dayE7)
+          .filter(r => !r.isPermanent && r._start > now)
+          .sort((a, b) => a._start - b._start)
+          .find(r => {
+            const svcs = DB.getResSvcs(r);
+            return svcs.some(s => DB.serviceMatchesGroup(s, grp));
+          });
+        if (_nextRes) {
+          const _agt   = _nextRes.agent === 'Autre' ? (_nextRes.agentCustom || '?') : _nextRes.agent;
+          const _loc   = DB.getLocalLabel(parseInt(_nextRes.localId));
+          const _dOpts = { weekday: 'short', day: 'numeric', month: 'numeric' };
+          const _dStr  = _nextRes._start.toLocaleDateString('fr-BE', _dOpts);
+          const _hStr  = _nextRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+          nextResHtml  = `<div class="lv-grp-next-res">
+            <span class="lv-grp-next-label">Prochain créneau</span>
+            <span class="lv-grp-next-when">${_dStr} · ${_hStr}</span>
+            <span class="lv-grp-next-who">${escapeHtml(_agt)} — ${escapeHtml(_loc)}</span>
+          </div>`;
+        }
+      }
       return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}${isEmpty ? ' lv-grp-empty' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
@@ -1064,6 +1088,7 @@ const LIVE = {
         ${prefChipsHtml}
         <button class="lv-grp-add" data-grp="${grpId}">+ Envoyer un bénéficiaire</button>
         ${reprintBtn}
+        ${nextResHtml}
       </div>`;
     }).join('');
 
