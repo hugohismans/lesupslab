@@ -3815,7 +3815,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     DB._ref('appConfig/integratorRdvEnabled').once('value').then(snap => {
       if (snap.val() === false) return;
       DB.onConfigChange(() => {
-        card.style.display = DB.hasPermission('panicButton') ? 'block' : 'none';
+        card.style.display = DB.hasPermission('panicDemo') ? 'block' : 'none';
       });
     }).catch(() => {});
 

@@ -1633,6 +1633,7 @@ const DB = {
     { key: 'managePlanning',    label: 'Créer/modifier le planning des agents' },
     { key: 'viewAllPlanning',   label: 'Voir le planning de tous les agents' },
     { key: 'panicButton',       label: 'Accès au bouton panique 🚨' },
+    { key: 'panicDemo',         label: 'Démo du bouton panique (formation) 🧪' },
     { key: 'kickFromLocal',        label: 'Retirer un agent de son local (kick)' },
     { key: 'canAnnounceArrival',   label: 'Prévenir les collègues à l\'arrivée (modal mascotte)' },
   ],
@@ -1646,7 +1647,7 @@ const DB = {
                inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:true,
-               managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true },
+               managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true, panicDemo:true },
     },
     '__direction__': {
       // Vue complète + analytics, pas de gestion opérationnelle directe
@@ -1655,7 +1656,7 @@ const DB = {
                inviteAgents:false, manageAgentStatus:true, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:false,
-               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:false, canAnnounceArrival:true },
+               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:false, canAnnounceArrival:true, panicDemo:false },
     },
     '__chef_service__': {
       // Coordination équipe : voit tout, peut notifier, peut modifier les RDV de l'équipe
@@ -1664,7 +1665,7 @@ const DB = {
                inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:false, viewAnalytics:true, editSettings:false,
-               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:true, canAnnounceArrival:true },
+               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:true, canAnnounceArrival:true, panicDemo:false },
     },
     '__as__': {
       // Assistant social : gère ses RDV et sa file, collabore avec l'équipe
@@ -1672,7 +1673,7 @@ const DB = {
       perms: { createReservation:true, editReservation:true, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true },
     },
     '__accueil__': {
       // Accueil : crée des tickets, oriente, voit toute la file
@@ -1680,7 +1681,7 @@ const DB = {
       perms: { createReservation:true, editReservation:false, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:false, manageQueue:true, sendPublicMessage:false, sendNotif:true,
-               sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true, kickFromLocal:false },
+               sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true },
     },
     '__agent__': {
       // Agent de bureau : gère ses RDV et sa propre file
@@ -1688,7 +1689,7 @@ const DB = {
       perms: { createReservation:true, editReservation:true, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true },
     },
     '__technicien__': {
       // Technicien : consulte l'agenda, pas de gestion de file ni de RDV bénéficiaires
@@ -1696,7 +1697,7 @@ const DB = {
       perms: { createReservation:false, editReservation:false, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false },
     },
     '__entretien__': {
       // Agent d'entretien : accès minimal, juste voir la présence et les messages
@@ -1704,7 +1705,7 @@ const DB = {
       perms: { createReservation:false, editReservation:false, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false },
     },
     '__juriste__': {
       // Juriste : gère ses RDV, consulte l'équipe, pas de gestion file
@@ -1712,7 +1713,7 @@ const DB = {
       perms: { createReservation:true, editReservation:true, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false },
     },
   },
 
