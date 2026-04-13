@@ -3861,6 +3861,7 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-weather-temp  { font-size: 1.8rem; font-weight: 700; color: #1e293b; }
 .hs-weather-label { font-size: .9rem; color: #64748b; text-transform: capitalize; margin-bottom: .2rem; }
 .hs-weather-details { font-size: .82rem; color: #94a3b8; }
+.hs-weather-update  { font-size: .75rem; color: #cbd5e1; margin-top: .35rem; }
 .hs-weather-empty { font-size: .85rem; color: #94a3b8; padding: .5rem 0; }
 
 /* ── Widget Stats ─────────────────────────────────────────────────── */

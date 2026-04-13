@@ -1940,21 +1940,25 @@ function _initShortcutsEdit() {
 function _renderWeatherWidget() {
   const el = document.getElementById('hsWeather');
   if (!el) return;
-  if (typeof WEATHER === 'undefined' || !DB.getFeature('enableWeather')) {
-    el.innerHTML = '<div class="hs-weather-empty">Météo non activée</div>'; return;
+  if (typeof WEATHER === 'undefined') {
+    el.innerHTML = '<div class="hs-weather-empty">Module météo indisponible</div>'; return;
   }
   const w = WEATHER.get();
-  if (!w) { el.innerHTML = '<div class="hs-weather-empty">Données indisponibles</div>'; return; }
+  if (!w) { el.innerHTML = '<div class="hs-weather-empty">Données météo indisponibles</div>'; return; }
   const details = [];
   if (w.wind > 0)   details.push(`💨 ${w.wind} km/h`);
   if (w.precip > 0) details.push(`🌧 ${w.precip} mm`);
+  const updatedAt = w.fetchedAt
+    ? new Date(w.fetchedAt).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' })
+    : null;
   el.innerHTML = `
     <div class="hs-weather-main">
       <span class="hs-weather-emoji">${w.emoji}</span>
       <span class="hs-weather-temp">${w.temp}°C</span>
     </div>
     <div class="hs-weather-label">${escapeHtml(w.label)}</div>
-    ${details.length ? `<div class="hs-weather-details">${details.join(' · ')}</div>` : ''}`;
+    ${details.length ? `<div class="hs-weather-details">${details.join(' · ')}</div>` : ''}
+    ${updatedAt ? `<div class="hs-weather-update">Dernière mise à jour : ${updatedAt}</div>` : ''}`;
 }
 
 // ── Widget Stats du jour ───────────────────────────────────────────
@@ -2086,12 +2090,14 @@ function _renderWeekWidget() {
 
 // ── Appel groupé des nouveaux widgets (depuis HOME.render) ──────────
 function _renderExtraWidgets(agentKey) {
-  _renderWeatherWidget();
-  _renderStatsWidget();
-  _renderUpcomingWidget();
-  _renderNotifsWidget(agentKey);
-  _renderWeekWidget();
-  _renderShortcutsWidget(agentKey);
+  [
+    [_renderWeatherWidget,   []],
+    [_renderStatsWidget,     []],
+    [_renderUpcomingWidget,  []],
+    [_renderNotifsWidget,    [agentKey]],
+    [_renderWeekWidget,      []],
+    [_renderShortcutsWidget, [agentKey]],
+  ].forEach(([fn, args]) => { try { fn(...args); } catch(e) { console.warn('[widget]', fn.name, e); } });
 }
 
 function _widgetKey(agentKey)      { return `cpas_widgets_${agentKey}`; }
