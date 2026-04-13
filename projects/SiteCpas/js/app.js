@@ -2150,10 +2150,11 @@ function _renderWeekWidget() {
     const label = isToday ? "Auj." : `${dayNames[d.getDay()]} ${d.getDate()}`;
     const rows = occs.slice(0, 4).map(r => {
       const hm  = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      const hme = r._end?.toLocaleTimeString('fr-BE',  { hour: '2-digit', minute: '2-digit' }) || '';
       const svc = DB.getSvcLabel(r);
       const loc = DB.getLocalLabel(Number(r.localId));
       return `<div class="hs-week-item" title="${escapeHtml(svc)} — ${escapeHtml(loc)}">
-        <span class="hs-week-time">${hm}</span>
+        <span class="hs-week-time">${hm}${hme ? ` – ${hme}` : ''}</span>
         <span class="hs-week-svc">${escapeHtml(svc.slice(0, 22))}${svc.length > 22 ? '…' : ''}</span>
       </div>`;
     }).join('');
