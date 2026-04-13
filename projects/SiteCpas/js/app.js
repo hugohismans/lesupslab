@@ -1217,7 +1217,24 @@ const HOME = {
         for (let i = 0; i < todays.length; i++) {
           if (now < todays[i]._end) { nowLineIdx = i; break; }
         }
-        const nowLine = `<div class="hs-agenda-nowline"><span class="hs-agenda-nowdot"></span></div>`;
+        // Label au-dessus de la barre : "Événement en cours" ou "Prochain dans X h Y min"
+        let nowLabel = '';
+        if (nowLineIdx !== -1) {
+          const r = todays[nowLineIdx];
+          if (r._start <= now) {
+            nowLabel = 'Événement en cours';
+          } else {
+            const diffMs  = r._start - now;
+            const diffMin = Math.round(diffMs / 60000);
+            const h       = Math.floor(diffMin / 60);
+            const min     = diffMin % 60;
+            nowLabel = 'Prochain' + (h > 0 ? ` dans ${h}h` : '') + (min > 0 ? ` ${min}min` : '');
+          }
+        }
+        const nowLine = `<div class="hs-agenda-nowline">
+          ${nowLabel ? `<div class="hs-agenda-nowlabel">${nowLabel}</div>` : ''}
+          <div class="hs-agenda-nowbar"><span class="hs-agenda-nowdot"></span></div>
+        </div>`;
         agendaEl.innerHTML = todays.map((r, i) => {
           const svc    = DB.getSvcLabel(r);
           const loc    = DB.getLocalLabel(r.localId);
