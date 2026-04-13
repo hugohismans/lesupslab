@@ -1163,8 +1163,7 @@ const LIVE = {
       prefPeople.sort((a, b) => a.ts - b.ts);
       // Les demandes spécifiques ne s'affichent PAS sur les cartes de groupe
       // (elles sont visibles dans les cartes bureau individuelles)
-      const prefChipsHtml = ''
-        : '';
+      const prefChipsHtml = '';
 
       // Chips file d'attente générale — tous les tickets sauf reçus hors-ordre (skip_)
       const issued = DB.getTicketIssued(grpId);
