@@ -1875,8 +1875,8 @@ function applyFeatureFlags() {
   show('notifBell',           DB.getFeature('enableNotif'));
   show('btnDnd',              DB.getFeature('enableNotif'));
   show('btnCalendarExport',   DB.getFeature('enableCalendarSync') && !!sessionStorage.getItem('cpas_current_agent_key'));
-  show('btnTechIssue',        DB.getFeature('enableTechRequests') !== false);
-  show('btnBroadcast',        DB.getFeature('enableBroadcast') !== false && (DB.hasPermission?.('sendNotif') || false));
+  show('btnTechIssue',        DB._config.features?.['enableTechRequests'] !== false);
+  show('btnBroadcast',        DB._config.features?.['enableBroadcast'] !== false && (DB.hasPermission?.('sendNotif') || false));
   // Bouton personnaliser — visible uniquement si connecté
   const _customizeBtn = document.getElementById('hsCustomizeBtn');
   if (_customizeBtn) {
@@ -1887,7 +1887,8 @@ function applyFeatureFlags() {
   // Bannière RDV intégrateur
   const _intBanner = document.getElementById('hsIntegratorBanner');
   if (_intBanner) {
-    _intBanner.style.display = DB.getFeature('enableRdvIntegrateur') !== false ? 'block' : 'none';
+    const _rdvFlag = DB._config.features?.['enableRdvIntegrateur'];
+    _intBanner.style.display = _rdvFlag !== false ? 'block' : 'none';
   }
   // Bouton météo (visible uniquement si météo activée et coords configurées)
   const wxBtn = document.getElementById('hsAskWeather');
