@@ -270,6 +270,21 @@
   </div>
 </div>
 
+<!-- Modale suppression avec RDV existants -->
+<div class="rdv-overlay hidden" id="rdvDelRdvOverlay">
+  <div class="rdv-modal" style="max-width:360px">
+    <div class="rdv-modal-hd">
+      <h3>🗑 Supprimer le créneau</h3>
+    </div>
+    <p class="rdv-modal-hint" id="rdvDelRdvMsg"></p>
+    <div class="rdv-modal-ft" style="flex-direction:column;gap:.5rem;align-items:stretch">
+      <button class="btn-danger" id="rdvDelAndRdvBtn">Supprimer le créneau et les RDV de l'agenda</button>
+      <button class="btn-cancel" id="rdvDelOnlySlotBtn">Supprimer le créneau uniquement</button>
+      <button class="btn-cancel" id="rdvDelRdvCancelBtn">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="rdvToast" class="rdv-toast hidden"></div>
 

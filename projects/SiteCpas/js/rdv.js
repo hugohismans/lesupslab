@@ -12,7 +12,8 @@
   let _targetSlots   = [];
   let _allRequests   = [];
   let _selectedSlot  = null;  // { id, startDateTime, endDateTime, selectedStart, selectedEnd }
-  let _pendingAccept = null;  // { requestId, localId } en attente si local picker
+  let _pendingAccept    = null;  // { requestId, localId } en attente si local picker
+  let _pendingDelWithRdv = null; // { slotId, occDate, rdvResIds } en attente de confirmation
 
   // ── Init ─────────────────────────────────────────────────────────
   function init() {
@@ -476,20 +477,66 @@
     }
   }
 
+  // Trouve les IDs de réservations de type rendez-vous liées à un slot (ou une occurrence)
+  async function _findLinkedRdvIds(slotId, occDate) {
+    const snap = await DB._ref('appState/appointmentRequests')
+      .orderByChild('slotId').equalTo(slotId).once('value');
+    const agentName = _agentName || '';
+    const ids = [];
+    snap.forEach(c => {
+      const v = c.val();
+      if (v.status !== 'accepted') return;
+      const { startDateTime, endDateTime } = v;
+      if (!startDateTime || !endDateTime) return;
+      if (occDate && startDateTime.slice(0, 10) !== occDate) return;
+      // Chercher la réservation correspondante dans l'agenda global
+      DB.getInRange(startDateTime, endDateTime).forEach(r => {
+        const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
+        if (r.type === 'rendez-vous' && a === agentName && r.startDateTime === startDateTime && r.id) {
+          if (!ids.includes(r.id)) ids.push(r.id);
+        }
+      });
+    });
+    return ids;
+  }
+
   async function _deleteSlot(slotId) {
     if (!_agentKey || !slotId) return;
-    // Vérifier qu'il n'y a pas de demande acceptée sur ce slot
-    const taken = await DB.isSlotTaken(_agentKey, slotId);
-    if (taken) {
-      _showToast('Ce créneau a déjà un RDV confirmé — impossible de le supprimer.', 'warn');
+    const rdvResIds = await _findLinkedRdvIds(slotId, null);
+    if (rdvResIds.length) {
+      _pendingDelWithRdv = { slotId, occDate: null, rdvResIds };
+      const msg = document.getElementById('rdvDelRdvMsg');
+      if (msg) msg.textContent = `Ce créneau a ${rdvResIds.length} RDV confirmé${rdvResIds.length > 1 ? 's' : ''} dans l'agenda global. Supprimer aussi les réservations correspondantes ?`;
+      document.getElementById('rdvDelRdvOverlay')?.classList.remove('hidden');
       return;
     }
     await DB.deleteAvailabilitySlot(_agentKey, slotId);
     _showToast('Créneau supprimé.');
   }
 
+  async function _doDeleteSlot(slotId, occDate, alsoDeleteRdvs, rdvResIds) {
+    if (alsoDeleteRdvs && rdvResIds?.length) {
+      for (const id of rdvResIds) { await DB.remove(id); }
+    }
+    if (occDate) {
+      await DB.deleteAvailabilitySlotOccurrence(_agentKey, slotId, occDate);
+      _showToast(alsoDeleteRdvs ? 'Occurrence et RDV supprimés.' : 'Occurrence supprimée.');
+    } else {
+      await DB.deleteAvailabilitySlot(_agentKey, slotId);
+      _showToast(alsoDeleteRdvs ? 'Créneau et RDV supprimés.' : 'Créneau supprimé.');
+    }
+  }
+
   async function _deleteSlotOccurrence(slotId, occDate) {
     if (!_agentKey || !slotId || !occDate) return;
+    const rdvResIds = await _findLinkedRdvIds(slotId, occDate);
+    if (rdvResIds.length) {
+      _pendingDelWithRdv = { slotId, occDate, rdvResIds };
+      const msg = document.getElementById('rdvDelRdvMsg');
+      if (msg) msg.textContent = `Cette occurrence a un RDV confirmé dans l'agenda global. Supprimer aussi la réservation correspondante ?`;
+      document.getElementById('rdvDelRdvOverlay')?.classList.remove('hidden');
+      return;
+    }
     await DB.deleteAvailabilitySlotOccurrence(_agentKey, slotId, occDate);
     _showToast('Occurrence supprimée.');
   }
@@ -1091,9 +1138,32 @@
     document.getElementById('rdvDelSeriesBtn')?.addEventListener('click', async () => {
       document.getElementById('rdvDelRecOverlay')?.classList.add('hidden');
       if (_pendingDelete) {
+        // Pour la série, on passe par _deleteSlot qui gérera le check RDV
         await _deleteSlot(_pendingDelete.slotId);
         _pendingDelete = null;
       }
+    });
+
+    // Modale suppression avec RDV liés
+    document.getElementById('rdvDelAndRdvBtn')?.addEventListener('click', async () => {
+      document.getElementById('rdvDelRdvOverlay')?.classList.add('hidden');
+      if (_pendingDelWithRdv) {
+        const { slotId, occDate, rdvResIds } = _pendingDelWithRdv;
+        _pendingDelWithRdv = null;
+        await _doDeleteSlot(slotId, occDate, true, rdvResIds);
+      }
+    });
+    document.getElementById('rdvDelOnlySlotBtn')?.addEventListener('click', async () => {
+      document.getElementById('rdvDelRdvOverlay')?.classList.add('hidden');
+      if (_pendingDelWithRdv) {
+        const { slotId, occDate } = _pendingDelWithRdv;
+        _pendingDelWithRdv = null;
+        await _doDeleteSlot(slotId, occDate, false, []);
+      }
+    });
+    document.getElementById('rdvDelRdvCancelBtn')?.addEventListener('click', () => {
+      document.getElementById('rdvDelRdvOverlay')?.classList.add('hidden');
+      _pendingDelWithRdv = null;
     });
     document.getElementById('rdvDelCancelBtn')?.addEventListener('click', () => {
       document.getElementById('rdvDelRecOverlay')?.classList.add('hidden');
