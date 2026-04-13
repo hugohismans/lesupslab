@@ -1231,7 +1231,7 @@ const HOME = {
       const todays = DB.getInRange(todayS, todayE)
         .filter(r => {
           const a = r.agent === 'Autre' ? r.agentCustom : r.agent;
-          return a === agentName;
+          return a === agentName || (Array.isArray(r.agents) && r.agents.includes(agentName));
         })
         .sort((a, b) => (a._start||0) - (b._start||0));
 

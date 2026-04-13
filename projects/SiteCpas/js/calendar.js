@@ -66,7 +66,11 @@ const CAL = {
     // ── Colonne "Mon agenda" ──────────────────────────────────────────
     const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
     const myOccs = myAgentName
-      ? occs.filter(r => !r.isPermanent && (r.agent === myAgentName || (r.agent === 'Autre' && r.agentCustom === myAgentName)))
+      ? occs.filter(r => !r.isPermanent && (
+          r.agent === myAgentName ||
+          (r.agent === 'Autre' && r.agentCustom === myAgentName) ||
+          (Array.isArray(r.agents) && r.agents.includes(myAgentName))
+        ))
       : [];
     const myAgentColor = myAgentName ? DB.getAgentColor(myAgentName) : null;
     let coveredUntilMe = 0;

@@ -538,9 +538,10 @@ async function main() {
 
       btn.textContent = 'Envoi…';
 
-      // Créer une demande par agent participant + une réservation par participant
+      const allNames = allParticipants.map(p => p.name);
+
+      // Un seul appointmentRequest + une seule réservation (agents[] = tous les participants)
       await Promise.all([
-        // Un seul appointmentRequest (le demandeur principal)
         db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
           slotId:            _selectedChunk._slotId,
           startDateTime:     sStart,
@@ -559,21 +560,18 @@ async function main() {
           createdAt:         Date.now(),
           respondedAt:       Date.now(),
         }),
-        // Une réservation par participant (agents + intégrateur)
-        ...allParticipants.map(p =>
-          db.ref(`orgs/${ORG_ID}/reservations`).push({
-            localId:       String(localId),
-            agent:         p.name,
-            services:      ['Rendez-vous intégrateur'],
-            type:          'rendez-vous',
-            startDateTime: sStart,
-            endDateTime:   sEnd,
-            agents:        allParticipants.map(x => x.name),
-            note:          baseMsg,
-            recurrence:    { type: 'none' },
-            createdAt:     Date.now(),
-          })
-        ),
+        db.ref(`orgs/${ORG_ID}/reservations`).push({
+          localId:       String(localId),
+          agent:         agentName,          // demandeur principal (agent = premier pour compat)
+          agents:        allNames,           // tous les participants → visibles dans "Mon agenda"
+          services:      ['Rendez-vous intégrateur'],
+          type:          'rendez-vous',
+          startDateTime: sStart,
+          endDateTime:   sEnd,
+          note:          baseMsg,
+          recurrence:    { type: 'none' },
+          createdAt:     Date.now(),
+        }),
       ]);
 
       document.getElementById('successSlotInfo').textContent =
