@@ -1296,7 +1296,8 @@ const HOME = {
           const active = r._start <= now && (r._end === null || r._end >= now);
           const warn   = warnSet.has(i);
           const line   = i === nowLineIdx ? nowLine : '';
-          return `${line}<div class="hs-agenda-item${active ? ' hs-agenda-active' : ''}${warn ? ' hs-agenda-warn' : ''}">
+          return `${line}<div class="hs-agenda-item${active ? ' hs-agenda-active' : ''}${warn ? ' hs-agenda-warn' : ''}"
+            data-res-id="${r.id}" style="cursor:pointer">
             <div class="hs-agenda-time">${hm}${hme ? ` – ${hme}` : ''}</div>
             <div class="hs-agenda-info">
               <span class="hs-agenda-svc">${escapeHtml(svc)}</span>
@@ -1305,6 +1306,9 @@ const HOME = {
             </div>
           </div>`;
         }).join('');
+        agendaEl.querySelectorAll('[data-res-id]').forEach(el => {
+          el.addEventListener('click', () => Modal.openDetail(el.dataset.resId));
+        });
       }
     } else {
       agendaEl.innerHTML = '<div class="hs-agenda-empty">Connectez-vous pour voir votre agenda</div>';
@@ -2226,7 +2230,7 @@ function _renderWeekWidget() {
       const hme = r._end?.toLocaleTimeString('fr-BE',  { hour: '2-digit', minute: '2-digit' }) || '';
       const svc = DB.getSvcLabel(r);
       const loc = DB.getLocalLabel(Number(r.localId));
-      return `<div class="hs-week-item" title="${escapeHtml(svc)} — ${escapeHtml(loc)}">
+      return `<div class="hs-week-item" data-res-id="${r.id}" style="cursor:pointer" title="${escapeHtml(svc)} — ${escapeHtml(loc)}">
         <span class="hs-week-time">${hm}${hme ? ` – ${hme}` : ''}</span>
         <span class="hs-week-svc">${escapeHtml(svc.slice(0, 22))}${svc.length > 22 ? '…' : ''}</span>
       </div>`;
@@ -2237,6 +2241,9 @@ function _renderWeekWidget() {
       ${rows || '<div class="hs-week-empty">—</div>'}${extra}
     </div>`;
   }).join('')}</div>`;
+  el.querySelectorAll('[data-res-id]').forEach(item => {
+    item.addEventListener('click', () => Modal.openDetail(item.dataset.resId));
+  });
 }
 
 // ── Appel groupé des nouveaux widgets (depuis HOME.render) ──────────
