@@ -1161,17 +1161,9 @@ const LIVE = {
         });
       });
       prefPeople.sort((a, b) => a.ts - b.ts);
-      const prefChipsHtml = prefPeople.length
-        ? `<div class="lv-grp-queue-row">
-             <span class="lv-grp-queue-label lv-grp-queue-pref-label">📍 SPÉCIFIQUE :</span>
-             ${prefPeople.map(p => {
-               const parts = [];
-               if (gcCfg.showNum && p.ticket) parts.push(escapeHtml(p.ticket));
-               if (gcCfg.showName) parts.push(escapeHtml(p.name));
-               const label = parts.join(' · ') || (p.ticket ? escapeHtml(p.ticket) : '?');
-               return `<span class="lv-grp-chip lv-grp-chip-pref" title="${p.agent ? 'Pour ' + escapeHtml(p.agent) : 'Agent spécifique'}">${label}</span>`;
-             }).join('')}
-           </div>`
+      // Les demandes spécifiques ne s'affichent PAS sur les cartes de groupe
+      // (elles sont visibles dans les cartes bureau individuelles)
+      const prefChipsHtml = ''
         : '';
 
       // Chips file d'attente générale — tous les tickets sauf reçus hors-ordre (skip_)
