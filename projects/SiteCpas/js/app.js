@@ -1355,6 +1355,7 @@ const HOME = {
 
     // ─ Liste déroulante déclaration bureau ──────────────────────────
     this._renderDeclSelect();
+    _renderExtraWidgets();
   },
 
   _renderDeclSelect() {
@@ -1393,7 +1394,6 @@ const HOME = {
 
     this._renderDeclCards();
     this._renderQueueGroups();
-    _renderExtraWidgets(agentKey);
   },
 
   _renderQueueGroups() {
@@ -2089,7 +2089,8 @@ function _renderWeekWidget() {
 }
 
 // ── Appel groupé des nouveaux widgets (depuis HOME.render) ──────────
-function _renderExtraWidgets(agentKey) {
+function _renderExtraWidgets() {
+  const agentKey = sessionStorage.getItem('cpas_current_agent_key');
   [
     [_renderWeatherWidget,   []],
     [_renderStatsWidget,     []],
