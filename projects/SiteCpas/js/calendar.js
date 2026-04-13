@@ -2329,8 +2329,9 @@ const LIVE = {
         return a.name.toLowerCase().includes(ql) || (pub && pub.toLowerCase().includes(ql));
       });
       if (matchedAgent) {
-        // Bureau ouvert (locaux publics)
-        const openLocal = [...allLocals].find(lid => DB.getBureauAgentKey(lid) === matchedAgent.key && DB.isBureauOpen(lid));
+        // Bureau ouvert (tous les locaux)
+        const _allLids = Object.values(DB.getLieux()).flatMap(l => (l.localIds || []).map(Number));
+        const openLocal = _allLids.find(lid => DB.getBureauAgentKey(lid) === matchedAgent.key && DB.isBureauOpen(lid));
         if (openLocal != null) {
           const loc   = DB.getLocalLabel(openLocal);
           const svc   = DB.getBureauDeclaredService(openLocal);

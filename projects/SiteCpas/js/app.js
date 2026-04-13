@@ -1164,7 +1164,11 @@ const HOME = {
         if (!lieu.isBackoffice) continue;
         for (const lid of lieu.localIds) {
           const pres = DB.getBackofficePresence(lid);
-          if (pres[agentKey]) { boLabel = DB.getLocalLabel(lid); break outer; }
+          if (pres[agentKey]) {
+            const boDeskId = pres[agentKey]?.deskId || null;
+            boLabel = DB.getUnitLabel(lid, boDeskId);
+            break outer;
+          }
         }
       }
 
@@ -1437,7 +1441,10 @@ const HOME = {
 
     // Badge bureau actuel
     if (currEl) {
-      const currentDeskId = currentLocal !== null ? DB.getBureauDeskId(currentLocal) : null;
+      const agentKeyDecl = sessionStorage.getItem('cpas_current_agent_key');
+      const currentDeskId = currentLocal !== null
+        ? (DB.getBureauDeskId(currentLocal) || (agentKeyDecl ? DB.getAgentDeskInLocal(currentLocal, agentKeyDecl) : null))
+        : null;
       const currentUnitLabel = currentLocal !== null ? DB.getUnitLabel(currentLocal, currentDeskId) : null;
       currEl.innerHTML = currentLocal !== null
         ? `<div class="hs-decl-current">📍 Bureau actuel : <strong>${escapeHtml(currentUnitLabel)}</strong></div>`
@@ -1565,22 +1572,40 @@ const HOME = {
         return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
       }).join('')}</div>` : '';
 
-      const oKey     = DB.getBureauAgentKey(localId);
-      const oDeskId  = DB.getBureauDeskId(localId);
+      // Collecter tous les agents présents dans ce local + leur desk
+      const isBO = DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(localId);
+      const presMap = {}; // { deskId: [{ key, name }] }
+      if (isBO) {
+        const pres = DB.getBackofficePresence(localId);
+        Object.entries(pres).forEach(([k, v]) => {
+          const dk = v?.deskId || null;
+          if (dk) { if (!presMap[dk]) presMap[dk] = []; presMap[dk].push(k); }
+        });
+      } else {
+        const oKey = DB.getBureauAgentKey(localId);
+        const oDk  = DB.getBureauDeskId(localId);
+        if (oKey && oDk) { presMap[oDk] = [oKey]; }
+      }
 
       cards.innerHTML = `<div class="hs-decl-desk-grid">${desks.map(dId => {
         const dLabel = DB.getDeskLabel(dId);
-        const isMyDesk   = oKey === agentKey && oDeskId === dId;
-        const isOtherDesk = oKey && oKey !== agentKey && oDeskId === dId;
+        const agents = presMap[dId] || [];
+        const isMyDesk    = agents.includes(agentKey);
+        const otherAgents = agents.filter(k => k !== agentKey);
 
         let status;
-        if (isMyDesk) status = '<div class="hs-decl-me">✅ Vous</div>';
-        else if (isOtherDesk) status = `<div class="hs-decl-occ">👤 ${escapeHtml(DB.getAgentDisplayName(oKey) || '?')}</div>`;
-        else status = '<div class="hs-decl-avail">Libre</div>';
+        if (isMyDesk && otherAgents.length)
+          status = `<div class="hs-decl-me">✅ Vous + ${escapeHtml(otherAgents.map(k => DB.getAgentDisplayName(k) || '?').join(', '))}</div>`;
+        else if (isMyDesk)
+          status = '<div class="hs-decl-me">✅ Vous</div>';
+        else if (otherAgents.length)
+          status = `<div class="hs-decl-occ">👤 ${escapeHtml(otherAgents.map(k => DB.getAgentDisplayName(k) || '?').join(', '))}</div>`;
+        else
+          status = '<div class="hs-decl-avail">Libre</div>';
 
         const cls = ['hs-decl-desk',
           isMyDesk ? 'hs-decl-active' : '',
-          isOtherDesk ? 'hs-decl-occupied' : '',
+          otherAgents.length && !isMyDesk ? 'hs-decl-occupied' : '',
         ].filter(Boolean).join(' ');
 
         return `<div class="${cls}" data-local-id="${localId}" data-desk-id="${dId}">
@@ -1658,7 +1683,7 @@ const HOME = {
         if (prevLocal !== null && prevLocal !== localId) await DB.setAgentPresence(prevLocal, false);
         const openBureau = DB.getOpenBureauForCurrentAgent();
         if (openBureau !== null) await DB.closeBureau(openBureau);
-        await DB.setAgentPresence(localId, true);
+        await DB.setAgentPresence(localId, true, deskId);
         this.render();
       };
       if (others.length > 0) {

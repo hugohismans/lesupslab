@@ -147,14 +147,19 @@ const DB = {
   isAgentPresentInLocal(localId, agentKey) {
     return !!(this._bureauState[String(localId)]?.presence?.[agentKey]);
   },
-  async setAgentPresence(localId, isPresent) {
+  async setAgentPresence(localId, isPresent, deskId = null) {
     const agentKey = sessionStorage.getItem('cpas_current_agent_key') || null;
     if (!agentKey) return;
     if (isPresent) {
-      await this._ref(`appState/bureaux/${localId}/presence/${agentKey}`).set({ since: Date.now() });
+      const data = { since: Date.now() };
+      if (deskId) data.deskId = deskId;
+      await this._ref(`appState/bureaux/${localId}/presence/${agentKey}`).set(data);
     } else {
       await this._ref(`appState/bureaux/${localId}/presence/${agentKey}`).remove();
     }
+  },
+  getAgentDeskInLocal(localId, agentKey) {
+    return this._bureauState[String(localId)]?.presence?.[agentKey]?.deskId || null;
   },
   // Retourne le localId backoffice où l'agent courant est déjà présent (ou null)
   getAgentCurrentBackofficeLocal() {
