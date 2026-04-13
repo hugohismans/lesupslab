@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rendez-vous — moncompagnon</title>
+  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body class="app-page">
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOADING SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div id="appLoadingScreen" style="
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 55%,#1a3a5c 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1rem;font-family:'Segoe UI',system-ui,sans-serif;
+  transition:opacity .4s ease;
+">
+  <div style="filter:drop-shadow(0 0 24px rgba(167,139,250,.6));animation:_ld-float 4s ease-in-out infinite">
+    <svg viewBox="0 0 100 118" width="80" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
+      <circle cx="38" cy="46" r="6" fill="#fff"/>
+      <circle cx="62" cy="46" r="6" fill="#fff"/>
+      <circle cx="40" cy="47" r="3" fill="#1e1b4b"/>
+      <circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
+    </svg>
+  </div>
+  <div style="background:#fff;border-radius:1.2rem;padding:.9rem 1.3rem;max-width:280px;text-align:center;
+    font-size:.875rem;color:#1e293b;box-shadow:0 6px 24px rgba(0,0,0,.3);position:relative;line-height:1.6">
+    <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+      border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:10px solid #fff"></div>
+    Chargement…
+  </div>
+</div>
+<style>@keyframes _ld-float { 0%,100% { transform:translateY(0) rotate(-.5deg); } 50% { transform:translateY(-12px) rotate(.5deg); } }</style>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════════ -->
+<header class="hd">
+  <span class="hd-version">v0.1.12</span>
+  <div class="hd-brand">
+    <img src="assets/logo.jpg" alt="Logo" class="hd-logo-img" id="appLogo">
+    <span class="hd-title" id="appOrgName">moncompagnon</span>
+  </div>
+  <nav class="hd-tabs">
+    <a class="tab" href="app.html">🏠 Accueil</a>
+    <span class="tab active">📅 Rendez-vous</span>
+  </nav>
+  <div class="hd-nav">
+    <a class="btn-live" href="app.html">← Retour</a>
+    <div class="hd-agent-badge" id="hdAgentBadge" title="Agent connecté"></div>
+    <button class="btn-logout" id="btnLogout" title="Se déconnecter">✕</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CONTENU PRINCIPAL
+═══════════════════════════════════════════════════════════ -->
+<main class="rdv-main" id="rdvMain">
+
+  <div class="rdv-page-header">
+    <h2 class="rdv-page-title">📅 Disponibilité pour rendez-vous</h2>
+  </div>
+
+  <!-- Onglets -->
+  <div class="rdv-tabs">
+    <button class="rdv-tab rdv-tab-active" data-tab="define" id="rdvTabDefine">📋 Mes plages dispo</button>
+    <button class="rdv-tab" data-tab="request" id="rdvTabRequest">📨 Demander un RDV</button>
+  </div>
+
+  <!-- ── Onglet 1 : Définir ses plages ──────────────────────────── -->
+  <div class="rdv-panel" id="rdvPanelDefine">
+
+    <!-- Paramètres globaux -->
+    <div class="rdv-settings-card">
+      <label class="rdv-setting-row">
+        <input type="checkbox" id="rdvAutoAcceptGlobal">
+        <div>
+          <strong>Auto-acceptation</strong>
+          <span>Les demandes de RDV sont acceptées automatiquement sans validation manuelle</span>
+        </div>
+      </label>
+      <div class="rdv-setting-row rdv-favorite-row hidden" id="rdvFavoriteRow">
+        <span>🏠 Local favori <small>(utilisé en priorité si disponible)</small></span>
+        <div class="rdv-fav-picker">
+          <select id="rdvFavLieu" class="rdv-select">
+            <option value="">— Aucun lieu —</option>
+          </select>
+          <div id="rdvFavLocals" class="rdv-fav-locals"></div>
+        </div>
+        <input type="hidden" id="rdvFavoriteLocal">
+      </div>
+    </div>
+
+    <!-- Formulaire ajout créneau -->
+    <div class="rdv-add-card">
+      <h3 class="rdv-section-title">➕ Ajouter une plage</h3>
+      <div class="rdv-form">
+        <div class="rdv-form-row">
+          <div class="rdv-field">
+            <label>Date *</label>
+            <input type="date" id="rdvSlotDate">
+          </div>
+          <div class="rdv-field">
+            <label>Heure début *</label>
+            <input type="time" id="rdvSlotStart" value="09:00">
+          </div>
+          <div class="rdv-field">
+            <label>Heure fin *</label>
+            <input type="time" id="rdvSlotEnd" value="10:00">
+          </div>
+        </div>
+        <div class="rdv-form-row">
+          <div class="rdv-field rdv-field-grow">
+            <label>Libellé <span class="rdv-opt">(optionnel)</span></label>
+            <input type="text" id="rdvSlotLabel" placeholder="Ex: Permanence direction, Consultations…">
+          </div>
+          <div class="rdv-field">
+            <label>Récurrence</label>
+            <select id="rdvSlotRecurrence" class="rdv-select">
+              <option value="none">Aucune</option>
+              <option value="daily">Quotidienne</option>
+              <option value="weekly">Hebdomadaire</option>
+            </select>
+          </div>
+        </div>
+        <div class="rdv-form-row hidden" id="rdvRecEndWrap">
+          <div class="rdv-field">
+            <label>Fin de récurrence <span class="rdv-opt">(optionnel)</span></label>
+            <input type="date" id="rdvSlotRecEnd">
+          </div>
+        </div>
+        <div class="rdv-form-row" style="justify-content:flex-end">
+          <button class="btn-primary rdv-add-btn" id="rdvAddSlot">➕ Ajouter</button>
+        </div>
+        <div class="rdv-error hidden" id="rdvSlotError"></div>
+      </div>
+    </div>
+
+    <!-- Liste des créneaux -->
+    <div class="rdv-slots-card">
+      <h3 class="rdv-section-title">Mes créneaux</h3>
+      <div id="rdvSlotsList">
+        <div class="rdv-empty">Aucune plage définie pour le moment.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Onglet 2 : Demander un RDV ─────────────────────────────── -->
+  <div class="rdv-panel hidden" id="rdvPanelRequest">
+
+    <div class="rdv-request-form-card">
+      <h3 class="rdv-section-title">📨 Nouvelle demande de rendez-vous</h3>
+
+      <div class="rdv-form">
+        <!-- Sélectionner l'agent cible -->
+        <div class="rdv-field">
+          <label>Agent concerné *</label>
+          <select id="rdvTargetAgent" class="rdv-select">
+            <option value="">— Choisir un agent —</option>
+          </select>
+        </div>
+
+        <!-- Créneaux de l'agent -->
+        <div class="rdv-field" id="rdvSlotPickerWrap">
+          <label>Créneau disponible *</label>
+          <div id="rdvSlotPicker">
+            <div class="rdv-empty rdv-empty-sm">Sélectionnez un agent pour voir ses créneaux.</div>
+          </div>
+        </div>
+
+        <!-- Avec qui -->
+        <div class="rdv-field">
+          <label>Avec qui *</label>
+          <div class="rdv-with-radios">
+            <label class="rdv-radio-label">
+              <input type="radio" name="rdvWithType" value="agent" checked id="rdvWithTypeAgent"> Agent du CPAS
+            </label>
+            <label class="rdv-radio-label">
+              <input type="radio" name="rdvWithType" value="other" id="rdvWithTypeOther"> Personne externe
+            </label>
+          </div>
+          <div id="rdvWithAgentWrap">
+            <select id="rdvWithAgent" class="rdv-select">
+              <option value="">— Choisir un agent —</option>
+            </select>
+          </div>
+          <div id="rdvWithOtherWrap" class="hidden">
+            <input type="text" id="rdvWithOtherName" class="rdv-input" placeholder="Nom de la personne…">
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div class="rdv-field">
+          <label>Message <span class="rdv-opt">(optionnel)</span></label>
+          <textarea id="rdvMessage" class="rdv-textarea" rows="3" placeholder="Contexte, objet du rendez-vous…"></textarea>
+        </div>
+
+        <div class="rdv-error hidden" id="rdvRequestError"></div>
+        <button class="btn-primary" id="rdvSendRequest">📨 Envoyer la demande</button>
+      </div>
+    </div>
+
+    <!-- Mes demandes en cours -->
+    <div class="rdv-slots-card" style="margin-top:1rem">
+      <h3 class="rdv-section-title">Mes demandes</h3>
+      <div id="rdvMyRequests">
+        <div class="rdv-empty">Aucune demande envoyée.</div>
+      </div>
+    </div>
+
+    <!-- Demandes reçues (en attente de réponse) -->
+    <div class="rdv-slots-card" id="rdvIncomingCard" style="margin-top:1rem">
+      <h3 class="rdv-section-title">Demandes reçues</h3>
+      <div id="rdvIncomingRequests">
+        <div class="rdv-empty">Aucune demande reçue.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODALE LOCAL PICKER (acceptation RDV)
+═══════════════════════════════════════════════════════════ -->
+<div class="rdv-overlay hidden" id="rdvLocalOverlay">
+  <div class="rdv-modal">
+    <div class="rdv-modal-hd">
+      <h3>🏠 Choisir le local</h3>
+      <button class="rdv-modal-close" id="rdvLocalClose">✕</button>
+    </div>
+    <p class="rdv-modal-hint" id="rdvLocalHint">Sélectionnez un local frontoffice pour ce rendez-vous.</p>
+    <div class="rdv-local-list" id="rdvLocalList"></div>
+    <div class="rdv-modal-ft">
+      <button class="btn-cancel" id="rdvLocalCancel">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale suppression récurrence -->
+<div class="rdv-overlay hidden" id="rdvDelRecOverlay">
+  <div class="rdv-modal" style="max-width:340px">
+    <div class="rdv-modal-hd">
+      <h3>🗑 Supprimer le créneau</h3>
+    </div>
+    <p class="rdv-modal-hint">Ce créneau fait partie d'une série récurrente. Que souhaitez-vous supprimer ?</p>
+    <div class="rdv-modal-ft" style="flex-direction:column;gap:.5rem;align-items:stretch">
+      <button class="btn-primary" id="rdvDelOccBtn">Cette occurrence uniquement</button>
+      <button class="btn-cancel rdv-btn-del-series" id="rdvDelSeriesBtn">Toute la série</button>
+      <button class="btn-cancel" id="rdvDelCancelBtn">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="rdvToast" class="rdv-toast hidden"></div>
+
+<!-- Scripts -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/rdv.js"></script>
+</body>
+</html>

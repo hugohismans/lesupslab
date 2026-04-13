@@ -1603,7 +1603,8 @@ const DB = {
     { key: 'managePlanning',    label: 'Créer/modifier le planning des agents' },
     { key: 'viewAllPlanning',   label: 'Voir le planning de tous les agents' },
     { key: 'panicButton',       label: 'Accès au bouton panique 🚨' },
-    { key: 'kickFromLocal',     label: 'Retirer un agent de son local (kick)' },
+    { key: 'kickFromLocal',        label: 'Retirer un agent de son local (kick)' },
+    { key: 'canAnnounceArrival',   label: 'Prévenir les collègues à l\'arrivée (modal mascotte)' },
   ],
 
   // Rôles par défaut utilisés si aucun rôle n'est défini dans Firebase
@@ -1624,7 +1625,7 @@ const DB = {
                inviteAgents:false, manageAgentStatus:true, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:false,
-               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:false },
+               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:false, canAnnounceArrival:true },
     },
     '__chef_service__': {
       // Coordination équipe : voit tout, peut notifier, peut modifier les RDV de l'équipe
@@ -1633,7 +1634,7 @@ const DB = {
                inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:false, viewAnalytics:true, editSettings:false,
-               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:true },
+               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:true, canAnnounceArrival:true },
     },
     '__as__': {
       // Assistant social : gère ses RDV et sa file, collabore avec l'équipe
@@ -1831,6 +1832,141 @@ const DB = {
   },
 
   getReservationById(id) { return this._data[id] ? { id, ...this._data[id] } : null; },
+
+  getLocalName(localId) {
+    return this._config?.localLabels?.[localId] || `Local ${localId}`;
+  },
+
+  getAgentDisplayNameByKey(agentKey) {
+    return this._config.agents.find(a => a.key === agentKey)?.name || agentKey || '';
+  },
+
+  // ── Disponibilités RDV ──────────────────────────────────────────
+  listenAvailabilitySlots(agentKey, cb) {
+    this._ref(`appState/availabilitySlots/${agentKey}`).on('value', snap => {
+      const slots = [];
+      snap.forEach(c => {
+        const v = c.val();
+        if (c.key !== '_settings') slots.push({ id: c.key, ...v });
+      });
+      slots.sort((a, b) => (a.startDateTime || '').localeCompare(b.startDateTime || ''));
+      cb(slots);
+    });
+  },
+
+  async getAvailabilitySettings(agentKey) {
+    const snap = await this._ref(`appState/availabilitySlots/${agentKey}/_settings`).once('value');
+    return snap.val() || {};
+  },
+
+  async setAvailabilitySettings(agentKey, settings) {
+    await this._ref(`appState/availabilitySlots/${agentKey}/_settings`).set(settings);
+  },
+
+  async addAvailabilitySlot(agentKey, startDateTime, endDateTime, label, autoAccept, favoriteLocalId, recurrence) {
+    const ref = this._ref(`appState/availabilitySlots/${agentKey}`).push();
+    await ref.set({
+      startDateTime,
+      endDateTime,
+      label:           label || '',
+      autoAccept:      autoAccept ? true : null,
+      favoriteLocalId: favoriteLocalId || null,
+      recurrence:      recurrence || null,
+      createdAt:       Date.now(),
+    });
+    return ref.key;
+  },
+
+  async deleteAvailabilitySlotOccurrence(agentKey, slotId, occDate) {
+    // Marquer une date d'exception sur un slot récurrent (supprime uniquement cette occurrence)
+    await this._ref(`appState/availabilitySlots/${agentKey}/${slotId}/exceptions/${occDate}`).set(true);
+  },
+
+  async deleteAvailabilitySlot(agentKey, slotId) {
+    await this._ref(`appState/availabilitySlots/${agentKey}/${slotId}`).remove();
+  },
+
+  async getAvailabilitySlot(agentKey, slotId) {
+    const snap = await this._ref(`appState/availabilitySlots/${agentKey}/${slotId}`).once('value');
+    return snap.exists() ? { id: slotId, ...snap.val() } : null;
+  },
+
+  // ── Demandes de RDV ─────────────────────────────────────────────
+  listenAppointmentRequests(agentKey, cb) {
+    // Écoute les demandes où cet agent est la cible OU le demandeur
+    this._ref('appState/appointmentRequests').on('value', snap => {
+      const all = [];
+      snap.forEach(c => {
+        const v = c.val();
+        if (v.targetAgentKey === agentKey || v.requesterAgentKey === agentKey) {
+          all.push({ id: c.key, ...v });
+        }
+      });
+      all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      cb(all);
+    });
+  },
+
+  async getAppointmentRequest(requestId) {
+    const snap = await this._ref(`appState/appointmentRequests/${requestId}`).once('value');
+    return snap.exists() ? { id: requestId, ...snap.val() } : null;
+  },
+
+  async createAppointmentRequest({ slotId, targetAgentKey, requesterAgentKey, requesterName, withPerson, message }) {
+    const ref = this._ref('appState/appointmentRequests').push();
+    await ref.set({
+      slotId,
+      targetAgentKey,
+      requesterAgentKey,
+      requesterName,
+      withPerson,
+      message:    message || '',
+      status:     'pending',
+      localId:    null,
+      createdAt:  Date.now(),
+      respondedAt: null,
+    });
+    return ref.key;
+  },
+
+  async acceptAppointmentRequest(requestId, localId) {
+    await this._ref(`appState/appointmentRequests/${requestId}`).update({
+      status:      'accepted',
+      localId:     String(localId),
+      respondedAt: Date.now(),
+    });
+  },
+
+  async refuseAppointmentRequest(requestId) {
+    await this._ref(`appState/appointmentRequests/${requestId}`).update({
+      status:      'refused',
+      respondedAt: Date.now(),
+    });
+  },
+
+  // Vérifie si un slot a déjà une demande acceptée
+  async isSlotTaken(agentKey, slotId) {
+    const snap = await this._ref('appState/appointmentRequests')
+      .orderByChild('slotId').equalTo(slotId).once('value');
+    let taken = false;
+    snap.forEach(c => {
+      if (c.val().status === 'accepted') taken = true;
+    });
+    return taken;
+  },
+
+  // Retourne les requests par slotId (pour marquer les slots pris dans l'UI)
+  async getRequestsBySlotIds(slotIds) {
+    const snap = await this._ref('appState/appointmentRequests').once('value');
+    const result = {};
+    snap.forEach(c => {
+      const v = c.val();
+      if (slotIds.includes(v.slotId) && v.status === 'accepted') {
+        result[v.slotId] = true;
+      }
+    });
+    return result;
+  },
 
   async add(data) {
     const ref = this._ref('reservations').push();

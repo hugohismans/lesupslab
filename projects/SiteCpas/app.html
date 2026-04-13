@@ -83,6 +83,7 @@
       </button>
     </div>
     <button class="btn-calendar-export" id="btnCalendarExport" title="Exporter mon agenda (.ics)" style="display:none">📅 Agenda</button>
+    <a class="btn-rdv" href="rdv.html" title="Disponibilité pour rendez-vous">📅 RDV</a>
     <a class="btn-live" id="btnPublic" href="vuepublic.html" target="_blank" title="Vue publique">🖥 Public</a>
     <button class="btn-settings" id="btnSettings" title="Paramètres">⚙</button>
     <button class="btn-dnd" id="btnDnd" title="Activer le mode absent">🔔</button>
@@ -1455,6 +1456,35 @@
     <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem">
       <button class="btn-secondary" id="techIssueCancelBtn">Annuler</button>
       <button class="btn-primary" id="techIssueSendBtn">📤 Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Prévenir de son arrivée ───────────────────────── -->
+<div class="modal-overlay hidden" id="arrivalAnnounceOverlay">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header">
+      <h2>👋 Prévenir de votre arrivée</h2>
+      <button class="modal-close" id="arrivalAnnounceClose">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem">
+      <p style="font-size:.88rem;color:#94a3b8;margin:0">Sélectionnez les postes à prévenir et, si vous le souhaitez, votre lieu d'arrivée.</p>
+
+      <div>
+        <label class="form-label" style="margin-bottom:.4rem">Prévenir les postes</label>
+        <div id="arrivalRoleChecks" style="display:flex;flex-direction:column;gap:.4rem"></div>
+      </div>
+
+      <div>
+        <label class="form-label">Lieu d'arrivée <span style="color:#64748b;font-weight:400">(optionnel)</span></label>
+        <select id="arrivalLieu" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.5rem .65rem;background:#0f172a;color:#e2e8f0;font-size:.88rem;font-family:inherit">
+          <option value="">— Aucun lieu précisé —</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="arrivalAnnounceSkip">Ignorer</button>
+      <button class="btn-primary" id="arrivalAnnounceSend">📣 Prévenir</button>
     </div>
   </div>
 </div>

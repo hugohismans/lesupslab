@@ -175,6 +175,24 @@ const NOTIF = {
           tone(1320, i * 0.16, 0.12, 0.6);
           tone(880,  i * 0.16 + 0.08, 0.08, 0.5);
         }
+      } else if (type === 'arrival') {
+        // Mélodie courte et chaleureuse — quelqu'un vient d'arriver
+        tone(523, 0,    0.14, 0.22, 'sine');
+        tone(659, 0.18, 0.14, 0.22, 'sine');
+        tone(784, 0.36, 0.22, 0.28, 'sine');
+      } else if (type === 'rdv_request') {
+        // Deux tons mélodieux montants — nouvelle demande de RDV
+        tone(659, 0,    0.2, 0.28, 'sine');
+        tone(784, 0.26, 0.3, 0.3, 'sine');
+      } else if (type === 'rdv_accepted') {
+        // Mélodie courte positive — RDV accepté
+        tone(784, 0,    0.15, 0.25, 'sine');
+        tone(880, 0.18, 0.15, 0.25, 'sine');
+        tone(988, 0.36, 0.22, 0.28, 'sine');
+      } else if (type === 'rdv_refused') {
+        // Deux tons descendants — refus
+        tone(523, 0,    0.2, 0.28, 'triangle');
+        tone(392, 0.26, 0.28, 0.22, 'triangle');
       } else if (type === 'preferred_request') {
         // Sonnette douce 3 tons — quelqu'un demande cet agent spécifiquement
         tone(523, 0,    0.18, 0.3, 'sine');
@@ -454,7 +472,9 @@ const NOTIF = {
           const isPref = n.type === 'preferred_request';
           const isPrefReply = n.type === 'preferred_reply_accueil';
           const isPanic = n.type === 'panic';
-          const icon   = isPanic ? '🚨' : (isPref ? '👤' : (isPrefReply ? '↩️' : (n.type === 'tech_request' ? '🔧' : (n.type === 'tech_reply' ? '↩️' : (n.urgent ? '🚨' : (icons[n.type] || 'ℹ️'))))));
+          const isRdvRequest = n.type === 'rdv_request';
+          const isArrival    = n.type === 'arrival';
+          const icon   = isPanic ? '🚨' : (isPref ? '👤' : (isPrefReply ? '↩️' : (isRdvRequest ? '📅' : (isArrival ? '👋' : (n.type === 'rdv_accepted' ? '✅' : (n.type === 'rdv_refused' ? '❌' : (n.type === 'rdv_info' ? '📅' : (n.type === 'tech_request' ? '🔧' : (n.type === 'tech_reply' ? '↩️' : (n.urgent ? '🚨' : (icons[n.type] || 'ℹ️')))))))))));
           const d      = new Date(n.createdAt);
           const time   = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           const canReply = n.type === 'tech_request' && n.replyable && !n.replied;
@@ -479,6 +499,18 @@ const NOTIF = {
               </div>` : (n.responded ? `<div style="font-size:.78rem;color:#4ade80;margin-top:.35rem">✓ Réponse envoyée</div>` : '')}`;
           }
 
+          // Contenu spécifique rdv_request (boutons accepter/refuser)
+          let rdvHtml = '';
+          if (isRdvRequest && n.requestId && !n.rdvResponded) {
+            rdvHtml = `
+              <div class="notif-rdv-actions" data-rdv-req-id="${n.requestId}">
+                <button class="notif-rdv-accept" data-id="${id}" data-req="${n.requestId}">✅ Accepter</button>
+                <button class="notif-rdv-refuse" data-id="${id}" data-req="${n.requestId}">❌ Refuser</button>
+              </div>`;
+          } else if (isRdvRequest && n.rdvResponded) {
+            rdvHtml = `<div style="font-size:.78rem;color:#4ade80;margin-top:.35rem">✓ Réponse envoyée</div>`;
+          }
+
           // Contenu spécifique preferred_reply_accueil
           let prefReplyHtml = '';
           if (isPrefReply && n.requestId && n.status !== 'done' && n.status !== 'cancelled') {
@@ -495,6 +527,7 @@ const NOTIF = {
                 <div class="notif-msg">${escapeHtml(n.message)}</div>
                 <div class="notif-time">${time}${n.type === 'tech_request' && n.replied ? ' · <em>répondu</em>' : ''}</div>
                 ${prefHtml}
+                ${rdvHtml}
                 ${prefReplyHtml}
                 ${canReply ? `<button class="notif-reply-btn" data-id="${id}" data-from="${n.fromAgentKey || ''}" data-desc="${encodeURIComponent(n.description || n.message)}">↩ Répondre</button>` : ''}
               </div>
@@ -507,6 +540,25 @@ const NOTIF = {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         DB.deleteNotif(btn.dataset.id);
+      });
+    });
+
+    // Boutons réponse rdv_request
+    target.querySelectorAll('.notif-rdv-accept').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isLive) this._closeLivePanel(); else this._closePanel();
+        window._openRdvAcceptModal?.(btn.dataset.id, btn.dataset.req);
+      });
+    });
+    target.querySelectorAll('.notif-rdv-refuse').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Refuser cette demande de rendez-vous ?')) return;
+        await window._rdvRefuseFromNotif?.(btn.dataset.req);
+        // Marquer la notif comme répondue
+        await DB._ref(`notifications/${btn.dataset.id}/rdvResponded`).set(true);
+        if (isLive) this._closeLivePanel(); else this._closePanel();
       });
     });
 

@@ -5152,6 +5152,24 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .panic-alert-ack:hover  { background: #fef2f2; }
 .panic-alert-ack:active { transform: scale(.96); }
 
+/* Annonce d'arrivée */
+.arrival-role-check {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .35rem .5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: .88rem;
+  color: #e2e8f0;
+  transition: background .1s;
+}
+.arrival-role-check:hover { background: rgba(255,255,255,.06); }
+.arrival-role-check input[type="checkbox"] { accent-color: #7c3aed; width: 15px; height: 15px; flex-shrink: 0; }
+.arrival-role-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+.notif-item.notif-arrival { border-left: 3px solid #f59e0b; background: #fffbeb; }
+
 /* Notif panic dans le panel */
 .notif-item.notif-panic {
   border-left: 4px solid #dc2626;
@@ -5161,4 +5179,365 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 @keyframes panic-flash {
   0%, 100% { background: #fff5f5; }
   50%       { background: #fee2e2; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   PAGE RDV — Disponibilité pour rendez-vous
+═══════════════════════════════════════════════════════════════════ */
+.rdv-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+.rdv-page-header { margin-bottom: 1rem; }
+.rdv-page-title  { font-size: 1.3rem; font-weight: 700; color: #1e293b; }
+
+/* Onglets */
+.rdv-tabs {
+  display: flex;
+  gap: .4rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: .5rem;
+}
+.rdv-tab {
+  padding: .45rem 1.1rem;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  font-size: .9rem;
+  color: #64748b;
+  transition: background .12s, color .12s;
+}
+.rdv-tab:hover { background: #f1f5f9; color: #334155; }
+.rdv-tab.rdv-tab-active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* Panels */
+.rdv-panel { display: block; }
+.rdv-panel.hidden { display: none; }
+
+/* Cards */
+.rdv-settings-card,
+.rdv-add-card,
+.rdv-slots-card,
+.rdv-request-form-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+.rdv-section-title {
+  font-size: .95rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: .75rem;
+}
+
+/* Paramètres */
+.rdv-setting-row {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: .5rem 0;
+  cursor: pointer;
+  font-size: .88rem;
+}
+.rdv-setting-row input[type="checkbox"] { flex-shrink: 0; margin-top: 3px; accent-color: #2563eb; width: 16px; height: 16px; }
+.rdv-setting-row strong { display: block; color: #1e293b; }
+.rdv-setting-row span   { color: #64748b; font-size: .82rem; }
+.rdv-favorite-row       { align-items: flex-start; gap: .5rem; flex-direction: column; cursor: default; }
+.rdv-favorite-row > span { font-size: .85rem; color: #475569; font-weight: 500; }
+.rdv-favorite-row small  { color: #94a3b8; font-weight: 400; }
+
+/* Picker lieu + boutons local */
+.rdv-fav-picker   { display: flex; flex-direction: column; gap: .5rem; width: 100%; }
+.rdv-fav-locals   { display: flex; flex-wrap: wrap; gap: .35rem; }
+.rdv-fav-local-btn {
+  padding: .3rem .75rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 20px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  font-family: inherit;
+}
+.rdv-fav-local-btn:hover   { border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
+.rdv-fav-local-btn.active  { border-color: #2563eb; background: #2563eb; color: #fff; font-weight: 600; }
+.rdv-select {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: .38rem .6rem;
+  font-size: .88rem;
+  background: #fff;
+  color: #1e293b;
+  min-width: 180px;
+}
+.rdv-select:focus { outline: none; border-color: #2563eb; }
+
+/* Formulaire */
+.rdv-form { display: flex; flex-direction: column; gap: .75rem; }
+.rdv-form-row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-end; }
+.rdv-field { display: flex; flex-direction: column; gap: .25rem; }
+.rdv-field label { font-size: .8rem; font-weight: 600; color: #475569; }
+.rdv-field-grow { flex: 1; min-width: 200px; }
+.rdv-opt { font-weight: 400; color: #94a3b8; }
+.rdv-field input[type="date"],
+.rdv-field input[type="time"],
+.rdv-field input[type="text"],
+.rdv-input {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: .38rem .6rem;
+  font-size: .88rem;
+  font-family: inherit;
+  color: #1e293b;
+}
+.rdv-field input:focus,
+.rdv-input:focus { outline: none; border-color: #2563eb; }
+.rdv-textarea {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: .5rem .7rem;
+  font-size: .88rem;
+  font-family: inherit;
+  color: #1e293b;
+  resize: vertical;
+}
+.rdv-textarea:focus { outline: none; border-color: #2563eb; }
+.rdv-add-btn { align-self: flex-end; white-space: nowrap; }
+.rdv-error {
+  background: #fee2e2;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: .5rem .75rem;
+  font-size: .84rem;
+}
+
+/* Liste créneaux (onglet 1) */
+.rdv-empty {
+  color: #94a3b8;
+  font-size: .88rem;
+  padding: .75rem 0;
+  text-align: center;
+}
+.rdv-empty-sm { padding: .5rem 0; font-size: .82rem; }
+.rdv-slot-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: .4rem;
+  background: #f8fafc;
+  transition: border-color .12s;
+}
+.rdv-slot-item:hover { border-color: #cbd5e1; }
+.rdv-slot-main { display: flex; align-items: center; gap: .5rem; flex: 1; flex-wrap: wrap; }
+.rdv-slot-time  { font-weight: 600; font-size: .88rem; color: #1e293b; }
+.rdv-slot-label { font-size: .8rem; color: #64748b; }
+.rdv-auto-badge {
+  font-size: .72rem;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 6px;
+  padding: .1rem .35rem;
+  font-weight: 600;
+}
+.rdv-taken-badge {
+  font-size: .72rem;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 6px;
+  padding: .1rem .35rem;
+  font-weight: 600;
+}
+.rdv-past-badge {
+  font-size: .72rem;
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-radius: 6px;
+  padding: .1rem .35rem;
+}
+.rdv-slot-past  { opacity: .5; }
+.rdv-slot-taken { border-color: #bbf7d0; background: #f0fdf4; }
+.rdv-slot-delete {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: .2rem .4rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  flex-shrink: 0;
+  transition: background .12s;
+}
+.rdv-slot-delete:hover { background: #fee2e2; }
+
+/* Sélecteur créneaux (onglet 2) */
+.rdv-slot-pick {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: .4rem;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.rdv-slot-pick:hover:not(.rdv-slot-pick-taken) { border-color: #2563eb; background: #eff6ff; }
+.rdv-slot-pick input[type="radio"]  { accent-color: #2563eb; }
+.rdv-slot-pick-label { font-size: .88rem; color: #1e293b; flex: 1; }
+.rdv-slot-pick-taken { opacity: .45; cursor: default; }
+
+/* Radio "avec qui" */
+.rdv-with-radios  { display: flex; gap: 1rem; margin-bottom: .5rem; }
+.rdv-radio-label  { display: flex; align-items: center; gap: .4rem; font-size: .88rem; cursor: pointer; }
+.rdv-radio-label input { accent-color: #2563eb; }
+
+/* Demandes */
+.rdv-req-item {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: .65rem .85rem;
+  margin-bottom: .5rem;
+  background: #f8fafc;
+}
+.rdv-req-pending  { border-color: #fde68a; background: #fffbeb; }
+.rdv-req-accepted { border-color: #bbf7d0; background: #f0fdf4; }
+.rdv-req-refused  { border-color: #fecaca; background: #fff5f5; opacity: .7; }
+.rdv-req-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .3rem;
+}
+.rdv-req-status { font-weight: 700; font-size: .88rem; }
+.rdv-req-who    { font-size: .82rem; color: #64748b; }
+.rdv-req-details { font-size: .84rem; color: #475569; }
+.rdv-req-actions { display: flex; gap: .5rem; margin-top: .6rem; }
+.rdv-btn-accept {
+  background: #22c55e; color: #fff; border: none; border-radius: 8px;
+  padding: .35rem .85rem; cursor: pointer; font-size: .84rem; font-weight: 600;
+}
+.rdv-btn-accept:hover { background: #16a34a; }
+.rdv-btn-refuse {
+  background: #ef4444; color: #fff; border: none; border-radius: 8px;
+  padding: .35rem .85rem; cursor: pointer; font-size: .84rem; font-weight: 600;
+}
+.rdv-btn-refuse:hover { background: #dc2626; }
+
+/* Local picker (modale) */
+.rdv-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.35);
+  display: flex; align-items: center; justify-content: center; z-index: 3000;
+}
+.rdv-overlay.hidden { display: none; }
+.rdv-modal {
+  background: #fff; border-radius: 16px; padding: 1.4rem;
+  width: 90%; max-width: 420px; max-height: 85vh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.2);
+}
+.rdv-modal-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: .5rem;
+}
+.rdv-modal-hd h3 { font-size: 1.05rem; font-weight: 700; }
+.rdv-modal-close {
+  background: none; border: none; font-size: 1.1rem; cursor: pointer; color: #94a3b8;
+  padding: .2rem .4rem; border-radius: 6px;
+}
+.rdv-modal-close:hover { background: #f1f5f9; color: #475569; }
+.rdv-modal-hint { font-size: .82rem; color: #64748b; margin-bottom: .9rem; }
+.rdv-local-list { overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: .35rem; }
+.rdv-local-lieu { font-size: .78rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;
+  letter-spacing: .04em; padding: .35rem 0 .1rem; }
+.rdv-local-btn {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .55rem .85rem; border: 1.5px solid #e2e8f0; border-radius: 10px;
+  background: #f8fafc; cursor: pointer; font-size: .88rem; text-align: left;
+  transition: border-color .12s, background .12s;
+}
+.rdv-local-btn:hover:not([disabled]) { border-color: #2563eb; background: #eff6ff; }
+.rdv-local-btn[disabled]   { opacity: .5; cursor: default; }
+.rdv-local-busy            { background: #fff5f5; border-color: #fecaca; }
+.rdv-local-busy-label      { margin-left: auto; font-size: .75rem; color: #ef4444; }
+.rdv-local-icon            { font-size: 1rem; }
+.rdv-modal-ft { margin-top: .9rem; display: flex; justify-content: flex-end; }
+
+/* Toast */
+.rdv-toast {
+  position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+  background: #1e293b; color: #fff; border-radius: 10px;
+  padding: .65rem 1.25rem; font-size: .88rem; z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0,0,0,.25); max-width: 90%;
+  text-align: center; pointer-events: none;
+}
+.rdv-toast-warn { background: #f59e0b; }
+.rdv-toast.hidden { display: none; }
+
+/* Notifs rdv dans le panel */
+.notif-item.notif-rdv_request  { border-left: 3px solid #2563eb; }
+.notif-item.notif-rdv_accepted { border-left: 3px solid #22c55e; }
+.notif-item.notif-rdv_refused  { border-left: 3px solid #ef4444; }
+.notif-item.notif-rdv_info     { border-left: 3px solid #8b5cf6; }
+.notif-rdv-actions { display: flex; gap: .45rem; margin-top: .5rem; }
+.notif-rdv-accept {
+  background: #22c55e; color: #fff; border: none; border-radius: 7px;
+  padding: .3rem .75rem; cursor: pointer; font-size: .8rem; font-weight: 600;
+}
+.notif-rdv-accept:hover { background: #16a34a; }
+.notif-rdv-refuse {
+  background: #ef4444; color: #fff; border: none; border-radius: 7px;
+  padding: .3rem .75rem; cursor: pointer; font-size: .8rem; font-weight: 600;
+}
+.notif-rdv-refuse:hover { background: #dc2626; }
+
+/* Bouton RDV dans le header */
+.btn-rdv {
+  background: none;
+  border: 1.5px solid #cbd5e1;
+  color: #64748b;
+  border-radius: 8px;
+  padding: .3rem .75rem;
+  font-size: .82rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  transition: background .12s, color .12s;
+}
+.btn-rdv:hover { background: #f1f5f9; color: #334155; }
+
+/* Réservations de type rendez-vous dans le calendrier */
+.cal-event[data-type="rendez-vous"] { border-left: 3px solid #2563eb; }
+
+/* Badge récurrence slot */
+.rdv-rec-badge {
+  font-size: .72rem;
+  background: #f3e8ff;
+  color: #7c3aed;
+  border-radius: 6px;
+  padding: .1rem .35rem;
+  font-weight: 600;
+}
+
+/* Modale suppression récurrence */
+.rdv-btn-del-series {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border: 1.5px solid #fecaca !important;
+  font-weight: 700;
 }

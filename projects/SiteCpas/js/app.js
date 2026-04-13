@@ -890,6 +890,10 @@ const HOME = {
       if (agentKey && !this._hasSaidBonjourToday(agentKey)) {
         this.sayBonjour(agentName);
         this.render(); // met à jour statut + bouton
+        // Si le rôle de l'agent permet d'annoncer son arrivée, ouvrir la modale
+        if (DB.hasPermission('canAnnounceArrival')) {
+          setTimeout(() => _openArrivalAnnounceModal(agentName), 600);
+        }
       }
     });
 
@@ -3429,6 +3433,226 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Re-render vue Direct quand preferredPending OU preferredQueue change (listeners top-level)
   DB.onPreferredPendingChange(() => { LIVE.render(); HOME.render(); });
   DB.onPreferredQueueChange(()   => { LIVE.render(); HOME.render(); });
+
+  // ═══════════════════════════════════════════════════════════════
+  // ─── Annonce d'arrivée (mascotte) ─────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+
+  function _openArrivalAnnounceModal(agentName) {
+    const overlay    = document.getElementById('arrivalAnnounceOverlay');
+    const checksEl   = document.getElementById('arrivalRoleChecks');
+    const lieuSel    = document.getElementById('arrivalLieu');
+    if (!overlay || !checksEl || !lieuSel) return;
+
+    // Remplir les checkboxes de rôles (tous les rôles, sauf le propre rôle de l'agent)
+    const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
+    const myRoleId   = DB.getAgentPermRole(myAgentKey) || '__agent__';
+    const roles      = DB.getPermRoles();
+
+    checksEl.innerHTML = Object.entries(roles).map(([rid, role]) => `
+      <label class="arrival-role-check">
+        <input type="checkbox" class="arrival-cb" data-role-id="${rid}"
+          ${rid === myRoleId ? '' : 'checked'}>
+        <span class="arrival-role-dot" style="background:${role.color || '#6b7280'}"></span>
+        <span>${role.name}</span>
+      </label>`).join('');
+
+    // Remplir le sélecteur de lieux
+    const lieux = Object.entries(DB._lieux || {})
+      .sort(([, a], [, b]) => (a.order || 999) - (b.order || 999));
+    lieuSel.innerHTML = '<option value="">— Aucun lieu précisé —</option>' +
+      lieux.map(([lid, l]) => `<option value="${lid}">${l.name}</option>`).join('');
+
+    overlay.classList.remove('hidden');
+
+    // Bouton Ignorer
+    const skipOnce = () => overlay.classList.add('hidden');
+    document.getElementById('arrivalAnnounceSkip')
+      ?.addEventListener('click', skipOnce, { once: true });
+
+    // Fermeture via ✕
+    document.getElementById('arrivalAnnounceClose')
+      ?.addEventListener('click', skipOnce, { once: true });
+
+    // Fermeture en cliquant l'overlay
+    const bgClose = e => { if (e.target === overlay) overlay.classList.add('hidden'); };
+    overlay.addEventListener('click', bgClose);
+
+    // Bouton Prévenir
+    document.getElementById('arrivalAnnounceSend')
+      ?.addEventListener('click', async () => {
+        overlay.classList.add('hidden');
+        overlay.removeEventListener('click', bgClose);
+        await _sendArrivalAnnouncement(agentName, checksEl, lieuSel.value);
+      }, { once: true });
+  }
+
+  async function _sendArrivalAnnouncement(agentName, checksEl, lieuId) {
+    const lieuName = lieuId ? (DB._lieux[lieuId]?.name || '') : '';
+    const msg = lieuName
+      ? `👋 ${agentName} vient d'arriver — ${lieuName}`
+      : `👋 ${agentName} vient d'arriver`;
+
+    // Collecter les rôles cochés
+    const selectedRoleIds = [...checksEl.querySelectorAll('.arrival-cb:checked')]
+      .map(cb => cb.dataset.roleId);
+
+    if (!selectedRoleIds.length) return;
+
+    // Trouver tous les agents ayant l'un des rôles cochés (sauf l'agent qui annonce)
+    const myAgentKey = sessionStorage.getItem('cpas_current_agent_key');
+    const targets    = DB.getAgentsWithKeys()
+      .filter(a => a.key && a.key !== myAgentKey && selectedRoleIds.includes(DB.getAgentPermRole(a.key) || '__agent__'));
+
+    // Envoyer une notif par agent cible
+    await Promise.all(targets.map(a =>
+      DB.sendNotif(msg, 'arrival', a.key, { lieuId: lieuId || null, sourceAgentKey: myAgentKey })
+    ));
+
+    if (targets.length) {
+      showToast(`Arrivée annoncée à ${targets.length} collègue${targets.length > 1 ? 's' : ''} ✓`);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ─── Gestion RDV depuis le panneau de notifications ──────────
+  // ═══════════════════════════════════════════════════════════════
+
+  // Ouvre un local picker inline (overlay dynamique) pour accepter un RDV depuis la notif
+  window._openRdvAcceptModal = async (notifId, requestId) => {
+    const req = await DB.getAppointmentRequest(requestId);
+    if (!req) { showToast('Demande introuvable.', 'warn'); return; }
+
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || '';
+    const startDT = req.startDateTime;
+    const endDT   = req.endDateTime;
+
+    // Construire l'overlay local picker
+    const conflicts   = DB.getInRange(startDT, endDT);
+    const takenLocals = new Set(conflicts.map(r => String(r.localId)));
+
+    const lieux = Object.entries(DB._lieux || {})
+      .filter(([, l]) => !l.isBackoffice)
+      .sort(([, a], [, b]) => (a.order || 999) - (b.order || 999));
+
+    let localListHtml = '';
+    lieux.forEach(([, lieu]) => {
+      const vis = lieu.localIds.filter(lid => !DB.isLocalHidden(lid));
+      if (!vis.length) return;
+      localListHtml += `<div style="font-size:.78rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;padding:.35rem 0 .1rem">${lieu.name}</div>`;
+      vis.forEach(lid => {
+        const label = DB.getLocalLabel(lid);
+        const free  = !takenLocals.has(String(lid));
+        localListHtml += `<button class="rdv-notif-local-btn${free ? '' : ' rdv-local-busy'}"
+          data-lid="${lid}" ${free ? '' : 'disabled'}
+          style="display:flex;align-items:center;gap:.6rem;padding:.55rem .85rem;border:1.5px solid ${free ? '#e2e8f0' : '#fecaca'};border-radius:10px;background:${free ? '#f8fafc' : '#fff5f5'};cursor:${free ? 'pointer' : 'default'};font-size:.88rem;text-align:left;width:100%;margin-bottom:.3rem;${free ? '' : 'opacity:.5'}">
+          <span>${free ? '🟢' : '🔴'}</span> ${label}
+          ${free ? '' : '<span style="margin-left:auto;font-size:.75rem;color:#ef4444">Occupé</span>'}
+        </button>`;
+      });
+    });
+
+    const overlay = document.createElement('div');
+    overlay.className = 'rdv-overlay';
+    overlay.style.zIndex = '4000';
+    overlay.innerHTML = `
+      <div class="rdv-modal">
+        <div class="rdv-modal-hd">
+          <h3>🏠 Choisir le local — RDV</h3>
+          <button class="rdv-modal-close" id="_rdvNotifLocalClose">✕</button>
+        </div>
+        <p class="rdv-modal-hint">Sélectionnez un local frontoffice pour ce rendez-vous (${req.requesterName || ''}).</p>
+        <div class="rdv-local-list" style="max-height:300px;overflow-y:auto">${localListHtml || '<div class="rdv-empty">Aucun local disponible.</div>'}</div>
+        <div class="rdv-modal-ft"><button class="btn-cancel" id="_rdvNotifLocalCancel">Annuler</button></div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const _close = () => overlay.remove();
+    overlay.querySelector('#_rdvNotifLocalClose')?.addEventListener('click', _close);
+    overlay.querySelector('#_rdvNotifLocalCancel')?.addEventListener('click', _close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) _close(); });
+
+    overlay.querySelectorAll('.rdv-notif-local-btn:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        _close();
+        const localId = String(btn.dataset.lid);
+        try {
+          await _rdvFinalizeAcceptFromApp(req, requestId, localId, myKey, myName);
+          // Marquer la notif comme répondue
+          if (notifId) await DB._ref(`notifications/${notifId}/rdvResponded`).set(true);
+        } catch (e) {
+          showToast('Erreur lors de l\'acceptation : ' + e.message, 'warn');
+        }
+      });
+    });
+  };
+
+  // Logique d'acceptation RDV depuis app.js (similaire à rdv.js _finalizeAccept)
+  async function _rdvFinalizeAcceptFromApp(req, requestId, localId, _myKey, myName) {
+    const startDT = req.startDateTime;
+    const endDT   = req.endDateTime;
+    const localName = DB.getLocalName(localId);
+    const withPerson = req.withPerson || {};
+    const withStr = withPerson.type === 'agent' ? withPerson.name : `(ext.) ${withPerson.name || ''}`;
+    const rdvNote = `RDV avec ${withStr}${req.message ? ' — ' + req.message : ''}`;
+
+    // Vérifier conflit RDV pour cet agent
+    const conflicts = DB.getInRange(startDT, endDT);
+    const rdvConflict = conflicts.find(r => r.agent === myName && r.type === 'rendez-vous');
+    if (rdvConflict) {
+      await DB.refuseAppointmentRequest(requestId);
+      if (req.requesterAgentKey) {
+        await DB.sendNotif(`❌ RDV refusé automatiquement — conflit de rendez-vous.`, 'rdv_refused', req.requesterAgentKey, { requestId });
+      }
+      showToast('Conflit de rendez-vous détecté — RDV refusé.', 'warn');
+      return;
+    }
+
+    // Split des réservations backoffice
+    const boRes = conflicts.filter(r =>
+      r.agent === myName &&
+      DB.isLocalBackoffice(r.localId) &&
+      r.startDateTime < endDT &&
+      r.endDateTime > startDT
+    );
+    for (const bo of boRes) {
+      if (bo.id) await DB.remove(bo.id);
+      if (bo.startDateTime < startDT) {
+        await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: bo.startDateTime, endDateTime: startDT, recurrence: { type: 'none' }, createdAt: Date.now() });
+      }
+      if (bo.endDateTime > endDT) {
+        await DB._ref('reservations').push({ localId: String(bo.localId), agent: bo.agent, services: bo.services || [], startDateTime: endDT, endDateTime: bo.endDateTime, recurrence: { type: 'none' }, createdAt: Date.now() });
+      }
+    }
+
+    // Créer la réservation RDV
+    await DB._ref('reservations').push({ localId: String(localId), agent: myName, services: [], type: 'rendez-vous', startDateTime: startDT, endDateTime: endDT, note: rdvNote, recurrence: { type: 'none' }, createdAt: Date.now() });
+
+    // Mettre à jour la demande
+    await DB.acceptAppointmentRequest(requestId, localId);
+
+    // Notif retour au demandeur
+    const fmtDT = iso => { if (!iso) return ''; const d = new Date(iso); return `${String(d.getDate()).padStart(2,'0')}/${d.getMonth()+1} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+    if (req.requesterAgentKey) {
+      await DB.sendNotif(`✅ RDV accepté par ${myName} — ${fmtDT(startDT)} au ${localName}`, 'rdv_accepted', req.requesterAgentKey, { requestId, localId });
+    }
+    showToast(`RDV accepté — réservation créée au ${localName} ✓`);
+  }
+
+  // Refus depuis la notif
+  window._rdvRefuseFromNotif = async (requestId) => {
+    const req = await DB.getAppointmentRequest(requestId);
+    if (!req) return;
+    const myKey  = sessionStorage.getItem('cpas_current_agent_key');
+    const myName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || '';
+    await DB.refuseAppointmentRequest(requestId);
+    if (req.requesterAgentKey) {
+      await DB.sendNotif(`❌ RDV refusé par ${myName}`, 'rdv_refused', req.requesterAgentKey, { requestId });
+    }
+    showToast('Demande refusée.');
+  };
 
   // ═══════════════════════════════════════════════════════════════
   // ─── Panic button ─────────────────────────────────────────────
