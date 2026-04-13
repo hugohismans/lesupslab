@@ -166,6 +166,13 @@
 
   <!-- Écran : réservation -->
   <div class="screen" id="screenBook">
+
+    <!-- Bandeau info simplifié -->
+    <div style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1.25rem;font-size:.88rem;line-height:1.5;box-shadow:0 4px 16px rgba(239,68,68,.3);">
+      <div style="font-weight:800;font-size:.95rem;margin-bottom:.4rem;">ℹ️ Version simplifiée de la prise de rendez-vous</div>
+      Vous pouvez consulter et demander un rendez-vous avec tous les agents. Si un agent a paramétré ses plages de disponibilité, vous pouvez réserver directement en cliquant sur le bouton <strong>RDV</strong> dans sa fiche.
+    </div>
+
     <div class="card">
       <!-- Badge agent connecté -->
       <div class="agent-badge">
@@ -449,13 +456,17 @@ async function main() {
     if (c.key !== '_settings') rawSlots.push({ id: c.key, ...c.val() });
   });
 
-  // Charger les lieux pour le sélecteur de local
-  const [lieuxSnap, labelsSnap] = await Promise.all([
+  // Charger les lieux, labels et bureaux pour le sélecteur de local
+  const [lieuxSnap, labelsSnap, bureauxSnap] = await Promise.all([
     ref('appConfig/lieux').once('value'),
     ref('appConfig/localLabels').once('value'),
+    ref('appState/bureaux').once('value'),
   ]);
-  const lieuxData  = lieuxSnap.val()  || {};
+  const lieuxData   = lieuxSnap.val()  || {};
   const localLabels = labelsSnap.val() || {};
+  const bureauxData = bureauxSnap.val() || {};
+  // Trouver le local bureau de l'agent connecté
+  const agentBureauId = Object.entries(bureauxData).find(([, info]) => info?.agentKey === agentKey)?.[0] || null;
   const lieuxList = Object.entries(lieuxData)
     .map(([id, l]) => ({ id, name: l.name || 'Sans nom', order: l.order ?? 999, isBackoffice: !!l.isBackoffice, localIds: l.localIds ? Object.keys(l.localIds).map(Number).sort((a,b)=>a-b) : [] }))
     .filter(l => l.isBackoffice)   // RDV intégrateur = back-office uniquement
@@ -475,6 +486,12 @@ async function main() {
     });
     sel.appendChild(grp);
   });
+
+  // Pré-sélectionner le bureau de l'agent si connu et présent dans le dropdown
+  if (agentBureauId) {
+    const optToSelect = [...sel.options].find(o => o.value.split('|')[1] === String(agentBureauId));
+    if (optToSelect) sel.value = optToSelect.value;
+  }
 
   // Écouter les réservations en temps réel → re-rendre les créneaux à chaque changement
   const integratorName = agentsData[integratorKey] || 'Intégrateur';
