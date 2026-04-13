@@ -961,13 +961,25 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ── Bouton "Se connecter" en fin de chaque rôle ────────────────────
+  // ── Section intégrateur + bouton Se connecter en fin de chaque rôle ──
   const SIGNIN_HTML = `
-    <div style="text-align:center;padding:1.5rem 0 .5rem">
-      <a href="index.html" style="display:inline-flex;align-items:center;gap:.5rem;background:#7c3aed;color:#fff;border-radius:14px;padding:.85rem 2rem;font-size:1rem;font-weight:800;text-decoration:none;box-shadow:0 4px 18px rgba(124,58,237,.35);transition:background .15s" onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">
+    <div style="background:#fff;border-radius:18px;padding:1.5rem;margin-top:1.5rem;box-shadow:0 1px 6px rgba(0,0,0,.06);border-left:4px solid #ef4444;">
+      <div style="font-size:1rem;font-weight:700;color:#1e1b4b;margin-bottom:.5rem;">🙋 Hugo sera là le jour du lancement</div>
+      <div style="font-size:.9rem;color:#475569;line-height:1.65;margin-bottom:.75rem;">
+        Un intégrateur sera présent sur site pour t'accompagner dans la prise en main. Tu n'es pas seul·e !
+        Une fois connecté·e, tu trouveras un bouton <strong>📅 RDV intégrateur</strong> en haut de ton écran d'accueil pour réserver un passage à ton poste — il vient te voir directement.
+      </div>
+    </div>
+    <div style="text-align:center;padding:2rem 0 1rem">
+      <style>
+        @keyframes signin-glow {
+          0%,100% { box-shadow: 0 0 0 0 rgba(124,58,237,.5), 0 6px 24px rgba(124,58,237,.4); }
+          50%      { box-shadow: 0 0 0 12px rgba(124,58,237,0), 0 6px 24px rgba(124,58,237,.4); }
+        }
+      </style>
+      <a href="index.html" style="display:inline-flex;align-items:center;gap:.6rem;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border-radius:18px;padding:1.1rem 2.8rem;font-size:1.25rem;font-weight:900;text-decoration:none;letter-spacing:-.01em;animation:signin-glow 2.5s ease-in-out infinite;transition:transform .15s" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">
         ❤️ Allez, on y va — je me connecte !
       </a>
-      <div style="font-size:.76rem;color:#94a3b8;margin-top:.6rem">Tu retrouveras un bouton sur ton écran d'accueil pour réserver un passage de l'intégrateur.</div>
     </div>`;
 
   document.querySelectorAll('.role-content').forEach(role => {
