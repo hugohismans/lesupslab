@@ -1047,10 +1047,6 @@ const HOME = {
     });
 
     // ─ Se déclarer dans un bureau — lieu + cartes toggle ─────────────
-    document.getElementById('hsDeclLieuSelect').addEventListener('change', () => {
-      this._renderDeclCards();
-      this._renderQueueGroups();
-    });
     document.getElementById('hsDeclCards').addEventListener('click', e => {
       // Bouton kick admin
       const kickBtn = e.target.closest('.hs-decl-kick-btn');
@@ -1425,10 +1421,13 @@ const HOME = {
     _renderExtraWidgets();
   },
 
+  _declLieuId: null,
+  _declLocalId: null,
+
   _renderDeclSelect() {
-    const lieuSelect = document.getElementById('hsDeclLieuSelect');
-    const currEl     = document.getElementById('hsDeclCurrent');
-    if (!lieuSelect) return;
+    const currEl  = document.getElementById('hsDeclCurrent');
+    const lieuBar = document.getElementById('hsDeclLieuBar');
+    if (!lieuBar) return;
 
     const openBureau   = DB.getOpenBureauForCurrentAgent();
     const boLocal      = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;
@@ -1441,26 +1440,81 @@ const HOME = {
         : '';
     }
 
-    // Populate lieu select (garde la sélection précédente ou sélectionne le lieu du bureau actuel)
-    const lieux    = DB.getLieux();
-    const prevVal  = lieuSelect.value;
-    lieuSelect.innerHTML = '';
-    Object.entries(lieux).forEach(([lieuId, lieu]) => {
-      const opt = document.createElement('option');
-      opt.value       = lieuId;
-      opt.textContent = lieu.name;
-      lieuSelect.appendChild(opt);
-    });
-    // Sélectionner le lieu contenant le bureau actuel si possible
-    if (currentLocal !== null) {
-      const lieuOfCurrent = Object.entries(lieux).find(([, l]) => l.localIds.includes(currentLocal));
-      if (lieuOfCurrent) lieuSelect.value = lieuOfCurrent[0];
-    } else if (prevVal && [...lieuSelect.options].some(o => o.value === prevVal)) {
-      lieuSelect.value = prevVal;
+    // Auto-sélectionner le lieu du bureau actuel
+    const lieux = DB.getLieux();
+    if (!this._declLieuId) {
+      if (currentLocal !== null) {
+        const lieuOfCurrent = Object.entries(lieux).find(([, l]) => l.localIds.includes(currentLocal));
+        if (lieuOfCurrent) this._declLieuId = lieuOfCurrent[0];
+      }
+      if (!this._declLieuId) this._declLieuId = Object.keys(lieux)[0] || null;
     }
 
+    // Toggles lieux
+    lieuBar.innerHTML = Object.entries(lieux).map(([id, l]) =>
+      `<button class="hs-decl-toggle${this._declLieuId === id ? ' active' : ''}" data-decl-lieu="${id}">${escapeHtml(l.name)}</button>`
+    ).join('');
+    lieuBar.querySelectorAll('[data-decl-lieu]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._declLieuId = btn.dataset.declLieu;
+        this._declLocalId = null;
+        this._renderDeclSelect();
+      });
+    });
+
+    // Sync hidden select for compat
+    const hiddenSel = document.getElementById('hsDeclLieuSelect');
+    if (hiddenSel) hiddenSel.value = this._declLieuId;
+
+    // Toggles locaux du lieu sélectionné
+    this._renderDeclLocalBar();
     this._renderDeclCards();
     this._renderQueueGroups();
+  },
+
+  _renderDeclLocalBar() {
+    const bar = document.getElementById('hsDeclLocalBar');
+    if (!bar) return;
+    const lieux = DB.getLieux();
+    const lieu  = lieux[this._declLieuId];
+    if (!lieu) { bar.innerHTML = ''; return; }
+
+    const localIds = lieu.localIds || [];
+    // Filtrer : montrer les locaux qui ont des desks + les locaux sans desk
+    // Les locaux avec desks sont sélectionnables (pour voir leurs desks dans les cartes)
+    // Les locaux sans desk sont aussi sélectionnables (pour se déclarer)
+    bar.innerHTML = localIds.map(localId => {
+      const label = DB.getLocalLabel(localId);
+      const hasDesks = DB.localHasDesks(localId);
+      const nDesks = hasDesks ? DB.getLocalDesks(localId).length : 0;
+      const isActive = this._declLocalId === localId;
+      return `<button class="hs-decl-toggle hs-decl-local-toggle${isActive ? ' active' : ''}" data-decl-local="${localId}">
+        ${escapeHtml(label)}${hasDesks ? ` <small>(${nDesks})</small>` : ''}
+      </button>`;
+    }).join('');
+
+    bar.querySelectorAll('[data-decl-local]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lid = parseInt(btn.dataset.declLocal);
+        if (this._declLocalId === lid) {
+          // Deselect → si local sans desk, on clique pour se déclarer
+          if (!DB.localHasDesks(lid)) {
+            this._requireBonjour(() => this._handleDeclClick(lid));
+            return;
+          }
+          this._declLocalId = null;
+        } else {
+          this._declLocalId = lid;
+          // Si local sans desk, se déclarer directement
+          if (!DB.localHasDesks(lid)) {
+            this._requireBonjour(() => this._handleDeclClick(lid));
+            return;
+          }
+        }
+        this._renderDeclLocalBar();
+        this._renderDeclCards();
+      });
+    });
   },
 
   _renderQueueGroups() {
@@ -1485,139 +1539,50 @@ const HOME = {
   },
 
   _renderDeclCards() {
-    const lieuSelect = document.getElementById('hsDeclLieuSelect');
-    const cards      = document.getElementById('hsDeclCards');
-    if (!lieuSelect || !cards) return;
+    const cards = document.getElementById('hsDeclCards');
+    if (!cards) return;
 
-    const agentKey   = sessionStorage.getItem('cpas_current_agent_key');
-    const lieux      = DB.getLieux();
-    const lieu       = lieux[lieuSelect.value];
-    const openBureau = DB.getOpenBureauForCurrentAgent();
-    const boLocal    = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;
+    const agentKey     = sessionStorage.getItem('cpas_current_agent_key');
+    const openBureau   = DB.getOpenBureauForCurrentAgent();
+    const boLocal      = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;
     const currentLocal = openBureau ?? boLocal;
 
-    if (!lieu) { cards.innerHTML = ''; return; }
-
-    // Réservations du jour (badge) — toute réservation d'aujourd'hui, permanences toujours incluses
-    const now  = new Date();
-    const dayS = new Date(now); dayS.setHours(0, 0, 0, 0);
-    const dayE = new Date(now); dayE.setHours(23, 59, 59, 999);
-    const todayOccs = DB.getInRange(dayS, dayE);
-
-    cards.innerHTML = lieu.localIds.map(localId => {
-      const label = DB.getLocalLabel(localId);
-      const isBO  = DB.getFeature('enableBackoffice') && DB.isLocalBackoffice(localId);
-      const hasDesks = DB.localHasDesks(localId);
-
-      // ── Local avec desks → en-tête + sous-cartes desk ──
-      if (hasDesks) {
-        const desks = DB.getLocalDesks(localId);
-        // État global du local (pour les files d'attente)
-        const _localGrps = DB.getLocalGroups(localId);
-        const grpHtml = _localGrps.length ? `<div class="hs-decl-grps" style="margin-top:.3rem">🔗 ${_localGrps.map(g => {
-          const ovf = DB.getGroupOverflowQueue(g.id);
-          return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
-        }).join('')}</div>` : '';
-
-        const deskCards = desks.map(deskId => {
-          const dLabel = DB.getDeskLabel(deskId);
-          const oKey = DB.getBureauAgentKey(localId);
-          const isCurrent = localId === currentLocal;
-          const isOccupied = oKey && oKey !== agentKey;
-          const iAmHere = oKey === agentKey;
-
-          let status;
-          if (iAmHere) status = '<div class="hs-decl-me">✅ Vous</div>';
-          else if (isOccupied) status = `<div class="hs-decl-occ">👤 ${escapeHtml(DB.getAgentDisplayName(oKey) || '?')}</div>`;
-          else status = '<div class="hs-decl-avail">Libre</div>';
-
-          const cls = ['hs-decl-desk',
-            iAmHere ? 'hs-decl-active' : '',
-            isOccupied ? 'hs-decl-occupied' : '',
-          ].filter(Boolean).join(' ');
-
-          return `<div class="${cls}" data-local-id="${localId}">
-            <span class="hs-decl-desk-name">${escapeHtml(dLabel)}</span>
-            ${status}
-          </div>`;
-        }).join('');
-
-        return `<div class="hs-decl-desk-group">
-          <div class="hs-decl-desk-header">${escapeHtml(label)}</div>
-          <div class="hs-decl-desk-grid">${deskCards}</div>
-          ${grpHtml}
-        </div>`;
-      }
-
-      // ── Local sans desk → carte standard ──
-      let iAmHere = false;
-      const occupantNames = [];
-
-      if (isBO) {
-        const pres = DB.getBackofficePresence(localId);
-        Object.keys(pres).forEach(k => {
-          if (k === agentKey) iAmHere = true;
-          else occupantNames.push(DB.getAgentDisplayName(k) || '?');
-        });
-      } else {
-        const oKey = DB.getBureauAgentKey(localId);
-        if (oKey) {
-          if (oKey === agentKey) iAmHere = true;
-          else occupantNames.push(DB.getAgentDisplayName(oKey) || '?');
-        }
-      }
-
-      const isOccupied = occupantNames.length > 0;
-      const isCurrent  = localId === currentLocal;
-      const isBusy     = DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId);
-
-      // Files d'attente dont ce local fait partie
+    // Si un local avec desks est sélectionné → afficher ses desk cards
+    if (this._declLocalId && DB.localHasDesks(this._declLocalId)) {
+      const localId = this._declLocalId;
+      const desks = DB.getLocalDesks(localId);
       const _localGrps = DB.getLocalGroups(localId);
+      const grpHtml = _localGrps.length ? `<div class="hs-decl-grps" style="margin-top:.5rem">🔗 ${_localGrps.map(g => {
+        const ovf = DB.getGroupOverflowQueue(g.id);
+        return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
+      }).join('')}</div>` : '';
 
-      const cls = ['hs-decl-local',
-        isCurrent  ? 'hs-decl-active'   : '',
-        isOccupied ? 'hs-decl-occupied' : '',
-        _localGrps.length ? 'hs-decl-has-perm' : '',
-      ].filter(Boolean).join(' ');
+      cards.innerHTML = `<div class="hs-decl-desk-grid">${desks.map(deskId => {
+        const dLabel = DB.getDeskLabel(deskId);
+        const oKey = DB.getBureauAgentKey(localId);
+        const iAmHere = oKey === agentKey;
+        const isOccupied = oKey && oKey !== agentKey;
 
-      const lines = [];
-      // Indicateur "avec un bénéficiaire"
-      if (isBusy && (isCurrent || isOccupied))
-        lines.push(`<div class="hs-decl-busy">🔴 Avec un bénéficiaire</div>`);
+        let status;
+        if (iAmHere) status = '<div class="hs-decl-me">✅ Vous</div>';
+        else if (isOccupied) status = `<div class="hs-decl-occ">👤 ${escapeHtml(DB.getAgentDisplayName(oKey) || '?')}</div>`;
+        else status = '<div class="hs-decl-avail">Libre</div>';
 
-      if (isCurrent && occupantNames.length)
-        lines.push(`<div class="hs-decl-me">✅ Vous + ${escapeHtml(occupantNames.join(', '))}</div>`);
-      else if (isCurrent)
-        lines.push(`<div class="hs-decl-me">✅ Vous êtes ici</div>`);
-      else if (isOccupied)
-        lines.push(`<div class="hs-decl-occ">👤 ${escapeHtml(occupantNames.join(', '))}</div>`);
-      else
-        lines.push(`<div class="hs-decl-avail">Libre</div>`);
+        const cls = ['hs-decl-desk',
+          iAmHere ? 'hs-decl-active' : '',
+          isOccupied ? 'hs-decl-occupied' : '',
+        ].filter(Boolean).join(' ');
 
-      // Groupes de file d'attente
-      if (_localGrps.length) {
-        const grpBadges = _localGrps.map(g => {
-          const ovf = DB.getGroupOverflowQueue(g.id);
-          return `<span class="hs-decl-grp-badge">${escapeHtml(g.name)}${ovf > 0 ? ` <span class="hs-decl-grp-ovf">${ovf}</span>` : ''}</span>`;
-        }).join('');
-        lines.push(`<div class="hs-decl-grps">🔗 ${grpBadges}<span class="hs-decl-grp-legend">= personnes en attente</span></div>`);
-      }
+        return `<div class="${cls}" data-local-id="${localId}">
+          <span class="hs-decl-desk-name">${escapeHtml(dLabel)}</span>
+          ${status}
+        </div>`;
+      }).join('')}</div>${grpHtml}`;
+      return;
+    }
 
-      const isAdmin    = DB.hasPermission('kickFromLocal');
-      const kickTarget = !isBO && isOccupied && !isCurrent && isAdmin
-        ? DB.getBureauAgentKey(localId) : null;
-      const kickBtn = kickTarget
-        ? `<button class="hs-decl-kick-btn" data-kick-local="${localId}" data-kick-agent="${kickTarget}" title="Retirer l'agent de ce local">✕</button>`
-        : '';
-
-      return `<div class="${cls}" data-local-id="${localId}">
-        <div class="hs-decl-name-row">
-          <span class="hs-decl-name">${escapeHtml(label)}</span>
-          ${kickBtn}
-        </div>
-        ${lines.join('')}
-      </div>`;
-    }).join('') || '<div class="hs-decl-avail">Aucun bureau dans ce lieu.</div>';
+    // Sinon → message pour guider
+    cards.innerHTML = '<div class="hs-decl-hint">Sélectionnez un local ci-dessus.</div>';
   },
 
   _isBureauBusy(localId) {

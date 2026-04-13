@@ -333,9 +333,12 @@
       <h3 class="hs-card-title">📍 Me déclarer dans un bureau</h3>
       <div class="hs-decl-form" id="hsDeclForm">
         <div id="hsDeclCurrent"></div>
-        <select id="hsDeclLieuSelect"></select>
+        <div class="hs-decl-lieu-bar" id="hsDeclLieuBar"></div>
+        <div class="hs-decl-local-bar" id="hsDeclLocalBar"></div>
         <div class="hs-decl-cards" id="hsDeclCards"></div>
       </div>
+      <!-- Hidden select kept for compat with _renderDeclSelect -->
+      <select id="hsDeclLieuSelect" style="display:none"></select>
     </div>
 
     <!-- Permanences de service ouvertes -->
