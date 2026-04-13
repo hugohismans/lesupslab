@@ -1900,6 +1900,12 @@ body {
   border-color: #334155 !important; border-top-color: #475569 !important;
   opacity: .7;
 }
+.lv-grp-card.lv-grp-empty {
+  border-color: #7f1d1d !important; border-top-color: #ef4444 !important;
+  background: #1f0808; opacity: 1;
+}
+.lv-grp-card.lv-grp-empty .lv-grp-title { color: #fca5a5; }
+.lv-grp-card.lv-grp-empty .lv-grp-status { color: #f87171; }
 .lv-grp-card.lv-grp-closed .lv-grp-add:disabled {
   background: #1e293b; color: #64748b; cursor: not-allowed; border-color: #334155;
 }

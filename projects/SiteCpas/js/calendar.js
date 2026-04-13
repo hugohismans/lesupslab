@@ -967,7 +967,7 @@ const LIVE = {
     const groups = DB.getQueueGroups();
     const groupCards = Object.entries(groups).map(([grpId, grp]) => {
       const lids = (grp.localIds || []).map(Number);
-      if (!lids.length) return ''; // groupe sans locaux → masqué
+      if (!lids.length && !isAccueil) return ''; // groupe sans locaux → masqué sauf pour accueil
       const activeLids = lids.filter(l => DB.isBureauOpen(l));
       const hasOpen    = activeLids.length > 0;
       const occupied   = activeLids.filter(l =>
@@ -1055,7 +1055,8 @@ const LIVE = {
       const reprintBtn   = DB.getFeature('enableTicketPrint') && lastEmitted
         ? `<button class="lv-grp-reprint" data-grp="${grpId}" title="Réimprimer le dernier ticket émis">🖨 Réimprimer ${escapeHtml(lastEmitted.display)}</button>`
         : '';
-      return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}">
+      const isEmpty = !hasOpen && overflow === 0;
+      return `<div class="lv-card lv-grp-card${!hasOpen ? ' lv-grp-closed' : ''}${isEmpty ? ' lv-grp-empty' : ''}">
         <div class="lv-grp-title">🔗 ${grp.name}</div>
         <div class="lv-grp-status">${statusTxt}</div>
         ${dotsHtml}
