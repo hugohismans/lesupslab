@@ -1973,6 +1973,14 @@ const DB = {
   },
 
   // ── Disponibilités RDV ──────────────────────────────────────────
+  // Retourne les réservations "plage de rendez-vous" (isRdvSlot) pour un agent
+  getRdvSlotReservations(agentName) {
+    const all = this.getAll();
+    return Object.entries(all)
+      .filter(([, r]) => r.isRdvSlot && r.agent === agentName)
+      .map(([id, r]) => ({ id, ...r }));
+  },
+
   listenAvailabilitySlots(agentKey, cb) {
     this._ref(`appState/availabilitySlots/${agentKey}`).on('value', snap => {
       const slots = [];

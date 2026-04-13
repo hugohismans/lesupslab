@@ -672,7 +672,20 @@
 
     DB.listenAvailabilitySlots(targetAgentKey, slots => {
       _targetSlots = slots;
-      const expanded = _expandSlots(slots);
+      // Fusionner avec les plages RDV du calendrier (isRdvSlot)
+      const agentName = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
+      const calSlots = DB.getRdvSlotReservations(agentName).map(r => ({
+        id: r.id,
+        startDateTime: r.startDateTime,
+        endDateTime:   r.endDateTime,
+        label:         DB.getUnitLabel(parseInt(r.localId), r.deskId || null),
+        autoAccept:    true,
+        favoriteLocalId: parseInt(r.localId),
+        favoriteDeskId:  r.deskId || null,
+        _fromCalendar: true,
+      }));
+      const merged = [...slots, ...calSlots].sort((a, b) => (a.startDateTime || '').localeCompare(b.startDateTime || ''));
+      const expanded = _expandSlots(merged);
       _renderTargetSlots(expanded, targetAgentKey);
     });
   }
@@ -709,12 +722,17 @@
 
     el.querySelectorAll('input[name="rdvSlotChoice"]').forEach(radio => {
       radio.addEventListener('change', () => {
+        // Trouver le slot original pour récupérer favoriteLocalId/favoriteDeskId
+        const origSlot = future.find(s => (s._seriesSlotId || s.id) === radio.value) || {};
         _selectedSlot = {
           id:            radio.value,
           startDateTime: radio.dataset.start,
           endDateTime:   radio.dataset.end,
           selectedStart: null,
           selectedEnd:   null,
+          favoriteLocalId: origSlot.favoriteLocalId || null,
+          favoriteDeskId:  origSlot.favoriteDeskId || null,
+          _fromCalendar:   origSlot._fromCalendar || false,
         };
         _showTimePicker(radio.dataset.start, radio.dataset.end, radio.dataset.target);
       });
@@ -731,8 +749,10 @@
     if (_selectedSlot) { _selectedSlot.selectedStart = null; _selectedSlot.selectedEnd = null; }
 
     // Réservations existantes de l'agent cible (agenda global)
+    // Exclure les réservations "plage RDV" (isRdvSlot) — elles ne bloquent pas les sous-créneaux
     const agentName   = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
     const existingRes = DB.getInRange(slotStart, slotEnd).filter(r => {
+      if (r.isRdvSlot) return false; // la plage elle-même n'est pas un conflit
       const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
       return a === agentName;
     });
@@ -884,6 +904,7 @@
     const reqS = new Date(startDateTime).getTime();
     const reqE = new Date(endDateTime).getTime();
     const calConflict = DB.getInRange(startDateTime, endDateTime).some(r => {
+      if (r.isRdvSlot) return false; // les plages RDV ne bloquent pas les sous-créneaux
       const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
       if (a !== agentName) return false;
       const rS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
@@ -902,8 +923,14 @@
       return;
     }
 
-    // Lire les paramètres de l'agent cible pour savoir si auto-accept
-    const settings = await DB.getAvailabilitySettings(targetAgentKey);
+    // Lire les paramètres — prioriser les données du slot calendrier si disponible
+    const globalSettings = await DB.getAvailabilitySettings(targetAgentKey);
+    const settings = { ...globalSettings };
+    if (_selectedSlot?._fromCalendar) {
+      settings.autoAccept = true;
+      settings.favoriteLocalId = _selectedSlot.favoriteLocalId;
+      settings.favoriteDeskId  = _selectedSlot.favoriteDeskId;
+    }
     const isAuto   = !!settings.autoAccept;
 
     const requesterName = _agentName || _agentKey;
@@ -944,15 +971,19 @@
       const favLocalId = settings.favoriteLocalId ? String(settings.favoriteLocalId) : null;
       let localAvailable = false;
 
+      const favDeskId = settings.favoriteDeskId || null;
       if (favLocalId) {
-        // Vérifier disponibilité du local sur ce créneau
+        // Vérifier disponibilité du local/desk sur ce créneau
         const conflicts = DB.getInRange(startDateTime, endDateTime)
-          .filter(r => String(r.localId) === favLocalId && !DB.isLocalBackoffice(r.localId));
-        localAvailable = conflicts.length === 0;
+          .filter(r => !r.isRdvSlot && String(r.localId) === favLocalId);
+        localAvailable = favDeskId
+          ? !conflicts.some(r => DB.unitOccupies(r, parseInt(favLocalId), favDeskId))
+          : conflicts.length === 0;
       }
 
       if (favLocalId && localAvailable) {
         // Auto-accept avec local favori dispo
+        _pendingDeskId = favDeskId;
         const requestId = await DB.createAppointmentRequest({
           slotId, targetAgentKey,
           requesterAgentKey: _agentKey, requesterName, withPerson, message, secret: secret || null,

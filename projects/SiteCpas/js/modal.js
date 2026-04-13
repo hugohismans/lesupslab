@@ -1867,6 +1867,8 @@ const MODAL = {
       });
     }
 
+    const isRdvSlot = g('fIsRdvSlot').checked;
+
     const data = {
       localId,
       deskId: deskId || null,
@@ -1878,6 +1880,8 @@ const MODAL = {
       endDateTime:   isPerm ? null : endDT,
       invitedAgents: Object.keys(invitedAgents).length ? invitedAgents : null,
       agents: isBO && boAgents.length > 1 ? boAgents : null,
+      type: isRdvSlot ? 'rendez-vous' : null,
+      isRdvSlot: isRdvSlot || null,
       recurrence: {
         type:     isPerm ? 'none' : recType,
         interval: parseInt(g('fInterval').value) || 1,
@@ -2036,6 +2040,7 @@ const MODAL = {
     if (res.deskId && g('fDesk')) g('fDesk').value = res.deskId;
     g('fComment').value  = res.comment || '';
     g('fPermanent').checked = res.isPermanent;
+    g('fIsRdvSlot').checked = !!res.isRdvSlot;
 
     // Mode back-office : afficher la liste multi-agents
     const _isBO = res.localId && DB.isLocalBackoffice(res.localId);
@@ -2112,6 +2117,7 @@ const MODAL = {
     // Désélectionner tous les boutons service
     g('fServiceBtns').querySelectorAll('.fs-svc-btn').forEach(b => b.classList.remove('active'));
     g('fPermanent').checked = false;
+    g('fIsRdvSlot').checked = false;
     g('fDatesWrap').style.display = '';
     g('fRecType').value  = 'none';
     g('fRecEnd').value   = 'forever';
