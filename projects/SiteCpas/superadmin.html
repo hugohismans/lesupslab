@@ -511,6 +511,7 @@ async function loadOrgs() {
       <div class="sa-org-actions">
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleFlagsPanel('${orgId}')">⚙ Flags</button>
         <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleMetaPanel('${orgId}')">✏️ Infos</button>
+        <button class="sa-btn sa-btn-ghost sa-btn-sm" onclick="toggleIntegratorPanel('${orgId}')">🔧 Intégrateur</button>
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="resetPostTest('${orgId}', '${name}')">🔄 Reset accueil</button>
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeQueueDay('${orgId}', '${name}')">🗑 Purger tickets</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
@@ -532,6 +533,21 @@ async function loadOrgs() {
         <div id="meta-logo-preview-${orgId}" style="margin-top:.5rem"></div>
       </div>
       <button class="sa-btn sa-btn-success sa-btn-sm" onclick="saveMeta('${orgId}')">Enregistrer</button>
+    </div>
+    <div class="sa-org-flags-panel" id="integrator-${orgId}">
+      <div class="sa-org-flags-title">🔧 Rendez-vous intégrateur — ${orgId}</div>
+      <div class="sa-field">
+        <label>Bouton "Rendez-vous intégrateur" actif</label>
+        <select class="sa-input" id="int-enabled-${orgId}">
+          <option value="true" ${(data?.appConfig?.integratorRdvEnabled !== false) ? 'selected' : ''}>✅ Activé (visible dans les pages de bienvenue)</option>
+          <option value="false" ${(data?.appConfig?.integratorRdvEnabled === false) ? 'selected' : ''}>🔒 Désactivé</option>
+        </select>
+      </div>
+      <div class="sa-field">
+        <label>Clé agent de l'intégrateur <span style="color:#64748b;font-weight:400">(coller votre agentKey après première connexion)</span></label>
+        <input type="text" class="sa-input" id="int-key-${orgId}" value="${data?.appConfig?.integratorAgentKey || ''}" placeholder="ex : -NxAbcDef123…">
+      </div>
+      <button class="sa-btn sa-btn-success sa-btn-sm" onclick="saveIntegratorSettings('${orgId}')">Enregistrer</button>
     </div>`;
   }).join('');
 
@@ -547,12 +563,29 @@ async function loadOrgs() {
 function toggleFlagsPanel(orgId) {
   document.getElementById(`flags-${orgId}`).classList.toggle('open');
   document.getElementById(`meta-${orgId}`).classList.remove('open');
+  document.getElementById(`integrator-${orgId}`).classList.remove('open');
+}
+
+function toggleIntegratorPanel(orgId) {
+  document.getElementById(`integrator-${orgId}`).classList.toggle('open');
+  document.getElementById(`flags-${orgId}`).classList.remove('open');
+  document.getElementById(`meta-${orgId}`).classList.remove('open');
+}
+
+async function saveIntegratorSettings(orgId) {
+  const enabled = document.getElementById(`int-enabled-${orgId}`).value === 'true';
+  const key     = document.getElementById(`int-key-${orgId}`).value.trim();
+  await db.ref(`orgs/${orgId}/appConfig/integratorRdvEnabled`).set(enabled);
+  if (key) await db.ref(`orgs/${orgId}/appConfig/integratorAgentKey`).set(key);
+  else      await db.ref(`orgs/${orgId}/appConfig/integratorAgentKey`).remove();
+  alert(`✅ Paramètres intégrateur enregistrés pour "${orgId}".`);
 }
 
 function toggleMetaPanel(orgId) {
   const panel = document.getElementById(`meta-${orgId}`);
   panel.classList.toggle('open');
   document.getElementById(`flags-${orgId}`).classList.remove('open');
+  document.getElementById(`integrator-${orgId}`).classList.remove('open');
   // Aperçu logo
   if (panel.classList.contains('open')) {
     const logoUrl = document.getElementById(`meta-logo-${orgId}`).value;

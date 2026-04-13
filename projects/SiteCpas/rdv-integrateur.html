@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rendez-vous avec l'intégrateur — moncompagnon</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #fef2f2; color: #1e293b; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 2rem 1rem 4rem; }
+
+    .page { width: 100%; max-width: 520px; }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .hdr { text-align: center; margin-bottom: 2rem; }
+    .hdr-mascot { margin-bottom: 1rem; }
+    .hdr-mascot svg { filter: drop-shadow(0 4px 14px rgba(220,38,38,.35)); animation: float 3.5s ease-in-out infinite; }
+    .hdr-title { font-size: 1.5rem; font-weight: 800; color: #1e1b4b; }
+    .hdr-sub { font-size: .9rem; color: #64748b; margin-top: .3rem; }
+
+    @keyframes float { 0%,100%{transform:translateY(0)} 45%{transform:translateY(-7px)} }
+    .mc-pupil { animation: blink 5s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+    @keyframes blink { 0%,87%,100%{transform:scaleY(1)} 92%{transform:scaleY(.08)} }
+    .mc-t { transform-box:fill-box; transform-origin:top center; }
+    .mc-t1 { animation: sway 3.2s ease-in-out infinite 0s; }
+    .mc-t2 { animation: sway 3.2s ease-in-out infinite .18s; }
+    .mc-t3 { animation: sway 3.2s ease-in-out infinite .36s; }
+    .mc-t4 { animation: sway 3.2s ease-in-out infinite .18s; }
+    @keyframes sway { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(3.5deg)} }
+
+    /* ── Card ────────────────────────────────────────────────────── */
+    .card { background: #fff; border-radius: 18px; padding: 1.5rem; box-shadow: 0 2px 20px rgba(0,0,0,.08); margin-bottom: 1.25rem; }
+    .card-title { font-size: 1rem; font-weight: 700; color: #1e1b4b; margin-bottom: .75rem; display: flex; align-items: center; gap: .4rem; }
+
+    /* ── Agent badge ─────────────────────────────────────────────── */
+    .agent-badge { display: flex; align-items: center; gap: .75rem; background: #f5f3ff; border-radius: 12px; padding: .75rem 1rem; margin-bottom: 1.25rem; }
+    .agent-avatar { width: 38px; height: 38px; border-radius: 50%; background: #7c3aed; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; flex-shrink: 0; }
+    .agent-info { flex: 1; }
+    .agent-name { font-weight: 700; color: #1e1b4b; font-size: .95rem; }
+    .agent-role { font-size: .78rem; color: #64748b; }
+
+    /* ── Slots ───────────────────────────────────────────────────── */
+    .slots-list { display: flex; flex-direction: column; gap: .75rem; }
+    .slot-btn { display: flex; align-items: center; gap: 1rem; background: #fff; border: 2px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.25rem; cursor: pointer; text-align: left; width: 100%; font-family: inherit; transition: border-color .15s, background .15s, transform .1s; }
+    .slot-btn:hover { border-color: #ef4444; background: #fff5f5; transform: translateY(-1px); }
+    .slot-btn:active { transform: scale(.98); }
+    .slot-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .slot-date { font-weight: 700; color: #1e1b4b; font-size: .95rem; }
+    .slot-time { font-size: .85rem; color: #ef4444; font-weight: 600; margin-top: .1rem; }
+    .slot-label { font-size: .78rem; color: #94a3b8; margin-top: .1rem; }
+
+    .slots-empty { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+
+    /* ── States ──────────────────────────────────────────────────── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── Loading ─────────────────────────────────────────────────── */
+    .loading { text-align: center; padding: 3rem 1rem; color: #94a3b8; font-size: .9rem; }
+    .spinner { width: 36px; height: 36px; border: 3px solid #fecaca; border-top-color: #ef4444; border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Success ─────────────────────────────────────────────────── */
+    .success { text-align: center; padding: 1rem 0; }
+    .success-icon { font-size: 3.5rem; margin-bottom: 1rem; animation: pop .4s cubic-bezier(.36,1.5,.65,1); }
+    @keyframes pop { 0%{transform:scale(0)} 100%{transform:scale(1)} }
+    .success-title { font-size: 1.4rem; font-weight: 800; color: #15803d; margin-bottom: .5rem; }
+    .success-msg { font-size: .92rem; color: #475569; line-height: 1.6; }
+    .success-slot { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: .75rem 1rem; margin: 1rem 0; font-size: .88rem; color: #14532d; font-weight: 600; }
+
+    /* ── Disabled / Not logged in ────────────────────────────────── */
+    .info-screen { text-align: center; padding: 2rem 1rem; }
+    .info-screen .info-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+    .info-screen .info-title { font-size: 1.1rem; font-weight: 700; color: #1e1b4b; margin-bottom: .4rem; }
+    .info-screen .info-msg { font-size: .88rem; color: #64748b; line-height: 1.6; }
+    .back-link { display: inline-block; margin-top: 1.5rem; color: #7c3aed; font-size: .85rem; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div class="hdr-mascot">
+      <svg viewBox="0 0 100 118" width="80" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+        <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+        <circle cx="37" cy="52" r="9.5" fill="white"/><circle cx="63" cy="52" r="9.5" fill="white"/>
+        <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/><circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+        <circle cx="40" cy="51" r="2.2" fill="white"/><circle cx="66" cy="51" r="2.2" fill="white"/>
+        <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+        <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+        <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="hdr-title">Demander une visite de l'intégrateur</div>
+    <div class="hdr-sub">Choisissez un créneau — Hugo passera vous voir !</div>
+  </div>
+
+  <!-- Écran : chargement -->
+  <div class="screen active" id="screenLoading">
+    <div class="card">
+      <div class="loading">
+        <div class="spinner"></div>
+        Chargement des créneaux…
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran : désactivé -->
+  <div class="screen" id="screenDisabled">
+    <div class="card">
+      <div class="info-screen">
+        <div class="info-icon">🔒</div>
+        <div class="info-title">Service temporairement indisponible</div>
+        <div class="info-msg">Ce service de prise de rendez-vous avec l'intégrateur n'est plus actif.<br>Contactez votre administrateur si vous avez besoin d'aide.</div>
+        <a href="javascript:history.back()" class="back-link">← Retour</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran : non connecté -->
+  <div class="screen" id="screenNotLogged">
+    <div class="card">
+      <div class="info-screen">
+        <div class="info-icon">👤</div>
+        <div class="info-title">Connexion requise</div>
+        <div class="info-msg">Veuillez vous connecter à moncompagnon avant de prendre rendez-vous avec l'intégrateur.</div>
+        <a href="index.html" class="back-link">← Se connecter</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran : réservation -->
+  <div class="screen" id="screenBook">
+    <div class="card">
+      <div id="agentBadge" class="agent-badge">
+        <div class="agent-avatar" id="agentInitial">?</div>
+        <div class="agent-info">
+          <div class="agent-name" id="agentName">Chargement…</div>
+          <div class="agent-role">Votre rendez-vous sera enregistré à votre nom</div>
+        </div>
+      </div>
+      <div class="card-title">📅 Créneaux disponibles</div>
+      <div class="slots-list" id="slotsList">
+        <div class="slots-empty">Aucun créneau disponible pour le moment.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran : succès -->
+  <div class="screen" id="screenSuccess">
+    <div class="card">
+      <div class="success">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Bravo, c'est réservé !</div>
+        <div class="success-slot" id="successSlotInfo"></div>
+        <div class="success-msg">
+          L'intégrateur arrivera au créneau demandé.<br>
+          En attendant, continuez à explorer moncompagnon — vous pouvez déjà commencer à l'utiliser !
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ── Config ────────────────────────────────────────────────────────────
+const ORG_ID = 'cpas-quaregnon';
+const FIREBASE_CONFIG = {
+  apiKey:            'AIzaSyBV5plJl_9fbjhpumCNoj6BgVN3uqpWrOs',
+  authDomain:        'cpasquaregnon-70f59.firebaseapp.com',
+  databaseURL:       'https://cpasquaregnon-70f59-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId:         'cpasquaregnon-70f59',
+  storageBucket:     'cpasquaregnon-70f59.firebasestorage.app',
+  messagingSenderId: '1028628915813',
+  appId:             '1:1028628915813:web:dbca4db8ed5b511321c88c'
+};
+
+// ── Init Firebase ─────────────────────────────────────────────────────
+firebase.initializeApp(FIREBASE_CONFIG);
+const db = firebase.database();
+const ref = path => db.ref(`orgs/${ORG_ID}/${path}`);
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function fmtTime(iso) {
+  return iso.slice(11, 16).replace(':', 'h');
+}
+
+// ── Expansion des slots récurrents (même logique que rdv.js) ──────────
+function expandSlots(slots) {
+  const expanded = [];
+  const now = new Date();
+  const horizon = new Date(now);
+  horizon.setDate(horizon.getDate() + 60);
+
+  slots.forEach(slot => {
+    const rec = slot.recurrence;
+    if (!rec || rec.type === 'none') {
+      expanded.push({ ...slot, _occDate: slot.startDateTime.slice(0, 10) });
+      return;
+    }
+    const origStart = new Date(slot.startDateTime);
+    const origEnd   = new Date(slot.endDateTime);
+    const duration  = origEnd - origStart;
+    const endDate   = rec.endDate ? new Date(rec.endDate + 'T23:59') : horizon;
+    const exceptions = slot.exceptions || {};
+    let cursor = new Date(origStart);
+    if (cursor < now) {
+      while (cursor < now) {
+        if (rec.type === 'daily')       cursor.setDate(cursor.getDate() + 1);
+        else if (rec.type === 'weekly') cursor.setDate(cursor.getDate() + 7);
+        else break;
+      }
+    }
+    let safe = 0;
+    while (cursor <= endDate && cursor <= horizon && safe++ < 200) {
+      const occDate = cursor.toISOString().slice(0, 10);
+      if (!exceptions[occDate]) {
+        const s = new Date(cursor);
+        const e = new Date(cursor.getTime() + duration);
+        expanded.push({
+          ...slot,
+          startDateTime: s.toISOString().slice(0, 16),
+          endDateTime:   e.toISOString().slice(0, 16),
+          _occDate: occDate,
+          _seriesSlotId: slot.id,
+        });
+      }
+      if (rec.type === 'daily')       cursor.setDate(cursor.getDate() + 1);
+      else if (rec.type === 'weekly') cursor.setDate(cursor.getDate() + 7);
+      else break;
+    }
+  });
+
+  expanded.sort((a, b) => a.startDateTime.localeCompare(b.startDateTime));
+  return expanded;
+}
+
+// ── Render slots ──────────────────────────────────────────────────────
+function renderSlots(slots, integratorKey, agentKey, agentName) {
+  const el = document.getElementById('slotsList');
+  const now = new Date().toISOString().slice(0, 16);
+  const future = slots.filter(s => s.startDateTime > now);
+
+  if (!future.length) {
+    el.innerHTML = '<div class="slots-empty">Aucun créneau disponible pour le moment.<br>Réessayez plus tard ou contactez l\'intégrateur directement.</div>';
+    return;
+  }
+
+  el.innerHTML = future.map((slot, i) => `
+    <button class="slot-btn" data-idx="${i}">
+      <div class="slot-icon">🗓</div>
+      <div>
+        <div class="slot-date">${fmtDate(slot.startDateTime)}</div>
+        <div class="slot-time">${fmtTime(slot.startDateTime)} → ${fmtTime(slot.endDateTime)}</div>
+        ${slot.label ? `<div class="slot-label">${slot.label}</div>` : ''}
+      </div>
+    </button>
+  `).join('');
+
+  el.querySelectorAll('.slot-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx);
+      const slot = future[idx];
+      btn.disabled = true;
+      btn.style.opacity = '.5';
+
+      try {
+        const reqRef = db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push();
+        await reqRef.set({
+          slotId:            slot._seriesSlotId || slot.id,
+          targetAgentKey:    integratorKey,
+          requesterAgentKey: agentKey,
+          requesterName:     agentName,
+          withPerson:        agentName,
+          message:           'Demande via la page de bienvenue — visite intégrateur',
+          status:            'pending',
+          localId:           null,
+          createdAt:         Date.now(),
+          respondedAt:       null,
+        });
+
+        document.getElementById('successSlotInfo').textContent =
+          `📅 ${fmtDate(slot.startDateTime)} de ${fmtTime(slot.startDateTime)} à ${fmtTime(slot.endDateTime)}`;
+        showScreen('screenSuccess');
+      } catch(e) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        alert('Erreur lors de la réservation : ' + e.message);
+      }
+    });
+  });
+}
+
+// ── Main ──────────────────────────────────────────────────────────────
+async function main() {
+  // 1. Vérifier si le service est actif
+  const enabledSnap = await ref('appConfig/integratorRdvEnabled').once('value');
+  if (enabledSnap.val() === false) { showScreen('screenDisabled'); return; }
+
+  // 2. Vérifier si l'agent est connecté
+  const agentKey = sessionStorage.getItem('cpas_current_agent_key');
+  if (!agentKey) { showScreen('screenNotLogged'); return; }
+
+  // 3. Récupérer le nom de l'agent
+  const agentsSnap = await ref('appConfig/agents').once('value');
+  const agentsData = agentsSnap.val() || {};
+  const agentName = agentsData[agentKey] || agentKey;
+
+  // 4. Afficher le badge agent
+  document.getElementById('agentInitial').textContent = agentName.charAt(0).toUpperCase();
+  document.getElementById('agentName').textContent = agentName;
+
+  // 5. Récupérer la clé de l'intégrateur
+  const intKeySnap = await ref('appConfig/integratorAgentKey').once('value');
+  const integratorKey = intKeySnap.val();
+  if (!integratorKey) { showScreen('screenDisabled'); return; }
+
+  // 6. Charger les slots de l'intégrateur
+  const slotsSnap = await ref(`appState/availabilitySlots/${integratorKey}`).once('value');
+  const rawSlots = [];
+  slotsSnap.forEach(c => {
+    if (c.key !== '_settings') rawSlots.push({ id: c.key, ...c.val() });
+  });
+
+  const expanded = expandSlots(rawSlots);
+
+  showScreen('screenBook');
+  renderSlots(expanded, integratorKey, agentKey, agentName);
+}
+
+main().catch(e => {
+  console.error(e);
+  showScreen('screenDisabled');
+});
+</script>
+</body>
+</html>

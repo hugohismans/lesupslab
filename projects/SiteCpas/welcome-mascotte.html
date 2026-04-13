@@ -77,6 +77,13 @@
     .widget-chip { display: flex; align-items: center; gap: .3rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: .28rem .7rem; font-size: .8rem; color: #475569; }
     .widget-chip.hi { background: #ede9fe; border-color: #c4b5fd; color: #6d28d9; font-weight: 600; }
 
+    /* ── Bouton intégrateur ────────────────────────────────────────── */
+    .integrator-cta { background: linear-gradient(135deg,#fef2f2,#fff5f5); border: 2px solid #fecaca; border-radius: 14px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .integrator-cta-text { flex: 1; font-size: .86rem; color: #7f1d1d; line-height: 1.5; }
+    .integrator-cta-text strong { display: block; margin-bottom: .15rem; font-size: .9rem; color: #ef4444; }
+    .btn-integrator { display: inline-flex; align-items: center; gap: .35rem; background: #ef4444; color: #fff; border: none; border-radius: 10px; padding: .6rem 1rem; font-size: .84rem; font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .15s; font-family: inherit; }
+    .btn-integrator:hover { background: #dc2626; }
+
     @media print {
       .role-nav { display: none !important; }
       .role-content { display: block !important; page-break-before: always; max-width: 100%; padding: 1.5rem; }
@@ -959,6 +966,22 @@
     document.querySelectorAll('.role-tab').forEach(t => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.role-content').forEach(c => c.classList.toggle('active', c.id === 'role-' + role));
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ── Injecter le CTA intégrateur après chaque bulle Cori ────────────
+  const CTA_HTML = `
+    <div class="integrator-cta">
+      <div style="font-size:1.6rem">🙋</div>
+      <div class="integrator-cta-text">
+        <strong>Un intégrateur sera présent sur site</strong>
+        Lors du lancement, Hugo sera là pour répondre à tes questions et t'accompagner dans la prise en main.
+        Tu peux dès maintenant réserver un passage à ton poste.
+      </div>
+      <a href="rdv-integrateur.html" class="btn-integrator">📅 Prendre RDV</a>
+    </div>`;
+
+  document.querySelectorAll('.cori-wrap').forEach(wrap => {
+    wrap.insertAdjacentHTML('afterend', CTA_HTML);
   });
 </script>
 </body>
