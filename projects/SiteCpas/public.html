@@ -466,8 +466,34 @@ function render() {
       });
       occs.sort((a, b) => (a._start||0) - (b._start||0));
       if (!occs.length) return '';
-      const rows = occs.map(r => {
-        const svc  = r.service === 'Autre' ? r.serviceCustom : r.service;
+
+      // Dédupliquer : regrouper par (agent, localId, startTime) et fusionner les services
+      const occMap = new Map();
+      occs.forEach(r => {
+        const key = `${r.agent||''}|${r.localId}|${r._start?.getTime()}`;
+        if (!occMap.has(key)) {
+          occMap.set(key, { ...r, _svcs: r.services?.length ? [...r.services] : (r.service ? [r.service === 'Autre' ? (r.serviceCustom || 'Autre') : r.service] : []) });
+        } else {
+          const cur = occMap.get(key);
+          (r.services?.length ? r.services : (r.service ? [r.service] : [])).forEach(s => {
+            if (!cur._svcs.includes(s)) cur._svcs.push(s);
+          });
+        }
+      });
+
+      // Résoudre le nom de service : groupe de queue si possible
+      function resolveSvcLabel(svcs) {
+        if (!svcs.length) return '';
+        // Chercher un groupe de queue qui contient au moins un de ces services
+        const matchedGrp = Object.values(_config.queueGroups || {}).find(g =>
+          g.services?.length && svcs.some(s => g.services.map(x=>x.toLowerCase()).includes(s.toLowerCase()))
+        );
+        if (matchedGrp) return matchedGrp.name;
+        return svcs.join(' + ');
+      }
+
+      const rows = [...occMap.values()].map(r => {
+        const svcLabel = resolveSvcLabel(r._svcs);
         const agt  = r.agent   === 'Autre' ? r.agentCustom   : r.agent;
         const loc  = _config.publicLabels[r.localId] || _config.localLabels[r.localId] || `Local ${r.localId}`;
         const hm   = r._start.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' });
@@ -475,7 +501,7 @@ function render() {
         const active = r._start <= now;
         return `<div class="pub-perm-row${active ? ' pub-perm-now' : ''}">
           <span class="pub-perm-time">${hm}${hme ? `–${hme}` : ''}</span>
-          <span class="pub-perm-svc">${escapeHtml(svc || '')}</span>
+          <span class="pub-perm-svc">${escapeHtml(svcLabel)}</span>
           <span class="pub-perm-agt">${escapeHtml(getAgentPublicName(agt) || '')}</span>
           <span class="pub-perm-loc">📍 ${escapeHtml(loc)}</span>
         </div>`;
