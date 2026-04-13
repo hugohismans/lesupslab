@@ -50,6 +50,8 @@
     .screenshot-icon { font-size: 2.2rem; margin-bottom: .5rem; }
     .screenshot-label { font-weight: 700; color: #64748b; font-size: .92rem; }
     .screenshot-hint { font-size: .76rem; color: #94a3b8; margin-top: .35rem; }
+    .screenshot-real { display: block; width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; margin: 1.25rem 0; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+    .screenshot-real-caption { font-size: .75rem; color: #94a3b8; text-align: center; margin-top: -.75rem; margin-bottom: 1rem; }
 
     .steps { display: flex; flex-direction: column; gap: .85rem; margin: 1rem 0; }
     .step { display: flex; gap: 1rem; align-items: flex-start; }
@@ -94,18 +96,18 @@
 <!-- HEADER -->
 <div class="mc-header">
   <div class="mc-header-logo">
-    <svg viewBox="0 0 100 118" width="58" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 16px rgba(167,139,250,.7))">
-      <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-      <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-      <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-      <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <svg viewBox="0 0 100 95" width="58" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 16px rgba(229,62,62,.5))">
+      <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+      <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+      <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+      <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
     </svg>
     <div>
       <div class="mc-header-title">moncompagnon</div>
       <div class="mc-header-sub">CPAS de Quaregnon · Guide de bienvenue</div>
     </div>
   </div>
-  <div class="mc-version-badge">✨ Version Cori — Mascotte officielle</div>
+  <div class="mc-version-badge">❤️ Version Cori — Mascotte officielle</div>
 </div>
 
 <!-- ROLE NAV -->
@@ -131,15 +133,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Salut ! Je suis <strong>Cori</strong>, ton nouveau compagnon numérique au CPAS de Quaregnon. Je serai là tous les jours sur ton écran — enfin, sur ton écran, pas physiquement à côté de toi, faut pas exagérer.</p>
         <p>En tant qu'agent d'accueil, tu as un rôle central : tu accueilles, tu orientes, tu mets les bénéficiaires dans la bonne file. Et pour ça, je ne te demande de maîtriser que <strong>deux choses</strong> : ton écran d'accueil, et la vue DIRECT. C'est tout. Promis.</p>
@@ -151,22 +153,26 @@
   <div class="section">
     <div class="section-title">🏠 Ton écran d'accueil — ta base de départ</div>
     <div class="section-text">
-      <p>Chaque matin, après ta connexion, tu arrives ici. C'est <strong>ta page personnelle</strong>. D'un coup d'œil, tu vois les infos qui t'intéressent : combien de personnes sont en attente en ce moment, qui est présent dans les bureaux, et les dernières notifications.</p>
-      <p>Cet écran est fait de <strong>widgets</strong> — de petites cartes d'information que tu peux garder, cacher, ou déplacer selon tes préférences. Pour toi, les plus utiles sont les stats de file d'attente, le tableau "Qui est où", et les permanences de service ouvertes.</p>
+      <p>Chaque matin, après ta connexion, tu arrives ici. C'est <strong>ta page personnelle</strong>. En haut, la mascotte de l'application t'accueille avec un petit message du jour — et propose quelques raccourcis rapides (Astuce, Focus, Au revoir…). En dessous, une bannière verte t'indique dans quel bureau tu es déclaré·e en ce moment.</p>
+      <p>Et juste en dessous ? Tes widgets. Ce sont de petites cartes d'information en temps réel : le tableau <strong>"Qui est où"</strong> (qui est présent et dans quel bureau), les <strong>Stats du jour</strong> (bureaux ouverts, bénéficiaires en attente, dernier ticket appelé), et les dernières notifications.</p>
+      <p>Tout se met à jour automatiquement — tu n'as rien à faire. Et si tu veux changer l'agencement, le bouton <strong>✏️ Personnaliser</strong> est là pour ça.</p>
     </div>
     <div class="widget-list">
-      <div class="widget-chip hi">📊 Stats du jour</div>
       <div class="widget-chip hi">🗺 Qui est où</div>
-      <div class="widget-chip hi">🔗 Permanences ouvertes</div>
+      <div class="widget-chip hi">📊 Stats du jour</div>
+      <div class="widget-chip hi">🔔 Dernières notifications</div>
+      <div class="widget-chip">🔗 Permanences ouvertes</div>
       <div class="widget-chip">⏱ Temps d'attente moyen</div>
-      <div class="widget-chip">🔔 Notifications</div>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/accueil-home.png" alt="Écran d'accueil — Agent d'accueil" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
-      <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Accueil)</div>
-      <div class="screenshot-hint">Affiche les stats du jour, le tableau des présences, et les files actives</div>
+      <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Agent d'accueil)</div>
+      <div class="screenshot-hint">→ Sauvegarder dans screenshots/accueil-home.png</div>
     </div>
-    <div class="tip"><strong>Astuce Cori</strong> Tu peux personnaliser cet écran : clique sur le crayon ✏️ en haut à droite pour afficher, masquer ou réorganiser les widgets. Chaque agent a son propre agencement.</div>
+    <div class="screenshot-real-caption">Écran d'accueil · Vue Agent d'accueil</div>
+    <div class="tip"><strong>Astuce Cori</strong> Tu peux personnaliser cet écran : clique sur le bouton ✏️ Personnaliser (en haut à droite) pour afficher, masquer ou réorganiser les widgets. Chaque agent a son propre agencement.</div>
   </div>
 
   <div class="section">
@@ -176,11 +182,14 @@
       <p>Là, tu vois en temps réel l'état de chaque bureau : <strong>vert = libre</strong>, <strong>orange = occupé</strong>, <strong>gris = fermé</strong>. Plus besoin de téléphoner pour savoir si l'assistante sociale est disponible — tu le vois directement ici !</p>
       <p>Si le CPAS a plusieurs sites, tu peux filtrer par lieu grâce au menu déroulant en haut à droite. La vue se recentre automatiquement sur le lieu choisi.</p>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/accueil-direct.png" alt="Vue DIRECT — Agent d'accueil" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Vue DIRECT (tous les bureaux)</div>
-      <div class="screenshot-hint">Chaque bureau affiche son état en temps réel, avec les files d'attente actives</div>
+      <div class="screenshot-hint">→ Sauvegarder dans screenshots/accueil-direct.png</div>
     </div>
+    <div class="screenshot-real-caption">Vue DIRECT · État des bureaux en temps réel</div>
   </div>
 
   <div class="section">
@@ -211,11 +220,14 @@
         </div>
       </div>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/accueil-queue.png" alt="Carte file d'attente — Vue DIRECT" class="screenshot-real" style="max-width:320px;margin-left:auto;margin-right:auto;"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
-      <div class="screenshot-label">Capture d'écran — Bouton "Ajouter à la file" dans la vue DIRECT</div>
-      <div class="screenshot-hint">Le bouton + se trouve dans la carte de chaque file de service</div>
+      <div class="screenshot-label">Capture d'écran — Carte file d'attente dans la vue DIRECT</div>
+      <div class="screenshot-hint">→ Sauvegarder dans screenshots/accueil-queue.png</div>
     </div>
+    <div class="screenshot-real-caption">Carte de service · tickets EN ATTENTE + bouton "+ Envoyer un bénéficiaire"</div>
     <div class="highlight">
       <strong>Et ensuite ?</strong>
       Dans quelques minutes, un travailleur social appellera son numéro depuis son bureau. Le bénéficiaire entendra son numéro et se lèvera. Tu n'as plus rien à faire — le système gère tout automatiquement.
@@ -244,15 +256,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Salut ! Moi c'est Cori. Je sais que ton emploi du temps est chargé et que la dernière chose dont tu as besoin, c'est d'un nouvel outil compliqué. Bonne nouvelle : je t'ai préparé quelque chose de vraiment simple.</p>
         <p>Pour toi, il y a <strong>quatre gestes à connaître</strong> : te déclarer dans ton bureau, rejoindre ta file d'attente, appeler ton prochain bénéficiaire, et partir en mission. C'est littéralement tout ce que tu dois maîtriser. Je me charge du reste.</p>
@@ -357,15 +369,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Salut ! Je suis Cori, et toi et moi, on va beaucoup travailler ensemble. En tant qu'admin, tu es la cheville ouvrière de l'organisation : c'est toi qui réserves les locaux, qui enregistres les absences, qui t'assures que le planning tient la route.</p>
         <p>Pour ça, ton outil principal c'est le <strong>calendrier</strong>. Il te donne une vue complète de toutes les réservations de tous les locaux, pour tous les agents. Tu peux créer, modifier ou annuler une réservation en quelques clics. Et quand quelqu'un est absent, tu l'enregistres une fois — tout le reste se met à jour automatiquement.</p>
@@ -440,15 +452,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Bonjour ! Je suis Cori. Mon objectif pour toi est simple : tu dois pouvoir savoir en temps réel ce qui se passe dans le CPAS, sans avoir à envoyer d'e-mails ni à demander à quiconque.</p>
         <p>Ton écran d'accueil est ton <strong>tableau de bord de direction</strong> : qui est présent, combien de personnes attendent, quel service est sous pression en ce moment. Et la vue DIRECT te donne une photographie complète et instantanée de tous les sites. En lecture, sans manipulation requise.</p>
@@ -511,15 +523,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Salut ! Je suis Cori. En tant que chef de service, tu jonglles entre ta propre pratique et la supervision de ton équipe. Je suis là pour que la partie organisationnelle te prenne le moins de temps possible.</p>
         <p>Tu as accès à tout ce dont tu as besoin : le planning de ton équipe, les présences en temps réel, les réservations de bureaux. Et comme tous tes collègues, tu peux toi aussi te déclarer présent, ouvrir ta propre permanence et gérer ta file si tu vois toi-même des bénéficiaires.</p>
@@ -572,15 +584,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Salut ! Moi c'est Cori. En tant que technicien·ne, tu passes ta journée à bouger entre les bureaux, les sites, et parfois l'extérieur. Pas de souci — j'ai exactement ce qu'il faut pour ça.</p>
         <p>Mon outil star pour toi, c'est le <strong>widget Mission</strong>. En deux clics, tu signales à tout le monde où tu te trouves et ce que tu fais. Plus de "t'as vu le technicien ?" dans les couloirs. Et quand tu es au bureau, tu peux te déclarer présent pour que tes collègues sachent te trouver.</p>
@@ -654,15 +666,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Salut ! Je m'appelle Cori. Pour que les bureaux soient toujours impeccables au bon moment, tu as besoin de savoir ce qui s'y passe : qui les réserve, quand, pour combien de temps.</p>
         <p>C'est exactement ce que je te montre. Le calendrier te donne une vue des réservations de tous les locaux — tu sais ainsi quelles salles préparer, quand, et lesquelles sont libres pour un nettoyage plus approfondi.</p>
@@ -716,15 +728,15 @@
 
   <div class="cori-wrap">
     <div class="cori-avatar">
-      <svg viewBox="0 0 100 118" width="70" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="50" cy="55" rx="38" ry="42" fill="#7c3aed"/>
-        <circle cx="38" cy="46" r="6" fill="#fff"/><circle cx="62" cy="46" r="6" fill="#fff"/>
-        <circle cx="40" cy="47" r="3" fill="#1e1b4b"/><circle cx="64" cy="47" r="3" fill="#1e1b4b"/>
-        <path d="M 38 65 Q 50 75 62 65" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <svg viewBox="0 0 100 95" width="70" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 88 C18 68 4 52 4 36 C4 20 14 9 29 9 C37 9 44 13 50 20 C56 13 63 9 71 9 C86 9 96 20 96 36 C96 52 82 68 50 88Z" fill="#e53e3e"/>
+        <circle cx="37" cy="40" r="6" fill="#fff"/><circle cx="63" cy="40" r="6" fill="#fff"/>
+        <circle cx="38.5" cy="41.5" r="3.2" fill="#1a1a2e"/><circle cx="64.5" cy="41.5" r="3.2" fill="#1a1a2e"/>
+        <path d="M 39 57 Q 50 65 61 57" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
       </svg>
     </div>
     <div class="cori-right">
-      <div class="cori-name-tag">Cori te parle 💜</div>
+      <div class="cori-name-tag">Cori te parle ❤️</div>
       <div class="cori-bubble">
         <p>Bonjour ! Je suis Cori. En tant que juriste, tu alternes entre les permanences de consultation et les rendez-vous planifiés. Mon rôle est de t'éviter toute friction administrative autour de ton agenda.</p>
         <p>Ton outil principal, c'est la combinaison <strong>calendrier + rendez-vous</strong>. Tu définis tes plages de disponibilité, les demandes arrivent directement dans tes notifications, tu acceptes en un clic. Et pendant tes permanences, la vue DIRECT te montre qui t'attend.</p>
