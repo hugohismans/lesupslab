@@ -42,6 +42,8 @@
     .screenshot-icon { font-size: 2rem; margin-bottom: .5rem; }
     .screenshot-label { font-weight: 700; color: #64748b; font-size: .9rem; }
     .screenshot-hint { font-size: .76rem; color: #94a3b8; margin-top: .35rem; }
+    .screenshot-real { display: block; width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; margin: 1.25rem 0; box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+    .screenshot-real-caption { font-size: .75rem; color: #94a3b8; text-align: center; margin-top: -.75rem; margin-bottom: 1rem; }
 
     .steps { display: flex; flex-direction: column; gap: .8rem; margin: 1rem 0; }
     .step { display: flex; gap: 1rem; align-items: flex-start; }
@@ -126,11 +128,14 @@
       <div class="widget-chip">⏱ Temps d'attente moyen</div>
       <div class="widget-chip">🔔 Notifications</div>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/accueil-home.png" alt="Écran d'accueil — Agent d'accueil" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Agent d'accueil)</div>
-      <div class="screenshot-hint">Stats du jour, tableau des présences, permanences actives</div>
+      <div class="screenshot-hint">→ screenshots/accueil-home.png</div>
     </div>
+    <div class="screenshot-real-caption">Écran d'accueil · Vue Agent d'accueil</div>
   </div>
 
   <div class="section">
@@ -139,11 +144,14 @@
       <p>La vue DIRECT est l'écran que vous maintiendrez ouvert en permanence pendant votre service. Elle présente l'état de chaque bureau en temps réel : <strong>vert = libre</strong>, <strong>orange = occupé</strong>, <strong>gris = fermé</strong>.</p>
       <p>Si le CPAS dispose de plusieurs sites, un menu déroulant vous permet de filtrer la vue par lieu. Les files d'attente actives s'affichent sous la carte de chaque service.</p>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/accueil-direct.png" alt="Vue DIRECT — Agent d'accueil" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Vue DIRECT (tous les bureaux)</div>
-      <div class="screenshot-hint">État en temps réel de chaque bureau, avec les files d'attente actives</div>
+      <div class="screenshot-hint">→ screenshots/accueil-direct.png</div>
     </div>
+    <div class="screenshot-real-caption">Vue DIRECT · État des bureaux en temps réel</div>
   </div>
 
   <div class="section">
@@ -171,11 +179,14 @@
         </div>
       </div>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/accueil-queue.png" alt="Carte file d'attente" class="screenshot-real" style="max-width:320px;margin-left:auto;margin-right:auto;"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Ajout à la file dans la vue DIRECT</div>
-      <div class="screenshot-hint">Bouton d'ajout dans la carte de la file de service</div>
+      <div class="screenshot-hint">→ screenshots/accueil-queue.png</div>
     </div>
+    <div class="screenshot-real-caption">Carte de service · Tickets en attente + bouton d'ajout</div>
     <div class="info-box blue"><strong>Cas particulier</strong> Si un bénéficiaire demande à rencontrer un agent spécifique, utilisez la fonction <span class="btn-s blue">📌 Envoyer vers un agent</span>. L'agent reçoit une notification et peut accepter ou proposer un délai.</div>
   </div>
 
@@ -211,11 +222,14 @@
       <div class="widget-chip">✅ Rappels du jour</div>
       <div class="widget-chip">🔔 Notifications</div>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/social-home.png" alt="Écran d'accueil — Assistant·e social·e" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Écran d'accueil (vue Assistant·e social·e)</div>
-      <div class="screenshot-hint">Agenda, prochaines permanences, widget Mission</div>
+      <div class="screenshot-hint">→ screenshots/social-home.png</div>
     </div>
+    <div class="screenshot-real-caption">Écran d'accueil · Vue Assistant·e social·e</div>
   </div>
 
   <div class="section">
@@ -223,11 +237,14 @@
     <div class="section-text">
       <p>Lors de vos permanences, la vue DIRECT vous montre l'état de votre file d'attente. Sélectionnez votre lieu dans le menu déroulant en haut pour concentrer la vue sur votre bureau.</p>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/social-direct.png" alt="Vue DIRECT — local de permanence" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Vue DIRECT (votre bureau et votre file d'attente)</div>
-      <div class="screenshot-hint">File d'attente active, bouton "Appeler le suivant" visible</div>
+      <div class="screenshot-hint">→ screenshots/social-direct.png</div>
     </div>
+    <div class="screenshot-real-caption">Vue DIRECT · Filtrée sur votre local de permanence</div>
   </div>
 
   <div class="section">
@@ -262,11 +279,14 @@
         </div>
       </div>
     </div>
-    <div class="screenshot">
+    <img src="screenshots/social-mission.png" alt="Widget Mission" class="screenshot-real"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="screenshot" style="display:none">
       <div class="screenshot-icon">📸</div>
       <div class="screenshot-label">Capture d'écran — Widget Mission (déplacement en cours)</div>
-      <div class="screenshot-hint">Statut "En mission" visible par tous les collègues, avec commentaire</div>
+      <div class="screenshot-hint">→ screenshots/social-mission.png</div>
     </div>
+    <div class="screenshot-real-caption">Widget Mission · Statut visible par tous les collègues</div>
     <div class="info-box green"><strong>Rendez-vous planifiés</strong> La page Rendez-vous vous permet de définir vos plages de disponibilité. Les demandes de rendez-vous de collègues arrivent dans vos notifications — vous les acceptez ou refusez en un clic.</div>
   </div>
 
