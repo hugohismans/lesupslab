@@ -3919,6 +3919,50 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 }
 .hs-mission-return-btn:hover { background: #16a34a; }
 .hs-mission-return-btn:disabled { opacity: .6; cursor: default; }
+/* ── Notes rapides ───────────────────────────────────────────────── */
+.hs-notes-body { display: flex; flex-direction: column; gap: .5rem; }
+.hs-notes-ta {
+  width: 100%; min-height: 120px; resize: vertical;
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: .6rem .75rem;
+  font-size: .88rem; font-family: inherit; color: #1e293b; line-height: 1.55;
+  outline: none; transition: border-color .15s; box-sizing: border-box;
+}
+.hs-notes-ta:focus { border-color: #6366f1; }
+.hs-notes-hint { font-size: .72rem; color: #94a3b8; text-align: right; }
+
+/* ── Rappels du jour ─────────────────────────────────────────────── */
+.hs-rem-body { display: flex; flex-direction: column; gap: .5rem; }
+.hs-rem-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.hs-rem-item {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem .4rem; border-radius: 7px; transition: background .1s;
+}
+.hs-rem-item:hover { background: #f8fafc; }
+.hs-rem-done .hs-rem-text { text-decoration: line-through; color: #94a3b8; }
+.hs-rem-cb { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; accent-color: #6366f1; }
+.hs-rem-text { flex: 1; font-size: .88rem; color: #334155; }
+.hs-rem-del {
+  background: none; border: none; color: #cbd5e1; cursor: pointer;
+  font-size: .75rem; padding: .1rem .3rem; border-radius: 4px; opacity: 0;
+  transition: opacity .1s, color .1s;
+}
+.hs-rem-item:hover .hs-rem-del { opacity: 1; }
+.hs-rem-del:hover { color: #ef4444; }
+.hs-rem-form { display: flex; gap: .4rem; margin-top: .25rem; }
+.hs-rem-input {
+  flex: 1; border: 1px solid #e2e8f0; border-radius: 8px;
+  padding: .4rem .65rem; font-size: .88rem; outline: none; color: #1e293b;
+  transition: border-color .15s;
+}
+.hs-rem-input:focus { border-color: #6366f1; }
+.hs-rem-add {
+  padding: .4rem .85rem; border-radius: 8px; border: none;
+  background: #6366f1; color: #fff; font-size: 1rem; font-weight: 700;
+  cursor: pointer; transition: background .15s;
+}
+.hs-rem-add:hover { background: #4f46e5; }
+.hs-rem-hint { font-size: .72rem; color: #94a3b8; text-align: right; }
+
 .hs-widget-weather,
 .hs-widget-stats,
 .hs-widget-notifs {

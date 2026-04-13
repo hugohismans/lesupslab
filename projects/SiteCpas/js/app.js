@@ -1942,6 +1942,8 @@ const WIDGETS = [
   { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week',      width: 'full' },
   { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts', width: 'full' },
   { id: 'mission',   label: '🚗 Partir en mission',               selector: '.hs-widget-mission',   width: 'full' },
+  { id: 'notes',     label: '📝 Notes rapides',                  selector: '.hs-widget-notes',     width: 'half' },
+  { id: 'reminders', label: '✅ Rappels du jour',                 selector: '.hs-widget-reminders', width: 'half' },
 ];
 
 // ── Définition des raccourcis disponibles ───────────────────────────
@@ -2223,6 +2225,67 @@ function _renderMissionWidget(agentKey) {
   }
 }
 
+// ── Widget Notes rapides ─────────────────────────────────────────────
+function _renderNotesWidget(agentKey) {
+  const el = document.getElementById('hsNotes');
+  if (!el || !agentKey) return;
+  const key  = `cpas_notes_${agentKey}`;
+  const saved = localStorage.getItem(key) || '';
+  el.innerHTML = `<textarea class="hs-notes-ta" id="hsNotesTa" placeholder="Écris tes notes ici…" spellcheck="false">${escapeHtml(saved)}</textarea>
+    <div class="hs-notes-hint">Sauvegarde automatique</div>`;
+  let _notesTimer;
+  document.getElementById('hsNotesTa')?.addEventListener('input', e => {
+    clearTimeout(_notesTimer);
+    _notesTimer = setTimeout(() => localStorage.setItem(key, e.target.value), 600);
+  });
+}
+
+// ── Widget Rappels du jour ───────────────────────────────────────────
+function _renderRemindersWidget(agentKey) {
+  const el = document.getElementById('hsReminders');
+  if (!el || !agentKey) return;
+  const today   = new Date().toISOString().slice(0, 10);
+  const key     = `cpas_reminders_${agentKey}_${today}`;
+  const getList = () => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } };
+  const saveList = list => localStorage.setItem(key, JSON.stringify(list));
+
+  const render = () => {
+    const list = getList();
+    el.innerHTML = `
+      <ul class="hs-rem-list">${list.map((item, i) => `
+        <li class="hs-rem-item${item.done ? ' hs-rem-done' : ''}">
+          <input type="checkbox" class="hs-rem-cb" data-i="${i}" ${item.done ? 'checked' : ''}>
+          <span class="hs-rem-text">${escapeHtml(item.text)}</span>
+          <button class="hs-rem-del" data-i="${i}" title="Supprimer">✕</button>
+        </li>`).join('')}
+      </ul>
+      <form class="hs-rem-form" id="hsRemForm">
+        <input class="hs-rem-input" id="hsRemInput" type="text" placeholder="Ajouter un rappel…" maxlength="80">
+        <button class="hs-rem-add" type="submit">+</button>
+      </form>
+      ${list.length ? `<div class="hs-rem-hint">${list.filter(r => r.done).length}/${list.length} fait${list.filter(r=>r.done).length > 1 ? 's' : ''} · Remis à zéro demain</div>` : ''}`;
+
+    el.querySelectorAll('.hs-rem-cb').forEach(cb => cb.addEventListener('change', () => {
+      const i = parseInt(cb.dataset.i);
+      const l = getList(); l[i].done = cb.checked; saveList(l); render();
+    }));
+    el.querySelectorAll('.hs-rem-del').forEach(btn => btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i);
+      const l = getList(); l.splice(i, 1); saveList(l); render();
+    }));
+    document.getElementById('hsRemForm')?.addEventListener('submit', e => {
+      e.preventDefault();
+      const inp = document.getElementById('hsRemInput');
+      const txt = inp?.value.trim();
+      if (!txt) return;
+      const l = getList(); l.push({ text: txt, done: false }); saveList(l);
+      render();
+      document.getElementById('hsRemInput')?.focus();
+    });
+  };
+  render();
+}
+
 function _renderExtraWidgets() {
   const agentKey = sessionStorage.getItem('cpas_current_agent_key');
   [
@@ -2233,6 +2296,8 @@ function _renderExtraWidgets() {
     [_renderWeekWidget,      []],
     [_renderShortcutsWidget, [agentKey]],
     [_renderMissionWidget,   [agentKey]],
+    [_renderNotesWidget,     [agentKey]],
+    [_renderRemindersWidget, [agentKey]],
   ].forEach(([fn, args]) => { try { fn(...args); } catch(e) { console.warn('[widget]', fn.name, e); } });
 }
 
