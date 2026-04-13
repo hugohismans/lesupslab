@@ -1409,6 +1409,13 @@ const MODAL = {
 
     if (opts.local) g('fLocal').value = opts.local;
 
+    // Pré-remplir avec l'agent connecté
+    const _connectedAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+    if (_connectedAgentName && g('fAgent')) {
+      const opt = [...g('fAgent').options].find(o => o.value === _connectedAgentName);
+      if (opt) g('fAgent').value = _connectedAgentName;
+    }
+
     const today = isoDate(new Date());
     g('fDateStart').value = opts.date || today;
     g('fDateEnd').value   = opts.date || today;

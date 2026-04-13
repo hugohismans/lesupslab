@@ -702,7 +702,10 @@ const LIVE = {
     const q = this._agentQuery.toLowerCase().trim();
 
     if (q) {
-      this._renderSearchMode(now, occs, q);
+      const dayS7 = new Date(now); dayS7.setHours(0, 0, 0, 0);
+      const dayE7 = new Date(now); dayE7.setDate(dayE7.getDate() + 7); dayE7.setHours(23, 59, 59, 999);
+      const searchOccs = DB.getInRange(dayS7, dayE7);
+      this._renderSearchMode(now, searchOccs, q);
     } else {
       this._renderGridMode(now, occs);
     }
@@ -1962,13 +1965,20 @@ const LIVE = {
       const startH = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
       const endH   = r._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
       const isCurrent = r._start <= now && r._end > now;
+      const todayStr  = now.toISOString().slice(0, 10);
+      const startStr  = r._start.toISOString().slice(0, 10);
+      const isToday   = startStr === todayStr;
+      const dayNames  = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+      const dateLabel = !isToday
+        ? `${dayNames[r._start.getDay()]} ${r._start.getDate()}/${r._start.getMonth() + 1} · `
+        : '';
       return `<div class="lv-agent-row ${isCurrent ? 'lv-ar-now' : 'lv-ar-future'}" style="${cardColor ? `border-left:4px solid ${cardColor}` : ''}">
         <div class="lv-ar-dot">${isCurrent ? '🟢' : '🕐'}</div>
         <div class="lv-ar-info">
           <div class="lv-ar-loc">${escapeHtml(loc)}</div>
           <div class="lv-ar-svc">${escapeHtml(svc)}</div>
           <div class="lv-ar-agt" style="${roleColor ? `color:${roleColor}` : ''}">${fmtAgent(agt)}</div>
-          <div class="lv-ar-time">${startH} – ${endH}</div>
+          <div class="lv-ar-time">${dateLabel}${startH} – ${endH}</div>
         </div>
       </div>`;
     };
@@ -2047,7 +2057,7 @@ const LIVE = {
       g('liveAgentResult').innerHTML = `
         <div class="lv-agent-empty">
           <div class="lv-ae-icon">🔍</div>
-          <div class="lv-ae-msg">Rien trouvé pour <strong>"${escapeHtml(q)}"</strong> aujourd'hui.</div>
+          <div class="lv-ae-msg">Rien trouvé pour <strong>"${escapeHtml(q)}"</strong> cette semaine.</div>
         </div>`;
       return;
     }
@@ -2056,7 +2066,7 @@ const LIVE = {
     const statusBadge = isPresent
       ? `<span class="lv-badge lv-badge-present">✅ Présent</span>`
       : all.length
-        ? `<span class="lv-badge lv-badge-later">🕐 Prévu plus tard</span>`
+        ? `<span class="lv-badge lv-badge-later">🕐 Plus tard cette semaine</span>`
         : '';
 
     let titleHtml;
