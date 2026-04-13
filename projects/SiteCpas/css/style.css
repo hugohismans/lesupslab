@@ -793,26 +793,44 @@ body {
 
 /* ── Colonne "Mon agenda" ──────────────────────────────────────── */
 .my-agenda-hd {
-  width: 180px;
+  width: 190px;
   background: #1e3a5f;
-  color: #e0f0ff !important;
-  border-right: 3px solid #2563eb;
+  color: #fff !important;
+  border-right: 4px solid #2563eb;
   white-space: nowrap;
-  box-shadow: 3px 0 10px rgba(37,99,235,.15);
+  box-shadow: 4px 0 12px rgba(37,99,235,.2);
+  font-size: .85rem !important;
+  letter-spacing: .04em;
 }
 .my-agenda-cell {
-  width: 180px;
-  background: #f0f6ff;
-  border-right: 3px solid #bfdbfe;
-  box-shadow: 3px 0 8px rgba(37,99,235,.07);
+  width: 190px;
+  background: #f8fafc;
+  border-right: 4px solid #2563eb;
+  box-shadow: 4px 0 12px rgba(37,99,235,.1);
 }
 .my-agenda-cell.is-booked {
-  background: #dbeafe !important;
+  background: #1e3a5f0d !important;
+  border-left: 4px solid #2563eb;
+}
+.my-agenda-cell.is-booked .ct {
+  color: #0f172a !important;
+}
+.my-agenda-cell.is-booked .ct b {
+  color: #1e3a5f;
+  font-size: .88rem;
+}
+.my-agenda-cell.is-booked .ct small {
+  color: #334155;
+}
+.my-agenda-cell.is-booked .ct .ct-time {
+  color: #2563eb;
+  font-weight: 700;
 }
 .my-agenda-free {
   background: repeating-linear-gradient(
-    135deg, #eef4ff 0px, #eef4ff 5px, #e0ecff 5px, #e0ecff 10px
+    135deg, #f8fafc 0px, #f8fafc 6px, #f1f5f9 6px, #f1f5f9 12px
   ) !important;
+  border-right: 4px solid #2563eb;
 }
 .loc-hd {
   text-align: center; padding: .5rem .2rem;
