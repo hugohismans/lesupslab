@@ -189,6 +189,35 @@
     </div>
   </div>
 
+  <!-- Carte démo bouton panique — visible pré-prod si rôle panic -->
+  <div id="hsPanicDemoCard" style="display:none;background:#fff3cd;border:2px dashed #f59e0b;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-size:.95rem;font-weight:800;color:#92400e;margin-bottom:.2rem;">🧪 Tester le bouton panique</div>
+        <div style="font-size:.82rem;color:#78350f;line-height:1.5;">
+          Envoie une <strong>alerte de démonstration</strong> à tous les agents connectés pour qu'ils voient à quoi ressemble une vraie alerte.
+        </div>
+      </div>
+      <button id="panicDemoBtn" style="background:#f59e0b;color:#fff;border:none;border-radius:10px;padding:.65rem 1.2rem;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap;font-family:inherit;">🚨 Lancer la démo</button>
+    </div>
+  </div>
+
+  <!-- Overlay confirmation démo panic -->
+  <div class="overlay hidden" id="panicDemoOverlay" style="z-index:9998;background:rgba(120,85,0,.8)">
+    <div class="modal" style="border:3px solid #f59e0b;max-width:480px;text-align:center">
+      <div style="font-size:3rem;line-height:1;margin-bottom:.5rem">🧪</div>
+      <h2 style="font-size:1.25rem;color:#92400e;margin-bottom:.75rem">DÉMONSTRATION — Bouton panique</h2>
+      <p style="font-size:.9rem;color:#475569;margin-bottom:1rem;line-height:1.6;">
+        Tous les agents connectés vont recevoir une fausse alerte panique, <strong>clairement identifiée comme test</strong>.<br>
+        Ils verront exactement ce qui s'affiche en cas d'urgence réelle.
+      </p>
+      <div style="display:flex;gap:.75rem;justify-content:center">
+        <button class="btn-cancel" id="panicDemoCancel" style="flex:1;max-width:180px">Annuler</button>
+        <button id="panicDemoConfirm" style="flex:1;max-width:240px;background:#f59e0b;color:#fff;border:none;border-radius:10px;padding:.8rem 1rem;font-size:.95rem;font-weight:800;cursor:pointer;font-family:inherit;">🧪 Envoyer la démo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mascotte centrée en haut — se balade + yeux suivent la souris -->
   <div class="hs-mascot-stage">
     <div class="hs-bubble hidden" id="hsMascotBubble"><span id="hsMascotBubbleText"></span></div>

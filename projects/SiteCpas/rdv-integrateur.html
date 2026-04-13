@@ -445,8 +445,12 @@ async function main() {
   });
 
   // Charger les lieux pour le sélecteur de local
-  const lieuxSnap = await ref('appConfig/lieux').once('value');
-  const lieuxData = lieuxSnap.val() || {};
+  const [lieuxSnap, labelsSnap] = await Promise.all([
+    ref('appConfig/lieux').once('value'),
+    ref('appConfig/localLabels').once('value'),
+  ]);
+  const lieuxData  = lieuxSnap.val()  || {};
+  const localLabels = labelsSnap.val() || {};
   const lieuxList = Object.entries(lieuxData)
     .map(([id, l]) => ({ id, name: l.name || 'Sans nom', order: l.order ?? 999, localIds: l.localIds ? Object.keys(l.localIds).map(Number).sort((a,b)=>a-b) : [] }))
     .sort((a, b) => a.order - b.order);
@@ -459,7 +463,7 @@ async function main() {
     lieu.localIds.forEach(id => {
       const opt = document.createElement('option');
       opt.value = `${lieu.name}|${id}`;
-      opt.textContent = `Local ${id}`;
+      opt.textContent = localLabels[id] || localLabels[String(id)] || `Local ${id}`;
       grp.appendChild(opt);
     });
     sel.appendChild(grp);

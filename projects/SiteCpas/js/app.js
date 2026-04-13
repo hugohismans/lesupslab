@@ -3805,6 +3805,50 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   })();
 
+  // ─── Panic démo (pré-prod) ────────────────────────────────────
+  (function initPanicDemo() {
+    const card    = document.getElementById('hsPanicDemoCard');
+    const overlay = document.getElementById('panicDemoOverlay');
+    if (!card || !overlay) return;
+
+    // Visible uniquement si : integratorRdvEnabled actif + permission panicButton
+    DB._ref('appConfig/integratorRdvEnabled').once('value').then(snap => {
+      if (snap.val() === false) return;
+      DB.onConfigChange(() => {
+        card.style.display = DB.hasPermission('panicButton') ? 'block' : 'none';
+      });
+    }).catch(() => {});
+
+    document.getElementById('panicDemoBtn')?.addEventListener('click', () => {
+      overlay.classList.remove('hidden');
+    });
+    document.getElementById('panicDemoCancel')?.addEventListener('click', () => {
+      overlay.classList.add('hidden');
+    });
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.add('hidden');
+    });
+
+    document.getElementById('panicDemoConfirm')?.addEventListener('click', async () => {
+      overlay.classList.add('hidden');
+
+      const myKey   = sessionStorage.getItem('cpas_current_agent_key');
+      const myName  = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'Un agent';
+      const localId = DB.getOpenBureauForCurrentAgent();
+      const localLbl = localId ? DB.getLocalLabel(localId) : null;
+      const location = localLbl || 'l\'accueil';
+
+      const exampleAlert = `🚨 ALERTE — ${myName} a besoin d'aide immédiate à ${location} !`;
+      const demoMsg = `🧪 CECI EST UNE DÉMONSTRATION DU BOUTON PANIQUE.\n\nSi un agent a besoin d'aide urgente (agressivité, malaise…), tous les agents connectés reçoivent une alerte instantanée avec son nom et son local.\n\nExemple d'alerte réelle :\n${exampleAlert}`;
+
+      await DB.sendNotif(demoMsg, 'panic', null, {
+        urgent: true, fromAgentKey: myKey, fromAgentName: myName, local: location, isDemo: true,
+      });
+
+      showToast('🧪 Démo panic envoyée à tous les agents.', 'info');
+    });
+  })();
+
   // ─── Push PWA (Couche D.2) ─────────────────────────────────────
   // Actif seulement si : service worker supporté + VAPID_KEY configuré + feature enablePushNotif
   (function initPushPWA() {
