@@ -267,17 +267,22 @@
     <span class="hs-msg-text" id="hsMsgText"></span>
   </div>
 
+  <!-- Bouton personnaliser -->
+  <div class="hs-customize-bar">
+    <button class="hs-customize-btn hidden" id="hsCustomizeBtn">✏️ Personnaliser</button>
+  </div>
+
   <!-- Grille centrale -->
   <div class="hs-grid">
 
     <!-- Agenda du jour -->
-    <div class="hs-card">
+    <div class="hs-card hs-widget-agenda">
       <h3 class="hs-card-title">📅 Mon agenda du jour</h3>
       <div id="hsAgenda" class="hs-agenda-list"></div>
     </div>
 
     <!-- Qui est où -->
-    <div class="hs-card">
+    <div class="hs-card hs-widget-presence">
       <h3 class="hs-card-title">🗺 Qui est où</h3>
       <div id="hsPresence" class="hs-presence-list"></div>
     </div>
@@ -285,7 +290,7 @@
   </div>
 
   <!-- Me déclarer dans un bureau -->
-  <div class="hs-card hs-declare-card">
+  <div class="hs-card hs-declare-card hs-widget-declare">
     <h3 class="hs-card-title">📍 Me déclarer dans un bureau</h3>
     <div class="hs-decl-form" id="hsDeclForm">
       <div id="hsDeclCurrent"></div>
@@ -295,7 +300,7 @@
   </div>
 
   <!-- Permanences de service ouvertes -->
-  <div class="hs-card hs-qgrp-card">
+  <div class="hs-card hs-qgrp-card hs-widget-qgroups">
     <h3 class="hs-card-title">🔗 Permanences de service ouvertes</h3>
     <div id="hsQueueGroups"></div>
   </div>
@@ -306,6 +311,18 @@
     <button class="hs-shortcut" id="hsGoLive" style="display:none">📋 Vue Direct</button>
     <button class="hs-shortcut" id="hsGoNew">+ Réserver</button>
     <button class="hs-shortcut" id="hsGoStatus" style="display:none">👤 Mon statut</button>
+  </div>
+
+  <!-- Modale personnalisation widgets -->
+  <div class="hs-customize-overlay hidden" id="hsCustomizeOverlay">
+    <div class="hs-customize-modal">
+      <h3>✏️ Personnaliser ma page</h3>
+      <p class="hs-customize-hint">Choisissez les sections à afficher.</p>
+      <div class="hs-customize-list" id="hsCustomizeList"></div>
+      <div class="hs-customize-footer">
+        <button class="btn-secondary" id="hsCustomizeClose">Fermer</button>
+      </div>
+    </div>
   </div>
 
 </section>

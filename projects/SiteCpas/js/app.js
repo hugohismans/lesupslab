@@ -1029,6 +1029,19 @@ const HOME = {
       this.render();
     }, 45000);
 
+    // ─ Personnalisation widgets ──────────────────────────────────────
+    document.getElementById('hsCustomizeBtn')?.addEventListener('click', () => {
+      const agentKey = sessionStorage.getItem('cpas_current_agent_key');
+      if (agentKey) _openCustomizeModal(agentKey);
+    });
+    document.getElementById('hsCustomizeClose')?.addEventListener('click', () => {
+      document.getElementById('hsCustomizeOverlay').classList.add('hidden');
+    });
+    document.getElementById('hsCustomizeOverlay')?.addEventListener('click', e => {
+      if (e.target.id === 'hsCustomizeOverlay')
+        document.getElementById('hsCustomizeOverlay').classList.add('hidden');
+    });
+
     // ─ Raccourcis ────────────────────────────────────────────────────
     document.getElementById('hsGoCalendar').addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'day'));
@@ -1728,6 +1741,13 @@ function applyFeatureFlags() {
   // Raccourcis home screen
   show('hsGoLive',            DB.getFeature('enableTickets'));
   show('hsGoStatus',          DB.getFeature('enablePresence'));
+  // Bouton personnaliser — visible uniquement si connecté
+  const _customizeBtn = document.getElementById('hsCustomizeBtn');
+  if (_customizeBtn) {
+    const _ak = sessionStorage.getItem('cpas_current_agent_key');
+    _customizeBtn.classList.toggle('hidden', !_ak || _ak === 'anon');
+    if (_ak && _ak !== 'anon') _applyWidgetPrefs(_ak);
+  }
   // Bouton météo (visible uniquement si météo activée et coords configurées)
   const wxBtn = document.getElementById('hsAskWeather');
   if (wxBtn) {
@@ -1827,6 +1847,55 @@ function updateOrgName() {
       if (img) { img.src = meta.logoUrl; img.onerror = () => { img.src = 'assets/logo.jpg'; }; }
     }
   });
+}
+
+// ── Widget Manager — personnalisation de la page d'accueil ───────────────────
+const WIDGETS = [
+  { id: 'agenda',   label: '📅 Mon agenda du jour',              selector: '.hs-widget-agenda' },
+  { id: 'presence', label: '🗺 Qui est où',                      selector: '.hs-widget-presence' },
+  { id: 'declare',  label: '📍 Me déclarer dans un bureau',      selector: '.hs-widget-declare' },
+  { id: 'qgroups',  label: '🔗 Permanences de service ouvertes', selector: '.hs-widget-qgroups' },
+];
+
+function _widgetKey(agentKey) { return `cpas_widgets_${agentKey}`; }
+
+function _getHiddenWidgets(agentKey) {
+  try { return JSON.parse(localStorage.getItem(_widgetKey(agentKey)) || '[]'); }
+  catch { return []; }
+}
+
+function _setHiddenWidgets(agentKey, hiddenIds) {
+  localStorage.setItem(_widgetKey(agentKey), JSON.stringify(hiddenIds));
+}
+
+function _applyWidgetPrefs(agentKey) {
+  const hidden = _getHiddenWidgets(agentKey);
+  WIDGETS.forEach(w => {
+    const el = document.querySelector(w.selector);
+    if (el) el.classList.toggle('hidden', hidden.includes(w.id));
+  });
+}
+
+function _openCustomizeModal(agentKey) {
+  const hidden = _getHiddenWidgets(agentKey);
+  const list = document.getElementById('hsCustomizeList');
+  if (!list) return;
+  list.innerHTML = WIDGETS.map(w => `
+    <label class="hs-customize-row">
+      <input type="checkbox" class="hs-customize-cb" data-widget="${w.id}"
+        ${!hidden.includes(w.id) ? 'checked' : ''}>
+      <span>${w.label}</span>
+    </label>`).join('');
+  list.querySelectorAll('.hs-customize-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const newHidden = WIDGETS
+        .filter(w => !list.querySelector(`[data-widget="${w.id}"]`).checked)
+        .map(w => w.id);
+      _setHiddenWidgets(agentKey, newHidden);
+      _applyWidgetPrefs(agentKey);
+    });
+  });
+  document.getElementById('hsCustomizeOverlay').classList.remove('hidden');
 }
 
 document.addEventListener('DOMContentLoaded', async function () {
