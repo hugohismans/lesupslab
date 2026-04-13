@@ -1042,23 +1042,6 @@ const HOME = {
         document.getElementById('hsCustomizeOverlay').classList.add('hidden');
     });
 
-    // ─ Raccourcis ────────────────────────────────────────────────────
-    document.getElementById('hsGoCalendar').addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'day'));
-      _showCalView('day');
-    });
-    document.getElementById('hsGoLive').addEventListener('click', () => LIVE.open());
-    document.getElementById('hsGoNew').addEventListener('click', () => {
-      this._requireBonjour(() => {
-        const btnNew = document.getElementById('btnNew');
-        if (btnNew) btnNew.click();
-      });
-    });
-    document.getElementById('hsGoStatus').addEventListener('click', () => {
-      const btnSt = document.getElementById('btnPresenceHd');
-      if (btnSt) btnSt.click();
-    });
-
     // ─ Se déclarer dans un bureau — lieu + cartes toggle ─────────────
     document.getElementById('hsDeclLieuSelect').addEventListener('change', () => {
       this._renderDeclCards();
@@ -1739,9 +1722,6 @@ function applyFeatureFlags() {
   show('notifBell',           DB.getFeature('enableNotif'));
   show('btnDnd',              DB.getFeature('enableNotif'));
   show('btnCalendarExport',   DB.getFeature('enableCalendarSync') && !!sessionStorage.getItem('cpas_current_agent_key'));
-  // Raccourcis home screen
-  show('hsGoLive',            DB.getFeature('enableTickets'));
-  show('hsGoStatus',          DB.getFeature('enablePresence'));
   // Bouton personnaliser — visible uniquement si connecté
   const _customizeBtn = document.getElementById('hsCustomizeBtn');
   if (_customizeBtn) {
@@ -1866,12 +1846,12 @@ const WIDGETS = [
 
 // ── Définition des raccourcis disponibles ───────────────────────────
 const HS_SC_DEFS = [
-  { id: 'calendar', label: '📅 Calendrier',  sub: 'Planning',      click: () => document.getElementById('hsGoCalendar')?.click() },
-  { id: 'live',     label: '📋 Vue direct',  sub: 'File d\'attente', click: () => document.getElementById('hsGoLive')?.click() },
-  { id: 'new',      label: '➕ Réserver',    sub: 'Nouveau créneau', click: () => document.getElementById('hsGoNew')?.click() },
-  { id: 'status',   label: '👤 Statut',      sub: 'Ma présence',    click: () => document.getElementById('hsGoStatus')?.click() },
-  { id: 'notifs',   label: '🔔 Notifs',      sub: 'Notifications',  click: () => NOTIF.togglePanel?.() },
-  { id: 'panic',    label: '🚨 Urgence',     sub: 'Bouton panique', click: () => document.getElementById('panicBtn')?.click() },
+  { id: 'calendar', label: '📅 Calendrier',  sub: 'Planning',        click: () => { document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'day')); _showCalView('day'); } },
+  { id: 'live',     label: '📋 Vue direct',  sub: 'File d\'attente', click: () => LIVE.open() },
+  { id: 'new',      label: '➕ Réserver',    sub: 'Nouveau créneau', click: () => document.getElementById('btnNew')?.click() },
+  { id: 'status',   label: '👤 Statut',      sub: 'Ma présence',     click: () => document.getElementById('btnPresenceHd')?.click() },
+  { id: 'notifs',   label: '🔔 Notifs',      sub: 'Notifications',   click: () => NOTIF.togglePanel?.() },
+  { id: 'panic',    label: '🚨 Urgence',     sub: 'Bouton panique',  click: () => document.getElementById('panicBtn')?.click() },
 ];
 const HS_SC_DEFAULT = ['calendar', 'new', 'live', 'status'];
 
