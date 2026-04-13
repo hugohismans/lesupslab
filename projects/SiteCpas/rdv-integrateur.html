@@ -476,14 +476,16 @@ async function main() {
     sel.appendChild(grp);
   });
 
-  // Charger les demandes existantes pour l'intégrateur (pending + accepted)
-  const reqsSnap = await ref('appState/appointmentRequests').once('value');
+  // Créneaux occupés = réservations existantes où l'intégrateur est présent (agent ou agents[])
+  const integratorName = agentsData[integratorKey] || 'Intégrateur';
+  const resSnap2 = await ref('reservations').once('value');
   const takenSlots = new Set();
-  reqsSnap.forEach(child => {
+  resSnap2.forEach(child => {
     const r = child.val();
-    if (r.targetAgentKey === integratorKey && r.status !== 'cancelled' && r.startDateTime) {
-      takenSlots.add(r.startDateTime);
-    }
+    if (!r.startDateTime || r.isPermanent) return;
+    const isHugo = (r.agent === integratorName && integratorName) ||
+                   (Array.isArray(r.agents) && integratorName && r.agents.includes(integratorName));
+    if (isHugo) takenSlots.add(r.startDateTime);
   });
 
   showScreen('screenBook');
@@ -525,7 +527,6 @@ async function main() {
       }
 
       // ── Créer une demande par participant ─────────────────────────
-      const integratorName = agentsData[integratorKey] || 'Intégrateur';
       // Participants = demandeur(s) + intégrateur (son agenda est aussi bloqué)
       const agentParticipants = [{ key: agentKey, name: agentName }, ...colleagues];
       const allParticipants   = [...agentParticipants, { key: integratorKey, name: integratorName }];
