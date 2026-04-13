@@ -3867,10 +3867,40 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-widget-qgroups,
 .hs-widget-upcoming,
 .hs-widget-week,
-.hs-widget-shortcuts {
+.hs-widget-shortcuts,
+.hs-widget-mission {
   flex: 1 1 100%;
   width: 100%;
 }
+
+/* ── Mission widget ─────────────────────────────────────────────── */
+.hs-mission-body { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.hs-mission-input {
+  flex: 1; min-width: 180px; padding: .45rem .7rem; border-radius: 8px;
+  border: 1px solid #e2e8f0; font-size: .9rem; color: #1e293b;
+  outline: none; transition: border-color .15s;
+}
+.hs-mission-input:focus { border-color: #6366f1; }
+.hs-mission-go-btn {
+  padding: .5rem 1.2rem; border-radius: 8px; border: none; cursor: pointer;
+  background: #6366f1; color: #fff; font-size: .9rem; font-weight: 600;
+  white-space: nowrap; transition: background .15s;
+}
+.hs-mission-go-btn:hover { background: #4f46e5; }
+.hs-mission-go-btn:disabled { opacity: .6; cursor: default; }
+.hs-mission-status { display: flex; align-items: center; gap: .75rem; flex: 1; }
+.hs-mission-badge {
+  background: #fef3c7; color: #92400e; border-radius: 8px;
+  padding: .35rem .8rem; font-weight: 700; font-size: .95rem;
+}
+.hs-mission-comment { font-size: .85rem; color: #64748b; }
+.hs-mission-return-btn {
+  padding: .5rem 1.2rem; border-radius: 8px; border: none; cursor: pointer;
+  background: #22c55e; color: #fff; font-size: .9rem; font-weight: 600;
+  white-space: nowrap; transition: background .15s;
+}
+.hs-mission-return-btn:hover { background: #16a34a; }
+.hs-mission-return-btn:disabled { opacity: .6; cursor: default; }
 .hs-widget-weather,
 .hs-widget-stats,
 .hs-widget-notifs {

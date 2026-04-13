@@ -1852,6 +1852,7 @@ const WIDGETS = [
   { id: 'notifs',    label: '🔔 Dernières notifications',         selector: '.hs-widget-notifs',    width: 'half' },
   { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week',      width: 'full' },
   { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts', width: 'full' },
+  { id: 'mission',   label: '🚗 Partir en mission',               selector: '.hs-widget-mission',   width: 'full' },
 ];
 
 // ── Définition des raccourcis disponibles ───────────────────────────
@@ -2086,6 +2087,46 @@ function _renderWeekWidget() {
 }
 
 // ── Appel groupé des nouveaux widgets (depuis HOME.render) ──────────
+// ── Widget Mission ──────────────────────────────────────────────────
+function _renderMissionWidget(agentKey) {
+  const el = document.getElementById('hsMission');
+  if (!el) return;
+  if (!agentKey || agentKey === 'anon') { el.innerHTML = ''; return; }
+
+  const today    = new Date().toISOString().slice(0, 10);
+  const absEntry = DB.getAgentAbsenceOn(agentKey, today);
+  const isMission = absEntry && absEntry[1]?.motif === 'mission';
+
+  if (isMission) {
+    const comment = absEntry[1].comment ? `<div class="hs-mission-comment">📝 ${escapeHtml(absEntry[1].comment)}</div>` : '';
+    el.innerHTML = `
+      <div class="hs-mission-status">
+        <span class="hs-mission-badge">🚗 En mission</span>
+        ${comment}
+      </div>
+      <button class="hs-mission-return-btn" id="hsMissionReturnBtn">✅ Retour de mission</button>`;
+    document.getElementById('hsMissionReturnBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('hsMissionReturnBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+      await DB.deleteAbsence(absEntry[0]);
+      showToast('Retour de mission enregistré ✓');
+    });
+  } else {
+    el.innerHTML = `
+      <input class="hs-mission-input" id="hsMissionComment" type="text"
+        placeholder="Destination / motif (optionnel)" maxlength="80">
+      <button class="hs-mission-go-btn" id="hsMissionGoBtn">🚗 Partir en mission</button>`;
+    document.getElementById('hsMissionGoBtn')?.addEventListener('click', async () => {
+      const btn     = document.getElementById('hsMissionGoBtn');
+      const comment = document.getElementById('hsMissionComment')?.value.trim() || null;
+      if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+      await DB.addAbsence({ agentKey, startDate: today, endDate: today, motif: 'mission',
+        comment, createdBy: agentKey });
+      showToast('Mission déclarée ✓');
+    });
+  }
+}
+
 function _renderExtraWidgets() {
   const agentKey = sessionStorage.getItem('cpas_current_agent_key');
   [
@@ -2095,6 +2136,7 @@ function _renderExtraWidgets() {
     [_renderNotifsWidget,    [agentKey]],
     [_renderWeekWidget,      []],
     [_renderShortcutsWidget, [agentKey]],
+    [_renderMissionWidget,   [agentKey]],
   ].forEach(([fn, args]) => { try { fn(...args); } catch(e) { console.warn('[widget]', fn.name, e); } });
 }
 
