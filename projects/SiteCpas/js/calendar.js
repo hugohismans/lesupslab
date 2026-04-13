@@ -2725,7 +2725,7 @@ function updateStatusBar() {
       );
       const cls  = perm ? 'is-perm' : res ? 'is-booked' : 'is-free';
       const stat = perm ? '🔒 Permanent' : res ? '🔴 Réservé' : '🟢 Libre';
-      return `<div class="lpill ${cls}">
+      return `<div class="lpill ${cls}" data-sb-nodesk="1" style="cursor:pointer">
         <div class="lp-num">${DB.getLocalLabel(l)}</div>
         <div class="lp-status">${stat}</div>
       </div>`;
@@ -2758,6 +2758,14 @@ function updateStatusBar() {
     el.addEventListener('click', () => {
       const localId = parseInt(el.dataset.sbLocal);
       CAL._deskFilter = localId;
+      CAL.setView('day');
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'day'));
+    });
+  });
+  // ── Clic sur un local sans desk → revenir à la vue locaux ──
+  pills.querySelectorAll('[data-sb-nodesk]').forEach(el => {
+    el.addEventListener('click', () => {
+      CAL._deskFilter = null;
       CAL.setView('day');
       document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === 'day'));
     });
