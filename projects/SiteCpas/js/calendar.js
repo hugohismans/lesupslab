@@ -98,22 +98,34 @@ const CAL = {
     const isToday   = sameDay(d, new Date());
 
     const holidayName = isBelgianHoliday(isoDate(d)) ? getHolidayName(isoDate(d)) : '';
+    // ── Barre de toggles desk (conteneur fixe #deskFilterBar) ──────
+    const filterBar = document.getElementById('deskFilterBar');
+    if (filterBar) {
+      if (deskLocals.length) {
+        let fb = `<button class="cv-desk-toggle${!this._deskFilter ? ' active' : ''}" data-filter="">Locaux</button>`;
+        deskLocals.forEach(dl => {
+          const nDesks = allUnits.filter(u => u.type === 'desk' && u.localId === dl.localId).length;
+          fb += `<button class="cv-desk-toggle${this._deskFilter === dl.localId ? ' active' : ''}" data-filter="${dl.localId}">${escapeHtml(dl.label)} <small>(${nDesks})</small></button>`;
+        });
+        filterBar.innerHTML = fb;
+        filterBar.classList.remove('hidden');
+        filterBar.querySelectorAll('.cv-desk-toggle').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const val = btn.dataset.filter;
+            this._deskFilter = val ? parseInt(val) : null;
+            this.render();
+          });
+        });
+      } else {
+        filterBar.innerHTML = '';
+        filterBar.classList.add('hidden');
+      }
+    }
+
     let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">
       ${dateLabel}
       ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
     </div>`;
-
-    // Barre de toggles desk (visible seulement s'il y a des locaux avec desks)
-    if (deskLocals.length) {
-      h += '<div class="cv-desk-filter">';
-      h += `<button class="cv-desk-toggle${!this._deskFilter ? ' active' : ''}" data-filter="">Locaux</button>`;
-      deskLocals.forEach(dl => {
-        const nDesks = allUnits.filter(u => u.type === 'desk' && u.localId === dl.localId).length;
-        h += `<button class="cv-desk-toggle${this._deskFilter === dl.localId ? ' active' : ''}" data-filter="${dl.localId}">${escapeHtml(dl.label)} <small>(${nDesks})</small></button>`;
-      });
-      h += '</div>';
-    }
-
     h += '<table class="cv-day-table"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
@@ -251,20 +263,14 @@ const CAL = {
     this._bindDnd(el, d);
     this._renderNowLine(el, d);
 
-    // ── Bind toggles desk ──────────────────────────────────────────
-    el.querySelectorAll('.cv-desk-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const val = btn.dataset.filter;
-        this._deskFilter = val ? parseInt(val) : null;
-        this.render();
-      });
-    });
   },
 
   // ─────────────────────────────────────────────────────────────────
   // VUE SEMAINE
   // ─────────────────────────────────────────────────────────────────
   _renderWeek(el) {
+    const fb = document.getElementById('deskFilterBar');
+    if (fb) { fb.innerHTML = ''; fb.classList.add('hidden'); }
     const { openHour: wOpenHour, closeHour: wCloseHour, slotMin: slotMinWk } = DB.getLieuConfig();
     const isMobile  = window.innerWidth < 768;
     const nbDays    = isMobile ? 3 : 5;
@@ -351,6 +357,8 @@ const CAL = {
   // VUE MOIS
   // ─────────────────────────────────────────────────────────────────
   _renderMonth(el) {
+    const fb = document.getElementById('deskFilterBar');
+    if (fb) { fb.innerHTML = ''; fb.classList.add('hidden'); }
     const year  = this.date.getFullYear();
     const month = this.date.getMonth();
     const mS    = new Date(year, month, 1);
