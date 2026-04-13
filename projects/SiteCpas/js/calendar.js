@@ -2256,13 +2256,7 @@ const LIVE = {
     g('liveGrid').classList.add('hidden');
     g('liveAgentResult').classList.remove('hidden');
 
-    // Tous les locaux non-backoffice de tous les lieux
-    const allLieux   = DB.getLieux();
-    const allLocals  = new Set(
-      Object.values(allLieux)
-        .filter(l => !l.isBackoffice)
-        .flatMap(l => (l.localIds || []).map(Number))
-    );
+    // Tous les locaux de TOUS les lieux (y compris backoffice)
     const ql = q.toLowerCase();
 
     const getAgt = r => (r.agent   === 'Autre' ? r.agentCustom   : r.agent)   || '';
@@ -2274,7 +2268,7 @@ const LIVE = {
       return name.toLowerCase().includes(ql) || (pub && pub !== name && pub.toLowerCase().includes(ql));
     };
     const matchesService = r => getSvc(r).toLowerCase().includes(ql);
-    const match = r => (matchesAgent(r) || matchesService(r)) && allLocals.has(parseInt(r.localId));
+    const match = r => matchesAgent(r) || matchesService(r);
 
     const now_occs    = occs.filter(r => match(r) && !r.isPermanent && r._start <= now && r._end > now);
     const future_occs = occs.filter(r => match(r) && !r.isPermanent && r._start > now)
