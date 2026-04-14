@@ -628,14 +628,21 @@ const HOME = {
     return `mc_bonjour_${agentKey}_${new Date().toISOString().slice(0, 10)}`;
   },
   _hasSaidBonjourToday(agentKey) {
-    if (localStorage.getItem(this._bonjourKey(agentKey))) return true;
-    // Si déjà connecté dans Firebase (rechargement de page, localStorage vidé…)
-    // → considérer le bonjour comme déjà dit pour éviter le rappel intempestif
-    if (typeof DB !== 'undefined' && DB.isConnectedToday?.(agentKey)) {
+    // Source de vérité = Firebase : si l'agent n'est pas marqué connecté aujourd'hui,
+    // le bonjour n'a PAS été dit (même si localStorage a un flag résiduel après purge/reset).
+    if (typeof DB !== 'undefined' && DB.isConnectedToday) {
+      const connectedInDb = DB.isConnectedToday(agentKey);
+      if (!connectedInDb) {
+        // Nettoyer le flag local stale
+        localStorage.removeItem(this._bonjourKey(agentKey));
+        return false;
+      }
+      // DB dit connecté → s'assurer que le flag local est aligné
       this._markSaidBonjourToday(agentKey);
       return true;
     }
-    return false;
+    // Fallback si DB indispo : on se rabat sur le flag local
+    return !!localStorage.getItem(this._bonjourKey(agentKey));
   },
   _markSaidBonjourToday(agentKey) { localStorage.setItem(this._bonjourKey(agentKey), '1'); },
 
