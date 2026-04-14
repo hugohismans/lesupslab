@@ -3927,12 +3927,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     const overlay = document.getElementById('panicDemoOverlay');
     if (!card || !overlay) return;
 
-    // Visible uniquement si : integratorRdvEnabled actif + permission panicButton
+    // Visible uniquement si : integratorRdvEnabled pas explicitement désactivé + permission panicDemo
+    const refreshDemoCardVisibility = () => {
+      card.style.display = DB.hasPermission('panicDemo') ? 'block' : 'none';
+    };
     DB._ref('appConfig/integratorRdvEnabled').once('value').then(snap => {
-      if (snap.val() === false) return;
-      DB.onConfigChange(() => {
-        card.style.display = DB.hasPermission('panicDemo') ? 'block' : 'none';
-      });
+      if (snap.val() === false) { card.style.display = 'none'; return; }
+      refreshDemoCardVisibility();                // appel initial (sinon jamais montré)
+      DB.onConfigChange(refreshDemoCardVisibility);
     }).catch(() => {});
 
     document.getElementById('panicDemoBtn')?.addEventListener('click', () => {
