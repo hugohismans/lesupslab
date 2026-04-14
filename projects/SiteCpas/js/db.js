@@ -1961,10 +1961,14 @@ const DB = {
   getAll()     { return this._data; },
 
   // Retourne toutes les occurrences (récurrentes comprises) qui chevauchent [start, end]
+  // Accepte Date ou string ISO — convertit systématiquement en Date pour éviter
+  // les comparaisons Date<string qui retournent toujours false.
   getInRange(start, end) {
+    const s = start instanceof Date ? start : new Date(start);
+    const e = end   instanceof Date ? end   : new Date(end);
     const result = [];
     Object.entries(this._data).forEach(([id, res]) => {
-      expandReservation(id, res, start, end).forEach(o => result.push(o));
+      expandReservation(id, res, s, e).forEach(o => result.push(o));
     });
     return result;
   },

@@ -17,6 +17,7 @@
   let _pendingCleanReq   = null; // { req, linkedResId } en attente de confirmation nettoyage
   let _targetRequests   = [];   // demandes pending/accepted pour l'agent cible (conflit)
   let _targetReqListener = null;
+  let _selectedWithAgents = new Set(); // clés d'agents sélectionnés dans "avec qui"
 
   // ── Init ─────────────────────────────────────────────────────────
   function init() {
@@ -81,12 +82,24 @@
         agents.map(a => `<option value="${a.key}"${a.key === cur ? ' selected' : ''}>${escHtml(a.name)}</option>`).join('');
     }
 
-    // Dropdown "avec qui → agent" (onglet 2)
-    const selWith = document.getElementById('rdvWithAgent');
-    if (selWith) {
-      const cur = selWith.value;
-      selWith.innerHTML = '<option value="">— Choisir un agent —</option>' +
-        agents.map(a => `<option value="${a.key}"${a.key === cur ? ' selected' : ''}>${escHtml(a.name)}</option>`).join('');
+    // Chips multi-sélection "avec qui → agents" (onglet 2)
+    const chipsEl = document.getElementById('rdvWithAgentChips');
+    if (chipsEl) {
+      chipsEl.innerHTML = agents.map(a =>
+        `<button type="button" class="rdv-with-chip${_selectedWithAgents.has(a.key) ? ' selected' : ''}" data-key="${a.key}">${escHtml(a.name)}</button>`
+      ).join('');
+      chipsEl.querySelectorAll('.rdv-with-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const k = chip.dataset.key;
+          if (_selectedWithAgents.has(k)) {
+            _selectedWithAgents.delete(k);
+            chip.classList.remove('selected');
+          } else {
+            _selectedWithAgents.add(k);
+            chip.classList.add('selected');
+          }
+        });
+      });
     }
   }
 
@@ -639,7 +652,7 @@
       _targetListener = null;
     }
     if (_targetReqListener) {
-      DB._ref('appState/appointmentRequests').orderByChild('targetAgentKey').equalTo(_targetReqListener).off();
+      DB._ref('appState/appointmentRequests').off();
       _targetReqListener = null;
       _targetRequests = [];
     }
@@ -654,21 +667,25 @@
     _targetListener    = targetAgentKey;
     _targetReqListener = targetAgentKey;
 
-    // Écouter les demandes existantes pour l'agent cible (pour bloquer les créneaux déjà demandés)
-    DB._ref('appState/appointmentRequests').orderByChild('targetAgentKey').equalTo(targetAgentKey)
-      .on('value', snap => {
-        _targetRequests = [];
-        snap.forEach(c => {
-          const v = c.val();
-          if (v.status === 'pending' && v.startDateTime && v.endDateTime) {
-            _targetRequests.push({ id: c.key, ...v });
-          }
-        });
-        // Rafraîchir le time picker si un slot est déjà sélectionné
-        if (_selectedSlot) {
-          _showTimePicker(_selectedSlot.startDateTime, _selectedSlot.endDateTime, targetAgentKey);
-        }
+    // Écouter TOUTES les demandes pending où l'agent cible apparaît (cible, demandeur OU invité)
+    DB._ref('appState/appointmentRequests').on('value', snap => {
+      _targetRequests = [];
+      snap.forEach(c => {
+        const v = c.val();
+        if (v.status !== 'pending' || !v.startDateTime || !v.endDateTime) return;
+        const involved =
+          v.targetAgentKey === targetAgentKey ||
+          v.requesterAgentKey === targetAgentKey ||
+          (v.withPerson?.type === 'agent' && (
+            v.withPerson.agentKey === targetAgentKey ||
+            (Array.isArray(v.withPerson.agentKeys) && v.withPerson.agentKeys.includes(targetAgentKey))
+          ));
+        if (involved) _targetRequests.push({ id: c.key, ...v });
       });
+      if (_selectedSlot) {
+        _showTimePicker(_selectedSlot.startDateTime, _selectedSlot.endDateTime, targetAgentKey);
+      }
+    });
 
     function _refreshMergedSlots() {
       const agentName = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
@@ -693,7 +710,13 @@
     });
 
     // Re-merger quand les réservations changent (isRdvSlot du calendrier)
-    DB.onChange(() => _refreshMergedSlots());
+    DB.onChange(() => {
+      _refreshMergedSlots();
+      // Rafraîchir aussi le time picker si un créneau est déjà ouvert
+      if (_selectedSlot && _selectedSlot.startDateTime && _selectedSlot.endDateTime) {
+        _showTimePicker(_selectedSlot.startDateTime, _selectedSlot.endDateTime, targetAgentKey);
+      }
+    });
   }
 
   function _renderTargetSlots(slots, targetAgentKey) {
@@ -759,8 +782,9 @@
     const agentName   = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
     const existingRes = DB.getInRange(slotStart, slotEnd).filter(r => {
       if (r.isRdvSlot) return false; // la plage elle-même n'est pas un conflit
-      const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
-      return a === agentName;
+      // Consolide tous les champs où un agent peut apparaître (agent, agents[], invitedAgents)
+      const names = DB.getResAgentNames(r);
+      return names.has(agentName);
     });
 
     // Construire la liste des créneaux 30 min
@@ -871,10 +895,15 @@
     const withType = document.querySelector('input[name="rdvWithType"]:checked')?.value || 'agent';
     let withPerson;
     if (withType === 'agent') {
-      const wKey  = document.getElementById('rdvWithAgent')?.value;
-      const wName = DB.getAgentDisplayNameByKey(wKey);
-      if (!wKey) { _showError('rdvRequestError', 'Veuillez choisir l\'agent de la rencontre.'); return; }
-      withPerson = { type: 'agent', name: wName, agentKey: wKey };
+      const wKeys = Array.from(_selectedWithAgents);
+      if (!wKeys.length) { _showError('rdvRequestError', 'Veuillez choisir au moins un agent.'); return; }
+      const wNames = wKeys.map(k => DB.getAgentDisplayNameByKey(k)).filter(Boolean);
+      withPerson = {
+        type: 'agent',
+        name: wNames.join(', '),
+        agentKey: wKeys[0],      // compat : premier agent = principal
+        agentKeys: wKeys,        // multi : toutes les clés
+      };
     } else {
       const wName = document.getElementById('rdvWithOtherName')?.value.trim();
       if (!wName) { _showError('rdvRequestError', 'Veuillez saisir le nom de la personne externe.'); return; }
@@ -909,13 +938,25 @@
     const agentName = DB.getAgentDisplayNameByKey(targetAgentKey) || '';
     const reqS = new Date(startDateTime).getTime();
     const reqE = new Date(endDateTime).getTime();
+    // Noms de tous les participants à surveiller (cible + invités CPAS)
+    const watchedNames = new Set([agentName]);
+    if (withPerson?.type === 'agent') {
+      const keys = Array.isArray(withPerson.agentKeys) && withPerson.agentKeys.length
+        ? withPerson.agentKeys
+        : (withPerson.agentKey ? [withPerson.agentKey] : []);
+      keys.forEach(k => {
+        const n = DB.getAgentDisplayNameByKey(k);
+        if (n) watchedNames.add(n);
+      });
+    }
     const calConflict = DB.getInRange(startDateTime, endDateTime).some(r => {
-      if (r.isRdvSlot) return false; // les plages RDV ne bloquent pas les sous-créneaux
-      const a = r.agent === 'Autre' ? (r.agentCustom || '') : (r.agent || '');
-      if (a !== agentName) return false;
+      if (r.isRdvSlot) return false;
       const rS = r._start ? r._start.getTime() : new Date(r.startDateTime).getTime();
       const rE = r._end   ? r._end.getTime()   : new Date(r.endDateTime).getTime();
-      return reqS < rE && reqE > rS;
+      if (!(reqS < rE && reqE > rS)) return false;
+      const names = DB.getResAgentNames(r);
+      for (const n of watchedNames) if (names.has(n)) return true;
+      return false;
     });
     // Vérifier les demandes en cours (pending/accepted) pour éviter les doublons
     const reqConflict = _targetRequests.some(req => {
@@ -1124,11 +1165,12 @@
     const rdvS = new Date(startDT).getTime();
     const rdvE = new Date(endDT).getTime();
 
-    // 1. Vérifier conflit RDV (même agent, type rendez-vous)
+    // 1. Vérifier conflit RDV (agent cible dans agent/agents[]/invitedAgents, type rendez-vous)
     const conflicts = DB.getInRange(startDT, endDT);
-    const rdvConflict = conflicts.find(r =>
-      r.agent === agentDisplayName && r.type === 'rendez-vous'
-    );
+    const rdvConflict = conflicts.find(r => {
+      if (r.type !== 'rendez-vous' || r.isRdvSlot) return false;
+      return DB.getResAgentNames(r).has(agentDisplayName);
+    });
     if (rdvConflict) {
       await DB.refuseAppointmentRequest(requestId);
       const req = await DB.getAppointmentRequest(requestId);
@@ -1270,10 +1312,13 @@
     const req0 = await DB.getAppointmentRequest(requestId);
     const withName = withPerson?.name || '';
     const svcLabel = `Rendez-vous avec ${withName}`;
-    // Si le "avec qui" est un agent CPAS → l'ajouter comme invité pour que ça apparaisse dans son agenda
+    // Si le "avec qui" inclut des agents CPAS → tous les ajouter comme invités
     const invitedAgents = {};
-    if (withPerson?.type === 'agent' && withPerson?.agentKey) {
-      invitedAgents[withPerson.agentKey] = true;
+    if (withPerson?.type === 'agent') {
+      const keys = Array.isArray(withPerson.agentKeys) && withPerson.agentKeys.length
+        ? withPerson.agentKeys
+        : (withPerson.agentKey ? [withPerson.agentKey] : []);
+      keys.forEach(k => { invitedAgents[k] = true; });
     }
     await DB._ref('reservations').push({
       localId:            String(localId),
@@ -1364,7 +1409,9 @@
     document.getElementById('rdvMessage').value = '';
     document.getElementById('rdvSlotPicker').innerHTML =
       '<div class="rdv-empty rdv-empty-sm">Sélectionnez un agent pour voir ses créneaux.</div>';
-    document.getElementById('rdvWithAgent').value = '';
+    _selectedWithAgents.clear();
+    document.querySelectorAll('#rdvWithAgentChips .rdv-with-chip.selected')
+      .forEach(c => c.classList.remove('selected'));
     document.getElementById('rdvWithOtherName').value = '';
     document.getElementById('rdvWithTypeAgent').checked = true;
     document.getElementById('rdvWithAgentWrap').classList.remove('hidden');

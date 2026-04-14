@@ -5412,6 +5412,16 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 }
 .rdv-select:focus { outline: none; border-color: #2563eb; }
 
+/* Chips multi-sélection "avec qui" */
+.rdv-with-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .3rem; }
+.rdv-with-chip {
+  background: #f1f5f9; border: 1.5px solid #e2e8f0; border-radius: 18px;
+  padding: .3rem .75rem; font-size: .82rem; font-weight: 600; color: #475569;
+  cursor: pointer; font-family: inherit; transition: all .15s; user-select: none;
+}
+.rdv-with-chip:hover { border-color: #2563eb; color: #1d4ed8; }
+.rdv-with-chip.selected { background: #dbeafe; border-color: #2563eb; color: #1e40af; }
+
 /* Formulaire */
 .rdv-form { display: flex; flex-direction: column; gap: .75rem; }
 .rdv-form-row { display: flex; gap: .6rem; flex-wrap: wrap; align-items: flex-end; }

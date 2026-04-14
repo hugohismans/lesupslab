@@ -73,7 +73,8 @@ const REQUESTS = {
   _updateHeaderBtn() {
     const btn = document.getElementById('btnInterventions');
     if (!btn) return;
-    btn.style.display = this._canSee() ? '' : 'none';
+    const featureOn = DB._config.features?.['enableInterventions'] !== false;
+    btn.style.display = (featureOn && this._canSee()) ? '' : 'none';
   },
 
   _updateBadge() {

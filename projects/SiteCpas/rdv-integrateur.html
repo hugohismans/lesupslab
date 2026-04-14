@@ -66,6 +66,32 @@
     .colleague-chip:hover { border-color: #7c3aed; color: #7c3aed; }
     .colleague-chip.selected { background: #ede9fe; border-color: #7c3aed; color: #5b21b6; }
 
+    /* ── Locaux (toggles à 2 niveaux) ────────────────────────────── */
+    .local-groups { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem; }
+    .local-group-title {
+      font-size: .78rem; font-weight: 700; color: #64748b; text-transform: uppercase;
+      letter-spacing: .04em; margin-bottom: .5rem;
+    }
+    .local-chips { display: flex; flex-wrap: wrap; gap: .55rem; }
+    .local-chip {
+      background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px;
+      padding: .6rem 1rem; font-size: .92rem; font-weight: 700; color: #334155;
+      cursor: pointer; font-family: inherit; transition: all .15s; user-select: none;
+      display: flex; flex-direction: column; align-items: center; gap: .45rem; min-width: 110px;
+    }
+    .local-chip:hover { border-color: #ef4444; color: #dc2626; }
+    .local-chip.selected { background: #fee2e2; border-color: #ef4444; color: #b91c1c; box-shadow: 0 2px 6px rgba(239,68,68,.2); }
+    .desk-row { display: none; gap: .3rem; margin-top: .1rem; }
+    .local-chip.selected .desk-row { display: flex; }
+    .desk-chip {
+      width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid #cbd5e1;
+      background: #fff; color: #475569; font-size: .8rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      font-family: inherit; transition: all .12s;
+    }
+    .desk-chip:hover { border-color: #ef4444; color: #dc2626; }
+    .desk-chip.selected { background: #ef4444; border-color: #ef4444; color: #fff; }
+
     /* ── Confirm bar ─────────────────────────────────────────────── */
     .confirm-bar { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: .75rem; }
     .confirm-slot-info { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: .6rem 1rem; font-size: .88rem; color: #991b1b; font-weight: 600; text-align: center; }
@@ -185,7 +211,8 @@
 
       <!-- Quel local -->
       <div class="card-title">📍 Dans quel local serez-vous ?</div>
-      <select id="localSelect" style="width:100%;padding:.65rem .9rem;border:2px solid #e2e8f0;border-radius:10px;font-family:inherit;font-size:.92rem;color:#1e293b;margin-bottom:1.25rem;background:#f8fafc;appearance:auto;">
+      <div id="localGroups" class="local-groups"></div>
+      <select id="localSelect" style="display:none;">
         <option value="">— Sélectionnez votre local —</option>
       </select>
 
@@ -427,6 +454,7 @@ function renderColleagues(agentsData, myKey, integratorKey) {
         _selectedColleagues.add(key);
         chip.classList.add('selected');
       }
+      if (typeof window._rebuildAndRender === 'function') window._rebuildAndRender();
     });
   });
 }
@@ -477,41 +505,92 @@ async function main() {
     .sort((a, b) => a.order - b.order);
 
   const sel = document.getElementById('localSelect');
+  const groupsEl = document.getElementById('localGroups');
+  const allOptionValues = [];
+
+  function setLocalValue(val) {
+    sel.value = val;
+    const selectedLocalId = val ? val.split('|')[1] : '';
+    groupsEl.querySelectorAll('.local-chip').forEach(c => {
+      c.classList.toggle('selected', c.dataset.localId === selectedLocalId);
+    });
+    groupsEl.querySelectorAll('.desk-chip').forEach(d => {
+      d.classList.toggle('selected', d.dataset.value === val);
+    });
+    sel.dispatchEvent(new Event('change'));
+  }
+
   lieuxList.forEach(lieu => {
     if (!lieu.localIds.length) return;
-    const grp = document.createElement('optgroup');
-    grp.label = lieu.name;
+    const groupEl = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'local-group-title';
+    title.textContent = lieu.name;
+    groupEl.appendChild(title);
+    const chipsEl = document.createElement('div');
+    chipsEl.className = 'local-chips';
+
     lieu.localIds.forEach(id => {
       const label = localLabels[id] || localLabels[String(id)] || `Local ${id}`;
       const desks = Object.keys(localDesks[String(id)] || {});
+      const chip = document.createElement('div');
+      chip.className = 'local-chip';
+      chip.dataset.localId = String(id);
+      const nameEl = document.createElement('span');
+      nameEl.textContent = label;
+      chip.appendChild(nameEl);
+
       if (desks.length) {
-        // Local avec desks → une option par desk
-        desks.forEach(deskId => {
+        const deskRow = document.createElement('div');
+        deskRow.className = 'desk-row';
+        desks.forEach((deskId, idx) => {
           const dLabel = deskLabels[deskId] || `Desk ${String(deskId).slice(-4)}`;
+          const fullVal = `${lieu.name}|${id}|${label} — ${dLabel}|${deskId}`;
+          allOptionValues.push(fullVal);
           const opt = document.createElement('option');
-          opt.value = `${lieu.name}|${id}|${label} — ${dLabel}|${deskId}`;
+          opt.value = fullVal;
           opt.textContent = `${label} — ${dLabel}`;
-          grp.appendChild(opt);
+          sel.appendChild(opt);
+
+          const dChip = document.createElement('button');
+          dChip.type = 'button';
+          dChip.className = 'desk-chip';
+          dChip.textContent = String(idx + 1);
+          dChip.dataset.value = fullVal;
+          dChip.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setLocalValue(fullVal);
+          });
+          deskRow.appendChild(dChip);
+        });
+        chip.appendChild(deskRow);
+        // Clic sur le chip parent → sélectionne le 1er desk
+        chip.addEventListener('click', () => {
+          const firstDesk = chip.querySelector('.desk-chip');
+          if (firstDesk) setLocalValue(firstDesk.dataset.value);
         });
       } else {
-        // Local sans desk → option simple
+        const fullVal = `${lieu.name}|${id}|${label}|`;
+        allOptionValues.push(fullVal);
         const opt = document.createElement('option');
-        opt.value = `${lieu.name}|${id}|${label}|`;
+        opt.value = fullVal;
         opt.textContent = label;
-        grp.appendChild(opt);
+        sel.appendChild(opt);
+        chip.dataset.value = fullVal;
+        chip.addEventListener('click', () => setLocalValue(fullVal));
       }
+
+      chipsEl.appendChild(chip);
     });
-    sel.appendChild(grp);
+
+    groupEl.appendChild(chipsEl);
+    groupsEl.appendChild(groupEl);
   });
 
-  // Pré-sélectionner le bureau de l'agent si connu et présent dans le dropdown
+  // Pré-sélectionner le bureau de l'agent si connu
   if (agentBureauId) {
-    // Chercher d'abord un desk du local de l'agent, sinon le local lui-même
-    const optToSelect = [...sel.options].find(o => {
-      const p = o.value.split('|');
-      return p[1] === String(agentBureauId);
-    });
-    if (optToSelect) sel.value = optToSelect.value;
+    const match = allOptionValues.find(v => v.split('|')[1] === String(agentBureauId));
+    if (match) setLocalValue(match);
   }
 
   // Écouter les réservations en temps réel → re-rendre les créneaux à chaque changement
@@ -533,6 +612,22 @@ async function main() {
     const selectedDesk = parts[3] || null;
     const taken = new Set();
 
+    // Noms de l'agent principal + collègues à surveiller (pour conflits perso)
+    const mainName = agentsData[agentKey] || null;
+    const watchedNames = new Set();
+    if (mainName) watchedNames.add(mainName);
+    _selectedColleagues.forEach(k => {
+      const n = agentsData[k];
+      if (n) watchedNames.add(n);
+    });
+
+    function _resaIncludesAnyWatched(r) {
+      if (!watchedNames.size) return false;
+      if (r.agent && watchedNames.has(r.agent)) return true;
+      if (Array.isArray(r.agents) && r.agents.some(n => watchedNames.has(n))) return true;
+      return false;
+    }
+
     Object.values(_lastResData).forEach(r => {
       if (!r.startDateTime || r.isPermanent) return;
       const rS = r.startDateTime;
@@ -542,7 +637,9 @@ async function main() {
                      (Array.isArray(r.agents) && r.agents.includes(integratorName));
       // L'unité sélectionnée (desk ou local) est occupée
       const isUnitBusy = selectedLid && _unitOccupies(r, selectedLid, selectedDesk) && rE;
-      if (!isHugo && !isUnitBusy) return;
+      // Un agent (principal ou collègue) sélectionné a déjà un RDV
+      const isAgentBusy = rE && _resaIncludesAnyWatched(r);
+      if (!isHugo && !isUnitBusy && !isAgentBusy) return;
       // Marquer tous les chunks qui chevauchent cette réservation
       expandedSlots.forEach(slot => {
         splitInto30(slot).forEach(chunk => {
@@ -557,6 +654,8 @@ async function main() {
 
   // Re-rendre quand le local change
   document.getElementById('localSelect').addEventListener('change', _rebuildAndRender);
+  // Exposer pour que renderColleagues puisse déclencher le re-rendu
+  window._rebuildAndRender = _rebuildAndRender;
 
   showScreen('screenBook');
   renderColleagues(agentsData, agentKey, integratorKey);
@@ -600,6 +699,28 @@ async function main() {
         btn.disabled = false;
         btn.textContent = '✅ Confirmer le rendez-vous';
         alert(`⚠️ Ce local est déjà occupé à ce créneau.\nChoisissez un autre créneau ou un autre local.`);
+        return;
+      }
+
+      // ── Vérification conflit d'agenda (agent principal + collègues) ─
+      const participantNames = new Set([agentName, ...colleagues.map(c => c.name)]);
+      const agentConflict = Object.values(resData).find(r => {
+        if (r.isPermanent) return false;
+        const rS = r.startDateTime || '';
+        const rE = r.endDateTime   || '';
+        if (!(rS < sEnd && rE > sStart)) return false;
+        if (r.agent && participantNames.has(r.agent)) return r;
+        if (Array.isArray(r.agents) && r.agents.some(n => participantNames.has(n))) return r;
+        return false;
+      });
+      if (agentConflict) {
+        btn.disabled = false;
+        btn.textContent = '✅ Confirmer le rendez-vous';
+        const busyNames = [...participantNames].filter(n =>
+          agentConflict.agent === n ||
+          (Array.isArray(agentConflict.agents) && agentConflict.agents.includes(n))
+        );
+        alert(`⚠️ ${busyNames.join(', ')} a déjà un rendez-vous sur ce créneau.\nChoisissez un autre créneau.`);
         return;
       }
 

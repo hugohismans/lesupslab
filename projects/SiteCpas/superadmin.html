@@ -517,6 +517,7 @@ async function loadOrgs() {
         <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeCalendar('${orgId}', '${name}')">🗓 Vider calendrier</button>
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="purgeNotifications('${orgId}', '${name}')">🔔 Vider notifs</button>
         <button class="sa-btn sa-btn-warn sa-btn-sm" onclick="purgeRdvRequests('${orgId}', '${name}')">📨 Vider demandes RDV</button>
+        <button class="sa-btn sa-btn-danger sa-btn-sm" onclick="purgeUserData('${orgId}', '${name}')">🧹 Reset données utilisateur</button>
         <a href="index.html?org=${orgId}" target="_blank" class="sa-btn sa-btn-primary sa-btn-sm" style="text-decoration:none">Ouvrir →</a>
       </div>
     </div>
@@ -819,6 +820,64 @@ async function purgeCalendar(orgId, orgName) {
   try {
     await db.ref(`orgs/${orgId}/reservations`).remove();
     alert(`✅ Toutes les réservations supprimées pour "${orgName}".\nLe calendrier est vide.`);
+  } catch (e) {
+    alert(`❌ Erreur : ${e.message}`);
+  }
+}
+
+// ── Reset complet des données utilisateur (garde la config) ─────
+async function purgeUserData(orgId, orgName) {
+  const msg = `⚠️ RESET DONNÉES UTILISATEUR — "${orgName}"\n\n` +
+    `Seront SUPPRIMÉS :\n` +
+    `• Réservations (calendrier)\n` +
+    `• Plages RDV & demandes de RDV\n` +
+    `• Notifications de tous les agents\n` +
+    `• Tickets (files d'attente + historique)\n` +
+    `• Présences, pauses, services déclarés\n` +
+    `• Dernier appelé, file "préférés"\n` +
+    `• Demandes de rappel, planning, absences\n\n` +
+    `SERONT CONSERVÉS :\n` +
+    `• Configuration (lieux, locaux, desks, agents, services, features)\n` +
+    `• Mots de passe et rôles\n` +
+    `• Préférences RDV par agent (local favori, auto-accept)\n\n` +
+    `⚠️ IRRÉVERSIBLE.\nTapez "RESET" pour confirmer :`;
+  const input = prompt(msg);
+  if (input !== 'RESET') { if (input !== null) alert('Annulé — tapez exactement "RESET".'); return; }
+
+  try {
+    const updates = {};
+    const orgBase = `orgs/${orgId}`;
+    // Chemins à vider totalement
+    [
+      'reservations',
+      'notifications',
+      'queues',
+      'queueHistory',
+      'requests',
+      'planning',
+      'absences',
+      'appState/appointmentRequests',
+      'appState/bureaux',
+      'appState/lastCall',
+      'appState/lastCalls',
+      'appState/preferredPending',
+      'appState/preferredQueue',
+      'appState/preferredRequests',
+    ].forEach(p => { updates[`${orgBase}/${p}`] = null; });
+
+    // availabilitySlots : garder _settings par agent, supprimer les slots
+    const slotsSnap = await db.ref(`${orgBase}/appState/availabilitySlots`).once('value');
+    slotsSnap.forEach(agentNode => {
+      const agentKey = agentNode.key;
+      agentNode.forEach(child => {
+        if (child.key !== '_settings') {
+          updates[`${orgBase}/appState/availabilitySlots/${agentKey}/${child.key}`] = null;
+        }
+      });
+    });
+
+    await db.ref().update(updates);
+    alert(`✅ Données utilisateur purgées pour "${orgName}".\nConfig + préférences RDV conservées.`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
   }
