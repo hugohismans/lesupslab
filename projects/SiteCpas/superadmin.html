@@ -834,6 +834,7 @@ async function purgeUserData(orgId, orgName) {
     `• Notifications de tous les agents\n` +
     `• Tickets (files d'attente + historique)\n` +
     `• Présences, pauses, services déclarés\n` +
+    `• Statuts agents du jour (tous repassent "en attente d'arrivée")\n` +
     `• Dernier appelé, file "préférés"\n` +
     `• Demandes de rappel, planning, absences\n\n` +
     `SERONT CONSERVÉS :\n` +
@@ -856,6 +857,7 @@ async function purgeUserData(orgId, orgName) {
       'requests',
       'planning',
       'absences',
+      'agentStatus',
       'appState/appointmentRequests',
       'appState/bureaux',
       'appState/lastCall',

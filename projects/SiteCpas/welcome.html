@@ -147,14 +147,11 @@
   .wl-btn:hover  { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(124,58,237,.55); }
   .wl-btn:active { transform: translateY(0); }
   .wl-btn.final  {
-    font-size: .9rem; padding: .7rem 1.8rem;
-    background: rgba(255,255,255,.12);
-    box-shadow: none;
-    border: 1.5px solid rgba(255,255,255,.25);
-    color: rgba(255,255,255,.7);
-    animation: none;
-    min-width: 0;
+    font-size: 1.3rem; padding: 1.2rem 3.5rem;
+    min-width: 260px;
+    box-shadow: 0 10px 30px rgba(124,58,237,.55);
   }
+  .wl-btn.final:hover { box-shadow: 0 16px 40px rgba(124,58,237,.7); }
   .wl-btn.final:hover { background: rgba(255,255,255,.2); box-shadow: none; }
   .wl-btn.final:disabled {
     opacity: .4; cursor: not-allowed; transform: none;
@@ -277,16 +274,8 @@
     <!-- Nav -->
     <button class="wl-btn" id="wlBtn">Suivant →</button>
 
-    <!-- Bouton documentation (visible uniquement sur la dernière étape) -->
-    <a id="wlDocsLink" href="docs.html" target="_blank" style="display:none;margin-top:.35rem;
-      background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);
-      color:#fff;font-family:inherit;font-size:.9rem;font-weight:600;
-      padding:.65rem 1.5rem;border-radius:2rem;text-decoration:none;
-      backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-      cursor:pointer;transition:background .15s,border-color .15s;
-      letter-spacing:.01em;text-align:center;">
-      📖 Voir le guide de mon poste
-    </a>
+    <!-- Bouton documentation retiré en prod -->
+    <a id="wlDocsLink" href="docs.html" target="_blank" style="display:none!important;"></a>
   </div>
 
   <!-- Skip -->

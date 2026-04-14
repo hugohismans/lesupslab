@@ -1,74 +1,75 @@
 {
   "rules": {
     "orgs": {
+      // Permet de lister toutes les orgs (superadmin)
+      ".read": true,
       "$orgId": {
         // Lecture autorisée pour toute l'organisation
         ".read": true,
-
-        // ── Réservations ──────────────────────────────────────────
-        "reservations": {
-          ".write": true,
-          "$resId": {
-            ".validate": "newData.hasChild('localId') && newData.hasChild('startDateTime')"
-          }
-        },
+        ".write": true,
 
         // ── Configuration (appConfig) ─────────────────────────────
+        // Protégée contre la suppression totale + structures critiques
         "appConfig": {
-          ".write": true,
-          // Empêcher la suppression totale de appConfig
-          ".validate": "newData.exists()"
+          ".validate": "newData.exists()",
+          // Les agents, lieux, services ne peuvent pas être entièrement supprimés
+          "agents":   { ".validate": "newData.exists()" },
+          "lieux":    { ".validate": "newData.exists()" },
+          "services": { ".validate": "newData.exists()" }
+        },
+
+        // ── Réservations : structure minimale + anti-flood ───────
+        "reservations": {
+          "$resId": {
+            ".validate": "!newData.exists() || newData.hasChildren(['localId', 'startDateTime'])",
+            "note":          { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" },
+            "agent":         { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" }
+          }
         },
 
         // ── État temps réel (appState) ────────────────────────────
         "appState": {
-          ".write": true
+          "appointmentRequests": {
+            "$reqId": {
+              ".validate": "!newData.exists() || newData.hasChildren(['targetAgentKey', 'requesterAgentKey'])",
+              "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+            }
+          }
         },
 
-        // ── Files d'attente ───────────────────────────────────────
-        "queues": {
-          ".write": true
-        },
-
-        // ── Historique files d'attente ─────────────────────────────
-        "queueHistory": {
-          ".write": true
-        },
-
-        // ── Statut agents (présence, connexion) ───────────────────
-        "agentStatus": {
-          ".write": true
-        },
-
-        // ── Notifications ─────────────────────────────────────────
+        // ── Notifications : plafond de taille ─────────────────────
         "notifications": {
-          ".write": true
+          "$agentKey": {
+            "$notifId": {
+              "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 2000)" }
+            }
+          }
         },
 
-        // ── Absences ──────────────────────────────────────────────
-        "absences": {
-          ".write": true
+        // ── Requêtes techniques / interventions ───────────────────
+        "requests": {
+          "$reqId": {
+            "description": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+          }
         },
 
-        // ── Requêtes techniques ───────────────────────────────────
-        "techRequests": {
-          ".write": true
-        },
-
-        // ── Interventions ─────────────────────────────────────────
-        "interventions": {
-          ".write": true
-        },
-
-        // ── Tout autre chemin sous l'org → autorisé ───────────────
-        "$other": {
-          ".write": true
+        // ── Planning : anti-flood ─────────────────────────────────
+        "planning": {
+          "$taskId": {
+            "title": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" },
+            "notes": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+          }
         }
       }
     },
 
+    // ── Superadmin (hash mdp + token onboarding + métadonnées orgs) ──
+    "superadmin": {
+      ".read": true,
+      ".write": true
+    },
+
     // ── TOUT LE RESTE → INTERDIT ──────────────────────────────────
-    // Empêche la lecture/écriture en dehors de /orgs/
     ".read": false,
     ".write": false
   }

@@ -2085,9 +2085,9 @@ const LIVE = {
         const localId = parseInt(btn.dataset.local);
         const d = this._lastCalled[localId];
         if (!d) return;
-        // Ré-annoncer sur l'écran public
+        // Ré-annoncer sur l'écran public (préserver label + nom nominatif)
         const grp = DB.getLocalGroup(localId);
-        await DB.writeLastCall(localId, d.pubAgent ?? null, grp?.name ?? null, d.ticket);
+        await DB.writeLastCall(localId, d.pubAgent ?? null, grp?.name ?? null, d.ticket, d.ticketLabel ?? null, d.ticketName ?? null);
         // Notif visuelle locale
         showAgentCallNotif(d.ticketLabel || d.ticket, d.ticketName || null);
         showToast(`📢 Rappel envoyé — ticket ${d.ticket || ''}`);

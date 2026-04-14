@@ -870,7 +870,7 @@ const DB = {
     return `${base} ${i}`;
   },
 
-  async issueTicket(groupId, beneficiaryName) {
+  async issueTicket(groupId, beneficiaryName, { skip = false } = {}) {
     const today = isoDate(new Date());
     const n = this.getTicketIssued(groupId) + 1;
     const writes = { [`tick_${groupId}`]: n, [`times_${groupId}/${n}`]: Date.now() };
@@ -879,8 +879,11 @@ const DB = {
       resolvedName = this._resolveTicketName(groupId, beneficiaryName.trim());
       writes[`names_${groupId}/${n}`] = resolvedName;
     }
+    // skip=true : ticket créé pour stats/impression mais exclu de la file EN ATTENTE
+    // (utilisé pour les demandes spécifiques SP). Écriture atomique pour éviter que
+    // l'UI voie tick_ sans skip_ entre deux updates.
+    if (skip) writes[`skip_${groupId}/${n}`] = true;
     await this._ref(`queues/${today}`).update(writes);
-    // Retourne { label: numéro formaté, resolvedName: nom résolu (null si pas de nom) }
     return { label: this.formatTicket(groupId, n), number: n, resolvedName };
   },
 
@@ -1199,11 +1202,12 @@ const DB = {
       let ticketLabel   = null;
       let resolvedName  = displayName;
       if (grp) {
-        const result = await this.issueTicket(grp.id, displayName || null);
-        // Préfixe "SP" pour les demandes spécifiques (au lieu du préfixe du groupe)
+        // Émission + skip en une seule écriture atomique (ticket pour stats/impression,
+        // exclu de la file EN ATTENTE du groupe — c'est une demande spécifique SP)
+        const result = await this.issueTicket(grp.id, displayName || null, { skip: true });
         ticketLabel  = `SP${String(result.number).padStart(2, '0')}`;
         resolvedName = result.resolvedName || displayName;
-        await this.incrementGroupOverflow(grp.id);
+        // Pas d'incrementGroupOverflow : les SP n'appartiennent pas à la file générique du groupe
       }
       await this._ref(`appState/preferredPending/${localId}`).set({
         displayName:     resolvedName   || '—',

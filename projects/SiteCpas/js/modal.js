@@ -600,12 +600,14 @@ const MODAL = {
     // ── Modules (feature flags) ────────────────────────────────────
     // Modules essentiels (visibles directement)
     const MODULE_SIMPLE = [
-      { key: 'enableTickets',    label: 'Files d\'attente (tickets)', desc: 'Bouton Direct + gestion des queues' },
-      { key: 'enablePublicView', label: 'Vue publique',               desc: 'Lien vers l\'écran salle d\'attente' },
-      { key: 'enablePresence',   label: 'Statuts présence agents',    desc: 'Bouton Mon statut (retard / absence)' },
-      { key: 'enableNotif',      label: 'Centre de notifications',    desc: 'Cloche dans le header — panneau de notifications in-app' },
-      { key: 'agentEmoji',       label: 'Emojis des agents',          desc: 'Afficher les emojis dans le calendrier' },
-      { key: 'enableBackoffice', label: 'BackOffice',                 desc: 'Lieux internes non publics — présence des agents sans réservation ni queue' },
+      { key: 'enableTickets',       label: 'Files d\'attente (tickets)', desc: 'Bouton Direct + gestion des queues' },
+      { key: 'enablePublicView',    label: 'Vue publique',               desc: 'Lien vers l\'écran salle d\'attente' },
+      { key: 'enablePresence',      label: 'Statuts présence agents',    desc: 'Bouton Mon statut (retard / absence)' },
+      { key: 'enableNotif',         label: 'Centre de notifications',    desc: 'Cloche dans le header — panneau de notifications in-app' },
+      { key: 'agentEmoji',          label: 'Emojis des agents',          desc: 'Afficher les emojis dans le calendrier' },
+      { key: 'enableBackoffice',    label: 'BackOffice',                 desc: 'Lieux internes non publics — présence des agents sans réservation ni queue' },
+      { key: 'enableTechRequests',  label: 'Bouton Requête',             desc: 'Bouton 📤 Requête — permet aux agents de signaler un souci technique ou d\'entretien' },
+      { key: 'enableInterventions', label: 'Panneau Interventions',      desc: 'Bouton 🛠️ Interventions — visible par les rôles technicien / entretien / admin pour gérer les requêtes' },
     ];
 
     // Modules avancés (dans le bloc <details>)
@@ -618,8 +620,6 @@ const MODAL = {
           { key: 'enableNamedTickets',   label: 'Tickets nominatifs',             desc: 'Remplacer le numéro de ticket par le nom du bénéficiaire (accueil saisit le nom à l\'émission)' },
           { key: 'enableTicketPrint',    label: 'Impression de ticket',           desc: 'Bouton imprimer le numéro de ticket dans la vue Direct' },
           { key: 'enableCalendarSync',   label: 'Export iCal (Google/Apple)',     desc: 'Lien .ics pour importer les RDV dans un agenda externe' },
-          { key: 'enableTechRequests',   label: 'Bouton Requête',                 desc: 'Bouton 📤 Requête — permet aux agents de signaler un souci technique ou d\'entretien' },
-          { key: 'enableInterventions',  label: 'Panneau Interventions',          desc: 'Bouton 🛠️ Interventions — visible par les rôles technicien / entretien / admin pour gérer les requêtes en cours' },
           { key: 'enableBroadcast',      label: 'Diffusion de messages',          desc: 'Bouton 📢 Diffuser — envoyer un message à tous les agents connectés' },
           { key: 'enableRdvIntegrateur', label: 'Prise de rendez-vous',           desc: 'Bannière de prise de rendez-vous avec l\'intégrateur sur l\'accueil' },
         ]

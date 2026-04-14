@@ -3386,10 +3386,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         let resolvedName   = displayName;
         const grpForQueue  = DB.getLocalGroup(localId);
         if (grpForQueue) {
-          const ticketResult = await DB.issueTicket(grpForQueue.id, displayName || null);
-          ticketLabel  = ticketResult.label;
-          resolvedName = ticketResult.resolvedName || displayName; // nom dédupliqué = même que EN ATTENTE
-          await DB.incrementGroupOverflow(grpForQueue.id);
+          // skip=true : ticket créé pour les stats mais exclu de la file EN ATTENTE du groupe
+          // (c'est une demande spécifique SP, pas un ticket file générique)
+          const ticketResult = await DB.issueTicket(grpForQueue.id, displayName || null, { skip: true });
+          ticketLabel  = `SP${String(ticketResult.number).padStart(2, '0')}`;
+          resolvedName = ticketResult.resolvedName || displayName;
+          // Pas d'incrementGroupOverflow : les SP n'appartiennent pas à la file générique du groupe
         }
         await DB.pushToPreferredQueue(localId, { displayName: resolvedName, agentPublicName, requestId, ts: Date.now(), ticketLabel });
         const queueLen = DB.getPreferredQueue(localId).length + 1; // +1 car le push n'est pas encore reflété localement
