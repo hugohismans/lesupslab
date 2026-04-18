@@ -650,7 +650,7 @@ const DB = {
       await this.setAgentStatus(agentKey, null);
     }
     // Demande spécifique en attente d'ouverture → router vers ce bureau
-    if (agentKey && this._awaitingPreferred?.[agentKey]) {
+    if (agentKey) {
       try { await this._migrateAwaitingPreferred(agentKey, localId); }
       catch (err) { console.warn('[migrateAwaitingPreferred]', err); }
     }
@@ -660,7 +660,13 @@ const DB = {
   // sur le bureau que l'agent vient d'ouvrir. Émet aussi un ticket SP sur le groupe
   // du local pour apparaître dans la file visuelle.
   async _migrateAwaitingPreferred(agentKey, localId) {
-    const aw = this._awaitingPreferred[agentKey];
+    // Lecture Firebase directe (le cache local peut être vide si on vient
+    // tout juste de se connecter : openBureau peut précéder le 1er snapshot du listener)
+    let aw = this._awaitingPreferred?.[agentKey] || null;
+    if (!aw) {
+      const snap = await this._ref(`appState/awaitingPreferred/${agentKey}`).once('value');
+      aw = snap.val();
+    }
     if (!aw) return;
 
     const grp = this.getLocalGroup(localId);
