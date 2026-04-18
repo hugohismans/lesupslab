@@ -2768,7 +2768,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     LIVE.render();
   });
-  DB.onAbsenceChange(() => { LIVE.render(); HOME.render(); });
+  DB.onAbsenceChange(() => {
+    LIVE.render();
+    HOME.render();
+    if (typeof CAL !== 'undefined') CAL.render();
+  });
 
   // Météo — lire Firebase d'abord, puis rafraîchir l'API si besoin (1x/heure)
   if (typeof WEATHER !== 'undefined') {
