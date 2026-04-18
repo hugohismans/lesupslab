@@ -2478,7 +2478,7 @@ function openAbsenceModal(targetAgentKey, targetAgentName) {
     const sel = g('absAgentSelect');
     if (sel) {
       sel.innerHTML = DB.getAgentsWithKeys()
-        .map(a => `<option value="${a.key}">${_esc(a.name)}</option>`).join('');
+        .map(a => `<option value="${a.key}">${escapeHtml(a.name)}</option>`).join('');
     }
   }
 
