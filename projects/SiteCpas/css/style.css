@@ -1128,6 +1128,19 @@ body {
 .field-input:focus { outline: none; border-color: #2a6496; }
 select.field-input { cursor: pointer; }
 .field-input + .field-label { margin-top: .9rem; }
+.pref-awaits-label {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .55rem .75rem; border-radius: 8px;
+  background: #fff7ed; border: 1.5px solid #fed7aa;
+  font-size: .9rem; color: #7c2d12; font-weight: 600;
+  cursor: pointer; user-select: none;
+}
+.pref-awaits-label input { width: 16px; height: 16px; cursor: pointer; accent-color: #f59e0b; flex-shrink: 0; }
+.pref-awaits-label:hover { background: #ffedd5; }
+.pref-awaits-hint {
+  font-size: .78rem; color: #78350f; margin-top: .35rem; font-style: italic;
+  line-height: 1.4;
+}
 
 /* Détail */
 .det-row {
@@ -2083,6 +2096,47 @@ select.field-input { cursor: pointer; }
   cursor: pointer; transition: background .12s; margin-top: .35rem;
 }
 .lv-pref-receive:hover { background: #fde68a; }
+
+/* Listes récapitulatives SP sur la carte accueil */
+.lv-pref-section-title {
+  font-size: .72rem; font-weight: 800; color: #a78bfa;
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-top: .6rem; padding-top: .5rem;
+  border-top: 1px solid rgba(167,139,250,.2);
+}
+.lv-pref-section-title-await { color: #fbbf24; border-top-color: rgba(251,191,36,.2); }
+.lv-pref-list {
+  display: flex; flex-direction: column; gap: .25rem;
+  margin-top: .3rem;
+}
+.lv-pref-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .5rem;
+  background: rgba(139,92,246,.1);
+  border-radius: 6px;
+  font-size: .78rem;
+  color: #e9d5ff;
+}
+.lv-pref-item.lv-pref-item-await {
+  background: rgba(251,191,36,.08);
+  grid-template-columns: auto 1fr auto 1fr auto auto;
+}
+.lv-pref-ticket { font-weight: 700; color: #fbbf24; }
+.lv-pref-name   { color: #f1f5f9; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-arrow  { color: #64748b; }
+.lv-pref-agent  { color: #c4b5fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-local  { color: #94a3b8; font-size: .72rem; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-cancel {
+  background: transparent; border: 1px solid #7f1d1d; color: #fca5a5;
+  width: 22px; height: 22px; border-radius: 5px; cursor: pointer;
+  font-size: .8rem; line-height: 1; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.lv-pref-cancel:hover { background: #7f1d1d; color: #fff; }
 
 /* Badge groupe dans carte live */
 .lv-qg-badge {

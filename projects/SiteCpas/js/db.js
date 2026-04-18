@@ -649,6 +649,54 @@ const DB = {
     if (agentKey && this._agentStatus[agentKey]?.status === 'late') {
       await this.setAgentStatus(agentKey, null);
     }
+    // Demande spécifique en attente d'ouverture → router vers ce bureau
+    if (agentKey && this._awaitingPreferred?.[agentKey]) {
+      try { await this._migrateAwaitingPreferred(agentKey, localId); }
+      catch (err) { console.warn('[migrateAwaitingPreferred]', err); }
+    }
+  },
+
+  // Migre une demande spécifique awaiting vers preferredPending / preferredQueue
+  // sur le bureau que l'agent vient d'ouvrir. Émet aussi un ticket SP sur le groupe
+  // du local pour apparaître dans la file visuelle.
+  async _migrateAwaitingPreferred(agentKey, localId) {
+    const aw = this._awaitingPreferred[agentKey];
+    if (!aw) return;
+
+    const grp = this.getLocalGroup(localId);
+    let ticketLabel = aw.ticketLabel || null;
+    let displayName = aw.displayName || 'Bénéficiaire';
+    if (grp) {
+      const result = await this.issueTicket(grp.id, displayName, { skip: true });
+      ticketLabel  = `SP${String(result.number).padStart(2, '0')}`;
+      displayName  = result.resolvedName || displayName;
+    }
+
+    const payload = {
+      displayName,
+      ticketLabel,
+      agentPublicName: aw.agentPublicName || null,
+      requestId:       aw.requestId || null,
+      ts:              aw.ts || Date.now(),
+    };
+
+    const existing = this.getPreferredPending(localId);
+    const busy     = this.isBureauBusyWithPreferred(localId);
+    if (!existing && !busy) {
+      await this._ref(`appState/preferredPending/${localId}`).set(payload);
+    } else {
+      await this._ref(`appState/preferredQueue/${localId}`).push(payload);
+    }
+
+    if (aw.requestId) {
+      await this._ref(`appState/preferredRequests/${aw.requestId}`).update({
+        status:      'accepted',
+        localId,
+        respondedAt: Date.now(),
+      });
+    }
+
+    await this.removeAwaitingPreferred(agentKey);
   },
   getBureauAgentKey(localId)            { return this._bureauState[String(localId)]?.agentKey || null; },
   getBureauDeskId(localId)              { return this._bureauState[String(localId)]?.deskId || null; },
@@ -1191,6 +1239,28 @@ const DB = {
 
   onPreferredPendingChange(fn) {
     this._preferredPendingCbs.push(fn);
+  },
+
+  // ── Demandes spécifiques en attente d'ouverture de bureau ────────
+  // Quand l'accueil coche "Ce bureau sera bientôt pris" pour un agent qui n'a
+  // pas encore ouvert de bureau : on stocke ici par agentKey, et la migration
+  // vers preferredPending/preferredQueue se fait dans openBureau().
+  _awaitingPreferred: {},
+  _awaitingPreferredCbs: [],
+  initAwaitingPreferred() {
+    this._ref('appState/awaitingPreferred').on('value', snap => {
+      this._awaitingPreferred = snap.val() || {};
+      this._awaitingPreferredCbs.forEach(fn => fn());
+    });
+  },
+  onAwaitingPreferredChange(fn) { this._awaitingPreferredCbs.push(fn); },
+  getAwaitingPreferred(agentKey) { return this._awaitingPreferred[agentKey] || null; },
+  getAllAwaitingPreferred() { return this._awaitingPreferred || {}; },
+  async setAwaitingPreferred(agentKey, data) {
+    await this._ref(`appState/awaitingPreferred/${agentKey}`).set(data);
+  },
+  async removeAwaitingPreferred(agentKey) {
+    await this._ref(`appState/awaitingPreferred/${agentKey}`).remove();
   },
 
   getPreferredPending(localId) {

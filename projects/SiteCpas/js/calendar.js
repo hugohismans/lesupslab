@@ -1620,10 +1620,59 @@ const LIVE = {
 
     if (isAccueil) {
       const bureauHtml = this._showAllBureaux ? lieuGroupsHtml : '';
+
+      // Liste des demandes SP actives (preferredPending par local)
+      const _allPending = Object.entries(DB._preferredPending || {})
+        .map(([lid, pend]) => ({ localId: parseInt(lid), pend }))
+        .filter(x => x.pend)
+        .sort((a, b) => (a.pend.ts || 0) - (b.pend.ts || 0));
+
+      const _pendingHtml = _allPending.length
+        ? `<div class="lv-pref-section-title">🎫 Demandes en cours</div>
+           <div class="lv-pref-list">${_allPending.map(({ localId, pend }) => {
+             const _ticket = pend.ticketLabel || 'SP';
+             const _name   = pend.displayName || '?';
+             const _agent  = pend.agentPublicName || '';
+             const _loc    = DB.getLocalLabel(localId);
+             return `<div class="lv-pref-item">
+               <span class="lv-pref-ticket">${escapeHtml(_ticket)}</span>
+               <span class="lv-pref-name">${escapeHtml(_name)}</span>
+               <span class="lv-pref-arrow">→</span>
+               <span class="lv-pref-agent">${escapeHtml(_agent)}</span>
+               <span class="lv-pref-local">${escapeHtml(_loc)}</span>
+             </div>`;
+           }).join('')}</div>`
+        : '';
+
+      // Liste des demandes SP en attente d'ouverture de bureau
+      const _awaitingMap = DB.getAllAwaitingPreferred();
+      const _awaitingList = Object.entries(_awaitingMap)
+        .map(([agentKey, data]) => ({ agentKey, data }))
+        .sort((a, b) => (a.data?.ts || 0) - (b.data?.ts || 0));
+      const _awaitingHtml = _awaitingList.length
+        ? `<div class="lv-pref-section-title lv-pref-section-title-await">💺 En attente d'ouverture</div>
+           <div class="lv-pref-list">${_awaitingList.map(({ agentKey, data }) => {
+             const _info = DB.getAgentsWithKeys().find(a => a.key === agentKey);
+             const _agentName = _info?.name || agentKey;
+             const _name  = data.displayName || '?';
+             const _place = data.publicPlaceName || '';
+             return `<div class="lv-pref-item lv-pref-item-await">
+               <span class="lv-pref-ticket">⏳</span>
+               <span class="lv-pref-name">${escapeHtml(_name)}</span>
+               <span class="lv-pref-arrow">→</span>
+               <span class="lv-pref-agent">${escapeHtml(_agentName)}</span>
+               <span class="lv-pref-local">${_place ? `📍 ${escapeHtml(_place)}` : 'bureau non ouvert'}</span>
+               <button class="lv-pref-cancel" data-agent-key="${escapeHtml(agentKey)}" title="Annuler l'attente">✕</button>
+             </div>`;
+           }).join('')}</div>`
+        : '';
+
       const preferredCard = `<div class="lv-card lv-preferred-standalone">
         <div class="lv-preferred-standalone-title">👤 Demande agent spécifique</div>
         <div class="lv-preferred-standalone-desc">Un bénéficiaire souhaite être reçu par un agent en particulier.</div>
         <button class="lv-grp-preferred" id="lvPreferredBtn">Ne veut voir qu'un agent</button>
+        ${_pendingHtml}
+        ${_awaitingHtml}
       </div>`;
       g('liveGrid').innerHTML = groupCards + preferredCard + bureauHtml;
     } else {
@@ -1838,6 +1887,22 @@ const LIVE = {
       });
     });
 
+    // Annuler une demande spécifique en attente d'ouverture (accueil)
+    g('liveGrid').querySelectorAll('.lv-pref-cancel').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const agentKey = btn.dataset.agentKey;
+        if (!agentKey) return;
+        if (!confirm('Annuler cette demande en attente ?')) return;
+        const aw = DB.getAwaitingPreferred(agentKey);
+        if (aw?.requestId) {
+          await DB._ref(`appState/preferredRequests/${aw.requestId}`).update({ status: 'cancelled', benefName: null });
+        }
+        await DB.removeAwaitingPreferred(agentKey);
+        showToast('Demande annulée');
+      });
+    });
+
     // Bouton "Ne veut voir qu'un agent" (accueil uniquement)
     g('liveGrid').querySelectorAll('.lv-grp-preferred').forEach(btn => {
       btn.addEventListener('click', e => {
@@ -1869,6 +1934,8 @@ const LIVE = {
         }
 
         if (benefIn) benefIn.value = '';
+        const awaitsCb = document.getElementById('prefAwaitsBureau');
+        if (awaitsCb) awaitsCb.checked = false;
         overlay.classList.remove('hidden');
         setTimeout(() => benefIn?.focus(), 80);
       });
