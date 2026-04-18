@@ -222,7 +222,7 @@
   <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
     <span class="hs-patchnote-sparkle">✨</span>
     <span class="hs-patchnote-text">
-      <span class="hs-patchnote-tag">Patch note v1.1.0</span>
+      <span class="hs-patchnote-tag">Patch note v1.2.0</span>
       <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
     </span>
     <span class="hs-patchnote-arrow">→</span>
@@ -232,43 +232,56 @@
   <div class="modal-overlay hidden" id="patchnoteModal">
     <div class="modal-box patchnote-box">
       <div class="modal-header">
-        <span class="modal-title">✨ Patch note v1.1.0 — 18 avril 2026</span>
+        <span class="modal-title">✨ Patch note v1.2.0 — 18 avril 2026</span>
         <button class="modal-close" id="patchnoteClose">✕</button>
       </div>
       <div class="modal-body patchnote-body">
         <div class="pn-section">
-          <div class="pn-section-title">🎉 Nouvelle fonctionnalité : Calendrier de congés personnel</div>
+          <div class="pn-section-title">🔔 Nouveau : Appel direct d'un ticket de la file</div>
           <ul class="pn-list">
-            <li>Nouveau widget <b>« Mes absences »</b> sur l'écran d'accueil pour déclarer et gérer tes propres congés, maladies, formations, etc.</li>
-            <li><b>Détection automatique des conflits</b> : à la déclaration d'absence, les réservations existantes sur la période sont listées. Tu choisis de les supprimer, les garder, ou d'annuler la déclaration.</li>
-            <li><b>Indicateurs visuels</b> sur les 3 vues du calendrier quand tu es absent :
-              <ul>
-                <li>Vue Jour : bannière rouge en tête</li>
-                <li>Vue Semaine : soulignement rouge + 🌴 sur les jours concernés</li>
-                <li>Vue Mois : rayures diagonales rouges discrètes + 🌴</li>
-              </ul>
-            </li>
-            <li><b>Blocage strict</b> : impossible de créer une réservation sur un jour où tu t'es déclaré(e) absent(e) — le message précise le motif et la date.</li>
+            <li>Sur la carte de ton bureau (Vue Direct), chaque ticket en attente a maintenant un bouton <b>cloche 🔔</b> à sa droite.</li>
+            <li>Un clic sur la cloche <b>appelle directement ce ticket-là</b>, sans respecter l'ordre FIFO. Pratique pour un bénéficiaire identifié, une urgence, un RDV…</li>
+            <li>Garde-fous : refus si ton bureau n'est pas ouvert ou s'il est déjà occupé (un message te l'explique).</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">💺 Nouveau : « Ce bureau sera bientôt pris »</div>
+          <ul class="pn-list">
+            <li>Dans la modal « Demande agent spécifique », nouvelle case à cocher <b>« 💺 Ce bureau sera bientôt pris »</b>.</li>
+            <li>Si l'agent ciblé <b>n'a pas encore ouvert de bureau</b>, la demande reste en attente. Dès qu'il ouvre un bureau, elle est <b>routée automatiquement</b> avec émission du ticket SP.</li>
+            <li>Sur la Vue Direct de l'accueil, nouveau récap visuel <b>« 🎫 Demandes en cours »</b> et <b>« 💺 En attente d'ouverture »</b> pour suivre toutes les demandes SP d'un coup d'œil. Bouton ✕ pour annuler une demande en attente.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🎉 Calendrier de congés personnel (rappel v1.1.0)</div>
+          <ul class="pn-list">
+            <li>Widget <b>« Mes absences »</b> sur l'écran d'accueil : déclare et gère tes congés/maladies/formations.</li>
+            <li>À la déclaration : <b>détection auto des réservations</b> existantes sur la période, avec option de les supprimer.</li>
+            <li><b>Indicateurs rouges</b> sur Jour (bannière) / Semaine (soulignement) / Mois (rayures diagonales + 🌴).</li>
+            <li><b>Blocage strict</b> à la création de réservation sur un jour d'absence.</li>
           </ul>
         </div>
 
         <div class="pn-section">
           <div class="pn-section-title">🐛 Corrections</div>
           <ul class="pn-list">
-            <li><b>Panneau admin — Affichage des tickets</b> : la ligne « Cartes groupe file » se synchronise maintenant correctement avec Firebase. Quand tout est décoché, le numéro de ticket n'apparaît plus en fallback (l'anonymisation est respectée).</li>
-            <li><b>Widget « Partir en mission »</b> : le champ texte ne se vide plus tout seul pendant la saisie, même quand d'autres événements Firebase arrivent en parallèle.</li>
-            <li><b>Ticket nominatif</b> : cliquer sur « Annuler » dans le prompt abandonne bien l'émission. Avant, un ticket anonyme était quand même créé.</li>
-            <li><b>Inscription à une file d'attente</b> (Vue Direct) : un warning s'affiche si tu n'as pas encore ouvert ton bureau, et l'inscription est bloquée.</li>
-            <li><b>Modal « Demande agent spécifique »</b> : les labels s'affichent au-dessus des champs (rendu propre). Le nom complet du bénéficiaire est préservé — « Mr Roger » reste « Mr Roger » au lieu d'être tronqué au premier espace.</li>
-            <li><b>Vue Direct</b> : la carte du bureau actif est maintenant accessible en scroll sur petit écran. Refonte responsive pour les laptops compacts.</li>
-            <li><b>Vue Jour — colonnes étroites</b> : le texte des réservations (service, agent, commentaire) ne se coupe plus quand Windows est en mise à l'échelle 125 % ou plus.</li>
+            <li><b>« Appeler le suivant » vs file avec SP</b> : le système ignorait parfois le SP quand un ticket avait été appelé hors ordre juste avant (via la cloche). La comparaison saute maintenant les tickets déjà traités.</li>
+            <li><b>Panneau admin — Affichage des tickets</b> : la ligne « Cartes groupe file » se synchronise correctement avec Firebase. Quand tout est décoché, le numéro de ticket n'apparaît plus en fallback (anonymisation respectée).</li>
+            <li><b>Widget « Partir en mission »</b> : le champ texte ne se vide plus tout seul pendant la saisie.</li>
+            <li><b>Ticket nominatif</b> : cliquer sur « Annuler » dans le prompt abandonne bien l'émission.</li>
+            <li><b>Inscription à une file d'attente</b> (Vue Direct) : warning affiché + blocage si ton bureau n'est pas ouvert.</li>
+            <li><b>Modal « Demande agent spécifique »</b> : labels au-dessus des champs, nom complet préservé (« Mr Roger » reste « Mr Roger »).</li>
+            <li><b>Vue Direct</b> : carte du bureau actif accessible en scroll sur petit écran.</li>
+            <li><b>Vue Jour — colonnes étroites</b> : texte des réservations plus coupé quand Windows est en mise à l'échelle 125 % ou plus.</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">✨ Amélioration UX</div>
+          <div class="pn-section-title">✨ Améliorations UX</div>
           <ul class="pn-list">
-            <li><b>Vue Direct — cartes de groupe</b> : le « Prochain créneau » affiche désormais l'heure de fin (ex : <code>lun. 20/04 · 08:30 – 09:00</code>) pour mieux anticiper.</li>
+            <li><b>Vue Direct — cartes de groupe</b> : le « Prochain créneau » affiche désormais l'heure de fin (ex : <code>lun. 20/04 · 08:30 – 09:00</code>).</li>
           </ul>
         </div>
 
