@@ -557,6 +557,30 @@ const DB = {
   isAgentAbsentToday(agentKey) {
     return this.isAgentAbsentOn(agentKey, isoDate(new Date()));
   },
+  // Métadonnées des motifs d'absence (icône + libellé)
+  ABSENCE_MOTIFS: {
+    maladie:   { icon: '🤒', label: 'Maladie' },
+    conge:     { icon: '🌴', label: 'Congé' },
+    mission:   { icon: '🚗', label: 'Mission' },
+    formation: { icon: '📚', label: 'Formation' },
+    autre:     { icon: '📝', label: 'Autre' },
+  },
+  // Retourne les réservations (one-shot, récurrentes expansées, permanentes) qui
+  // concernent l'agent (principal, invité, multi-agents, targetAgentKey) et qui
+  // tombent dans la plage [startDate, endDate] (dates ISO).
+  getAgentReservationsInRange(agentKey, startDate, endDate) {
+    const agentName = this.getAgentDisplayNameByKey(agentKey);
+    const start = new Date(startDate + 'T00:00:00');
+    const end   = new Date(endDate   + 'T23:59:59');
+    const occs  = this.getInRange(start, end);
+    return occs.filter(r => {
+      if (r.targetAgentKey === agentKey) return true;
+      if (r.invitedAgents && r.invitedAgents[agentKey]) return true;
+      if (Array.isArray(r.agents) && agentName && r.agents.includes(agentName)) return true;
+      if (r.agent && agentName && r.agent === agentName) return true;
+      return false;
+    });
+  },
   async addAbsence({ agentKey, startDate, endDate, motif, comment, createdBy }) {
     const id = `abs_${Date.now()}`;
     await this._ref(`absences/${id}`).set({
