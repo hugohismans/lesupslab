@@ -1500,6 +1500,7 @@ const HOME = {
     const openBureau   = DB.getOpenBureauForCurrentAgent();
     const boLocal      = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;
     const currentLocal = openBureau ?? boLocal;
+    const myKeyDecl    = sessionStorage.getItem('cpas_current_agent_key');
     const localIds = lieu.localIds || [];
     // Filtrer : montrer les locaux qui ont des desks + les locaux sans desk
     // Les locaux avec desks sont sélectionnables (pour voir leurs desks dans les cartes)
@@ -1510,8 +1511,18 @@ const HOME = {
       const nDesks = hasDesks ? DB.getLocalDesks(localId).length : 0;
       const isActive = this._declLocalId === localId;
       const isMine = localId === currentLocal;
-      return `<button class="hs-decl-toggle hs-decl-local-toggle${isActive ? ' active' : ''}${isMine ? ' hs-decl-mine' : ''}" data-decl-local="${localId}">
-        ${isMine ? '✅ ' : ''}${escapeHtml(label)}${hasDesks ? ` <small>(${nDesks})</small>` : ''}
+      // Occupé par un autre agent (hors backoffice multi-agents)
+      const isBackoffice = DB.isLocalBackoffice(localId);
+      const bureauAgentKey = DB.getBureauAgentKey(localId);
+      const isOccupiedByOther = !isBackoffice && !isMine
+        && DB.isBureauOpen(localId)
+        && bureauAgentKey && bureauAgentKey !== myKeyDecl;
+      const occupantName = isOccupiedByOther
+        ? (DB.getAgentsWithKeys().find(a => a.key === bureauAgentKey)?.name || '')
+        : '';
+      const titleAttr = isOccupiedByOther ? ` title="Occupé par ${escapeHtml(occupantName)}"` : '';
+      return `<button class="hs-decl-toggle hs-decl-local-toggle${isActive ? ' active' : ''}${isMine ? ' hs-decl-mine' : ''}${isOccupiedByOther ? ' hs-decl-occupied' : ''}" data-decl-local="${localId}"${titleAttr}>
+        ${isMine ? '✅ ' : (isOccupiedByOther ? '🔴 ' : '')}${escapeHtml(label)}${hasDesks ? ` <small>(${nDesks})</small>` : ''}
       </button>`;
     }).join('');
 

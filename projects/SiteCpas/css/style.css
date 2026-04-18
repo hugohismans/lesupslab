@@ -6003,6 +6003,9 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .hs-decl-local-toggle  { font-size:.78rem; }
 .hs-decl-toggle.hs-decl-mine { border-color:#22c55e; background:#f0fdf4; color:#166534; }
 .hs-decl-toggle.hs-decl-mine.active { background:#22c55e; color:#fff; border-color:#22c55e; }
+.hs-decl-toggle.hs-decl-occupied { border-color:#f97316; background:#fff7ed; color:#9a3412; }
+.hs-decl-toggle.hs-decl-occupied:hover { border-color:#ea580c; background:#ffedd5; }
+.hs-decl-toggle.hs-decl-occupied.active { background:#f97316; color:#fff; border-color:#c2410c; }
 .hs-decl-hint          { font-size:.82rem; color:#94a3b8; padding:.5rem 0; }
 
 /* ─── Déclaration desk sub-cards ─────────────────────────────── */
