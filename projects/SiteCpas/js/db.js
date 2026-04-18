@@ -1351,11 +1351,11 @@ const DB = {
     };
     await this._ref(`appState/preferredRequests/${requestId}`).update(updates);
     // Créer preferredPending sur l'écran public si l'agent est dans un local
+    let ticketLabel  = null;
+    let resolvedName = displayName;
     if ((response === 'accepted' || response === 'eta') && localId) {
       // Si le local appartient à un groupe de file, émettre un ticket pour stats + impression
       const grp = this.getLocalGroup(localId);
-      let ticketLabel   = null;
-      let resolvedName  = displayName;
       if (grp) {
         // Émission + skip en une seule écriture atomique (ticket pour stats/impression,
         // exclu de la file EN ATTENTE du groupe — c'est une demande spécifique SP)
