@@ -2504,6 +2504,83 @@ select.field-input { cursor: pointer; }
 }
 .hs-widget-absences .hs-abs-add-btn:hover { background: #fef2f2; color: #991b1b; }
 
+/* ── Feature temporairement désactivée (réactivable plus tard) ─ */
+.hs-feature-off { display: none !important; }
+
+/* ── Bouton patch note (au-dessus de la mascotte) ────────────── */
+.hs-patchnote-btn {
+  display: flex; align-items: center; gap: .85rem;
+  width: 100%; padding: .85rem 1.2rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #fde68a 0%, #fbbf24 50%, #f59e0b 100%);
+  border: none; border-radius: 14px;
+  color: #78350f; font-family: inherit;
+  cursor: pointer; text-align: left;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, .25);
+  transition: transform .15s, box-shadow .15s, filter .15s;
+}
+.hs-patchnote-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, .4);
+  filter: brightness(1.05);
+}
+.hs-patchnote-btn:active { transform: translateY(0); }
+.hs-patchnote-sparkle {
+  font-size: 1.6rem; flex-shrink: 0;
+  animation: pn-sparkle 2.2s ease-in-out infinite;
+}
+.hs-patchnote-text {
+  flex: 1; display: flex; flex-direction: column; gap: .1rem; min-width: 0;
+}
+.hs-patchnote-tag {
+  font-size: .72rem; font-weight: 800; color: #92400e;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.hs-patchnote-label {
+  font-size: 1rem; font-weight: 800; color: #78350f;
+}
+.hs-patchnote-arrow {
+  font-size: 1.4rem; font-weight: 900; color: #78350f;
+  transition: transform .15s;
+}
+.hs-patchnote-btn:hover .hs-patchnote-arrow { transform: translateX(4px); }
+@keyframes pn-sparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25%      { transform: rotate(-10deg) scale(1.15); }
+  50%      { transform: rotate(0deg) scale(1); }
+  75%      { transform: rotate(10deg) scale(1.15); }
+}
+
+/* ── Modal patch notes ───────────────────────────────────────── */
+.patchnote-box { max-width: 640px; }
+.patchnote-body { padding: 1rem 1.5rem 1.25rem; }
+.pn-section { margin-bottom: 1.3rem; }
+.pn-section:last-of-type { margin-bottom: .5rem; }
+.pn-section-title {
+  font-size: 1rem; font-weight: 800; color: #f1f5f9;
+  padding-bottom: .4rem; margin-bottom: .6rem;
+  border-bottom: 2px solid rgba(245, 158, 11, .3);
+}
+.pn-list {
+  padding-left: 1.25rem; margin: 0;
+  color: #cbd5e1; font-size: .9rem; line-height: 1.55;
+}
+.pn-list li { margin-bottom: .5rem; }
+.pn-list li:last-child { margin-bottom: 0; }
+.pn-list li b { color: #f1f5f9; font-weight: 700; }
+.pn-list ul { margin: .25rem 0 .25rem 0; padding-left: 1.2rem; }
+.pn-list code {
+  background: #0f172a; padding: .1rem .35rem; border-radius: 4px;
+  color: #fbbf24; font-size: .85em;
+}
+.pn-footer {
+  margin-top: 1rem; padding-top: .9rem;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  font-size: .82rem; color: #94a3b8; text-align: center;
+}
+.pn-footer a { color: #fbbf24; text-decoration: none; font-weight: 600; }
+.pn-footer a:hover { text-decoration: underline; }
+
 /* ── Indicateurs absence sur les vues calendrier ─────────────── */
 .cv-abs-banner {
   display: flex; align-items: center; gap: .6rem;

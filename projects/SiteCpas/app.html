@@ -178,8 +178,8 @@
     Un bug, une idée ? Envoyez un mail à <a href="mailto:hugo.hismans@gmail.com">hugo.hismans@gmail.com</a>
   </div>
 
-  <!-- Bannière RDV intégrateur — visible par défaut, cachée si désactivée via superadmin -->
-  <div id="hsIntegratorBanner" style="background:linear-gradient(135deg,#1e1b4b 0%,#7c3aed 100%);border-radius:16px;margin-bottom:1rem;padding:1.25rem 1.5rem;">
+  <!-- Bannière RDV intégrateur — TEMPORAIREMENT MASQUÉE (retirer la classe hs-feature-off pour réactiver) -->
+  <div id="hsIntegratorBanner" class="hs-feature-off" style="background:linear-gradient(135deg,#1e1b4b 0%,#7c3aed 100%);border-radius:16px;margin-bottom:1rem;padding:1.25rem 1.5rem;">
     <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between;">
       <div style="flex:1;">
         <div style="color:#fff;font-size:1.05rem;font-weight:800;margin-bottom:.2rem;">👋 Hugo est disponible pour vous accompagner !</div>
@@ -189,8 +189,8 @@
     </div>
   </div>
 
-  <!-- Carte démo bouton panique — visible pré-prod si rôle panic -->
-  <div id="hsPanicDemoCard" style="display:none;background:#fff3cd;border:2px dashed #f59e0b;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;">
+  <!-- Carte démo bouton panique — TEMPORAIREMENT MASQUÉE (retirer la classe hs-feature-off pour réactiver) -->
+  <div id="hsPanicDemoCard" class="hs-feature-off" style="display:none;background:#fff3cd;border:2px dashed #f59e0b;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;">
     <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
       <div style="flex:1;min-width:200px;">
         <div style="font-size:.95rem;font-weight:800;color:#92400e;margin-bottom:.2rem;">🧪 Tester le bouton panique</div>
@@ -214,6 +214,67 @@
       <div style="display:flex;gap:.75rem;justify-content:center">
         <button class="btn-cancel" id="panicDemoCancel" style="flex:1;max-width:180px">Annuler</button>
         <button id="panicDemoConfirm" style="flex:1;max-width:240px;background:#f59e0b;color:#fff;border:none;border-radius:10px;padding:.8rem 1rem;font-size:.95rem;font-weight:800;cursor:pointer;font-family:inherit;">🧪 Envoyer la démo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patch note button — pleine largeur, au-dessus de la mascotte -->
+  <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
+    <span class="hs-patchnote-sparkle">✨</span>
+    <span class="hs-patchnote-text">
+      <span class="hs-patchnote-tag">Patch note v1.1.0</span>
+      <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
+    </span>
+    <span class="hs-patchnote-arrow">→</span>
+  </button>
+
+  <!-- Modal patch notes -->
+  <div class="modal-overlay hidden" id="patchnoteModal">
+    <div class="modal-box patchnote-box">
+      <div class="modal-header">
+        <span class="modal-title">✨ Patch note v1.1.0 — 18 avril 2026</span>
+        <button class="modal-close" id="patchnoteClose">✕</button>
+      </div>
+      <div class="modal-body patchnote-body">
+        <div class="pn-section">
+          <div class="pn-section-title">🎉 Nouvelle fonctionnalité : Calendrier de congés personnel</div>
+          <ul class="pn-list">
+            <li>Nouveau widget <b>« Mes absences »</b> sur l'écran d'accueil pour déclarer et gérer tes propres congés, maladies, formations, etc.</li>
+            <li><b>Détection automatique des conflits</b> : à la déclaration d'absence, les réservations existantes sur la période sont listées. Tu choisis de les supprimer, les garder, ou d'annuler la déclaration.</li>
+            <li><b>Indicateurs visuels</b> sur les 3 vues du calendrier quand tu es absent :
+              <ul>
+                <li>Vue Jour : bannière rouge en tête</li>
+                <li>Vue Semaine : soulignement rouge + 🌴 sur les jours concernés</li>
+                <li>Vue Mois : rayures diagonales rouges discrètes + 🌴</li>
+              </ul>
+            </li>
+            <li><b>Blocage strict</b> : impossible de créer une réservation sur un jour où tu t'es déclaré(e) absent(e) — le message précise le motif et la date.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🐛 Corrections</div>
+          <ul class="pn-list">
+            <li><b>Panneau admin — Affichage des tickets</b> : la ligne « Cartes groupe file » se synchronise maintenant correctement avec Firebase. Quand tout est décoché, le numéro de ticket n'apparaît plus en fallback (l'anonymisation est respectée).</li>
+            <li><b>Widget « Partir en mission »</b> : le champ texte ne se vide plus tout seul pendant la saisie, même quand d'autres événements Firebase arrivent en parallèle.</li>
+            <li><b>Ticket nominatif</b> : cliquer sur « Annuler » dans le prompt abandonne bien l'émission. Avant, un ticket anonyme était quand même créé.</li>
+            <li><b>Inscription à une file d'attente</b> (Vue Direct) : un warning s'affiche si tu n'as pas encore ouvert ton bureau, et l'inscription est bloquée.</li>
+            <li><b>Modal « Demande agent spécifique »</b> : les labels s'affichent au-dessus des champs (rendu propre). Le nom complet du bénéficiaire est préservé — « Mr Roger » reste « Mr Roger » au lieu d'être tronqué au premier espace.</li>
+            <li><b>Vue Direct</b> : la carte du bureau actif est maintenant accessible en scroll sur petit écran. Refonte responsive pour les laptops compacts.</li>
+            <li><b>Vue Jour — colonnes étroites</b> : le texte des réservations (service, agent, commentaire) ne se coupe plus quand Windows est en mise à l'échelle 125 % ou plus.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">✨ Amélioration UX</div>
+          <ul class="pn-list">
+            <li><b>Vue Direct — cartes de groupe</b> : le « Prochain créneau » affiche désormais l'heure de fin (ex : <code>lun. 20/04 · 08:30 – 09:00</code>) pour mieux anticiper.</li>
+          </ul>
+        </div>
+
+        <div class="pn-footer">
+          Un bug ? Une idée ? Écris à <a href="mailto:hugo.hismans@gmail.com">hugo.hismans@gmail.com</a>
+        </div>
       </div>
     </div>
   </div>

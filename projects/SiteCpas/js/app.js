@@ -2868,6 +2868,19 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
   _initShortcutsEdit();
 
+  // ── Patch note modal ────────────────────────────────────────────
+  (function initPatchnoteModal() {
+    const btn     = document.getElementById('hsPatchnoteBtn');
+    const overlay = document.getElementById('patchnoteModal');
+    const closeBtn = document.getElementById('patchnoteClose');
+    if (!btn || !overlay) return;
+    const open = () => overlay.classList.remove('hidden');
+    const close = () => overlay.classList.add('hidden');
+    btn.addEventListener('click', open);
+    closeBtn?.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  })();
+
   // Initialiser le cerveau de la mascotte
   if (typeof MascotBrain !== 'undefined') {
     window.MascotBrain = MascotBrain;
