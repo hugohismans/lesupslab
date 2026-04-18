@@ -565,15 +565,16 @@ const DB = {
     formation: { icon: '📚', label: 'Formation' },
     autre:     { icon: '📝', label: 'Autre' },
   },
-  // Retourne les réservations (one-shot, récurrentes expansées, permanentes) qui
+  // Retourne les réservations (one-shot + occurrences récurrentes expansées) qui
   // concernent l'agent (principal, invité, multi-agents, targetAgentKey) et qui
-  // tombent dans la plage [startDate, endDate] (dates ISO).
+  // tombent dans la plage [startDate, endDate] (dates ISO). Exclut les permanentes.
   getAgentReservationsInRange(agentKey, startDate, endDate) {
     const agentName = this.getAgentDisplayNameByKey(agentKey);
     const start = new Date(startDate + 'T00:00:00');
     const end   = new Date(endDate   + 'T23:59:59');
     const occs  = this.getInRange(start, end);
     return occs.filter(r => {
+      if (r.isPermanent) return false;
       if (r.targetAgentKey === agentKey) return true;
       if (r.invitedAgents && r.invitedAgents[agentKey]) return true;
       if (Array.isArray(r.agents) && agentName && r.agents.includes(agentName)) return true;

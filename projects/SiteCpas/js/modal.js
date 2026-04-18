@@ -2496,8 +2496,30 @@ function _initAbsenceModal() {
     errEl.classList.add('hidden');
 
     const btn = g('absSubmit');
-    btn.disabled = true; btn.textContent = 'Enregistrement…';
+    btn.disabled = true; btn.textContent = 'Vérification…';
 
+    // Pré-check : y a-t-il des réservations existantes sur la plage d'absence ?
+    const clashes = DB.getAgentReservationsInRange(agentKey, start, end);
+    if (clashes.length) {
+      btn.textContent = 'Enregistrement…';
+      const choice = await _showAbsenceClashModal(clashes);
+      if (choice === 'cancel') {
+        btn.disabled = false; btn.textContent = "Enregistrer l'absence";
+        return;
+      }
+      if (choice === 'delete') {
+        for (const r of clashes) {
+          if (r._occDate && r.recurrence?.type && r.recurrence.type !== 'none') {
+            await DB.addException(r.id, r._occDate);
+          } else {
+            await DB.remove(r.id);
+          }
+        }
+      }
+      // 'keep' → on continue sans rien supprimer
+    }
+
+    btn.textContent = 'Enregistrement…';
     await DB.addAbsence({
       agentKey, startDate: start, endDate: end, motif,
       comment: comment || null,
@@ -2509,6 +2531,43 @@ function _initAbsenceModal() {
     showToast('Absence enregistrée ✓');
     // Rafraîchir la liste admin si ouverte
     if (!g('absencesListModal').classList.contains('hidden')) _renderAbsencesList();
+  });
+}
+
+// Affiche la modal de conflit absence ↔ réservations existantes.
+// Retourne Promise<'delete' | 'keep' | 'cancel'>.
+function _showAbsenceClashModal(clashes) {
+  return new Promise(resolve => {
+    const overlay = g('absenceClashModal');
+    const countEl = g('absClashCount');
+    const listEl  = g('absClashList');
+    const btnDel  = g('absClashDelete');
+    const btnKeep = g('absClashKeep');
+    const btnCan  = g('absClashCancel');
+    if (!overlay || !countEl || !listEl) { resolve('cancel'); return; }
+
+    countEl.textContent = clashes.length;
+    listEl.innerHTML = clashes.map(r => {
+      const d = r._start;
+      const dateStr = d.toLocaleDateString('fr-BE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      const svc = DB.getSvcLabel(r) || '';
+      const loc = DB.getLocalLabel(parseInt(r.localId));
+      const isRec = !!r._occDate;
+      return `<li>${isRec ? '↻ ' : ''}<b>${escapeHtml(dateStr)}</b> ${escapeHtml(timeStr)} — ${escapeHtml(loc)}${svc ? ` · ${escapeHtml(svc)}` : ''}</li>`;
+    }).join('');
+
+    overlay.classList.remove('hidden');
+
+    const cleanup = () => {
+      overlay.classList.add('hidden');
+      btnDel.onclick = null;
+      btnKeep.onclick = null;
+      btnCan.onclick = null;
+    };
+    btnDel.onclick  = () => { cleanup(); resolve('delete'); };
+    btnKeep.onclick = () => { cleanup(); resolve('keep'); };
+    btnCan.onclick  = () => { cleanup(); resolve('cancel'); };
   });
 }
 

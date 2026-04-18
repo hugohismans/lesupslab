@@ -1699,6 +1699,25 @@
   </div>
 </div>
 
+<!-- ── Modal : conflit absence ↔ réservations existantes ──────── -->
+<div class="modal-overlay hidden" id="absenceClashModal">
+  <div class="modal-box abs-clash-box">
+    <div class="modal-header">
+      <span class="modal-title">⚠️ Réservations existantes</span>
+    </div>
+    <div class="modal-body">
+      <p class="abs-clash-intro">Vous avez <b id="absClashCount">0</b> réservation(s) programmée(s) dans cette période :</p>
+      <ul class="abs-clash-list" id="absClashList"></ul>
+      <p class="abs-clash-hint">💡 Les occurrences récurrentes concernées seront marquées comme exceptions (la série continue).</p>
+      <div class="abs-clash-actions">
+        <button class="abs-clash-btn abs-clash-delete" id="absClashDelete">🗑 Supprimer &amp; déclarer</button>
+        <button class="abs-clash-btn abs-clash-keep"   id="absClashKeep">Garder &amp; déclarer</button>
+        <button class="abs-clash-btn abs-clash-cancel" id="absClashCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Panel admin : liste des absences ────────────────────────── -->
 <div class="modal-overlay hidden" id="absencesListModal">
   <div class="modal-box abs-list-modal">
