@@ -976,6 +976,60 @@ const DB = {
     return { display, label, name: name || null };
   },
 
+  // Appelle un ticket spécifique (hors ordre FIFO). Les tickets précédents
+  // restent dans la file (pas de skip_ massif sur eux), le ticket ciblé est
+  // marqué skip_ si ce n'est pas le suivant direct, sinon tcall avance.
+  // Renvoie { display, label, name } comme callNextTicket.
+  async callSpecificTicket(groupId, ticketNumber) {
+    const today   = isoDate(new Date());
+    const current = this.getTicketCalled(groupId);
+    if (ticketNumber <= current) return null; // déjà traité
+    if (this.isTicketSkipped(groupId, ticketNumber)) return null; // déjà skip
+
+    // Lire nom + timestamp AVANT modification
+    const name     = this.getTicketName(groupId, ticketNumber);
+    const issuedAt = this.getTicketIssuedAt(groupId, ticketNumber);
+
+    const writes = {};
+    if (ticketNumber === current + 1) {
+      // C'est le prochain direct : avancer tcall + absorber skip_ consécutifs
+      let newCall = ticketNumber;
+      const tick  = this.getTicketIssued(groupId);
+      while (newCall + 1 <= tick && this.isTicketSkipped(groupId, newCall + 1)) {
+        writes[`skip_${groupId}/${newCall + 1}`] = null;
+        newCall++;
+      }
+      writes[`tcall_${groupId}`] = newCall;
+    } else {
+      // Ticket au milieu de file : marquer skip_ (= reçu hors ordre), tcall inchangé
+      writes[`skip_${groupId}/${ticketNumber}`] = true;
+    }
+
+    // Décrémenter l'overflow (un seul ticket consommé)
+    const overflow = this.getGroupOverflowQueue(groupId);
+    if (overflow > 0) {
+      const newOverflow = Math.max(0, overflow - 1);
+      writes[`wait_${groupId}`] = newOverflow || null;
+      if (newOverflow <= 0) writes[`waitSince_${groupId}`] = null;
+    }
+
+    await this._ref(`queues/${today}`).update(writes);
+    if (name) await this._ref(`queues/${today}/names_${groupId}/${ticketNumber}`).remove();
+    await this._ref(`queues/${today}/times_${groupId}/${ticketNumber}`).remove();
+
+    // Archiver pour les stats de temps d'attente
+    const calledAt = Date.now();
+    if (issuedAt && issuedAt > 0) {
+      this._ref(`queueHistory/${today}/${groupId}/${ticketNumber}`)
+        .set({ issuedAt, calledAt, waitMs: calledAt - issuedAt })
+        .catch(() => {});
+    }
+
+    const label   = this.formatTicket(groupId, ticketNumber);
+    const display = name || label;
+    return { display, label, name: name || null };
+  },
+
   async dismissTicket(groupId, ticketNumber) {
     // Retire UN SEUL ticket via skip_ (ou avance tcall s'il est le suivant direct)
     const today   = isoDate(new Date());

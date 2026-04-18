@@ -1997,6 +1997,16 @@ select.field-input { cursor: pointer; }
 .lv-grp-queue-name   { color: #94a3b8; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv-grp-queue-item-unknown { color: #475569; font-size: .78rem; }
 .lv-grp-queue-grp { font-size: .65rem; color: #93c5fd; background: #1e3a5f; border-radius: 4px; padding: .05rem .35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 10rem; }
+.lv-grp-queue-call {
+  background: transparent; border: 1.5px solid #475569;
+  color: #fbbf24; cursor: pointer;
+  width: 28px; height: 28px; border-radius: 7px;
+  font-size: .95rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s, color .12s, transform .12s;
+}
+.lv-grp-queue-call:hover { background: #422006; border-color: #f59e0b; color: #fff; transform: scale(1.08); }
+.lv-grp-queue-call:active { transform: scale(.95); }
 .lv-grp-chip {
   display: inline-block; padding: .18rem .55rem; border-radius: 6px;
   font-size: .82rem; font-weight: 700; color: #93c5fd;

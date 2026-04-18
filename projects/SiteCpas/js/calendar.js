@@ -1684,7 +1684,10 @@ const LIVE = {
                  }
                  const num  = _gcCfg.showNum  ? DB.formatTicket(_bureauGrp.id, item.n) : `#${i+1}`;
                  const name = _gcCfg.showName ? DB.getTicketName(_bureauGrp.id, item.n) : null;
-                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span>${name ? `<span class="lv-grp-queue-name">${escapeHtml(name)}</span>` : '<span></span>'}</div>`;
+                 const callBtn = (isEnrolled && bureauLocal !== null)
+                   ? `<button class="lv-grp-queue-call" data-grp="${_bureauGrp.id}" data-n="${item.n}" data-local="${bureauLocal}" title="Appeler ce ticket directement">🔔</button>`
+                   : '';
+                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span>${name ? `<span class="lv-grp-queue-name">${escapeHtml(name)}</span>` : '<span></span>'}${callBtn}</div>`;
                }).join('')}
                ${_extraOvf > 0 ? `<div class="lv-grp-queue-item lv-grp-queue-item-unknown">→ … +${_extraOvf} autre${_extraOvf > 1 ? 's' : ''}</div>` : ''}
              </div>`
@@ -1786,6 +1789,51 @@ const LIVE = {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         await DB.leaveQueueGroup(btn.dataset.grp, parseInt(btn.dataset.local));
+        this.render();
+      });
+    });
+
+    // Cloche : appeler un ticket spécifique depuis la file de la carte groupe (vue bureau)
+    g('liveGrid').querySelectorAll('.lv-grp-queue-call').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId = parseInt(btn.dataset.local);
+        const grpId   = btn.dataset.grp;
+        const ticketN = parseInt(btn.dataset.n);
+
+        if (!DB.isBureauOpen(localId)) {
+          showToast('⚠ Ouvrez le bureau avant d\'appeler un ticket');
+          return;
+        }
+        if (DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId)) {
+          showToast('⚠ Bureau déjà occupé — terminez la consultation en cours');
+          return;
+        }
+
+        const _now  = new Date();
+        const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
+        const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
+        const _occ  = DB.getInRange(_dayS, _dayE).find(o =>
+          Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
+        );
+        const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
+        const _grp = DB.getQueueGroups()[grpId];
+
+        const _ticket = await DB.callSpecificTicket(grpId, ticketN);
+        if (!_ticket) { showToast('Ticket déjà traité ou indisponible'); return; }
+
+        LIVE._storeCall(localId, _ticket, _occ);
+        await DB.setQueue(localId, 1);
+
+        // Si ce ticket correspond à une demande spécifique, fermer proprement
+        const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
+        if (_prefMatch) {
+          await DB._ref(`appState/preferredRequests/${_prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
+          await DB._ref(`appState/preferredPending/${_prefMatch.localId}`).remove();
+          await DB.shiftPreferredQueue(_prefMatch.localId);
+        }
+        showAgentCallNotif(_ticket.label, _ticket.name);
+        await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
         this.render();
       });
     });
