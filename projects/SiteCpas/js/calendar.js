@@ -1422,12 +1422,15 @@ const LIVE = {
                  const _waitMin = item.ts ? Math.floor((Date.now() - item.ts) / 60000) : null;
                  const _waitStr = _waitMin !== null ? (_waitMin < 1 ? '&lt;1m' : `${_waitMin}m`) : '';
                  if (item.isPref) {
-                   return `<div class="lv-grp-queue-item lv-grp-queue-item-pref"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(item.prefTicket)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">📌 ${escapeHtml(item.prefName)}</span><span></span></div>`;
+                   return `<div class="lv-grp-queue-item lv-grp-queue-item-pref has-call"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(item.prefTicket)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">📌 ${escapeHtml(item.prefName)}</span><span></span><span></span></div>`;
                  }
                  const _num  = _gcCfgL.showNum  ? DB.formatTicket(item.gId, item.n) : `#${i+1}`;
                  const _name = _gcCfgL.showName ? DB.getTicketName(item.gId, item.n) : null;
                  const _grpLabel = grps.length > 1 ? `<span class="lv-grp-queue-grp">${escapeHtml(item.gName)}</span>` : '<span></span>';
-                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">${_name ? escapeHtml(_name) : ''}</span>${_grpLabel}</div>`;
+                 const _callBtn = amIHere
+                   ? `<button class="lv-grp-queue-call" data-grp="${item.gId}" data-n="${item.n}" data-local="${l}" title="Appeler ce ticket directement">🔔</button>`
+                   : '<span></span>';
+                 return `<div class="lv-grp-queue-item has-call"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">${_name ? escapeHtml(_name) : ''}</span>${_grpLabel}${_callBtn}</div>`;
                }).join('')}
              </div>`
           : '';
@@ -1684,10 +1687,7 @@ const LIVE = {
                  }
                  const num  = _gcCfg.showNum  ? DB.formatTicket(_bureauGrp.id, item.n) : `#${i+1}`;
                  const name = _gcCfg.showName ? DB.getTicketName(_bureauGrp.id, item.n) : null;
-                 const callBtn = (isEnrolled && bureauLocal !== null)
-                   ? `<button class="lv-grp-queue-call" data-grp="${_bureauGrp.id}" data-n="${item.n}" data-local="${bureauLocal}" title="Appeler ce ticket directement">🔔</button>`
-                   : '';
-                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span>${name ? `<span class="lv-grp-queue-name">${escapeHtml(name)}</span>` : '<span></span>'}${callBtn}</div>`;
+                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span>${name ? `<span class="lv-grp-queue-name">${escapeHtml(name)}</span>` : '<span></span>'}</div>`;
                }).join('')}
                ${_extraOvf > 0 ? `<div class="lv-grp-queue-item lv-grp-queue-item-unknown">→ … +${_extraOvf} autre${_extraOvf > 1 ? 's' : ''}</div>` : ''}
              </div>`

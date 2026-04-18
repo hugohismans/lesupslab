@@ -1979,7 +1979,7 @@ select.field-input { cursor: pointer; }
   margin-bottom: .35rem;
 }
 .lv-grp-queue-arrow { font-size: .9rem; color: #f59e0b; font-weight: 700; }
-/* Grille : pos | ticket | wait | name | grp */
+/* Grille : pos | ticket | wait | name | grp | (bell) */
 .lv-grp-queue-item {
   display: grid;
   grid-template-columns: 2rem 3.5rem 3rem 1fr auto;
@@ -1989,6 +1989,9 @@ select.field-input { cursor: pointer; }
   border-bottom: 1px solid #1e293b;
   font-size: .8rem;
   min-width: 0;
+}
+.lv-grp-queue-item.has-call {
+  grid-template-columns: 2rem 3.5rem 3rem 1fr auto auto;
 }
 .lv-grp-queue-item:last-child { border-bottom: none; }
 .lv-grp-queue-pos    { color: #64748b; font-size: .75rem; white-space: nowrap; }
