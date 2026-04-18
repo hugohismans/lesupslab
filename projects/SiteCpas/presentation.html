@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>moncompagnon — Présentation CPAS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #1a3a5c 100%);
+      color: #f8fafc;
+      line-height: 1.5;
+    }
+
+    /* ─── Conteneur slides ─────────────────────────────────────── */
+    .deck { position: relative; width: 100%; height: 100vh; }
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 3rem 2rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity .5s ease;
+    }
+    .slide.active { opacity: 1; pointer-events: auto; }
+
+    /* ─── Navigation ───────────────────────────────────────────── */
+    .nav-bar {
+      position: fixed; bottom: 1.25rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: .75rem;
+      background: rgba(15, 23, 42, .75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 999px;
+      padding: .4rem .7rem;
+      z-index: 100;
+    }
+    .nav-btn {
+      background: rgba(124, 58, 237, .3);
+      color: #fff; border: none;
+      width: 34px; height: 34px; border-radius: 50%;
+      font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s;
+    }
+    .nav-btn:hover { background: rgba(124, 58, 237, .6); }
+    .nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .nav-counter {
+      color: #cbd5e1; font-size: .82rem;
+      font-weight: 600; min-width: 40px; text-align: center;
+      letter-spacing: .05em;
+    }
+
+    /* ─── SLIDE 1 — CORI parle ─────────────────────────────────── */
+    .hero-title {
+      font-size: 2.6rem; font-weight: 800;
+      letter-spacing: -.02em;
+      text-align: center;
+      margin-bottom: 3rem;
+      line-height: 1.2;
+    }
+    .hero-title .hl {
+      background: linear-gradient(135deg, #c4b5fd, #f472b6);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-title-sub {
+      display: block;
+      font-size: .95rem; font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase; letter-spacing: .25em;
+      margin-bottom: .4rem;
+    }
+    .hero-mascot {
+      display: flex; align-items: center; gap: 3rem;
+      max-width: 1100px;
+    }
+    .mascot-svg-wrap {
+      width: 320px; height: auto;
+      filter: drop-shadow(0 12px 30px rgba(239, 68, 68, .4));
+      animation: float 3.5s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-14px); }
+    }
+    .mascot-svg-wrap svg { width: 100%; height: auto; display: block; }
+
+    /* Animation pattes/bras */
+    .mascot-svg-wrap .mc-t1 { animation: limb1 2.2s ease-in-out infinite; transform-origin: center; }
+    .mascot-svg-wrap .mc-t2 { animation: limb2 2.2s ease-in-out infinite; transform-origin: center; }
+    .mascot-svg-wrap .mc-t3 { animation: limb3 2.8s ease-in-out infinite; transform-origin: center; }
+    .mascot-svg-wrap .mc-t4 { animation: limb4 2.8s ease-in-out infinite; transform-origin: center; }
+    @keyframes limb1 { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-6deg); } }
+    @keyframes limb2 { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(6deg); } }
+    @keyframes limb3 { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(-10deg); } }
+    @keyframes limb4 { 0%,100% { transform: rotate(0deg); } 50% { transform: rotate(10deg); } }
+
+    /* Clignement yeux */
+    .mascot-svg-wrap .mc-pupil { animation: blink 5s ease-in-out infinite; transform-origin: center; }
+    @keyframes blink {
+      0%, 92%, 100% { transform: scaleY(1); }
+      94%, 98% { transform: scaleY(.1); }
+    }
+
+    .hero-bubble-wrap { flex: 1; min-width: 0; }
+    .hero-eyebrow {
+      font-size: .85rem; font-weight: 700;
+      color: #fca5a5; text-transform: uppercase;
+      letter-spacing: .15em; margin-bottom: .8rem;
+    }
+    .hero-bubble {
+      background: #fff; color: #1e1b4b;
+      border-radius: 24px 24px 24px 4px;
+      padding: 2rem 2.25rem;
+      font-size: 2.2rem; font-weight: 600;
+      line-height: 1.35; letter-spacing: -.01em;
+      box-shadow: 0 20px 60px rgba(239, 68, 68, .25);
+      position: relative;
+      min-height: 180px;
+      display: flex; align-items: center;
+    }
+    .hero-bubble-text {
+      display: block; width: 100%;
+      animation: fadeUp .6s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .hero-hint {
+      margin-top: 1.5rem;
+      color: #cbd5e1; font-size: .95rem;
+      font-style: italic; opacity: .8;
+    }
+
+    /* ─── SLIDE 2 — Présentation Hugo ──────────────────────────── */
+    .slide-title {
+      font-size: 3.2rem; font-weight: 800;
+      letter-spacing: -.025em; margin-bottom: .5rem;
+      text-align: center;
+      background: linear-gradient(135deg, #fff, #c4b5fd);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .slide-sub {
+      font-size: 1.3rem; color: #cbd5e1;
+      text-align: center; margin-bottom: 3rem;
+      opacity: .85;
+    }
+
+    .profile-card {
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(148, 163, 184, .2);
+      border-radius: 24px;
+      padding: 2.5rem 3rem;
+      max-width: 900px; width: 100%;
+      backdrop-filter: blur(12px);
+    }
+    .profile-row {
+      display: flex; align-items: center; gap: 2.5rem;
+      margin-bottom: 2rem;
+    }
+    .profile-avatar {
+      width: 140px; height: 140px; border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed, #ec4899);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 4rem;
+      box-shadow: 0 10px 30px rgba(124, 58, 237, .4);
+      flex-shrink: 0;
+    }
+    .profile-name {
+      font-size: 2.4rem; font-weight: 800;
+      margin-bottom: .3rem;
+    }
+    .profile-role {
+      color: #c4b5fd; font-size: 1.15rem;
+      font-weight: 600; margin-bottom: .5rem;
+    }
+    .profile-tag {
+      display: inline-block;
+      background: rgba(124, 58, 237, .25);
+      border: 1px solid rgba(196, 181, 253, .4);
+      color: #e9d5ff;
+      border-radius: 999px; padding: .3rem .9rem;
+      font-size: .85rem; font-weight: 600;
+      letter-spacing: .03em;
+    }
+
+    .profile-highlight {
+      background: linear-gradient(135deg, rgba(239, 68, 68, .15), rgba(124, 58, 237, .15));
+      border-left: 4px solid #ef4444;
+      border-radius: 0 12px 12px 0;
+      padding: 1.25rem 1.5rem;
+      font-size: 1.15rem;
+      color: #f8fafc;
+    }
+    .profile-highlight strong { color: #fca5a5; }
+
+    /* ─── SLIDE 3 — L'arnaque ──────────────────────────────────── */
+    .arnaque-title {
+      font-size: 3.5rem; font-weight: 800;
+      text-align: center; margin-bottom: 1.5rem;
+      letter-spacing: -.02em;
+    }
+    .arnaque-title .word-free {
+      background: linear-gradient(135deg, #10b981, #34d399);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .arnaque-title .word-arnaque {
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .arnaque-subtitle {
+      font-size: 1.4rem; color: #fbbf24;
+      text-align: center; margin-bottom: 2.5rem;
+      font-style: italic;
+    }
+
+    .deal-grid {
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      gap: 2rem; align-items: stretch;
+      max-width: 1100px; width: 100%;
+    }
+    .deal-card {
+      background: rgba(255, 255, 255, .07);
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 20px;
+      padding: 2rem;
+      backdrop-filter: blur(10px);
+    }
+    .deal-card.side-me { border-color: rgba(124, 58, 237, .5); }
+    .deal-card.side-you { border-color: rgba(239, 68, 68, .5); }
+    .deal-card-label {
+      font-size: .8rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .15em;
+      margin-bottom: 1rem;
+    }
+    .side-me .deal-card-label { color: #c4b5fd; }
+    .side-you .deal-card-label { color: #fca5a5; }
+    .deal-card h3 {
+      font-size: 1.4rem; font-weight: 800;
+      margin-bottom: 1rem;
+    }
+    .deal-card ul { list-style: none; padding: 0; }
+    .deal-card li {
+      padding: .55rem 0 .55rem 1.8rem;
+      position: relative;
+      color: #e2e8f0; font-size: 1rem;
+      border-bottom: 1px solid rgba(148, 163, 184, .12);
+    }
+    .deal-card li:last-child { border-bottom: none; }
+    .deal-card li::before {
+      content: '✓'; position: absolute; left: 0; top: .55rem;
+      font-weight: 800; font-size: 1.1rem;
+    }
+    .side-me li::before { color: #a78bfa; }
+    .side-you li::before { color: #fb7185; }
+
+    .deal-vs {
+      display: flex; align-items: center; justify-content: center;
+      width: 70px;
+    }
+    .deal-vs-inner {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; color: #fff; font-size: 1rem;
+      box-shadow: 0 8px 20px rgba(239, 68, 68, .4);
+    }
+
+    .deal-punchline {
+      margin-top: 2rem;
+      font-size: 1.15rem;
+      text-align: center;
+      color: #fbbf24;
+      max-width: 800px;
+      font-weight: 600;
+    }
+
+    /* ─── SLIDE — Ça me concerne vraiment ? ────────────────────── */
+    .concerne-intro {
+      background: rgba(59, 130, 246, .1);
+      border-left: 4px solid #3b82f6;
+      border-radius: 0 14px 14px 0;
+      padding: 1.25rem 1.5rem;
+      max-width: 950px; width: 100%;
+      margin-bottom: 1.75rem;
+      font-size: 1.05rem;
+      color: #e2e8f0;
+    }
+    .concerne-intro strong { color: #93c5fd; }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+      max-width: 1150px; width: 100%;
+    }
+    .role-card {
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(148, 163, 184, .2);
+      border-radius: 14px;
+      padding: 1.1rem 1.25rem;
+      transition: transform .2s, border-color .2s;
+    }
+    .role-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(196, 181, 253, .5);
+    }
+    .role-card-head {
+      display: flex; align-items: center; gap: .6rem;
+      margin-bottom: .65rem;
+    }
+    .role-card-icon { font-size: 1.7rem; line-height: 1; }
+    .role-card-title {
+      font-size: .95rem; font-weight: 700;
+      color: #c4b5fd; letter-spacing: -.01em;
+    }
+    .role-card-list { list-style: none; padding: 0; margin: 0; }
+    .role-card-list li {
+      font-size: .83rem; color: #cbd5e1;
+      padding: .22rem 0 .22rem 1rem;
+      position: relative;
+    }
+    .role-card-list li::before {
+      content: '•'; position: absolute; left: 0;
+      color: #f472b6; font-weight: 700;
+    }
+
+    .concerne-footer {
+      margin-top: 1.5rem; text-align: center;
+      font-size: 1.1rem; color: #fbbf24;
+      font-weight: 600; max-width: 850px;
+    }
+    .concerne-footer strong { color: #fff; }
+
+    /* ─── SLIDE — moncompagnon c'est quoi ? ────────────────────── */
+    .mc-pitch {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem; max-width: 1100px; width: 100%;
+    }
+    .mc-card {
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(148, 163, 184, .2);
+      border-radius: 20px;
+      padding: 2.25rem 1.5rem;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      transition: transform .25s, border-color .25s;
+    }
+    .mc-card:hover { transform: translateY(-4px); border-color: rgba(196, 181, 253, .5); }
+    .mc-icon {
+      font-size: 3.5rem; margin-bottom: 1rem;
+      line-height: 1;
+    }
+    .mc-card h3 {
+      font-size: 1.3rem; font-weight: 800;
+      margin-bottom: .75rem;
+      color: #c4b5fd;
+    }
+    .mc-card p { color: #e2e8f0; font-size: .98rem; }
+    .mc-punchline {
+      margin-top: 2rem;
+      font-size: 1.1rem;
+      text-align: center;
+      color: #cbd5e1;
+      font-style: italic;
+      max-width: 700px;
+    }
+
+    /* ─── SLIDE — Vie privée ───────────────────────────────────── */
+    .privacy-wrap {
+      display: grid; grid-template-columns: 1fr 1.3fr;
+      gap: 1.5rem; max-width: 1100px; width: 100%;
+      align-items: stretch;
+    }
+    .privacy-not {
+      background: rgba(239, 68, 68, .08);
+      border: 1px solid rgba(239, 68, 68, .35);
+      border-radius: 20px;
+      padding: 2rem;
+    }
+    .privacy-not-title {
+      font-size: .85rem; color: #fca5a5;
+      text-transform: uppercase; letter-spacing: .12em;
+      font-weight: 700; margin-bottom: 1.5rem;
+    }
+    .privacy-not-item {
+      font-size: 1.25rem; color: #f8fafc;
+      padding: .85rem 0; font-weight: 600;
+      display: flex; align-items: center; gap: .75rem;
+      border-bottom: 1px solid rgba(239, 68, 68, .15);
+    }
+    .privacy-not-item:last-child { border-bottom: none; }
+    .privacy-not-item .x {
+      color: #ef4444; font-size: 1.5rem; font-weight: 900;
+    }
+
+    .privacy-promise {
+      background: rgba(16, 185, 129, .08);
+      border: 1px solid rgba(16, 185, 129, .4);
+      border-radius: 20px;
+      padding: 2rem;
+    }
+    .privacy-promise-title {
+      font-size: 1.35rem; color: #6ee7b7;
+      font-weight: 800; margin-bottom: 1.2rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .privacy-promise p {
+      margin-bottom: .9rem;
+      color: #e2e8f0; font-size: 1rem;
+      line-height: 1.55;
+    }
+    .privacy-promise p:last-child { margin-bottom: 0; }
+    .privacy-promise strong { color: #6ee7b7; }
+    .privacy-example {
+      background: rgba(16, 185, 129, .08);
+      border-left: 3px solid #10b981;
+      border-radius: 0 10px 10px 0;
+      padding: .8rem 1rem;
+      margin: .8rem 0 !important;
+      font-size: .92rem !important;
+      color: #a7f3d0 !important;
+    }
+    .privacy-example strong { color: #fff !important; }
+
+    /* ─── SLIDE 6 — Pratique ───────────────────────────────────── */
+    .practice-wrap { text-align: center; max-width: 800px; }
+    .practice-icon {
+      font-size: 5rem; margin-bottom: 1rem;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .practice-title {
+      font-size: 3rem; font-weight: 800;
+      letter-spacing: -.025em; margin-bottom: 1rem;
+      line-height: 1.15;
+    }
+    .practice-question {
+      font-size: 1.5rem; color: #cbd5e1;
+      margin-bottom: 3rem;
+      font-weight: 500;
+    }
+    .practice-btn {
+      display: inline-flex; align-items: center; gap: .9rem;
+      background: linear-gradient(135deg, #7c3aed, #ec4899);
+      color: #fff;
+      border: none; border-radius: 999px;
+      padding: 1.3rem 3rem;
+      font-size: 1.35rem; font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 15px 40px rgba(124, 58, 237, .5);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .practice-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 20px 50px rgba(124, 58, 237, .6);
+    }
+    .practice-btn .arrow { transition: transform .2s; }
+    .practice-btn:hover .arrow { transform: translateX(6px); }
+    .practice-hint {
+      margin-top: 2rem;
+      color: #94a3b8; font-size: .95rem;
+      font-style: italic;
+    }
+
+    /* ─── SLIDE — Plan de la présentation ─────────────────────── */
+    .plan-list {
+      list-style: none; max-width: 700px; width: 100%;
+      padding: 0; margin: 0;
+    }
+    .plan-item {
+      display: flex; align-items: center; gap: 1.25rem;
+      padding: .85rem .5rem;
+      border-bottom: 1px solid rgba(148, 163, 184, .12);
+    }
+    .plan-item:last-child { border-bottom: none; }
+    .plan-num {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(124, 58, 237, .2);
+      border: 2px solid rgba(196, 181, 253, .4);
+      color: #c4b5fd;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; flex-shrink: 0;
+    }
+    .plan-label {
+      font-size: 1.2rem; font-weight: 600; color: #e2e8f0;
+    }
+    .plan-icon { margin-right: .5rem; }
+
+    /* ─── SLIDE — Vos retours comptent ─────────────────────────── */
+    .feedback-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem; max-width: 1000px; width: 100%;
+    }
+    .feedback-card {
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(148, 163, 184, .2);
+      border-radius: 20px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      transition: transform .25s, border-color .25s;
+    }
+    .feedback-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(196, 181, 253, .5);
+    }
+    .feedback-card-icon { font-size: 3rem; margin-bottom: 1rem; line-height: 1; }
+    .feedback-card h3 {
+      font-size: 1.15rem; font-weight: 700;
+      color: #c4b5fd; margin-bottom: .6rem;
+    }
+    .feedback-card p { color: #cbd5e1; font-size: .92rem; }
+    .feedback-punchline {
+      margin-top: 2rem;
+      font-size: 1.1rem;
+      text-align: center;
+      color: #fbbf24;
+      font-weight: 600;
+      max-width: 700px;
+    }
+
+    /* ─── SLIDE — Merci / Questions ────────────────────────────── */
+    .merci-wrap { text-align: center; }
+    .merci-cori {
+      width: 180px; height: auto; margin: 0 auto 2rem;
+      filter: drop-shadow(0 10px 25px rgba(239, 68, 68, .35));
+      animation: float 3.5s ease-in-out infinite;
+    }
+    .merci-cori svg { width: 100%; height: auto; display: block; }
+    .merci-title {
+      font-size: 4rem; font-weight: 800;
+      margin-bottom: .5rem;
+      background: linear-gradient(135deg, #ef4444, #f472b6, #c4b5fd);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .merci-question {
+      font-size: 1.8rem; color: #cbd5e1;
+      font-weight: 600; margin-bottom: 2rem;
+    }
+    .merci-contact {
+      display: inline-block;
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(148, 163, 184, .25);
+      border-radius: 14px;
+      padding: .9rem 2rem;
+      color: #e2e8f0; font-size: 1rem;
+    }
+    .merci-contact strong { color: #c4b5fd; }
+
+    /* ─── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-title { font-size: 1.6rem; margin-bottom: 1.5rem; }
+      .hero-title-sub { font-size: .75rem; letter-spacing: .15em; }
+      .hero-mascot { flex-direction: column; gap: 1.5rem; text-align: center; }
+      .mascot-svg-wrap { width: 200px; }
+      .hero-bubble { font-size: 1.5rem; padding: 1.5rem; min-height: 140px; }
+      .hero-bubble { border-radius: 20px 20px 4px 20px; }
+      .slide-title, .arnaque-title, .practice-title { font-size: 2rem; }
+      .slide-sub, .arnaque-subtitle, .practice-question { font-size: 1.05rem; }
+      .profile-card { padding: 1.5rem; }
+      .profile-row { flex-direction: column; gap: 1rem; text-align: center; }
+      .profile-avatar { width: 100px; height: 100px; font-size: 3rem; }
+      .profile-name { font-size: 1.7rem; }
+      .deal-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .deal-vs { width: 100%; height: 40px; }
+      .mc-pitch { grid-template-columns: 1fr; gap: 1rem; }
+      .mc-card { padding: 1.5rem 1.25rem; }
+      .mc-icon { font-size: 2.5rem; }
+      .privacy-wrap { grid-template-columns: 1fr; gap: 1rem; }
+      .privacy-not, .privacy-promise { padding: 1.25rem; }
+      .privacy-not-item { font-size: 1rem; padding: .6rem 0; }
+      .practice-btn { padding: 1rem 2rem; font-size: 1.1rem; }
+      .plan-label { font-size: 1rem; }
+      .plan-num { width: 34px; height: 34px; font-size: .85rem; }
+      .feedback-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .feedback-card { padding: 1.5rem 1.25rem; }
+      .merci-title { font-size: 2.5rem; }
+      .merci-question { font-size: 1.3rem; }
+      .merci-cori { width: 120px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="deck">
+
+    <!-- ═══ SLIDE 1 — CORI parle ═══════════════════════════════ -->
+    <section class="slide active" data-slide="1">
+      <h1 class="hero-title">
+        <span class="hero-title-sub">Réunion de présentation</span>
+        <span class="hl">moncompagnon</span>
+      </h1>
+      <div class="hero-mascot">
+        <div class="mascot-svg-wrap">
+          <svg id="coriSvg" viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+            <!-- Swoosh arc -->
+            <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+            <!-- Corps en cœur -->
+            <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+            <!-- Reflet -->
+            <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+            <!-- Yeux -->
+            <circle cx="37" cy="52" r="9.5" fill="white"/>
+            <circle cx="63" cy="52" r="9.5" fill="white"/>
+            <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="40" cy="51" r="2.2" fill="white"/>
+            <circle cx="66" cy="51" r="2.2" fill="white"/>
+            <!-- Sourire -->
+            <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <!-- Joues -->
+            <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+            <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+            <!-- Bras -->
+            <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <!-- Jambes -->
+            <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <div class="hero-bubble-wrap">
+          <div class="hero-eyebrow">CORI vous dit…</div>
+          <div class="hero-bubble">
+            <span class="hero-bubble-text" id="coriSpeech">Bienvenue à tous ! 💜</span>
+          </div>
+          <div class="hero-hint">Installez-vous confortablement, on va commencer dans un instant…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SLIDE 2 — Plan de la présentation ═══════════════════ -->
+    <section class="slide" data-slide="2">
+      <h1 class="slide-title">Au programme aujourd'hui</h1>
+      <p class="slide-sub">Voici ce qu'on va aborder ensemble</p>
+
+      <ul class="plan-list">
+        <li class="plan-item">
+          <span class="plan-num">1</span>
+          <span class="plan-label"><span class="plan-icon">👨‍💻</span>Qui suis-je ?</span>
+        </li>
+        <li class="plan-item">
+          <span class="plan-num">2</span>
+          <span class="plan-label"><span class="plan-icon">🤝</span>Le deal — si c'est gratuit, où est l'arnaque ?</span>
+        </li>
+        <li class="plan-item">
+          <span class="plan-num">3</span>
+          <span class="plan-label"><span class="plan-icon">👥</span>Ça me concerne vraiment ?</span>
+        </li>
+        <li class="plan-item">
+          <span class="plan-num">4</span>
+          <span class="plan-label"><span class="plan-icon">🧩</span>moncompagnon, c'est quoi ?</span>
+        </li>
+        <li class="plan-item">
+          <span class="plan-num">5</span>
+          <span class="plan-label"><span class="plan-icon">🔒</span>Vie privée — mon engagement</span>
+        </li>
+        <li class="plan-item">
+          <span class="plan-num">6</span>
+          <span class="plan-label"><span class="plan-icon">🚀</span>Passons à la pratique</span>
+        </li>
+        <li class="plan-item">
+          <span class="plan-num">7</span>
+          <span class="plan-label"><span class="plan-icon">💬</span>Vos retours comptent</span>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ═══ SLIDE 3 — Hugo ════════════════════════════════════ -->
+    <section class="slide" data-slide="3">
+      <h1 class="slide-title">Qui suis-je ?</h1>
+      <p class="slide-sub">Un petit mot sur la personne derrière l'outil</p>
+
+      <div class="profile-card">
+        <div class="profile-row">
+          <div class="profile-avatar">👨‍💻</div>
+          <div>
+            <div class="profile-name">Hugo</div>
+            <div class="profile-role">Développeur d'applications</div>
+            <div class="profile-tag">Créateur de moncompagnon</div>
+          </div>
+        </div>
+        <div class="profile-highlight">
+          Je travaille <strong>bénévolement</strong> pour le CPAS de Quaregnon. <br>
+          <em>moncompagnon</em> est un outil que je construis sur mesure pour vous — à vous, pour vous, avec vous.
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SLIDE 3 — L'arnaque ═══════════════════════════════ -->
+    <section class="slide" data-slide="3">
+      <h1 class="arnaque-title">
+        Si c'est <span class="word-free">gratuit</span>,<br>
+        où est <span class="word-arnaque">l'arnaque</span> ?
+      </h1>
+      <p class="arnaque-subtitle">Il n'y en a pas — mais il y a un deal 🤝</p>
+
+      <div class="deal-grid">
+        <div class="deal-card side-me">
+          <div class="deal-card-label">De mon côté</div>
+          <h3>Je m'engage à…</h3>
+          <ul>
+            <li>Créer un outil <strong>sur mesure</strong> pour vous</li>
+            <li>Résoudre les vrais problèmes de votre quotidien</li>
+            <li>Écouter vos retours et améliorer l'app</li>
+            <li>Rester gratuit pour Quaregnon</li>
+          </ul>
+        </div>
+        <div class="deal-vs"><div class="deal-vs-inner">EN&nbsp;ÉCHANGE</div></div>
+        <div class="deal-card side-you">
+          <div class="deal-card-label">De votre côté</div>
+          <h3>Je compte sur vous pour…</h3>
+          <ul>
+            <li>Être des <strong>bêta-testeurs actifs</strong></li>
+            <li>Être <strong>critiques</strong> — dire ce qui ne va pas</li>
+            <li>Proposer vos idées et besoins</li>
+            <li>M'aider à construire un outil utile pour tous</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="deal-punchline">Ensemble, on va créer quelque chose qui simplifie vraiment votre travail.</p>
+    </section>
+
+    <!-- ═══ SLIDE 4 — Mais ça me concerne vraiment ? ══════════ -->
+    <section class="slide" data-slide="4">
+      <h1 class="slide-title">Mais ça me concerne vraiment ?</h1>
+      <p class="slide-sub">Spoiler : oui. 😊</p>
+
+      <div class="concerne-intro">
+        <strong>moncompagnon est destiné à TOUS les travailleurs du CPAS</strong> — de l'agent d'entretien au président. Les modules seront ajoutés au fur et à mesure pour accompagner chaque métier.
+      </div>
+
+      <div class="roles-grid">
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">🧹</span>
+            <span class="role-card-title">Agent d'entretien</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Checklist des locaux à nettoyer</li>
+            <li>Signaler une panne ou dégradation</li>
+            <li>Planning de passage</li>
+          </ul>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">📋</span>
+            <span class="role-card-title">Agent administratif</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Suivi des dossiers en cours</li>
+            <li>Rappels d'échéances</li>
+            <li>Modèles de documents partagés</li>
+          </ul>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">🤝</span>
+            <span class="role-card-title">Assistant social</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Agenda de rendez-vous simplifié</li>
+            <li>Vue rapide des dossiers du jour</li>
+            <li>Notes sécurisées et confidentielles</li>
+          </ul>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">🎫</span>
+            <span class="role-card-title">Accueil</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Gestion des tickets en direct</li>
+            <li>Orientation des bénéficiaires</li>
+            <li>Temps d'attente en temps réel</li>
+          </ul>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">🔧</span>
+            <span class="role-card-title">Technicien</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Tickets d'intervention</li>
+            <li>Inventaire matériel</li>
+            <li>Planning des maintenances</li>
+          </ul>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">👔</span>
+            <span class="role-card-title">Chef de service</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Vue d'équipe et répartition</li>
+            <li>Statistiques anonymisées</li>
+            <li>Suivi des demandes du service</li>
+          </ul>
+        </div>
+
+        <div class="role-card">
+          <div class="role-card-head">
+            <span class="role-card-icon">📊</span>
+            <span class="role-card-title">Direction</span>
+          </div>
+          <ul class="role-card-list">
+            <li>Tableau de bord global CPAS</li>
+            <li>Indicateurs clés d'activité</li>
+            <li>Communications internes</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="concerne-footer">Je ne connais pas votre métier — <strong>aidez-moi à construire un outil sur mesure pour VOTRE poste de travail.</strong></p>
+    </section>
+
+    <!-- ═══ SLIDE 5 — C'est quoi moncompagnon ? ═══════════════ -->
+    <section class="slide" data-slide="5">
+      <h1 class="slide-title">moncompagnon, c'est quoi ?</h1>
+      <p class="slide-sub">Un outil pensé pour vous faire gagner du temps</p>
+
+      <div class="mc-pitch">
+        <div class="mc-card">
+          <div class="mc-icon">👥</div>
+          <h3>Pour tout le monde</h3>
+          <p>Destiné à l'ensemble des agents du CPAS — pas un outil réservé à quelques services.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-icon">🧩</div>
+          <h3>Construit en modules</h3>
+          <p>Chaque agent a accès uniquement à ce qui le concerne dans son travail. Rien de plus, rien de moins.</p>
+        </div>
+        <div class="mc-card">
+          <div class="mc-icon">✨</div>
+          <h3>Simple, pas une usine à gaz</h3>
+          <p>L'objectif : vous faire gagner du temps. Si c'est compliqué à utiliser, c'est raté.</p>
+        </div>
+      </div>
+
+      <p class="mc-punchline">Un outil qui s'adapte à vous — pas l'inverse.</p>
+    </section>
+
+    <!-- ═══ SLIDE 6 — Vie privée / Engagement ═════════════════ -->
+    <section class="slide" data-slide="6">
+      <h1 class="slide-title">Vie privée — mon engagement</h1>
+      <p class="slide-sub">Avant d'aller plus loin, un point essentiel</p>
+
+      <div class="privacy-wrap">
+        <div class="privacy-not">
+          <div class="privacy-not-title">moncompagnon, ce n'est PAS</div>
+          <div class="privacy-not-item"><span class="x">✕</span> Une pointeuse</div>
+          <div class="privacy-not-item"><span class="x">✕</span> Un espion dans votre dos</div>
+          <div class="privacy-not-item"><span class="x">✕</span> Un outil de flicage</div>
+        </div>
+
+        <div class="privacy-promise">
+          <div class="privacy-promise-title">🔒 Ma promesse</div>
+          <p>Tout est <strong>anonymisé</strong> en base de données. Aucune donnée personnelle n'est utilisée pour vous tracer individuellement.</p>
+          <p class="privacy-example"><strong>Exemple concret :</strong> les tickets d'accueil sont stockés pour calculer le temps d'attente moyen par service et donner des estimations aux bénéficiaires — pas pour suivre qui fait quoi.</p>
+          <p>Mon éthique <strong>interdit</strong> le flicage. La direction et les chefs de service sont alignés sur ce principe. Et si on me demandait le contraire, je refuserais.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ SLIDE 7 — Passons à la pratique ═══════════════════ -->
+    <section class="slide" data-slide="7">
+      <div class="practice-wrap">
+        <div class="practice-icon">🚀</div>
+        <h1 class="practice-title">Passons à la pratique</h1>
+        <p class="practice-question">Que dois-je savoir pour commencer ?</p>
+        <a class="practice-btn" href="index.html">
+          Ouvrir moncompagnon
+          <span class="arrow">→</span>
+        </a>
+        <p class="practice-hint">Connectez-vous avec vos identifiants CPAS</p>
+      </div>
+    </section>
+
+    <!-- ═══ SLIDE 9 — Vos retours comptent ═══════════════════════ -->
+    <section class="slide" data-slide="9">
+      <h1 class="slide-title">Vos retours comptent</h1>
+      <p class="slide-sub">Comment me faire part de vos idées, besoins ou problèmes ?</p>
+
+      <div class="feedback-grid">
+        <div class="feedback-card">
+          <div class="feedback-card-icon">💬</div>
+          <h3>En parler autour de vous</h3>
+          <p>Parlez-en à votre chef de service ou à vos collègues. Les retours d'équipe sont les plus précieux.</p>
+        </div>
+        <div class="feedback-card">
+          <div class="feedback-card-icon">🐛</div>
+          <h3>Signaler un bug ou un souci</h3>
+          <p>Quelque chose ne fonctionne pas comme prévu ? Dites-le moi, même si ça semble anodin.</p>
+        </div>
+        <div class="feedback-card">
+          <div class="feedback-card-icon">💡</div>
+          <h3>Proposer une idée</h3>
+          <p>Vous avez un besoin au quotidien ? Un processus pénible ? C'est exactement ce que moncompagnon veut résoudre.</p>
+        </div>
+      </div>
+
+      <p class="feedback-punchline">Chaque retour = un outil meilleur pour tout le monde.</p>
+    </section>
+
+    <!-- ═══ SLIDE 10 — Merci / Questions ══════════════════════════ -->
+    <section class="slide" data-slide="10">
+      <div class="merci-wrap">
+        <div class="merci-cori">
+          <svg viewBox="0 0 100 118" xmlns="http://www.w3.org/2000/svg">
+            <path d="M 18 36 Q 50 3 82 36" stroke="#991b1b" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+            <path d="M 50 28 C 45 13 11 14 11 40 C 11 62 34 73 50 91 C 66 73 89 62 89 40 C 89 14 55 13 50 28 Z" fill="#ef4444"/>
+            <ellipse cx="34" cy="37" rx="11" ry="7" fill="#fca5a5" opacity=".45" transform="rotate(-22 34 37)"/>
+            <circle cx="37" cy="52" r="9.5" fill="white"/>
+            <circle cx="63" cy="52" r="9.5" fill="white"/>
+            <circle cx="38" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="64" cy="53" r="6" fill="#1e1b4b" class="mc-pupil"/>
+            <circle cx="40" cy="51" r="2.2" fill="white"/>
+            <circle cx="66" cy="51" r="2.2" fill="white"/>
+            <path d="M 43 65 Q 50 73 57 65" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <ellipse cx="26" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+            <ellipse cx="74" cy="62" rx="7.5" ry="4.5" fill="#fca5a5" opacity=".6"/>
+            <path class="mc-t mc-t3" d="M 13 51 Q 3 61 5 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t4" d="M 87 51 Q 97 61 95 75" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t1" d="M 41 89 Q 35 101 37 113 Q 38 116 34 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+            <path class="mc-t mc-t2" d="M 59 89 Q 65 101 63 113 Q 62 116 66 118" stroke="#ef4444" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <h1 class="merci-title">Merci !</h1>
+        <p class="merci-question">Des questions ?</p>
+        <div class="merci-contact">
+          N'hésitez pas — <strong>il n'y a pas de question bête.</strong>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ─── Barre de navigation ─────────────────────────────────── -->
+  <div class="nav-bar">
+    <button class="nav-btn" id="prevBtn" aria-label="Précédent">‹</button>
+    <span class="nav-counter" id="counter">1 / 4</span>
+    <button class="nav-btn" id="nextBtn" aria-label="Suivant">›</button>
+  </div>
+
+  <script>
+    // ─── Navigation slides ──────────────────────────────────────
+    const slides = document.querySelectorAll('.slide');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const counter = document.getElementById('counter');
+    let current = 0;
+
+    function showSlide(idx) {
+      current = Math.max(0, Math.min(slides.length - 1, idx));
+      slides.forEach((s, i) => s.classList.toggle('active', i === current));
+      counter.textContent = `${current + 1} / ${slides.length}`;
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current === slides.length - 1;
+    }
+
+    prevBtn.addEventListener('click', () => showSlide(current - 1));
+    nextBtn.addEventListener('click', () => showSlide(current + 1));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault(); showSlide(current + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault(); showSlide(current - 1);
+      } else if (e.key === 'Home') {
+        showSlide(0);
+      } else if (e.key === 'End') {
+        showSlide(slides.length - 1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        // Plein écran
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
+      }
+    });
+
+    // ─── Phrases de CORI qui défilent ───────────────────────────
+    const CORI_SPEECHES = [
+      // Accueil / ambiance
+      'Bienvenue à tous ! 💜',
+      'Bonjour à toute l\'équipe ! 👋',
+      'Je suis ravi de vous voir réunis aujourd\'hui 😊',
+      'Installez-vous confortablement…',
+      'Merci d\'être là ! ❤️',
+      'Merci de prendre un moment pour cette présentation',
+      'La réunion va bientôt commencer',
+      // Sur CORI / moncompagnon
+      'Je suis CORI, votre compagnon virtuel 🦸',
+      'Un outil fait pour vous, par quelqu\'un qui vous écoute',
+      'Moi, je ne suis qu\'un outil — vous, vous êtes le métier',
+      'Pas besoin d\'être geek pour utiliser moncompagnon 😉',
+      'Prêts à découvrir moncompagnon ?',
+      // Co-construction / valorisation des agents
+      'On va faire du super boulot ensemble !',
+      'Chaque agent compte — vous êtes au cœur du projet',
+      'Vos retours vont faire la différence',
+      'On construit cet outil ENSEMBLE',
+      'Plus vous serez critiques, mieux ce sera !',
+      'Les meilleures idées viennent souvent du terrain',
+      'Vous êtes les experts de votre métier',
+      'J\'ai hâte d\'entendre vos idées',
+      // Mise en confiance
+      'Pas d\'inquiétude — on va y aller pas à pas',
+      'Il n\'y a pas de question bête aujourd\'hui',
+      'On va apprendre ensemble, tranquillement',
+      'Le CPAS de Quaregnon mérite des outils à la hauteur ✨',
+    ];
+    let speechIdx = 0;
+    const speechEl = document.getElementById('coriSpeech');
+    function rotateSpeech() {
+      speechIdx = (speechIdx + 1) % CORI_SPEECHES.length;
+      speechEl.style.animation = 'none';
+      // Force reflow pour relancer l'animation
+      void speechEl.offsetWidth;
+      speechEl.textContent = CORI_SPEECHES[speechIdx];
+      speechEl.style.animation = '';
+    }
+    setInterval(rotateSpeech, 4500);
+
+    showSlide(0);
+  </script>
+
+</body>
+</html>
