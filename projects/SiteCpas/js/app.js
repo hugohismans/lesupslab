@@ -2303,11 +2303,15 @@ function _renderWeekWidget() {
 function _renderMissionWidget(agentKey) {
   const el = document.getElementById('hsMission');
   if (!el) return;
-  if (!agentKey || agentKey === 'anon') { el.innerHTML = ''; return; }
+  if (!agentKey || agentKey === 'anon') { el.innerHTML = ''; el.dataset.missionState = ''; return; }
 
   const today    = new Date().toISOString().slice(0, 10);
   const absEntry = DB.getAgentAbsenceOn(agentKey, today);
   const isMission = absEntry && absEntry[1]?.motif === 'mission';
+  const newState  = isMission ? `mission:${absEntry[0]}:${absEntry[1].comment || ''}` : 'idle';
+
+  if (el.dataset.missionState === newState) return;
+  el.dataset.missionState = newState;
 
   if (isMission) {
     const comment = absEntry[1].comment ? `<div class="hs-mission-comment">📝 ${escapeHtml(absEntry[1].comment)}</div>` : '';
