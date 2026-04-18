@@ -1699,7 +1699,9 @@ const LIVE = {
         // Tickets nominatifs : saisie du nom du bénéficiaire
         let benefName = null;
         if (DB.getFeature('enableNamedTickets')) {
-          benefName = (window.prompt('Nom du bénéficiaire (optionnel — Entrée pour ignorer) :') || '').trim() || null;
+          const raw = window.prompt('Nom du bénéficiaire (optionnel — Entrée pour ignorer) :');
+          if (raw === null) return; // Annuler → ne rien faire
+          benefName = raw.trim() || null;
         }
         const { label: ticket, resolvedName } = await DB.issueTicket(grpId, benefName);
         // Mémoriser le dernier ticket émis pour ce groupe (bouton reprint accueil)
