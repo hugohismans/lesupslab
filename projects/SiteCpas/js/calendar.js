@@ -1179,7 +1179,7 @@ const LIVE = {
              ${overflowNums.map(n => {
                const num  = gcCfg.showNum  ? DB.formatTicket(grpId, n) : null;
                const name = gcCfg.showName ? DB.getTicketName(grpId, n) : null;
-               const label = [num, name].filter(Boolean).join(' · ') || DB.formatTicket(grpId, n);
+               const label = [num, name].filter(Boolean).join(' · ') || '•';
                return `<span class="lv-grp-chip">${escapeHtml(label)}</span>`;
              }).join('')}${extraOverflow > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${extraOverflow}</span>` : ''}
            </div>`
@@ -1207,9 +1207,10 @@ const LIVE = {
           const _isToday = _nextRes._start.toISOString().slice(0,10) === now.toISOString().slice(0,10);
           const _dStr  = _isToday ? "Aujourd'hui" : _nextRes._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'numeric' });
           const _hStr  = _nextRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+          const _hEnd  = _nextRes._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           nextResHtml  = `<div class="lv-grp-next-res">
             <span class="lv-grp-next-label">Prochain créneau</span>
-            <span class="lv-grp-next-when">${_dStr} · ${_hStr}</span>
+            <span class="lv-grp-next-when">${_dStr} · ${_hStr} – ${_hEnd}</span>
             <span class="lv-grp-next-who">${escapeHtml(_agt)} — ${escapeHtml(_loc)}</span>
           </div>`;
         }

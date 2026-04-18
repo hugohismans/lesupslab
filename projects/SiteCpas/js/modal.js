@@ -785,7 +785,7 @@ const MODAL = {
 
     // ── Affichage des tickets ──────────────────────────────────────
     if (isAdmin) {
-      const LOCATIONS = ['publicCall', 'publicBureauCard', 'agentNotif', 'waitBanner', 'kiosk'];
+      const LOCATIONS = ['publicCall', 'publicBureauCard', 'agentNotif', 'waitBanner', 'kiosk', 'groupCard'];
       // Initialiser les checkboxes depuis la config
       LOCATIONS.forEach(loc => {
         const cfg = DB.getTicketDisplay(loc);
