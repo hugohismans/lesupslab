@@ -2,6 +2,12 @@
 // calendar.js — Vues jour / semaine / mois
 // ═══════════════════════════════════════════════════════════════════
 
+// Retourne [id, absence] si l'utilisateur courant est absent ce jour-là, sinon null.
+function _myAbsenceOn(dateStr) {
+  const k = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('cpas_current_agent_key') : null;
+  return k && typeof DB !== 'undefined' ? DB.getAgentAbsenceOn(k, dateStr) : null;
+}
+
 const CAL = {
   view: 'day',
   date: new Date(),
@@ -122,7 +128,18 @@ const CAL = {
       }
     }
 
-    let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">
+    const myAbs = _myAbsenceOn(isoDate(d));
+    const absBanner = myAbs ? (() => {
+      const a = myAbs[1];
+      const m = (DB.ABSENCE_MOTIFS && DB.ABSENCE_MOTIFS[a.motif]) || { icon: '📝', label: 'Absence' };
+      return `<div class="cv-abs-banner">
+        <span class="cv-abs-icon">${m.icon}</span>
+        <span class="cv-abs-text">Vous êtes en ${m.label.toLowerCase()} ce jour${a.comment ? ` — ${escapeHtml(a.comment)}` : ''}</span>
+      </div>`;
+    })() : '';
+
+    let h = absBanner;
+    h += `<div class="cv-day-datebar${isToday ? ' is-today' : ''}${myAbs ? ' has-abs' : ''}">
       ${dateLabel}
       ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
     </div>`;
@@ -306,9 +323,10 @@ const CAL = {
     for (let i = 0; i < nbDays; i++) {
       const day = addDays(wS, i);
       const isTd = sameDay(day, today);
-      h += `<div class="wkd-hd${isTd ? ' is-today' : ''}" data-date="${isoDate(day)}" data-act="go-day">
+      const isAbs = !!_myAbsenceOn(isoDate(day));
+      h += `<div class="wkd-hd${isTd ? ' is-today' : ''}${isAbs ? ' wk-absent' : ''}" data-date="${isoDate(day)}" data-act="go-day">
         <div class="wkd-name">${dayName(day)}</div>
-        <div class="wkd-num${isTd ? ' num-today' : ''}">${day.getDate()}</div>
+        <div class="wkd-num${isTd ? ' num-today' : ''}">${day.getDate()}${isAbs ? ' 🌴' : ''}</div>
       </div>`;
     }
     h += '</div>';
@@ -410,9 +428,10 @@ const CAL = {
         const color = inMonth ? availColor(free, moTotal) : 'transparent';
 
         const isHoliday = inMonth && isBelgianHoliday(isoDate(cursor));
-        h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}${isHoliday ? ' is-holiday' : ''}"
+        const isAbs = inMonth && !!_myAbsenceOn(isoDate(cursor));
+        h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}${isHoliday ? ' is-holiday' : ''}${isAbs ? ' mo-absent' : ''}"
           data-date="${isoDate(cursor)}" data-act="go-day" ${isHoliday ? `title="${getHolidayName(isoDate(cursor))}"` : ''}>
-          <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}${isHoliday ? ' 🇧🇪' : ''}</div>
+          <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}${isHoliday ? ' 🇧🇪' : ''}${isAbs ? ' 🌴' : ''}</div>
           ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/${moTotal}</div>` : ''}
         </div>`;
 
