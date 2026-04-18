@@ -1968,8 +1968,15 @@ const LIVE = {
           const _grp = DB.getQueueGroups()[grpId];
 
           if (_oldestPref) {
-            // Comparer l'ancienneté : preferred vs prochain ticket du groupe
-            const _nextTicketTs = DB.getTicketIssuedAt(grpId, DB.getTicketCalled(grpId) + 1) || Infinity;
+            // Comparer l'ancienneté : preferred vs PROCHAIN ticket NON-SKIPPÉ du groupe
+            // (les tickets skippés — déjà traités hors ordre via la cloche — ne doivent pas
+            // fausser la comparaison avec leur ancien timestamp)
+            let _nextN = DB.getTicketCalled(grpId) + 1;
+            const _issued = DB.getTicketIssued(grpId);
+            while (_nextN <= _issued && DB.isTicketSkipped(grpId, _nextN)) _nextN++;
+            const _nextTicketTs = _nextN <= _issued
+              ? (DB.getTicketIssuedAt(grpId, _nextN) || Infinity)
+              : Infinity;
             const _prefTs = _oldestPref.ts || 0;
             if (_prefTs <= _nextTicketTs) {
               // Le preferred est plus ancien → le recevoir en priorité
