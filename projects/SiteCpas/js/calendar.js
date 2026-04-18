@@ -1754,7 +1754,12 @@ const LIVE = {
     g('liveGrid').querySelectorAll('.lv-grp-join').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
-        await DB.joinQueueGroup(btn.dataset.grp, parseInt(btn.dataset.local));
+        const local = parseInt(btn.dataset.local);
+        if (!DB.isBureauOpen(local)) {
+          showToast('⚠ Ouvrez le bureau avant de vous inscrire à une liste d\'attente');
+          return;
+        }
+        await DB.joinQueueGroup(btn.dataset.grp, local);
         this.render();
       });
     });
