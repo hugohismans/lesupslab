@@ -1893,6 +1893,37 @@ const MODAL = {
     };
     if (Object.keys(exceptionDates).length) data.exceptions = exceptionDates;
 
+    // ── Blocage si un agent impliqué s'est déclaré absent sur la plage ──
+    const _absAgentNames = new Set();
+    if (data.agent && data.agent !== 'Autre') _absAgentNames.add(data.agent);
+    (data.agents || []).forEach(n => { if (n) _absAgentNames.add(n); });
+    Object.keys(data.invitedAgents || {}).forEach(k => {
+      const info = DB.getAgentsWithKeys().find(a => a.key === k);
+      if (info?.name) _absAgentNames.add(info.name);
+    });
+    if (_absAgentNames.size) {
+      const _nameToKey = {};
+      DB.getAgentsWithKeys().forEach(a => { _nameToKey[a.name] = a.key; });
+      const _startDate = data.startDateTime.slice(0, 10);
+      const _endDate   = isPerm ? _startDate : (data.endDateTime || data.startDateTime).slice(0, 10);
+      const _dates = [];
+      let _cur = new Date(_startDate + 'T00:00:00');
+      const _stop = new Date(_endDate + 'T00:00:00');
+      while (_cur <= _stop) { _dates.push(_cur.toISOString().slice(0, 10)); _cur.setDate(_cur.getDate() + 1); }
+      for (const name of _absAgentNames) {
+        const ak = _nameToKey[name];
+        if (!ak) continue;
+        for (const ds of _dates) {
+          const abs = DB.getAgentAbsenceOn(ak, ds);
+          if (abs) {
+            const m = (DB.ABSENCE_MOTIFS && DB.ABSENCE_MOTIFS[abs[1].motif]) || { label: 'absence' };
+            alert(`⚠️ ${name} s'est déclaré(e) en ${m.label.toLowerCase()} le ${ds}.\n\nImpossible de créer cette réservation.`);
+            return;
+          }
+        }
+      }
+    }
+
     try {
       if (this._editId) await DB.update(this._editId, data);
       else              await DB.add(data);
