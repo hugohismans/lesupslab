@@ -899,16 +899,15 @@ body {
 .cv-cell.is-perm:hover    { filter: brightness(.94); }
 
 .ct {
-  font-size: .72rem; line-height: 1.4; overflow: hidden;
+  font-size: .72rem; line-height: 1.35; overflow: hidden;
   width: 100%; color: #1e293b; display: block;
+  word-break: break-word; overflow-wrap: anywhere;
 }
-.ct b    { font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ct small { color: #64748b; font-size: .65rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ct-time    { color: #94a3b8 !important; font-size: .62rem !important; margin-top: .15rem; }
-.ct-comment { display: block; color: #64748b !important; font-size: .58rem !important; margin-top: .2rem;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-.ct-invited { display: block; color: #6d28d9 !important; font-size: .58rem !important; margin-top: .15rem;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.ct b    { font-weight: 700; display: block; }
+.ct small { color: #64748b; font-size: .65rem; display: block; }
+.ct-time    { color: #94a3b8 !important; font-size: .62rem !important; margin-top: .15rem; white-space: nowrap; }
+.ct-comment { display: block; color: #64748b !important; font-size: .58rem !important; margin-top: .2rem; }
+.ct-invited { display: block; color: #6d28d9 !important; font-size: .58rem !important; margin-top: .15rem; }
 .cv-cell.is-invited { box-shadow: inset 3px 0 0 #8b5cf6 !important; }
 .cv-holiday-badge {
   display: inline-block; margin-left: .75rem;
