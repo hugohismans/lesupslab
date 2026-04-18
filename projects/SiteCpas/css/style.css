@@ -1113,6 +1113,23 @@ body {
   position: sticky; bottom: 0; background: #fff;
 }
 
+.field-label {
+  display: block;
+  font-size: .82rem; font-weight: 700; color: #374151;
+  margin-bottom: .35rem;
+}
+.field-input {
+  display: block; width: 100%; box-sizing: border-box;
+  padding: .55rem .75rem;
+  border: 1.5px solid #d1d5db; border-radius: 8px;
+  font-size: .9rem; font-family: inherit; color: #111827;
+  background: #fff;
+  transition: border-color .12s;
+}
+.field-input:focus { outline: none; border-color: #2a6496; }
+select.field-input { cursor: pointer; }
+.field-input + .field-label { margin-top: .9rem; }
+
 /* Détail */
 .det-row {
   display: flex; gap: .75rem; padding: .55rem 0;

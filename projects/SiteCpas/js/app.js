@@ -3379,7 +3379,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Calculer displayName (prénom ou ticket# selon config)
     const enableNamed = DB.getFeature('enableNamedTickets');
-    const displayName = enableNamed ? (benefName.split(' ')[0] || benefName) : 'Bénéficiaire';
+    const displayName = enableNamed ? benefName : 'Bénéficiaire';
 
     const agentPublicName = DB.getAgentPublicName(targetAgentKey) || agentName;
 
@@ -3516,9 +3516,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const _myAgentName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || '';
     const myPublicName = DB.getAgentPublicName(myKey) || _myAgentName;
     const enableNamed  = DB.getFeature('enableNamedTickets');
-    const displayName  = enableNamed && req.benefName
-      ? (req.benefName.split(' ')[0] || req.benefName)
-      : 'Bénéficiaire';
+    const displayName  = enableNamed && req.benefName ? req.benefName : 'Bénéficiaire';
 
     const { ticketLabel } = await DB.respondToPreferredRequest(reqId, response, etaMin, comment, localId, myPublicName, displayName);
 
