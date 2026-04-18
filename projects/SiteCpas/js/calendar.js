@@ -2,6 +2,12 @@
 // calendar.js — Vues jour / semaine / mois
 // ═══════════════════════════════════════════════════════════════════
 
+// Retourne [id, absence] si l'utilisateur courant est absent ce jour-là, sinon null.
+function _myAbsenceOn(dateStr) {
+  const k = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('cpas_current_agent_key') : null;
+  return k && typeof DB !== 'undefined' ? DB.getAgentAbsenceOn(k, dateStr) : null;
+}
+
 const CAL = {
   view: 'day',
   date: new Date(),
@@ -122,7 +128,18 @@ const CAL = {
       }
     }
 
-    let h = `<div class="cv-day-datebar${isToday ? ' is-today' : ''}">
+    const myAbs = _myAbsenceOn(isoDate(d));
+    const absBanner = myAbs ? (() => {
+      const a = myAbs[1];
+      const m = (DB.ABSENCE_MOTIFS && DB.ABSENCE_MOTIFS[a.motif]) || { icon: '📝', label: 'Absence' };
+      return `<div class="cv-abs-banner">
+        <span class="cv-abs-icon">${m.icon}</span>
+        <span class="cv-abs-text">Vous êtes en ${m.label.toLowerCase()} ce jour${a.comment ? ` — ${escapeHtml(a.comment)}` : ''}</span>
+      </div>`;
+    })() : '';
+
+    let h = absBanner;
+    h += `<div class="cv-day-datebar${isToday ? ' is-today' : ''}${myAbs ? ' has-abs' : ''}">
       ${dateLabel}
       ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
     </div>`;
@@ -306,9 +323,10 @@ const CAL = {
     for (let i = 0; i < nbDays; i++) {
       const day = addDays(wS, i);
       const isTd = sameDay(day, today);
-      h += `<div class="wkd-hd${isTd ? ' is-today' : ''}" data-date="${isoDate(day)}" data-act="go-day">
+      const isAbs = !!_myAbsenceOn(isoDate(day));
+      h += `<div class="wkd-hd${isTd ? ' is-today' : ''}${isAbs ? ' wk-absent' : ''}" data-date="${isoDate(day)}" data-act="go-day">
         <div class="wkd-name">${dayName(day)}</div>
-        <div class="wkd-num${isTd ? ' num-today' : ''}">${day.getDate()}</div>
+        <div class="wkd-num${isTd ? ' num-today' : ''}">${day.getDate()}${isAbs ? ' 🌴' : ''}</div>
       </div>`;
     }
     h += '</div>';
@@ -410,9 +428,10 @@ const CAL = {
         const color = inMonth ? availColor(free, moTotal) : 'transparent';
 
         const isHoliday = inMonth && isBelgianHoliday(isoDate(cursor));
-        h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}${isHoliday ? ' is-holiday' : ''}"
+        const isAbs = inMonth && !!_myAbsenceOn(isoDate(cursor));
+        h += `<div class="mo-cell${!inMonth ? ' other' : ''}${isTd ? ' is-today' : ''}${isHoliday ? ' is-holiday' : ''}${isAbs ? ' mo-absent' : ''}"
           data-date="${isoDate(cursor)}" data-act="go-day" ${isHoliday ? `title="${getHolidayName(isoDate(cursor))}"` : ''}>
-          <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}${isHoliday ? ' 🇧🇪' : ''}</div>
+          <div class="mo-num${isTd ? ' num-today' : ''}">${cursor.getDate()}${isHoliday ? ' 🇧🇪' : ''}${isAbs ? ' 🌴' : ''}</div>
           ${inMonth ? `<div class="mo-bar" style="background:${color}">${free}/${moTotal}</div>` : ''}
         </div>`;
 
@@ -1179,7 +1198,7 @@ const LIVE = {
              ${overflowNums.map(n => {
                const num  = gcCfg.showNum  ? DB.formatTicket(grpId, n) : null;
                const name = gcCfg.showName ? DB.getTicketName(grpId, n) : null;
-               const label = [num, name].filter(Boolean).join(' · ') || DB.formatTicket(grpId, n);
+               const label = [num, name].filter(Boolean).join(' · ') || '•';
                return `<span class="lv-grp-chip">${escapeHtml(label)}</span>`;
              }).join('')}${extraOverflow > 0 ? `<span class="lv-grp-chip lv-grp-chip-unknown">+${extraOverflow}</span>` : ''}
            </div>`
@@ -1207,9 +1226,10 @@ const LIVE = {
           const _isToday = _nextRes._start.toISOString().slice(0,10) === now.toISOString().slice(0,10);
           const _dStr  = _isToday ? "Aujourd'hui" : _nextRes._start.toLocaleDateString('fr-BE', { weekday: 'short', day: 'numeric', month: 'numeric' });
           const _hStr  = _nextRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+          const _hEnd  = _nextRes._end.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
           nextResHtml  = `<div class="lv-grp-next-res">
             <span class="lv-grp-next-label">Prochain créneau</span>
-            <span class="lv-grp-next-when">${_dStr} · ${_hStr}</span>
+            <span class="lv-grp-next-when">${_dStr} · ${_hStr} – ${_hEnd}</span>
             <span class="lv-grp-next-who">${escapeHtml(_agt)} — ${escapeHtml(_loc)}</span>
           </div>`;
         }
@@ -1402,12 +1422,15 @@ const LIVE = {
                  const _waitMin = item.ts ? Math.floor((Date.now() - item.ts) / 60000) : null;
                  const _waitStr = _waitMin !== null ? (_waitMin < 1 ? '&lt;1m' : `${_waitMin}m`) : '';
                  if (item.isPref) {
-                   return `<div class="lv-grp-queue-item lv-grp-queue-item-pref"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(item.prefTicket)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">📌 ${escapeHtml(item.prefName)}</span><span></span></div>`;
+                   return `<div class="lv-grp-queue-item lv-grp-queue-item-pref has-call"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(item.prefTicket)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">📌 ${escapeHtml(item.prefName)}</span><span></span><span></span></div>`;
                  }
                  const _num  = _gcCfgL.showNum  ? DB.formatTicket(item.gId, item.n) : `#${i+1}`;
                  const _name = _gcCfgL.showName ? DB.getTicketName(item.gId, item.n) : null;
                  const _grpLabel = grps.length > 1 ? `<span class="lv-grp-queue-grp">${escapeHtml(item.gName)}</span>` : '<span></span>';
-                 return `<div class="lv-grp-queue-item"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">${_name ? escapeHtml(_name) : ''}</span>${_grpLabel}</div>`;
+                 const _callBtn = amIHere
+                   ? `<button class="lv-grp-queue-call" data-grp="${item.gId}" data-n="${item.n}" data-local="${l}" title="Appeler ce ticket directement">🔔</button>`
+                   : '<span></span>';
+                 return `<div class="lv-grp-queue-item has-call"><span class="lv-grp-queue-pos">→${i+1}</span><span class="lv-grp-queue-ticket">${escapeHtml(_num)}</span><span class="lv-grp-queue-wait">${_waitStr}</span><span class="lv-grp-queue-name">${_name ? escapeHtml(_name) : ''}</span>${_grpLabel}${_callBtn}</div>`;
                }).join('')}
              </div>`
           : '';
@@ -1597,10 +1620,59 @@ const LIVE = {
 
     if (isAccueil) {
       const bureauHtml = this._showAllBureaux ? lieuGroupsHtml : '';
+
+      // Liste des demandes SP actives (preferredPending par local)
+      const _allPending = Object.entries(DB._preferredPending || {})
+        .map(([lid, pend]) => ({ localId: parseInt(lid), pend }))
+        .filter(x => x.pend)
+        .sort((a, b) => (a.pend.ts || 0) - (b.pend.ts || 0));
+
+      const _pendingHtml = _allPending.length
+        ? `<div class="lv-pref-section-title">🎫 Demandes en cours</div>
+           <div class="lv-pref-list">${_allPending.map(({ localId, pend }) => {
+             const _ticket = pend.ticketLabel || 'SP';
+             const _name   = pend.displayName || '?';
+             const _agent  = pend.agentPublicName || '';
+             const _loc    = DB.getLocalLabel(localId);
+             return `<div class="lv-pref-item">
+               <span class="lv-pref-ticket">${escapeHtml(_ticket)}</span>
+               <span class="lv-pref-name">${escapeHtml(_name)}</span>
+               <span class="lv-pref-arrow">→</span>
+               <span class="lv-pref-agent">${escapeHtml(_agent)}</span>
+               <span class="lv-pref-local">${escapeHtml(_loc)}</span>
+             </div>`;
+           }).join('')}</div>`
+        : '';
+
+      // Liste des demandes SP en attente d'ouverture de bureau
+      const _awaitingMap = DB.getAllAwaitingPreferred();
+      const _awaitingList = Object.entries(_awaitingMap)
+        .map(([agentKey, data]) => ({ agentKey, data }))
+        .sort((a, b) => (a.data?.ts || 0) - (b.data?.ts || 0));
+      const _awaitingHtml = _awaitingList.length
+        ? `<div class="lv-pref-section-title lv-pref-section-title-await">💺 En attente d'ouverture</div>
+           <div class="lv-pref-list">${_awaitingList.map(({ agentKey, data }) => {
+             const _info = DB.getAgentsWithKeys().find(a => a.key === agentKey);
+             const _agentName = _info?.name || agentKey;
+             const _name  = data.displayName || '?';
+             const _place = data.publicPlaceName || '';
+             return `<div class="lv-pref-item lv-pref-item-await">
+               <span class="lv-pref-ticket">⏳</span>
+               <span class="lv-pref-name">${escapeHtml(_name)}</span>
+               <span class="lv-pref-arrow">→</span>
+               <span class="lv-pref-agent">${escapeHtml(_agentName)}</span>
+               <span class="lv-pref-local">${_place ? `📍 ${escapeHtml(_place)}` : 'bureau non ouvert'}</span>
+               <button class="lv-pref-cancel" data-agent-key="${escapeHtml(agentKey)}" title="Annuler l'attente">✕</button>
+             </div>`;
+           }).join('')}</div>`
+        : '';
+
       const preferredCard = `<div class="lv-card lv-preferred-standalone">
         <div class="lv-preferred-standalone-title">👤 Demande agent spécifique</div>
         <div class="lv-preferred-standalone-desc">Un bénéficiaire souhaite être reçu par un agent en particulier.</div>
         <button class="lv-grp-preferred" id="lvPreferredBtn">Ne veut voir qu'un agent</button>
+        ${_pendingHtml}
+        ${_awaitingHtml}
       </div>`;
       g('liveGrid').innerHTML = groupCards + preferredCard + bureauHtml;
     } else {
@@ -1698,7 +1770,9 @@ const LIVE = {
         // Tickets nominatifs : saisie du nom du bénéficiaire
         let benefName = null;
         if (DB.getFeature('enableNamedTickets')) {
-          benefName = (window.prompt('Nom du bénéficiaire (optionnel — Entrée pour ignorer) :') || '').trim() || null;
+          const raw = window.prompt('Nom du bénéficiaire (optionnel — Entrée pour ignorer) :');
+          if (raw === null) return; // Annuler → ne rien faire
+          benefName = raw.trim() || null;
         }
         const { label: ticket, resolvedName } = await DB.issueTicket(grpId, benefName);
         // Mémoriser le dernier ticket émis pour ce groupe (bouton reprint accueil)
@@ -1751,7 +1825,12 @@ const LIVE = {
     g('liveGrid').querySelectorAll('.lv-grp-join').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
-        await DB.joinQueueGroup(btn.dataset.grp, parseInt(btn.dataset.local));
+        const local = parseInt(btn.dataset.local);
+        if (!DB.isBureauOpen(local)) {
+          showToast('⚠ Ouvrez le bureau avant de vous inscrire à une liste d\'attente');
+          return;
+        }
+        await DB.joinQueueGroup(btn.dataset.grp, local);
         this.render();
       });
     });
@@ -1760,6 +1839,67 @@ const LIVE = {
         e.stopPropagation();
         await DB.leaveQueueGroup(btn.dataset.grp, parseInt(btn.dataset.local));
         this.render();
+      });
+    });
+
+    // Cloche : appeler un ticket spécifique depuis la file de la carte groupe (vue bureau)
+    g('liveGrid').querySelectorAll('.lv-grp-queue-call').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId = parseInt(btn.dataset.local);
+        const grpId   = btn.dataset.grp;
+        const ticketN = parseInt(btn.dataset.n);
+
+        if (!DB.isBureauOpen(localId)) {
+          showToast('⚠ Ouvrez le bureau avant d\'appeler un ticket');
+          return;
+        }
+        if (DB.getQueue(localId) >= 1 || DB.isBureauBusyWithPreferred(localId)) {
+          showToast('⚠ Bureau déjà occupé — terminez la consultation en cours');
+          return;
+        }
+
+        const _now  = new Date();
+        const _dayS = new Date(_now); _dayS.setHours(0,0,0,0);
+        const _dayE = new Date(_now); _dayE.setHours(23,59,59,999);
+        const _occ  = DB.getInRange(_dayS, _dayE).find(o =>
+          Number(o.localId) === localId && o._start <= _now && (o._end === null || o._end >= _now)
+        );
+        const _pubAgent = _occ?.agent ? DB.getAgentPublicName(_occ.agent) : null;
+        const _grp = DB.getQueueGroups()[grpId];
+
+        const _ticket = await DB.callSpecificTicket(grpId, ticketN);
+        if (!_ticket) { showToast('Ticket déjà traité ou indisponible'); return; }
+
+        LIVE._storeCall(localId, _ticket, _occ);
+        await DB.setQueue(localId, 1);
+
+        // Si ce ticket correspond à une demande spécifique, fermer proprement
+        const _prefMatch = DB.findPreferredPendingByTicket(_ticket.label);
+        if (_prefMatch) {
+          await DB._ref(`appState/preferredRequests/${_prefMatch.pend.requestId}`).update({ status: 'done', benefName: null });
+          await DB._ref(`appState/preferredPending/${_prefMatch.localId}`).remove();
+          await DB.shiftPreferredQueue(_prefMatch.localId);
+        }
+        showAgentCallNotif(_ticket.label, _ticket.name);
+        await DB.writeLastCall(localId, _pubAgent, _grp?.name || null, _ticket.display, _ticket.label, _ticket.name);
+        this.render();
+      });
+    });
+
+    // Annuler une demande spécifique en attente d'ouverture (accueil)
+    g('liveGrid').querySelectorAll('.lv-pref-cancel').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const agentKey = btn.dataset.agentKey;
+        if (!agentKey) return;
+        if (!confirm('Annuler cette demande en attente ?')) return;
+        const aw = DB.getAwaitingPreferred(agentKey);
+        if (aw?.requestId) {
+          await DB._ref(`appState/preferredRequests/${aw.requestId}`).update({ status: 'cancelled', benefName: null });
+        }
+        await DB.removeAwaitingPreferred(agentKey);
+        showToast('Demande annulée');
       });
     });
 
@@ -1794,6 +1934,8 @@ const LIVE = {
         }
 
         if (benefIn) benefIn.value = '';
+        const awaitsCb = document.getElementById('prefAwaitsBureau');
+        if (awaitsCb) awaitsCb.checked = false;
         overlay.classList.remove('hidden');
         setTimeout(() => benefIn?.focus(), 80);
       });
@@ -1893,8 +2035,15 @@ const LIVE = {
           const _grp = DB.getQueueGroups()[grpId];
 
           if (_oldestPref) {
-            // Comparer l'ancienneté : preferred vs prochain ticket du groupe
-            const _nextTicketTs = DB.getTicketIssuedAt(grpId, DB.getTicketCalled(grpId) + 1) || Infinity;
+            // Comparer l'ancienneté : preferred vs PROCHAIN ticket NON-SKIPPÉ du groupe
+            // (les tickets skippés — déjà traités hors ordre via la cloche — ne doivent pas
+            // fausser la comparaison avec leur ancien timestamp)
+            let _nextN = DB.getTicketCalled(grpId) + 1;
+            const _issued = DB.getTicketIssued(grpId);
+            while (_nextN <= _issued && DB.isTicketSkipped(grpId, _nextN)) _nextN++;
+            const _nextTicketTs = _nextN <= _issued
+              ? (DB.getTicketIssuedAt(grpId, _nextN) || Infinity)
+              : Infinity;
             const _prefTs = _oldestPref.ts || 0;
             if (_prefTs <= _nextTicketTs) {
               // Le preferred est plus ancien → le recevoir en priorité

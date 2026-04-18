@@ -2034,6 +2034,7 @@ const WIDGETS = [
   { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week',      width: 'full' },
   { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts', width: 'full' },
   { id: 'mission',   label: '🚗 Partir en mission',               selector: '.hs-widget-mission',   width: 'full' },
+  { id: 'absences',  label: '🌴 Mes absences',                    selector: '.hs-widget-absences',  width: 'half' },
   { id: 'notes',     label: '📝 Notes rapides',                  selector: '.hs-widget-notes',     width: 'half' },
   { id: 'reminders', label: '✅ Rappels du jour',                 selector: '.hs-widget-reminders', width: 'half' },
 ];
@@ -2303,11 +2304,15 @@ function _renderWeekWidget() {
 function _renderMissionWidget(agentKey) {
   const el = document.getElementById('hsMission');
   if (!el) return;
-  if (!agentKey || agentKey === 'anon') { el.innerHTML = ''; return; }
+  if (!agentKey || agentKey === 'anon') { el.innerHTML = ''; el.dataset.missionState = ''; return; }
 
   const today    = new Date().toISOString().slice(0, 10);
   const absEntry = DB.getAgentAbsenceOn(agentKey, today);
   const isMission = absEntry && absEntry[1]?.motif === 'mission';
+  const newState  = isMission ? `mission:${absEntry[0]}:${absEntry[1].comment || ''}` : 'idle';
+
+  if (el.dataset.missionState === newState) return;
+  el.dataset.missionState = newState;
 
   if (isMission) {
     const comment = absEntry[1].comment ? `<div class="hs-mission-comment">📝 ${escapeHtml(absEntry[1].comment)}</div>` : '';
@@ -2346,6 +2351,51 @@ function _renderMissionWidget(agentKey) {
       showToast('Mission déclarée ✓');
     });
   }
+}
+
+// ── Widget Mes absences / congés ─────────────────────────────────────
+function _renderAbsencesWidget(agentKey) {
+  const el = document.getElementById('hsAbsences');
+  if (!el) return;
+  const addBtn = document.getElementById('hsAbsAddBtn');
+  if (!agentKey || agentKey === 'anon') {
+    el.innerHTML = '';
+    if (addBtn) addBtn.style.display = 'none';
+    return;
+  }
+  if (addBtn) addBtn.style.display = '';
+
+  const today = new Date().toISOString().slice(0, 10);
+  const list = Object.entries(DB.getAbsences() || {})
+    .filter(([, a]) => a.agentKey === agentKey && a.endDate >= today)
+    .sort((a, b) => a[1].startDate.localeCompare(b[1].startDate))
+    .slice(0, 5);
+
+  if (!list.length) {
+    el.innerHTML = '<div class="hs-abs-empty">Aucune absence à venir. Cliquez ci-dessous pour en déclarer une.</div>';
+  } else {
+    el.innerHTML = list.map(([id, a]) => {
+      const m = DB.ABSENCE_MOTIFS[a.motif] || DB.ABSENCE_MOTIFS.autre;
+      const range = a.startDate === a.endDate
+        ? fmtAbsenceDate(a.startDate)
+        : `${fmtAbsenceDate(a.startDate)} → ${fmtAbsenceDate(a.endDate)}`;
+      return `<div class="hs-abs-row">
+        <span class="hs-abs-icon">${m.icon}</span>
+        <div class="hs-abs-info">
+          <div class="hs-abs-motif"><b>${m.label}</b> — ${range}</div>
+          ${a.comment ? `<div class="hs-abs-cmt">${escapeHtml(a.comment)}</div>` : ''}
+        </div>
+        <button class="hs-abs-del" data-abs-id="${id}" title="Supprimer cette absence">✕</button>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('[data-abs-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (confirm('Supprimer cette absence ?')) await DB.deleteAbsence(btn.dataset.absId);
+      });
+    });
+  }
+
+  if (addBtn) addBtn.onclick = () => openAbsenceModal();
 }
 
 // ── Widget Notes rapides ─────────────────────────────────────────────
@@ -2471,6 +2521,7 @@ function _renderExtraWidgets() {
     [_renderWeekWidget,      []],
     [_renderShortcutsWidget, [agentKey]],
     [_renderMissionWidget,   [agentKey]],
+    [_renderAbsencesWidget,  [agentKey]],
     [_renderNotesWidget,     [agentKey]],
     [_renderRemindersWidget, [agentKey]],
   ].forEach(([fn, args]) => { try { fn(...args); } catch(e) { console.warn('[widget]', fn.name, e); } });
@@ -2645,6 +2696,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   DB.initBureauState();
   DB.initPreferredPending();
   DB.initPreferredQueue();
+  DB.initAwaitingPreferred();
   DB.initLastCallPerLocal();
   DB.initAbsences();
   DB.initPlanning();
@@ -2717,7 +2769,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     LIVE.render();
   });
-  DB.onAbsenceChange(() => { LIVE.render(); HOME.render(); });
+  DB.onAbsenceChange(() => {
+    LIVE.render();
+    HOME.render();
+    if (typeof CAL !== 'undefined') CAL.render();
+  });
 
   // Météo — lire Firebase d'abord, puis rafraîchir l'API si besoin (1x/heure)
   if (typeof WEATHER !== 'undefined') {
@@ -2812,6 +2868,19 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (ak) _renderNotifsWidget(ak);
   });
   _initShortcutsEdit();
+
+  // ── Patch note modal ────────────────────────────────────────────
+  (function initPatchnoteModal() {
+    const btn     = document.getElementById('hsPatchnoteBtn');
+    const overlay = document.getElementById('patchnoteModal');
+    const closeBtn = document.getElementById('patchnoteClose');
+    if (!btn || !overlay) return;
+    const open = () => overlay.classList.remove('hidden');
+    const close = () => overlay.classList.add('hidden');
+    btn.addEventListener('click', open);
+    closeBtn?.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  })();
 
   // Initialiser le cerveau de la mascotte
   if (typeof MascotBrain !== 'undefined') {
@@ -3294,6 +3363,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const placeOpt  = document.getElementById('prefPublicPlaceSelect');
     const placeId   = placeOpt?.value || null;
     const placeName = placeId ? (placeOpt?.selectedOptions[0]?.dataset?.name || '') : null;
+    const awaitsBureau = !!document.getElementById('prefAwaitsBureau')?.checked;
 
     if (!benefName) { showToast('Veuillez saisir le nom du bénéficiaire.'); return; }
     if (!agentKey)  { showToast('Veuillez sélectionner un agent.'); return; }
@@ -3302,12 +3372,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     const targetRole    = DB.getAgentPermRole(agentKey);
     const needsConfirm  = ['__admin__', '__chef_service__', '__direction__'].includes(targetRole);
     if (needsConfirm) {
-      _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName);
+      _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName, awaitsBureau);
       overlay.classList.add('hidden');
       return;
     }
     overlay.classList.add('hidden');
-    await _handlePreferredRequest(benefName, agentKey, placeId, placeName);
+    await _handlePreferredRequest(benefName, agentKey, placeId, placeName, awaitsBureau);
   });
 
   document.getElementById('prefRequestCancel')?.addEventListener('click', () => {
@@ -3322,23 +3392,23 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // ── Modal D : Confirmation chef/direction ────────────────────────
   let _prefDirPending = null;
-  function _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName) {
+  function _openPreferredDirectionConfirm(benefName, agentKey, placeId, placeName, awaitsBureau) {
     const overlay = document.getElementById('preferredDirectionConfirmOverlay');
     if (!overlay) return;
     const agentName = DB.getAgentsWithKeys().find(a => a.key === agentKey)?.name || agentKey;
     const roleMap   = { '__admin__': 'Administrateur', '__chef_service__': 'Chef de service', '__direction__': 'Direction' };
     document.getElementById('prefDirAgentLabel').textContent = agentName;
     document.getElementById('prefDirRoleLabel').textContent  = roleMap[DB.getAgentPermRole(agentKey)] || '';
-    _prefDirPending = { benefName, agentKey, placeId, placeName };
+    _prefDirPending = { benefName, agentKey, placeId, placeName, awaitsBureau };
     overlay.classList.remove('hidden');
   }
 
   document.getElementById('prefDirYes')?.addEventListener('click', async () => {
     document.getElementById('preferredDirectionConfirmOverlay')?.classList.add('hidden');
     if (_prefDirPending) {
-      const { benefName, agentKey, placeId, placeName } = _prefDirPending;
+      const { benefName, agentKey, placeId, placeName, awaitsBureau } = _prefDirPending;
       _prefDirPending = null;
-      await _handlePreferredRequest(benefName, agentKey, placeId, placeName);
+      await _handlePreferredRequest(benefName, agentKey, placeId, placeName, awaitsBureau);
     }
   });
   document.getElementById('prefDirNo')?.addEventListener('click', () => {
@@ -3347,7 +3417,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
 
   // ── Logique de routage principal ─────────────────────────────────
-  async function _handlePreferredRequest(benefName, targetAgentKey, placeId, placeName) {
+  async function _handlePreferredRequest(benefName, targetAgentKey, placeId, placeName, awaitsBureau = false) {
     const myKey     = sessionStorage.getItem('cpas_current_agent_key');
     const agentInfo = DB.getAgentsWithKeys().find(a => a.key === targetAgentKey);
     const agentName = agentInfo?.name || targetAgentKey;
@@ -3375,7 +3445,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Calculer displayName (prénom ou ticket# selon config)
     const enableNamed = DB.getFeature('enableNamedTickets');
-    const displayName = enableNamed ? (benefName.split(' ')[0] || benefName) : 'Bénéficiaire';
+    const displayName = enableNamed ? benefName : 'Bénéficiaire';
 
     const agentPublicName = DB.getAgentPublicName(targetAgentKey) || agentName;
 
@@ -3436,6 +3506,30 @@ document.addEventListener('DOMContentLoaded', async function () {
         'info', myKey,
         { requestId, localId }
       );
+    } else if (awaitsBureau) {
+      // Pas de bureau ouvert MAIS l'accueil sait que l'agent arrive bientôt :
+      // on met la demande en attente, elle sera routée automatiquement à l'ouverture.
+      await DB.setAwaitingPreferred(targetAgentKey, {
+        requestId,
+        displayName,
+        agentPublicName,
+        ts:              Date.now(),
+        publicPlaceId:   placeId || null,
+        publicPlaceName: placeName || null,
+      });
+      const dndNote = isDnd ? ' (🔕 Ne pas déranger)' : '';
+      await DB.sendNotif(
+        `${benefName} vous attend${placeId ? ` à ${placeName}` : ''} — routé(e) automatiquement dès l'ouverture de votre bureau.${dndNote}`,
+        'info', targetAgentKey,
+        { requestId, benefName, publicPlaceName: placeName || null, accueilAgentKey: myKey, sensitiveData: true }
+      );
+      await DB.sendNotif(
+        `${displayName} est en attente — ${agentName} sera routé(e) dès l'ouverture d'un bureau.`,
+        'info', myKey,
+        { requestId, awaitingBureau: true, targetAgentKey, targetAgentName: agentName }
+      );
+      showToast(`${displayName} mis(e) en attente jusqu'à l'ouverture d'un bureau.`);
+      return;
     } else {
       // Pas de bureau ouvert → notif agent avec boutons réponse + notif accueil "en attente"
       const dndNote = isDnd ? ' (🔕 Ne pas déranger)' : '';
@@ -3512,9 +3606,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const _myAgentName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || '';
     const myPublicName = DB.getAgentPublicName(myKey) || _myAgentName;
     const enableNamed  = DB.getFeature('enableNamedTickets');
-    const displayName  = enableNamed && req.benefName
-      ? (req.benefName.split(' ')[0] || req.benefName)
-      : 'Bénéficiaire';
+    const displayName  = enableNamed && req.benefName ? req.benefName : 'Bénéficiaire';
 
     const { ticketLabel } = await DB.respondToPreferredRequest(reqId, response, etaMin, comment, localId, myPublicName, displayName);
 
@@ -3607,6 +3699,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Re-render vue Direct quand preferredPending OU preferredQueue change (listeners top-level)
   DB.onPreferredPendingChange(() => { LIVE.render(); HOME.render(); });
   DB.onPreferredQueueChange(()   => { LIVE.render(); HOME.render(); });
+  DB.onAwaitingPreferredChange(() => { LIVE.render(); });
 
   // ═══════════════════════════════════════════════════════════════
   // ─── Annonce d'arrivée (mascotte) ─────────────────────────────

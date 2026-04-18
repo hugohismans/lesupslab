@@ -178,8 +178,8 @@
     Un bug, une idée ? Envoyez un mail à <a href="mailto:hugo.hismans@gmail.com">hugo.hismans@gmail.com</a>
   </div>
 
-  <!-- Bannière RDV intégrateur — visible par défaut, cachée si désactivée via superadmin -->
-  <div id="hsIntegratorBanner" style="background:linear-gradient(135deg,#1e1b4b 0%,#7c3aed 100%);border-radius:16px;margin-bottom:1rem;padding:1.25rem 1.5rem;">
+  <!-- Bannière RDV intégrateur — TEMPORAIREMENT MASQUÉE (retirer la classe hs-feature-off pour réactiver) -->
+  <div id="hsIntegratorBanner" class="hs-feature-off" style="background:linear-gradient(135deg,#1e1b4b 0%,#7c3aed 100%);border-radius:16px;margin-bottom:1rem;padding:1.25rem 1.5rem;">
     <div style="display:flex;align-items:center;gap:1rem;justify-content:space-between;">
       <div style="flex:1;">
         <div style="color:#fff;font-size:1.05rem;font-weight:800;margin-bottom:.2rem;">👋 Hugo est disponible pour vous accompagner !</div>
@@ -189,8 +189,8 @@
     </div>
   </div>
 
-  <!-- Carte démo bouton panique — visible pré-prod si rôle panic -->
-  <div id="hsPanicDemoCard" style="display:none;background:#fff3cd;border:2px dashed #f59e0b;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;">
+  <!-- Carte démo bouton panique — TEMPORAIREMENT MASQUÉE (retirer la classe hs-feature-off pour réactiver) -->
+  <div id="hsPanicDemoCard" class="hs-feature-off" style="display:none;background:#fff3cd;border:2px dashed #f59e0b;border-radius:14px;padding:1rem 1.25rem;margin-bottom:1rem;">
     <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
       <div style="flex:1;min-width:200px;">
         <div style="font-size:.95rem;font-weight:800;color:#92400e;margin-bottom:.2rem;">🧪 Tester le bouton panique</div>
@@ -214,6 +214,80 @@
       <div style="display:flex;gap:.75rem;justify-content:center">
         <button class="btn-cancel" id="panicDemoCancel" style="flex:1;max-width:180px">Annuler</button>
         <button id="panicDemoConfirm" style="flex:1;max-width:240px;background:#f59e0b;color:#fff;border:none;border-radius:10px;padding:.8rem 1rem;font-size:.95rem;font-weight:800;cursor:pointer;font-family:inherit;">🧪 Envoyer la démo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Patch note button — pleine largeur, au-dessus de la mascotte -->
+  <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
+    <span class="hs-patchnote-sparkle">✨</span>
+    <span class="hs-patchnote-text">
+      <span class="hs-patchnote-tag">Patch note v1.2.0</span>
+      <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
+    </span>
+    <span class="hs-patchnote-arrow">→</span>
+  </button>
+
+  <!-- Modal patch notes -->
+  <div class="modal-overlay hidden" id="patchnoteModal">
+    <div class="modal-box patchnote-box">
+      <div class="modal-header">
+        <span class="modal-title">✨ Patch note v1.2.0 — 18 avril 2026</span>
+        <button class="modal-close" id="patchnoteClose">✕</button>
+      </div>
+      <div class="modal-body patchnote-body">
+        <div class="pn-section">
+          <div class="pn-section-title">🔔 Nouveau : Appel direct d'un ticket de la file</div>
+          <ul class="pn-list">
+            <li>Sur la carte de ton bureau (Vue Direct), chaque ticket en attente a maintenant un bouton <b>cloche 🔔</b> à sa droite.</li>
+            <li>Un clic sur la cloche <b>appelle directement ce ticket-là</b>, sans respecter l'ordre FIFO. Pratique pour un bénéficiaire identifié, une urgence, un RDV…</li>
+            <li>Garde-fous : refus si ton bureau n'est pas ouvert ou s'il est déjà occupé (un message te l'explique).</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">💺 Nouveau : « Ce bureau sera bientôt pris »</div>
+          <ul class="pn-list">
+            <li>Dans la modal « Demande agent spécifique », nouvelle case à cocher <b>« 💺 Ce bureau sera bientôt pris »</b>.</li>
+            <li>Si l'agent ciblé <b>n'a pas encore ouvert de bureau</b>, la demande reste en attente. Dès qu'il ouvre un bureau, elle est <b>routée automatiquement</b> avec émission du ticket SP.</li>
+            <li>Sur la Vue Direct de l'accueil, nouveau récap visuel <b>« 🎫 Demandes en cours »</b> et <b>« 💺 En attente d'ouverture »</b> pour suivre toutes les demandes SP d'un coup d'œil. Bouton ✕ pour annuler une demande en attente.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🎉 Calendrier de congés personnel (rappel v1.1.0)</div>
+          <ul class="pn-list">
+            <li>Widget <b>« Mes absences »</b> sur l'écran d'accueil : déclare et gère tes congés/maladies/formations.</li>
+            <li>À la déclaration : <b>détection auto des réservations</b> existantes sur la période, avec option de les supprimer.</li>
+            <li><b>Indicateurs rouges</b> sur Jour (bannière) / Semaine (soulignement) / Mois (rayures diagonales + 🌴).</li>
+            <li><b>Blocage strict</b> à la création de réservation sur un jour d'absence.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🐛 Corrections</div>
+          <ul class="pn-list">
+            <li><b>« Appeler le suivant » vs file avec SP</b> : le système ignorait parfois le SP quand un ticket avait été appelé hors ordre juste avant (via la cloche). La comparaison saute maintenant les tickets déjà traités.</li>
+            <li><b>Panneau admin — Affichage des tickets</b> : la ligne « Cartes groupe file » se synchronise correctement avec Firebase. Quand tout est décoché, le numéro de ticket n'apparaît plus en fallback (anonymisation respectée).</li>
+            <li><b>Widget « Partir en mission »</b> : le champ texte ne se vide plus tout seul pendant la saisie.</li>
+            <li><b>Ticket nominatif</b> : cliquer sur « Annuler » dans le prompt abandonne bien l'émission.</li>
+            <li><b>Inscription à une file d'attente</b> (Vue Direct) : warning affiché + blocage si ton bureau n'est pas ouvert.</li>
+            <li><b>Modal « Demande agent spécifique »</b> : labels au-dessus des champs, nom complet préservé (« Mr Roger » reste « Mr Roger »).</li>
+            <li><b>Vue Direct</b> : carte du bureau actif accessible en scroll sur petit écran.</li>
+            <li><b>Vue Jour — colonnes étroites</b> : texte des réservations plus coupé quand Windows est en mise à l'échelle 125 % ou plus.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">✨ Améliorations UX</div>
+          <ul class="pn-list">
+            <li><b>Vue Direct — cartes de groupe</b> : le « Prochain créneau » affiche désormais l'heure de fin (ex : <code>lun. 20/04 · 08:30 – 09:00</code>).</li>
+          </ul>
+        </div>
+
+        <div class="pn-footer">
+          Un bug ? Une idée ? Écris à <a href="mailto:hugo.hismans@gmail.com">hugo.hismans@gmail.com</a>
+        </div>
       </div>
     </div>
   </div>
@@ -402,6 +476,13 @@
     <div class="hs-card hs-widget-mission">
       <h3 class="hs-card-title">🚗 Partir en mission</h3>
       <div id="hsMission" class="hs-mission-body"></div>
+    </div>
+
+    <!-- Widget Mes absences / congés -->
+    <div class="hs-card hs-widget-absences">
+      <h3 class="hs-card-title">🌴 Mes absences</h3>
+      <div id="hsAbsences" class="hs-abs-body"></div>
+      <button class="hs-abs-add-btn" id="hsAbsAddBtn">+ Déclarer une absence</button>
     </div>
 
     <!-- Widget Notes rapides -->
@@ -1699,6 +1780,25 @@
   </div>
 </div>
 
+<!-- ── Modal : conflit absence ↔ réservations existantes ──────── -->
+<div class="modal-overlay hidden" id="absenceClashModal">
+  <div class="modal-box abs-clash-box">
+    <div class="modal-header">
+      <span class="modal-title">⚠️ Réservations existantes</span>
+    </div>
+    <div class="modal-body">
+      <p class="abs-clash-intro">Vous avez <b id="absClashCount">0</b> réservation(s) programmée(s) dans cette période :</p>
+      <ul class="abs-clash-list" id="absClashList"></ul>
+      <p class="abs-clash-hint">💡 Les occurrences récurrentes concernées seront marquées comme exceptions (la série continue).</p>
+      <div class="abs-clash-actions">
+        <button class="abs-clash-btn abs-clash-delete" id="absClashDelete">🗑 Supprimer &amp; déclarer</button>
+        <button class="abs-clash-btn abs-clash-keep"   id="absClashKeep">Garder &amp; déclarer</button>
+        <button class="abs-clash-btn abs-clash-cancel" id="absClashCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Panel admin : liste des absences ────────────────────────── -->
 <div class="modal-overlay hidden" id="absencesListModal">
   <div class="modal-box abs-list-modal">
@@ -1977,6 +2077,12 @@
       <select class="field-input" id="prefPublicPlaceSelect">
         <option value="">— Choisir un lieu —</option>
       </select>
+
+      <label class="pref-awaits-label" style="margin-top:1rem">
+        <input type="checkbox" id="prefAwaitsBureau">
+        <span>💺 Ce bureau sera bientôt pris</span>
+      </label>
+      <div class="pref-awaits-hint">Si coché et que l'agent n'a pas encore ouvert de bureau, la demande restera en attente et sera routée automatiquement dès qu'il ouvrira un bureau.</div>
 
       <div id="prefRequestStatus" style="margin-top:.75rem;font-size:.85rem;color:#64748b"></div>
     </div>

@@ -899,16 +899,15 @@ body {
 .cv-cell.is-perm:hover    { filter: brightness(.94); }
 
 .ct {
-  font-size: .72rem; line-height: 1.4; overflow: hidden;
+  font-size: .72rem; line-height: 1.35; overflow: hidden;
   width: 100%; color: #1e293b; display: block;
+  word-break: break-word; overflow-wrap: anywhere;
 }
-.ct b    { font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ct small { color: #64748b; font-size: .65rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ct-time    { color: #94a3b8 !important; font-size: .62rem !important; margin-top: .15rem; }
-.ct-comment { display: block; color: #64748b !important; font-size: .58rem !important; margin-top: .2rem;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
-.ct-invited { display: block; color: #6d28d9 !important; font-size: .58rem !important; margin-top: .15rem;
-              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.ct b    { font-weight: 700; display: block; }
+.ct small { color: #64748b; font-size: .65rem; display: block; }
+.ct-time    { color: #94a3b8 !important; font-size: .62rem !important; margin-top: .15rem; white-space: nowrap; }
+.ct-comment { display: block; color: #64748b !important; font-size: .58rem !important; margin-top: .2rem; }
+.ct-invited { display: block; color: #6d28d9 !important; font-size: .58rem !important; margin-top: .15rem; }
 .cv-cell.is-invited { box-shadow: inset 3px 0 0 #8b5cf6 !important; }
 .cv-holiday-badge {
   display: inline-block; margin-left: .75rem;
@@ -1111,6 +1110,36 @@ body {
   display: flex; justify-content: flex-end; gap: .5rem;
   padding: .75rem 1.25rem; border-top: 1px solid #e5e7eb;
   position: sticky; bottom: 0; background: #fff;
+}
+
+.field-label {
+  display: block;
+  font-size: .82rem; font-weight: 700; color: #374151;
+  margin-bottom: .35rem;
+}
+.field-input {
+  display: block; width: 100%; box-sizing: border-box;
+  padding: .55rem .75rem;
+  border: 1.5px solid #d1d5db; border-radius: 8px;
+  font-size: .9rem; font-family: inherit; color: #111827;
+  background: #fff;
+  transition: border-color .12s;
+}
+.field-input:focus { outline: none; border-color: #2a6496; }
+select.field-input { cursor: pointer; }
+.field-input + .field-label { margin-top: .9rem; }
+.pref-awaits-label {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .55rem .75rem; border-radius: 8px;
+  background: #fff7ed; border: 1.5px solid #fed7aa;
+  font-size: .9rem; color: #7c2d12; font-weight: 600;
+  cursor: pointer; user-select: none;
+}
+.pref-awaits-label input { width: 16px; height: 16px; cursor: pointer; accent-color: #f59e0b; flex-shrink: 0; }
+.pref-awaits-label:hover { background: #ffedd5; }
+.pref-awaits-hint {
+  font-size: .78rem; color: #78350f; margin-top: .35rem; font-style: italic;
+  line-height: 1.4;
 }
 
 /* Détail */
@@ -1963,7 +1992,7 @@ body {
   margin-bottom: .35rem;
 }
 .lv-grp-queue-arrow { font-size: .9rem; color: #f59e0b; font-weight: 700; }
-/* Grille : pos | ticket | wait | name | grp */
+/* Grille : pos | ticket | wait | name | grp | (bell) */
 .lv-grp-queue-item {
   display: grid;
   grid-template-columns: 2rem 3.5rem 3rem 1fr auto;
@@ -1974,6 +2003,9 @@ body {
   font-size: .8rem;
   min-width: 0;
 }
+.lv-grp-queue-item.has-call {
+  grid-template-columns: 2rem 3.5rem 3rem 1fr auto auto;
+}
 .lv-grp-queue-item:last-child { border-bottom: none; }
 .lv-grp-queue-pos    { color: #64748b; font-size: .75rem; white-space: nowrap; }
 .lv-grp-queue-ticket { color: #e2e8f0; font-weight: 700; white-space: nowrap; }
@@ -1981,6 +2013,16 @@ body {
 .lv-grp-queue-name   { color: #94a3b8; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lv-grp-queue-item-unknown { color: #475569; font-size: .78rem; }
 .lv-grp-queue-grp { font-size: .65rem; color: #93c5fd; background: #1e3a5f; border-radius: 4px; padding: .05rem .35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 10rem; }
+.lv-grp-queue-call {
+  background: transparent; border: 1.5px solid #475569;
+  color: #fbbf24; cursor: pointer;
+  width: 28px; height: 28px; border-radius: 7px;
+  font-size: .95rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s, color .12s, transform .12s;
+}
+.lv-grp-queue-call:hover { background: #422006; border-color: #f59e0b; color: #fff; transform: scale(1.08); }
+.lv-grp-queue-call:active { transform: scale(.95); }
 .lv-grp-chip {
   display: inline-block; padding: .18rem .55rem; border-radius: 6px;
   font-size: .82rem; font-weight: 700; color: #93c5fd;
@@ -2054,6 +2096,47 @@ body {
   cursor: pointer; transition: background .12s; margin-top: .35rem;
 }
 .lv-pref-receive:hover { background: #fde68a; }
+
+/* Listes récapitulatives SP sur la carte accueil */
+.lv-pref-section-title {
+  font-size: .72rem; font-weight: 800; color: #a78bfa;
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-top: .6rem; padding-top: .5rem;
+  border-top: 1px solid rgba(167,139,250,.2);
+}
+.lv-pref-section-title-await { color: #fbbf24; border-top-color: rgba(251,191,36,.2); }
+.lv-pref-list {
+  display: flex; flex-direction: column; gap: .25rem;
+  margin-top: .3rem;
+}
+.lv-pref-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr auto;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .5rem;
+  background: rgba(139,92,246,.1);
+  border-radius: 6px;
+  font-size: .78rem;
+  color: #e9d5ff;
+}
+.lv-pref-item.lv-pref-item-await {
+  background: rgba(251,191,36,.08);
+  grid-template-columns: auto 1fr auto 1fr auto auto;
+}
+.lv-pref-ticket { font-weight: 700; color: #fbbf24; }
+.lv-pref-name   { color: #f1f5f9; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-arrow  { color: #64748b; }
+.lv-pref-agent  { color: #c4b5fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-local  { color: #94a3b8; font-size: .72rem; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-cancel {
+  background: transparent; border: 1px solid #7f1d1d; color: #fca5a5;
+  width: 22px; height: 22px; border-radius: 5px; cursor: pointer;
+  font-size: .8rem; line-height: 1; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.lv-pref-cancel:hover { background: #7f1d1d; color: #fff; }
 
 /* Badge groupe dans carte live */
 .lv-qg-badge {
@@ -2416,6 +2499,180 @@ body {
 }
 .abs-item-del:hover { background: #7f1d1d; color: #fca5a5; border-color: #ef4444; }
 
+/* Modal conflit absence ↔ réservations */
+.abs-clash-box { max-width: 520px; }
+.abs-clash-intro {
+  color: #e2e8f0; font-size: .95rem; margin: 0 0 .5rem;
+}
+.abs-clash-intro b { color: #fca5a5; }
+.abs-clash-list {
+  list-style: none; padding: 0; margin: .3rem 0 .5rem;
+  max-height: 240px; overflow-y: auto;
+  border: 1px solid #334155; border-radius: 8px;
+  background: #0f172a;
+}
+.abs-clash-list li {
+  padding: .55rem .8rem; font-size: .85rem; color: #cbd5e1;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.abs-clash-list li:last-child { border-bottom: none; }
+.abs-clash-list li b { color: #f1f5f9; }
+.abs-clash-hint {
+  font-size: .78rem; color: #64748b; margin: .5rem 0 1rem;
+}
+.abs-clash-actions {
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.abs-clash-btn {
+  padding: .6rem .85rem; border-radius: 8px; border: none;
+  font-size: .9rem; font-weight: 700; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.abs-clash-delete { background: #7f1d1d; color: #fecaca; }
+.abs-clash-delete:hover { background: #991b1b; color: #fff; }
+.abs-clash-keep   { background: #2563eb; color: #fff; }
+.abs-clash-keep:hover { background: #1d4ed8; }
+.abs-clash-cancel { background: #334155; color: #cbd5e1; }
+.abs-clash-cancel:hover { background: #475569; color: #f1f5f9; }
+
+/* Widget "Mes absences / congés" (écran d'accueil) */
+.hs-widget-absences .hs-abs-body {
+  display: flex; flex-direction: column; gap: .45rem; margin-bottom: .6rem;
+}
+.hs-widget-absences .hs-abs-empty {
+  color: #94a3b8; font-size: .85rem; font-style: italic;
+  padding: .6rem .2rem; text-align: center;
+}
+.hs-widget-absences .hs-abs-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .65rem;
+  background: #fef2f2; border-radius: 8px;
+  border-left: 3px solid #ef4444;
+}
+.hs-widget-absences .hs-abs-icon { font-size: 1.25rem; flex-shrink: 0; }
+.hs-widget-absences .hs-abs-info { flex: 1; min-width: 0; }
+.hs-widget-absences .hs-abs-motif { font-size: .88rem; color: #7f1d1d; }
+.hs-widget-absences .hs-abs-motif b { color: #991b1b; }
+.hs-widget-absences .hs-abs-cmt {
+  font-size: .78rem; color: #991b1b; margin-top: .15rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hs-widget-absences .hs-abs-del {
+  background: none; border: none; color: #991b1b; cursor: pointer;
+  font-size: 1rem; padding: .2rem .45rem; border-radius: 6px;
+  transition: background .12s;
+}
+.hs-widget-absences .hs-abs-del:hover { background: #fee2e2; }
+.hs-widget-absences .hs-abs-add-btn {
+  width: 100%; padding: .55rem .8rem; border-radius: 8px;
+  border: 1.5px dashed #ef4444; background: transparent; color: #b91c1c;
+  font-weight: 700; cursor: pointer; font-size: .88rem;
+  transition: background .12s, color .12s;
+}
+.hs-widget-absences .hs-abs-add-btn:hover { background: #fef2f2; color: #991b1b; }
+
+/* ── Feature temporairement désactivée (réactivable plus tard) ─ */
+.hs-feature-off { display: none !important; }
+
+/* ── Bouton patch note (au-dessus de la mascotte) ────────────── */
+.hs-patchnote-btn {
+  display: flex; align-items: center; gap: .85rem;
+  width: 100%; padding: .85rem 1.2rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #fde68a 0%, #fbbf24 50%, #f59e0b 100%);
+  border: none; border-radius: 14px;
+  color: #78350f; font-family: inherit;
+  cursor: pointer; text-align: left;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, .25);
+  transition: transform .15s, box-shadow .15s, filter .15s;
+}
+.hs-patchnote-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, .4);
+  filter: brightness(1.05);
+}
+.hs-patchnote-btn:active { transform: translateY(0); }
+.hs-patchnote-sparkle {
+  font-size: 1.6rem; flex-shrink: 0;
+  animation: pn-sparkle 2.2s ease-in-out infinite;
+}
+.hs-patchnote-text {
+  flex: 1; display: flex; flex-direction: column; gap: .1rem; min-width: 0;
+}
+.hs-patchnote-tag {
+  font-size: .72rem; font-weight: 800; color: #92400e;
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.hs-patchnote-label {
+  font-size: 1rem; font-weight: 800; color: #78350f;
+}
+.hs-patchnote-arrow {
+  font-size: 1.4rem; font-weight: 900; color: #78350f;
+  transition: transform .15s;
+}
+.hs-patchnote-btn:hover .hs-patchnote-arrow { transform: translateX(4px); }
+@keyframes pn-sparkle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25%      { transform: rotate(-10deg) scale(1.15); }
+  50%      { transform: rotate(0deg) scale(1); }
+  75%      { transform: rotate(10deg) scale(1.15); }
+}
+
+/* ── Modal patch notes ───────────────────────────────────────── */
+.patchnote-box { max-width: 640px; }
+.patchnote-body { padding: 1rem 1.5rem 1.25rem; }
+.pn-section { margin-bottom: 1.3rem; }
+.pn-section:last-of-type { margin-bottom: .5rem; }
+.pn-section-title {
+  font-size: 1rem; font-weight: 800; color: #f1f5f9;
+  padding-bottom: .4rem; margin-bottom: .6rem;
+  border-bottom: 2px solid rgba(245, 158, 11, .3);
+}
+.pn-list {
+  padding-left: 1.25rem; margin: 0;
+  color: #cbd5e1; font-size: .9rem; line-height: 1.55;
+}
+.pn-list li { margin-bottom: .5rem; }
+.pn-list li:last-child { margin-bottom: 0; }
+.pn-list li b { color: #f1f5f9; font-weight: 700; }
+.pn-list ul { margin: .25rem 0 .25rem 0; padding-left: 1.2rem; }
+.pn-list code {
+  background: #0f172a; padding: .1rem .35rem; border-radius: 4px;
+  color: #fbbf24; font-size: .85em;
+}
+.pn-footer {
+  margin-top: 1rem; padding-top: .9rem;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  font-size: .82rem; color: #94a3b8; text-align: center;
+}
+.pn-footer a { color: #fbbf24; text-decoration: none; font-weight: 600; }
+.pn-footer a:hover { text-decoration: underline; }
+
+/* ── Indicateurs absence sur les vues calendrier ─────────────── */
+.cv-abs-banner {
+  display: flex; align-items: center; gap: .6rem;
+  background: #fef2f2; border-left: 4px solid #ef4444;
+  color: #991b1b; padding: .55rem .9rem; margin: .5rem 0 .4rem;
+  border-radius: 8px; font-weight: 600; font-size: .9rem;
+}
+.cv-abs-banner .cv-abs-icon { font-size: 1.2rem; }
+.cv-abs-banner .cv-abs-text { flex: 1; min-width: 0; }
+.cv-day-datebar.has-abs { background: #fff5f5; }
+
+/* Vue semaine : soulignement rouge + emoji sur le numéro */
+.wkd-hd.wk-absent { box-shadow: inset 0 -3px 0 #ef4444; background: #fff5f5; }
+.wkd-hd.wk-absent .wkd-name { color: #991b1b; }
+
+/* Vue mois : rayures diagonales rouges discrètes */
+.mo-cell.mo-absent {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0, transparent 6px,
+    rgba(239, 68, 68, .18) 6px, rgba(239, 68, 68, .18) 10px
+  );
+}
+.mo-cell.mo-absent .mo-num { color: #991b1b; font-weight: 700; }
+
 .live-presence-bar {
   display: flex; flex-wrap: wrap; gap: .5rem; padding: .6rem 1.5rem;
   background: #1a0505; border-bottom: 1px solid #2d1515;
@@ -2476,7 +2733,9 @@ body {
 .lv-loc-notyet  .lv-loc-local { color: #334155; }
 
 .live-grid {
-  flex: 1; display: grid; padding: 1.5rem; gap: 1.25rem; overflow-y: auto;
+  flex: 1; display: grid; padding: 1.5rem; gap: 1.25rem;
+  overflow-y: auto; min-height: 0;
+  -webkit-overflow-scrolling: touch;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   align-content: start;
 }
@@ -2486,7 +2745,7 @@ body {
   display: flex; flex-direction: column; gap: .5rem;
   border-top: 6px solid transparent;
   transition: transform .15s;
-  min-width: 0; overflow: hidden;
+  min-width: 0;
 }
 .lv-card:hover { transform: translateY(-2px); }
 
@@ -4773,6 +5032,40 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 
   /* ── Masquer hd-cal-only sur mobile (ils sont dans le mob-cal-nav) ── */
   .hd-cal-only { display: none !important; }
+
+  /* ── Vue Direct : stack vertical sur petit écran ── */
+  .lv-content-area {
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .lv-agent-locations-panel {
+    width: 100%;
+    max-height: 120px;
+    border-left: none;
+    border-top: 1px solid #1e293b;
+    flex-shrink: 0;
+  }
+  .live-grid {
+    padding: 1rem;
+    gap: .75rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    padding-bottom: 5rem; /* espace pour mascotte/panic flottant */
+  }
+  .lv-card {
+    padding: 1rem 1.15rem;
+  }
+  .live-header {
+    padding: .6rem .9rem;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .live-clock { font-size: 1.4rem; }
+  .live-title { font-size: .95rem; }
+}
+
+@media (max-width: 520px) {
+  .live-grid { grid-template-columns: 1fr; }
+  .lv-agent-locations-panel { display: none; }
 }
 
 /* ── Vue semaine 3 jours (mobile) ── */

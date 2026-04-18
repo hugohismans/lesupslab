@@ -557,6 +557,31 @@ const DB = {
   isAgentAbsentToday(agentKey) {
     return this.isAgentAbsentOn(agentKey, isoDate(new Date()));
   },
+  // Métadonnées des motifs d'absence (icône + libellé)
+  ABSENCE_MOTIFS: {
+    maladie:   { icon: '🤒', label: 'Maladie' },
+    conge:     { icon: '🌴', label: 'Congé' },
+    mission:   { icon: '🚗', label: 'Mission' },
+    formation: { icon: '📚', label: 'Formation' },
+    autre:     { icon: '📝', label: 'Autre' },
+  },
+  // Retourne les réservations (one-shot + occurrences récurrentes expansées) qui
+  // concernent l'agent (principal, invité, multi-agents, targetAgentKey) et qui
+  // tombent dans la plage [startDate, endDate] (dates ISO). Exclut les permanentes.
+  getAgentReservationsInRange(agentKey, startDate, endDate) {
+    const agentName = this.getAgentDisplayNameByKey(agentKey);
+    const start = new Date(startDate + 'T00:00:00');
+    const end   = new Date(endDate   + 'T23:59:59');
+    const occs  = this.getInRange(start, end);
+    return occs.filter(r => {
+      if (r.isPermanent) return false;
+      if (r.targetAgentKey === agentKey) return true;
+      if (r.invitedAgents && r.invitedAgents[agentKey]) return true;
+      if (Array.isArray(r.agents) && agentName && r.agents.includes(agentName)) return true;
+      if (r.agent && agentName && r.agent === agentName) return true;
+      return false;
+    });
+  },
   async addAbsence({ agentKey, startDate, endDate, motif, comment, createdBy }) {
     const id = `abs_${Date.now()}`;
     await this._ref(`absences/${id}`).set({
@@ -624,6 +649,60 @@ const DB = {
     if (agentKey && this._agentStatus[agentKey]?.status === 'late') {
       await this.setAgentStatus(agentKey, null);
     }
+    // Demande spécifique en attente d'ouverture → router vers ce bureau
+    if (agentKey) {
+      try { await this._migrateAwaitingPreferred(agentKey, localId); }
+      catch (err) { console.warn('[migrateAwaitingPreferred]', err); }
+    }
+  },
+
+  // Migre une demande spécifique awaiting vers preferredPending / preferredQueue
+  // sur le bureau que l'agent vient d'ouvrir. Émet aussi un ticket SP sur le groupe
+  // du local pour apparaître dans la file visuelle.
+  async _migrateAwaitingPreferred(agentKey, localId) {
+    // Lecture Firebase directe (le cache local peut être vide si on vient
+    // tout juste de se connecter : openBureau peut précéder le 1er snapshot du listener)
+    let aw = this._awaitingPreferred?.[agentKey] || null;
+    if (!aw) {
+      const snap = await this._ref(`appState/awaitingPreferred/${agentKey}`).once('value');
+      aw = snap.val();
+    }
+    if (!aw) return;
+
+    const grp = this.getLocalGroup(localId);
+    let ticketLabel = aw.ticketLabel || null;
+    let displayName = aw.displayName || 'Bénéficiaire';
+    if (grp) {
+      const result = await this.issueTicket(grp.id, displayName, { skip: true });
+      ticketLabel  = `SP${String(result.number).padStart(2, '0')}`;
+      displayName  = result.resolvedName || displayName;
+    }
+
+    const payload = {
+      displayName,
+      ticketLabel,
+      agentPublicName: aw.agentPublicName || null,
+      requestId:       aw.requestId || null,
+      ts:              aw.ts || Date.now(),
+    };
+
+    const existing = this.getPreferredPending(localId);
+    const busy     = this.isBureauBusyWithPreferred(localId);
+    if (!existing && !busy) {
+      await this._ref(`appState/preferredPending/${localId}`).set(payload);
+    } else {
+      await this._ref(`appState/preferredQueue/${localId}`).push(payload);
+    }
+
+    if (aw.requestId) {
+      await this._ref(`appState/preferredRequests/${aw.requestId}`).update({
+        status:      'accepted',
+        localId,
+        respondedAt: Date.now(),
+      });
+    }
+
+    await this.removeAwaitingPreferred(agentKey);
   },
   getBureauAgentKey(localId)            { return this._bureauState[String(localId)]?.agentKey || null; },
   getBureauDeskId(localId)              { return this._bureauState[String(localId)]?.deskId || null; },
@@ -951,6 +1030,60 @@ const DB = {
     return { display, label, name: name || null };
   },
 
+  // Appelle un ticket spécifique (hors ordre FIFO). Les tickets précédents
+  // restent dans la file (pas de skip_ massif sur eux), le ticket ciblé est
+  // marqué skip_ si ce n'est pas le suivant direct, sinon tcall avance.
+  // Renvoie { display, label, name } comme callNextTicket.
+  async callSpecificTicket(groupId, ticketNumber) {
+    const today   = isoDate(new Date());
+    const current = this.getTicketCalled(groupId);
+    if (ticketNumber <= current) return null; // déjà traité
+    if (this.isTicketSkipped(groupId, ticketNumber)) return null; // déjà skip
+
+    // Lire nom + timestamp AVANT modification
+    const name     = this.getTicketName(groupId, ticketNumber);
+    const issuedAt = this.getTicketIssuedAt(groupId, ticketNumber);
+
+    const writes = {};
+    if (ticketNumber === current + 1) {
+      // C'est le prochain direct : avancer tcall + absorber skip_ consécutifs
+      let newCall = ticketNumber;
+      const tick  = this.getTicketIssued(groupId);
+      while (newCall + 1 <= tick && this.isTicketSkipped(groupId, newCall + 1)) {
+        writes[`skip_${groupId}/${newCall + 1}`] = null;
+        newCall++;
+      }
+      writes[`tcall_${groupId}`] = newCall;
+    } else {
+      // Ticket au milieu de file : marquer skip_ (= reçu hors ordre), tcall inchangé
+      writes[`skip_${groupId}/${ticketNumber}`] = true;
+    }
+
+    // Décrémenter l'overflow (un seul ticket consommé)
+    const overflow = this.getGroupOverflowQueue(groupId);
+    if (overflow > 0) {
+      const newOverflow = Math.max(0, overflow - 1);
+      writes[`wait_${groupId}`] = newOverflow || null;
+      if (newOverflow <= 0) writes[`waitSince_${groupId}`] = null;
+    }
+
+    await this._ref(`queues/${today}`).update(writes);
+    if (name) await this._ref(`queues/${today}/names_${groupId}/${ticketNumber}`).remove();
+    await this._ref(`queues/${today}/times_${groupId}/${ticketNumber}`).remove();
+
+    // Archiver pour les stats de temps d'attente
+    const calledAt = Date.now();
+    if (issuedAt && issuedAt > 0) {
+      this._ref(`queueHistory/${today}/${groupId}/${ticketNumber}`)
+        .set({ issuedAt, calledAt, waitMs: calledAt - issuedAt })
+        .catch(() => {});
+    }
+
+    const label   = this.formatTicket(groupId, ticketNumber);
+    const display = name || label;
+    return { display, label, name: name || null };
+  },
+
   async dismissTicket(groupId, ticketNumber) {
     // Retire UN SEUL ticket via skip_ (ou avance tcall s'il est le suivant direct)
     const today   = isoDate(new Date());
@@ -1114,6 +1247,28 @@ const DB = {
     this._preferredPendingCbs.push(fn);
   },
 
+  // ── Demandes spécifiques en attente d'ouverture de bureau ────────
+  // Quand l'accueil coche "Ce bureau sera bientôt pris" pour un agent qui n'a
+  // pas encore ouvert de bureau : on stocke ici par agentKey, et la migration
+  // vers preferredPending/preferredQueue se fait dans openBureau().
+  _awaitingPreferred: {},
+  _awaitingPreferredCbs: [],
+  initAwaitingPreferred() {
+    this._ref('appState/awaitingPreferred').on('value', snap => {
+      this._awaitingPreferred = snap.val() || {};
+      this._awaitingPreferredCbs.forEach(fn => fn());
+    });
+  },
+  onAwaitingPreferredChange(fn) { this._awaitingPreferredCbs.push(fn); },
+  getAwaitingPreferred(agentKey) { return this._awaitingPreferred[agentKey] || null; },
+  getAllAwaitingPreferred() { return this._awaitingPreferred || {}; },
+  async setAwaitingPreferred(agentKey, data) {
+    await this._ref(`appState/awaitingPreferred/${agentKey}`).set(data);
+  },
+  async removeAwaitingPreferred(agentKey) {
+    await this._ref(`appState/awaitingPreferred/${agentKey}`).remove();
+  },
+
   getPreferredPending(localId) {
     return this._preferredPending[String(localId)] || this._preferredPending[localId] || null;
   },
@@ -1196,11 +1351,11 @@ const DB = {
     };
     await this._ref(`appState/preferredRequests/${requestId}`).update(updates);
     // Créer preferredPending sur l'écran public si l'agent est dans un local
+    let ticketLabel  = null;
+    let resolvedName = displayName;
     if ((response === 'accepted' || response === 'eta') && localId) {
       // Si le local appartient à un groupe de file, émettre un ticket pour stats + impression
       const grp = this.getLocalGroup(localId);
-      let ticketLabel   = null;
-      let resolvedName  = displayName;
       if (grp) {
         // Émission + skip en une seule écriture atomique (ticket pour stats/impression,
         // exclu de la file EN ATTENTE du groupe — c'est une demande spécifique SP)

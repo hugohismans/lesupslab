@@ -785,7 +785,7 @@ const MODAL = {
 
     // ── Affichage des tickets ──────────────────────────────────────
     if (isAdmin) {
-      const LOCATIONS = ['publicCall', 'publicBureauCard', 'agentNotif', 'waitBanner', 'kiosk'];
+      const LOCATIONS = ['publicCall', 'publicBureauCard', 'agentNotif', 'waitBanner', 'kiosk', 'groupCard'];
       // Initialiser les checkboxes depuis la config
       LOCATIONS.forEach(loc => {
         const cfg = DB.getTicketDisplay(loc);
@@ -1893,6 +1893,37 @@ const MODAL = {
     };
     if (Object.keys(exceptionDates).length) data.exceptions = exceptionDates;
 
+    // ── Blocage si un agent impliqué s'est déclaré absent sur la plage ──
+    const _absAgentNames = new Set();
+    if (data.agent && data.agent !== 'Autre') _absAgentNames.add(data.agent);
+    (data.agents || []).forEach(n => { if (n) _absAgentNames.add(n); });
+    Object.keys(data.invitedAgents || {}).forEach(k => {
+      const info = DB.getAgentsWithKeys().find(a => a.key === k);
+      if (info?.name) _absAgentNames.add(info.name);
+    });
+    if (_absAgentNames.size) {
+      const _nameToKey = {};
+      DB.getAgentsWithKeys().forEach(a => { _nameToKey[a.name] = a.key; });
+      const _startDate = data.startDateTime.slice(0, 10);
+      const _endDate   = isPerm ? _startDate : (data.endDateTime || data.startDateTime).slice(0, 10);
+      const _dates = [];
+      let _cur = new Date(_startDate + 'T00:00:00');
+      const _stop = new Date(_endDate + 'T00:00:00');
+      while (_cur <= _stop) { _dates.push(_cur.toISOString().slice(0, 10)); _cur.setDate(_cur.getDate() + 1); }
+      for (const name of _absAgentNames) {
+        const ak = _nameToKey[name];
+        if (!ak) continue;
+        for (const ds of _dates) {
+          const abs = DB.getAgentAbsenceOn(ak, ds);
+          if (abs) {
+            const m = (DB.ABSENCE_MOTIFS && DB.ABSENCE_MOTIFS[abs[1].motif]) || { label: 'absence' };
+            alert(`⚠️ ${name} s'est déclaré(e) en ${m.label.toLowerCase()} le ${ds}.\n\nImpossible de créer cette réservation.`);
+            return;
+          }
+        }
+      }
+    }
+
     try {
       if (this._editId) await DB.update(this._editId, data);
       else              await DB.add(data);
@@ -2447,7 +2478,7 @@ function openAbsenceModal(targetAgentKey, targetAgentName) {
     const sel = g('absAgentSelect');
     if (sel) {
       sel.innerHTML = DB.getAgentsWithKeys()
-        .map(a => `<option value="${a.key}">${_esc(a.name)}</option>`).join('');
+        .map(a => `<option value="${a.key}">${escapeHtml(a.name)}</option>`).join('');
     }
   }
 
@@ -2496,8 +2527,30 @@ function _initAbsenceModal() {
     errEl.classList.add('hidden');
 
     const btn = g('absSubmit');
-    btn.disabled = true; btn.textContent = 'Enregistrement…';
+    btn.disabled = true; btn.textContent = 'Vérification…';
 
+    // Pré-check : y a-t-il des réservations existantes sur la plage d'absence ?
+    const clashes = DB.getAgentReservationsInRange(agentKey, start, end);
+    if (clashes.length) {
+      btn.textContent = 'Enregistrement…';
+      const choice = await _showAbsenceClashModal(clashes);
+      if (choice === 'cancel') {
+        btn.disabled = false; btn.textContent = "Enregistrer l'absence";
+        return;
+      }
+      if (choice === 'delete') {
+        for (const r of clashes) {
+          if (r._occDate && r.recurrence?.type && r.recurrence.type !== 'none') {
+            await DB.addException(r.id, r._occDate);
+          } else {
+            await DB.remove(r.id);
+          }
+        }
+      }
+      // 'keep' → on continue sans rien supprimer
+    }
+
+    btn.textContent = 'Enregistrement…';
     await DB.addAbsence({
       agentKey, startDate: start, endDate: end, motif,
       comment: comment || null,
@@ -2509,6 +2562,43 @@ function _initAbsenceModal() {
     showToast('Absence enregistrée ✓');
     // Rafraîchir la liste admin si ouverte
     if (!g('absencesListModal').classList.contains('hidden')) _renderAbsencesList();
+  });
+}
+
+// Affiche la modal de conflit absence ↔ réservations existantes.
+// Retourne Promise<'delete' | 'keep' | 'cancel'>.
+function _showAbsenceClashModal(clashes) {
+  return new Promise(resolve => {
+    const overlay = g('absenceClashModal');
+    const countEl = g('absClashCount');
+    const listEl  = g('absClashList');
+    const btnDel  = g('absClashDelete');
+    const btnKeep = g('absClashKeep');
+    const btnCan  = g('absClashCancel');
+    if (!overlay || !countEl || !listEl) { resolve('cancel'); return; }
+
+    countEl.textContent = clashes.length;
+    listEl.innerHTML = clashes.map(r => {
+      const d = r._start;
+      const dateStr = d.toLocaleDateString('fr-BE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      const svc = DB.getSvcLabel(r) || '';
+      const loc = DB.getLocalLabel(parseInt(r.localId));
+      const isRec = !!r._occDate;
+      return `<li>${isRec ? '↻ ' : ''}<b>${escapeHtml(dateStr)}</b> ${escapeHtml(timeStr)} — ${escapeHtml(loc)}${svc ? ` · ${escapeHtml(svc)}` : ''}</li>`;
+    }).join('');
+
+    overlay.classList.remove('hidden');
+
+    const cleanup = () => {
+      overlay.classList.add('hidden');
+      btnDel.onclick = null;
+      btnKeep.onclick = null;
+      btnCan.onclick = null;
+    };
+    btnDel.onclick  = () => { cleanup(); resolve('delete'); };
+    btnKeep.onclick = () => { cleanup(); resolve('keep'); };
+    btnCan.onclick  = () => { cleanup(); resolve('cancel'); };
   });
 }
 
