@@ -1,7 +1,7 @@
 name: Deploy static content to Pages
 on:
   push:
-    branches: ["main", "dev"]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -20,30 +20,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main (prod)
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: main
-          path: _site
-          fetch-depth: 1
-      - name: Clean main .git
-        run: rm -rf _site/.git
-      - name: Checkout dev (preview)
-        uses: actions/checkout@v4
-        with:
-          ref: dev
-          path: _site/dev
-          fetch-depth: 1
-        continue-on-error: true
-      - name: Clean dev .git
-        run: rm -rf _site/dev/.git
-        continue-on-error: true
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '_site'
+          path: '.'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
