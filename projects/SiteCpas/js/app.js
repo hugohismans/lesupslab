@@ -2034,6 +2034,7 @@ const WIDGETS = [
   { id: 'week',      label: '📋 Planning de la semaine',          selector: '.hs-widget-week',      width: 'full' },
   { id: 'shortcuts', label: '🔗 Mes raccourcis',                  selector: '.hs-widget-shortcuts', width: 'full' },
   { id: 'mission',   label: '🚗 Partir en mission',               selector: '.hs-widget-mission',   width: 'full' },
+  { id: 'absences',  label: '🌴 Mes absences',                    selector: '.hs-widget-absences',  width: 'half' },
   { id: 'notes',     label: '📝 Notes rapides',                  selector: '.hs-widget-notes',     width: 'half' },
   { id: 'reminders', label: '✅ Rappels du jour',                 selector: '.hs-widget-reminders', width: 'half' },
 ];
@@ -2352,6 +2353,51 @@ function _renderMissionWidget(agentKey) {
   }
 }
 
+// ── Widget Mes absences / congés ─────────────────────────────────────
+function _renderAbsencesWidget(agentKey) {
+  const el = document.getElementById('hsAbsences');
+  if (!el) return;
+  const addBtn = document.getElementById('hsAbsAddBtn');
+  if (!agentKey || agentKey === 'anon') {
+    el.innerHTML = '';
+    if (addBtn) addBtn.style.display = 'none';
+    return;
+  }
+  if (addBtn) addBtn.style.display = '';
+
+  const today = new Date().toISOString().slice(0, 10);
+  const list = Object.entries(DB.getAbsences() || {})
+    .filter(([, a]) => a.agentKey === agentKey && a.endDate >= today)
+    .sort((a, b) => a[1].startDate.localeCompare(b[1].startDate))
+    .slice(0, 5);
+
+  if (!list.length) {
+    el.innerHTML = '<div class="hs-abs-empty">Aucune absence à venir. Cliquez ci-dessous pour en déclarer une.</div>';
+  } else {
+    el.innerHTML = list.map(([id, a]) => {
+      const m = DB.ABSENCE_MOTIFS[a.motif] || DB.ABSENCE_MOTIFS.autre;
+      const range = a.startDate === a.endDate
+        ? fmtAbsenceDate(a.startDate)
+        : `${fmtAbsenceDate(a.startDate)} → ${fmtAbsenceDate(a.endDate)}`;
+      return `<div class="hs-abs-row">
+        <span class="hs-abs-icon">${m.icon}</span>
+        <div class="hs-abs-info">
+          <div class="hs-abs-motif"><b>${m.label}</b> — ${range}</div>
+          ${a.comment ? `<div class="hs-abs-cmt">${escapeHtml(a.comment)}</div>` : ''}
+        </div>
+        <button class="hs-abs-del" data-abs-id="${id}" title="Supprimer cette absence">✕</button>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('[data-abs-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (confirm('Supprimer cette absence ?')) await DB.deleteAbsence(btn.dataset.absId);
+      });
+    });
+  }
+
+  if (addBtn) addBtn.onclick = () => openAbsenceModal();
+}
+
 // ── Widget Notes rapides ─────────────────────────────────────────────
 function _renderNotesWidget(agentKey) {
   const el = document.getElementById('hsNotes');
@@ -2475,6 +2521,7 @@ function _renderExtraWidgets() {
     [_renderWeekWidget,      []],
     [_renderShortcutsWidget, [agentKey]],
     [_renderMissionWidget,   [agentKey]],
+    [_renderAbsencesWidget,  [agentKey]],
     [_renderNotesWidget,     [agentKey]],
     [_renderRemindersWidget, [agentKey]],
   ].forEach(([fn, args]) => { try { fn(...args); } catch(e) { console.warn('[widget]', fn.name, e); } });

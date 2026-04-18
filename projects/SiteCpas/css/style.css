@@ -2468,6 +2468,42 @@ select.field-input { cursor: pointer; }
 .abs-clash-cancel { background: #334155; color: #cbd5e1; }
 .abs-clash-cancel:hover { background: #475569; color: #f1f5f9; }
 
+/* Widget "Mes absences / congés" (écran d'accueil) */
+.hs-widget-absences .hs-abs-body {
+  display: flex; flex-direction: column; gap: .45rem; margin-bottom: .6rem;
+}
+.hs-widget-absences .hs-abs-empty {
+  color: #94a3b8; font-size: .85rem; font-style: italic;
+  padding: .6rem .2rem; text-align: center;
+}
+.hs-widget-absences .hs-abs-row {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .65rem;
+  background: #fef2f2; border-radius: 8px;
+  border-left: 3px solid #ef4444;
+}
+.hs-widget-absences .hs-abs-icon { font-size: 1.25rem; flex-shrink: 0; }
+.hs-widget-absences .hs-abs-info { flex: 1; min-width: 0; }
+.hs-widget-absences .hs-abs-motif { font-size: .88rem; color: #7f1d1d; }
+.hs-widget-absences .hs-abs-motif b { color: #991b1b; }
+.hs-widget-absences .hs-abs-cmt {
+  font-size: .78rem; color: #991b1b; margin-top: .15rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hs-widget-absences .hs-abs-del {
+  background: none; border: none; color: #991b1b; cursor: pointer;
+  font-size: 1rem; padding: .2rem .45rem; border-radius: 6px;
+  transition: background .12s;
+}
+.hs-widget-absences .hs-abs-del:hover { background: #fee2e2; }
+.hs-widget-absences .hs-abs-add-btn {
+  width: 100%; padding: .55rem .8rem; border-radius: 8px;
+  border: 1.5px dashed #ef4444; background: transparent; color: #b91c1c;
+  font-weight: 700; cursor: pointer; font-size: .88rem;
+  transition: background .12s, color .12s;
+}
+.hs-widget-absences .hs-abs-add-btn:hover { background: #fef2f2; color: #991b1b; }
+
 .live-presence-bar {
   display: flex; flex-wrap: wrap; gap: .5rem; padding: .6rem 1.5rem;
   background: #1a0505; border-bottom: 1px solid #2d1515;
