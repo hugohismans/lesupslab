@@ -222,7 +222,7 @@
   <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
     <span class="hs-patchnote-sparkle">✨</span>
     <span class="hs-patchnote-text">
-      <span class="hs-patchnote-tag">Patch note v1.2.1</span>
+      <span class="hs-patchnote-tag">Patch note v1.2.2</span>
       <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
     </span>
     <span class="hs-patchnote-arrow">→</span>
@@ -232,12 +232,22 @@
   <div class="modal-overlay hidden" id="patchnoteModal">
     <div class="modal-box patchnote-box">
       <div class="modal-header">
-        <span class="modal-title">✨ Patch note v1.2.1 — 18 avril 2026</span>
+        <span class="modal-title">✨ Patch note v1.2.2 — 19 avril 2026</span>
         <button class="modal-close" id="patchnoteClose">✕</button>
       </div>
       <div class="modal-body patchnote-body">
         <div class="pn-section">
-          <div class="pn-section-title">🔔 Nouveau : Appel direct d'un ticket de la file</div>
+          <div class="pn-section-title">🧹 Nouveau : Vider un local en un clic (accueil)</div>
+          <ul class="pn-list">
+            <li>Nouveau bouton flottant <b>🧹 en bas à gauche</b> pour l'agent d'accueil (et admin / chef de service).</li>
+            <li>Un clic ouvre la liste de tous les locaux groupés par lieu, avec <b>les agents actuellement déclarés</b> dans chacun.</li>
+            <li>Sélectionne un local → confirmation → <b>toute la présence est retirée</b>, le bureau est fermé et la file locale remise à zéro.</li>
+            <li>Pratique quand quelqu'un a oublié de quitter son bureau ou pour faire le ménage rapidement.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🔔 Appel direct d'un ticket de la file (v1.2.1)</div>
           <ul class="pn-list">
             <li>Sur la carte de ton bureau (Vue Direct), chaque ticket en attente a maintenant un bouton <b>cloche 🔔</b> à sa droite.</li>
             <li>Un clic sur la cloche <b>appelle directement ce ticket-là</b>, sans respecter l'ordre FIFO. Pratique pour un bénéficiaire identifié, une urgence, un RDV…</li>
