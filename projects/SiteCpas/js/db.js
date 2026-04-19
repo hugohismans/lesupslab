@@ -1947,7 +1947,7 @@ const DB = {
       perms: { createReservation:true, editReservation:false, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:false, manageQueue:true, sendPublicMessage:false, sendNotif:true,
-               sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true },
+               sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true, kickFromLocal:true, panicDemo:true },
     },
     '__agent__': {
       // Agent de bureau : gère ses RDV et sa propre file

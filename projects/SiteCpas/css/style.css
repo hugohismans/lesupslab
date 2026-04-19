@@ -5470,6 +5470,50 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 .ms-test-grid button:hover { background: #1d4ed8; border-color: #3b82f6; color: #fff; }
 .ms-test-grid button:active { transform: scale(.96); }
 
+/* ── Vider un local — bouton flottant (bas gauche) ─────────────── */
+.empty-local-float {
+  position: fixed; bottom: 1.5rem; left: 1.5rem;
+  width: 58px; height: 58px; border-radius: 50%;
+  background: #f59e0b; color: #fff;
+  font-size: 1.55rem; line-height: 1;
+  border: none; cursor: pointer;
+  box-shadow: 0 4px 18px rgba(245,158,11,.5);
+  z-index: 2600; display: flex; align-items: center; justify-content: center;
+  transition: transform .12s, box-shadow .12s, bottom .2s;
+}
+.empty-local-float:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(245,158,11,.7);
+}
+/* Décalage vers le haut quand les boutons fin de journée sont visibles */
+.empty-local-float.with-eod { bottom: 8.5rem; }
+
+.empty-local-item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; padding: .6rem .8rem;
+  border: 1.5px solid #e2e8f0; border-radius: 10px;
+  background: #fff; cursor: pointer; transition: all .15s;
+  text-align: left; font-size: .9rem; color: #1e293b;
+  font-family: inherit;
+}
+.empty-local-item:hover {
+  border-color: #f59e0b; background: #fffbeb;
+  transform: translateY(-1px);
+}
+.empty-local-item.is-empty { opacity: .55; cursor: not-allowed; }
+.empty-local-item.is-empty:hover {
+  border-color: #e2e8f0; background: #fff; transform: none;
+}
+.empty-local-item-main { display: flex; flex-direction: column; gap: .15rem; min-width: 0; flex: 1; }
+.empty-local-item-label { font-weight: 700; }
+.empty-local-item-sub { font-size: .78rem; color: #64748b; }
+.empty-local-item-badge {
+  font-size: .75rem; font-weight: 700; padding: .18rem .5rem;
+  border-radius: 999px; white-space: nowrap;
+}
+.empty-local-item-badge.busy  { background: #fef3c7; color: #92400e; }
+.empty-local-item-badge.empty { background: #f1f5f9; color: #64748b; }
+
 /* ── Panic button flottant ───────────────────────────────────── */
 .panic-float {
   position: fixed; bottom: 1.5rem; right: 1.5rem;
