@@ -2183,6 +2183,33 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════
+     Vider un local — bouton flottant (accueil / admin)
+════════════════════════════════════════════════════════════════ -->
+<button id="emptyLocalBtn" class="empty-local-float hidden" title="Vider un local">
+  🧹
+</button>
+
+<!-- Modal sélection du local à vider -->
+<div class="overlay hidden" id="emptyLocalOverlay" style="z-index:9999;background:rgba(15,23,42,.85)">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hd">
+      <h2>🧹 Vider un local</h2>
+      <button class="modal-x" data-close="emptyLocalOverlay">✕</button>
+    </div>
+    <div class="modal-bd">
+      <p style="color:#64748b;font-size:.88rem;margin-bottom:.9rem;line-height:1.5">
+        Sélectionnez un local pour <strong>retirer toute présence</strong> et le fermer.
+        Les agents déclarés à l'intérieur ne seront plus listés.
+      </p>
+      <div id="emptyLocalList" style="display:flex;flex-direction:column;gap:.45rem;max-height:55vh;overflow-y:auto"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-cancel" id="emptyLocalCancel">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
      Panic button flottant (accueil uniquement)
 ════════════════════════════════════════════════════════════════ -->
 <button id="panicBtn" class="panic-float hidden" title="Alerte urgente">

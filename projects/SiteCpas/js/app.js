@@ -4025,6 +4025,104 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   })();
 
+  // ═══════════════════════════════════════════════════════════════
+  // ─── Vider un local spécifique (accueil / admin) ──────────────
+  // ═══════════════════════════════════════════════════════════════
+  (function initEmptyLocalButton() {
+    const btn     = document.getElementById('emptyLocalBtn');
+    const overlay = document.getElementById('emptyLocalOverlay');
+    const list    = document.getElementById('emptyLocalList');
+    if (!btn || !overlay || !list) return;
+
+    const close = () => overlay.classList.add('hidden');
+
+    // Visibilité du bouton selon la permission + décalage si eodFab visible
+    function updateVisibility() {
+      btn.classList.toggle('hidden', !DB.hasPermission('kickFromLocal'));
+      const eodFab = document.getElementById('eodFab');
+      const eodVisible = eodFab && !eodFab.classList.contains('hidden');
+      btn.classList.toggle('with-eod', !!eodVisible);
+    }
+    DB.onConfigChange(updateVisibility);
+    updateVisibility();
+
+    function renderList() {
+      const lieux  = DB.getLieux();
+      const frag   = [];
+      Object.values(lieux).forEach(lieu => {
+        const locals = (lieu.localIds || []).filter(id => !DB.isLocalHidden(id));
+        if (!locals.length) return;
+        frag.push(`<div style="font-size:.78rem;font-weight:700;color:#64748b;letter-spacing:.04em;text-transform:uppercase;margin:.4rem 0 .1rem">${escapeHtml(lieu.name || '')}</div>`);
+        locals.forEach(localId => {
+          const label     = DB.getLocalLabel(localId);
+          const presence  = DB.getBackofficePresence(localId);
+          const agentKeys = Object.keys(presence);
+          const openKey   = DB.getBureauAgentKey(localId);
+          const isOpen    = DB.isBureauOpen(localId);
+          const allKeys   = new Set(agentKeys);
+          if (openKey) allKeys.add(openKey);
+          const names = [...allKeys].map(k => DB.getAgentDisplayName(k) || '?');
+          const isEmpty = names.length === 0 && !isOpen;
+          const sub = names.length
+            ? `${names.length} présent${names.length > 1 ? 's' : ''} : ${names.join(', ')}${isOpen ? ' • bureau ouvert' : ''}`
+            : (isOpen ? 'Bureau ouvert (personne déclarée)' : 'Libre');
+          const badge = isEmpty
+            ? '<span class="empty-local-item-badge empty">—</span>'
+            : `<span class="empty-local-item-badge busy">${names.length || (isOpen ? 1 : 0)} 👤</span>`;
+          frag.push(`
+            <button type="button" class="empty-local-item${isEmpty ? ' is-empty' : ''}" data-local-id="${localId}" ${isEmpty ? 'disabled' : ''}>
+              <div class="empty-local-item-main">
+                <span class="empty-local-item-label">${escapeHtml(label)}</span>
+                <span class="empty-local-item-sub">${escapeHtml(sub)}</span>
+              </div>
+              ${badge}
+            </button>
+          `);
+        });
+      });
+      list.innerHTML = frag.join('') || '<p style="color:#64748b;font-size:.88rem">Aucun local configuré.</p>';
+    }
+
+    btn.addEventListener('click', () => {
+      if (!DB.hasPermission('kickFromLocal')) return;
+      renderList();
+      overlay.classList.remove('hidden');
+    });
+
+    document.getElementById('emptyLocalCancel')?.addEventListener('click', close);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('[data-close="emptyLocalOverlay"]')?.addEventListener('click', close);
+
+    // Délégation : clic sur un local → confirmation + vidage
+    list.addEventListener('click', e => {
+      const item = e.target.closest('.empty-local-item');
+      if (!item || item.classList.contains('is-empty')) return;
+      const localId = parseInt(item.dataset.localId, 10);
+      if (!Number.isFinite(localId)) return;
+      const label    = DB.getLocalLabel(localId);
+      const presence = DB.getBackofficePresence(localId);
+      const openKey  = DB.getBureauAgentKey(localId);
+      const allKeys  = new Set(Object.keys(presence));
+      if (openKey) allKeys.add(openKey);
+      const names = [...allKeys].map(k => DB.getAgentDisplayName(k) || '?');
+      const who = names.length
+        ? `<strong>${escapeHtml(names.join(', '))}</strong> sera retiré${names.length > 1 ? 's' : ''} de <strong>${escapeHtml(label)}</strong>.`
+        : `<strong>${escapeHtml(label)}</strong> sera fermé.`;
+      close();
+      showBureauConfirm({
+        icon: '🧹',
+        title: `Vider ${label} ?`,
+        info: `${who}<br>Le bureau sera fermé et la file locale remise à zéro.`,
+        okLabel: 'Vider le local',
+        okClass: 'ok-close',
+        onOk: async () => {
+          await DB.closeBureau(localId);
+          showToast(`${label} a été vidé ✓`);
+        },
+      });
+    });
+  })();
+
   // ─── Panic démo (pré-prod) ────────────────────────────────────
   (function initPanicDemo() {
     const card    = document.getElementById('hsPanicDemoCard');
