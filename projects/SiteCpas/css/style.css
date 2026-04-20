@@ -754,6 +754,89 @@ body {
   border-collapse: collapse;
 }
 
+/* ── NOUVELLE vue jour : largeur auto + scroll X ─────────────────── */
+.cv-day-table-new {
+  width: max-content;
+  min-width: 100%;
+}
+.cv-day-table-new .loc-hd { width: 140px; position: relative; }
+.cv-day-table-new .tc,
+.cv-day-table-new .cv-cell {
+  min-height: 36px; max-height: 36px;
+  box-sizing: border-box;
+}
+.cv-day-table-new .my-agenda-cell {
+  max-height: 36px; overflow: hidden;
+}
+
+/* Canvas par local : un seul <td rowspan="total"> contenant les résas absolues */
+.cv-col-canvas {
+  position: relative;
+  padding: 0;
+  border-left: 1px solid #e2e8f0;
+  vertical-align: top;
+  cursor: pointer;
+  /* Grille de fond : ligne toutes les --row-h */
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--row-h, 36px) - 1px),
+      #edf2f7 calc(var(--row-h, 36px) - 1px),
+      #edf2f7 var(--row-h, 36px)
+    );
+}
+.cv-col-canvas:hover { background-color: rgba(232, 244, 253, .35); }
+
+/* Bloc réservation absolu dans le canvas */
+.resa-block {
+  position: absolute;
+  box-sizing: border-box;
+  padding: .35rem .4rem;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 2px;
+  background: #dbeafe;
+  border-left: 3px solid #2a6496;
+  transition: filter .1s;
+  font-size: .72rem; line-height: 1.35; color: #1e293b;
+}
+.resa-block.is-rec     { background: #e0f2fe; border-left-color: #0284c7; }
+.resa-block.is-perm    { background: #ede9fe; border-left: 3px solid #7c3aed; }
+.resa-block.is-invited { box-shadow: inset 3px 0 0 #8b5cf6; }
+.resa-block:hover      { filter: brightness(.94); }
+.resa-block.dnd-dragging { opacity: .35; }
+.resa-block.ct-resizing  { outline: 2px dashed #2563eb; outline-offset: -2px; }
+
+/* Ghost overlay pendant le drag (au-dessus du canvas) */
+.dnd-ghost {
+  position: absolute;
+  background: #bfdbfe88;
+  outline: 2px dashed #2563eb;
+  outline-offset: -2px;
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 2px;
+}
+
+/* Poignée de drag : toute la résa (pas juste le span) */
+.resa-block .ct-drag {
+  cursor: grab; display: block; user-select: none;
+  width: 100%; height: 100%;
+}
+.resa-block .ct-drag:active { cursor: grabbing; }
+
+/* Impression : fallback compact, pas de scroll */
+@media print {
+  .cv-day-table-new {
+    width: 100% !important;
+    table-layout: auto !important;
+    min-width: 0 !important;
+  }
+  .cv-col-canvas { background: none !important; }
+  .resa-block { page-break-inside: avoid; }
+}
+
 /* Bandeau période — commun semaine / mois */
 .cv-period-bar,
 .cv-day-datebar {
