@@ -381,7 +381,17 @@ const CAL = {
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
     displayLocals.forEach(l => {
-      h += `<th class="loc-hd" data-local="${l.localId}">${escapeHtml(l.label)}</th>`;
+      const N = l.deskList.length;
+      let subLabels = '';
+      if (N >= 2) {
+        subLabels = '<div class="loc-hd-desks">' +
+          l.deskList.map(did => `<span class="loc-hd-desk" title="${escapeHtml(DB.getDeskLabel(did))}">${escapeHtml(DB.getDeskLabel(did))}</span>`).join('') +
+          '</div>';
+      }
+      h += `<th class="loc-hd${N >= 2 ? ' has-desks' : ''}" data-local="${l.localId}">
+        <div class="loc-hd-name">${escapeHtml(l.label)}</div>
+        ${subLabels}
+      </th>`;
     });
     h += '</tr></thead><tbody>';
 
@@ -412,9 +422,13 @@ const CAL = {
 
         const top    = startIdx * ROW_H;
         const heightPx = span * ROW_H;
-        // Phase 1 : toutes les résas en pleine largeur (desks gérés Phase 2)
-        const left     = 0;
-        const widthPct = 100;
+        // Phase 2 : positionnement dans la sous-lane du desk si applicable
+        const N        = l.deskList.length;
+        const deskIdx  = r.deskId ? l.deskList.indexOf(r.deskId) : -1;
+        const orphan   = r.deskId && deskIdx === -1;   // desk supprimé depuis
+        const fullWidth = !r.deskId || orphan || N === 0;
+        const left     = fullWidth ? 0 : (deskIdx / N) * 100;
+        const widthPct = fullWidth ? 100 : (100 / N);
 
         // Résa permanente → bloc spécial pleine hauteur
         if (r.isPermanent) {
@@ -518,7 +532,16 @@ const CAL = {
       // Canvas locaux : un seul <td rowspan=total> par local, sur la première ligne
       if (i === 0) {
         displayLocals.forEach(l => {
-          h += `<td class="cv-col-canvas" rowspan="${total}" data-local="${l.localId}" style="height:${canvasHeight}px;--row-h:${ROW_H}px">
+          // Dividers verticaux entre sous-lanes desk (si N >= 2)
+          let lanesHtml = '';
+          const N = l.deskList.length;
+          if (N >= 2) {
+            for (let k = 1; k < N; k++) {
+              lanesHtml += `<div class="desk-lane-divider" style="left:${(k / N) * 100}%"></div>`;
+            }
+          }
+          h += `<td class="cv-col-canvas${N >= 2 ? ' has-desks' : ''}" rowspan="${total}" data-local="${l.localId}" style="height:${canvasHeight}px;--row-h:${ROW_H}px">
+            ${lanesHtml}
             ${blocksByLocal[l.localId]}
           </td>`;
         });

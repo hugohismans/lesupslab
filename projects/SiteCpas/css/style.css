@@ -808,6 +808,54 @@ body {
 .resa-block.dnd-dragging { opacity: .35; }
 .resa-block.ct-resizing  { outline: 2px dashed #2563eb; outline-offset: -2px; }
 
+/* Dividers entre sous-lanes desk */
+.desk-lane-divider {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: #e2e8f0;
+  pointer-events: none;
+  z-index: 1;
+}
+.cv-col-canvas.has-desks .desk-lane-divider {
+  background: repeating-linear-gradient(
+    to bottom,
+    #cbd5e1 0,
+    #cbd5e1 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  width: 1px;
+}
+
+/* Header local sur 2 lignes si le local a des desks : nom + sub-labels desk */
+.cv-day-table-new .loc-hd.has-desks {
+  padding: .3rem 0 0 0;
+}
+.loc-hd-name {
+  text-align: center;
+  padding: 0 .2rem .25rem;
+}
+.loc-hd-desks {
+  display: flex;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.loc-hd-desk {
+  flex: 1 1 0;
+  padding: .2rem .15rem;
+  font-size: .6rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  border-right: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.loc-hd-desk:last-child { border-right: none; }
+
 /* Ghost overlay pendant le drag (au-dessus du canvas) */
 .dnd-ghost {
   position: absolute;
