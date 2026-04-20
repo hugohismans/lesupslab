@@ -14,6 +14,20 @@ const CAL = {
   _deskFilter: null,   // null = locaux sans desk | localId = desks de ce local
   _newDayLayout: true, // feature flag : nouvelle vue jour (1 col/local + desks en sous-lanes)
   _rowHeight: 36,      // hauteur d'une ligne de slot (doit matcher .cv-cell { height })
+  _defaultColW: 140,   // largeur par défaut d'une colonne locale (new layout)
+  _colWidthsKey: 'cpas_day_col_widths',   // clé localStorage
+
+  _getColWidths() {
+    try { return JSON.parse(localStorage.getItem(this._colWidthsKey) || '{}'); }
+    catch (_) { return {}; }
+  },
+  _setColWidth(localId, widthPx) {
+    const widths = this._getColWidths();
+    if (widthPx == null) delete widths[localId];
+    else widths[localId] = widthPx;
+    try { localStorage.setItem(this._colWidthsKey, JSON.stringify(widths)); }
+    catch (_) {}
+  },
 
   setView(v) { this.view = v; this.render(); },
 
@@ -377,6 +391,9 @@ const CAL = {
     </div>`;
 
     // ── Table ──────────────────────────────────────────────────────
+    // Largeurs personnalisées (localStorage) — Phase 5
+    const colWidths = this._getColWidths();
+
     h += '<table class="cv-day-table cv-day-table-new"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
@@ -388,9 +405,15 @@ const CAL = {
           l.deskList.map(did => `<span class="loc-hd-desk" title="${escapeHtml(DB.getDeskLabel(did))}">${escapeHtml(DB.getDeskLabel(did))}</span>`).join('') +
           '</div>';
       }
-      h += `<th class="loc-hd${N >= 2 ? ' has-desks' : ''}" data-local="${l.localId}">
+      // Mode zoom : largeur = max(stockée, N × defaultColW) pour donner ~defaultColW par desk lane
+      let w = colWidths[l.localId] || this._defaultColW;
+      if (this._deskFilter === l.localId && N >= 1) {
+        w = Math.max(w, N * this._defaultColW);
+      }
+      h += `<th class="loc-hd${N >= 2 ? ' has-desks' : ''}${this._deskFilter === l.localId ? ' is-zoomed' : ''}" data-local="${l.localId}" style="width:${w}px">
         <div class="loc-hd-name">${escapeHtml(l.label)}</div>
         ${subLabels}
+        <span class="loc-hd-resize" data-local="${l.localId}" title="Glisser pour redimensionner — double-clic pour réinitialiser"></span>
       </th>`;
     });
     h += '</tr></thead><tbody>';
@@ -1072,21 +1095,77 @@ const CAL = {
     const ROW_H = this._rowHeight || 36;
     const slots = getSlots();
 
-    // Clic zone vide du canvas → nouvelle résa
+    // Clic zone vide du canvas → nouvelle résa (desk résolu depuis X)
     el.querySelectorAll('.cv-col-canvas').forEach(canvas => {
       canvas.addEventListener('click', (e) => {
         if (self._justDragged) { self._justDragged = false; return; }
         if (e.target.closest('.resa-block')) return; // géré par _bind (data-act=detail)
         const rect    = canvas.getBoundingClientRect();
         const relY    = e.clientY - rect.top;
+        const relX    = e.clientX - rect.left;
         const slotIdx = Math.max(0, Math.floor(relY / ROW_H));
         if (slotIdx >= slots.length) return;
+
+        const localId  = parseInt(canvas.dataset.local);
+        const deskList = DB.getLocalDesks(localId);
+        const N = deskList.length;
+        let deskId = null;
+        if (N >= 1) {
+          const lanePx = rect.width / N;
+          const idx    = Math.max(0, Math.min(N - 1, Math.floor(relX / lanePx)));
+          deskId = deskList[idx];
+        }
         MODAL.openNew({
-          local: parseInt(canvas.dataset.local),
-          desk: null,   // Phase 4 ajoutera la résolution par X
+          local: localId,
+          desk: deskId,
           date: isoDate(d),
           time: slots[slotIdx].label,
         });
+      });
+    });
+
+    // ── Drag-resize largeur colonne (Phase 5) ─────────────────────
+    const MIN_W = 80, MAX_W = 600;
+    el.querySelectorAll('.loc-hd-resize').forEach(handle => {
+      let _colRz = null;
+
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault(); e.stopPropagation();
+        const th = handle.closest('th[data-local]');
+        if (!th) return;
+        _colRz = {
+          th,
+          localId: parseInt(handle.dataset.local),
+          startX: e.clientX,
+          startW: th.getBoundingClientRect().width,
+        };
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      const moveFn = e => {
+        if (!_colRz) return;
+        const newW = Math.max(MIN_W, Math.min(MAX_W, _colRz.startW + (e.clientX - _colRz.startX)));
+        _colRz.th.style.width = newW + 'px';
+      };
+      const upFn = () => {
+        if (!_colRz) return;
+        const newW = parseInt(_colRz.th.style.width) || self._defaultColW;
+        self._setColWidth(_colRz.localId, newW);
+        _colRz = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      document.addEventListener('mousemove', moveFn);
+      document.addEventListener('mouseup', upFn);
+
+      // Double-clic : reset largeur par défaut
+      handle.addEventListener('dblclick', e => {
+        e.preventDefault(); e.stopPropagation();
+        const th = handle.closest('th[data-local]');
+        if (!th) return;
+        th.style.width = self._defaultColW + 'px';
+        self._setColWidth(parseInt(handle.dataset.local), null);
       });
     });
   },
@@ -1119,8 +1198,7 @@ const CAL = {
       e.dataTransfer.setData('text/plain', handle.dataset.id);
     });
 
-    // ── helper : retrouve slot + local à partir de XY ───────────────
-    // Phase 1 : desk toujours null (Phase 3 ajoutera la résolution par X)
+    // ── helper : retrouve slot + local + desk à partir de XY ────────
     function getDndTarget(e) {
       // Trouver le canvas cible (le <td data-local>)
       let td = e.target.closest('td[data-local]');
@@ -1135,7 +1213,22 @@ const CAL = {
       const relY = e.clientY - rect.top;
       const slotIdx = Math.max(0, Math.floor(relY / ROW_H));
       if (slotIdx < 0) return null;
-      return { slot: slotIdx, local: td.dataset.local, desk: null, td };
+
+      // Résolution du desk depuis la coord X
+      const localId  = parseInt(td.dataset.local);
+      const deskList = DB.getLocalDesks(localId);
+      const N = deskList.length;
+      let deskId = null;
+      let left = 0, widthPct = 100;
+      if (N >= 1) {
+        const relX   = e.clientX - rect.left;
+        const lanePx = rect.width / N;
+        const idx    = Math.max(0, Math.min(N - 1, Math.floor(relX / lanePx)));
+        deskId = deskList[idx];
+        left = (idx / N) * 100;
+        widthPct = 100 / N;
+      }
+      return { slot: slotIdx, local: td.dataset.local, desk: deskId, td, left, widthPct };
     }
 
     // ── dragover ────────────────────────────────────────────────────
@@ -1149,13 +1242,13 @@ const CAL = {
       const hit = getDndTarget(e);
       if (!hit) return;
 
-      // Ghost overlay : rectangle absolu dans le canvas cible
+      // Ghost overlay : rectangle absolu dans la sous-lane cible
       const ghost = document.createElement('div');
       ghost.className = 'dnd-ghost';
       ghost.style.top    = (hit.slot * ROW_H) + 'px';
       ghost.style.height = (self._dnd.span * ROW_H) + 'px';
-      ghost.style.left   = '0';
-      ghost.style.width  = '100%';
+      ghost.style.left   = hit.left + '%';
+      ghost.style.width  = hit.widthPct + '%';
       hit.td.appendChild(ghost);
     });
 
