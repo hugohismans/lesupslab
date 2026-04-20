@@ -837,24 +837,24 @@ body {
 /* Header local sur 2 lignes si le local a des desks : nom + sub-labels desk */
 .cv-day-table-new .loc-hd {
   vertical-align: top;
-  padding: .5rem 0 0 0;
+  padding: 0;
 }
-.cv-day-table-new .loc-hd.has-desks {
-  padding: .5rem 0 0 0;
-}
+.cv-day-table-new .loc-hd.has-desks { padding: 0; }
 .loc-hd-name {
   text-align: center;
-  padding: 0 .2rem .4rem;
+  padding: .25rem .2rem .2rem;
+  line-height: 1.1;
 }
 .loc-hd-desks {
   display: flex;
   border-top: 1px solid #e2e8f0;
   background: #f8fafc;
+  height: 16px;
 }
 .loc-hd-desk {
   flex: 1 1 0;
-  padding: .2rem .15rem;
-  font-size: .6rem;
+  padding: 1px 2px;
+  font-size: .55rem;
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
@@ -863,15 +863,22 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 14px;
 }
 .loc-hd-desk:last-child { border-right: none; }
 
 /* Placeholder vide pour aligner la hauteur des headers sans desks
    sur ceux qui ont des desks (évite l'espace vertical superflu). */
 .loc-hd-desks-empty {
-  height: 22px;   /* ≈ hauteur d'une ligne .loc-hd-desks peuplée */
+  height: 16px;
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
+}
+
+/* tc-hd : fond blanc pour continuer visuellement la colonne time en dessous */
+.cv-day-table-new .tc-hd {
+  background: #fff !important;
+  box-shadow: none;
 }
 
 /* Poignée de redimensionnement largeur colonne (Phase 5) */
