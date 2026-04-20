@@ -330,9 +330,53 @@ const CAL = {
     const total = slots.length;
     const myKey = sessionStorage.getItem('cpas_current_agent_key');
     const compactMode = this._compactMode;
-    // Hauteur de ligne : serrée en compact (36px), plus épaisse en complet
-    // pour que même les résas 30min affichent le détail complet.
-    const ROW_H = compactMode ? 36 : 72;
+    const BASE_ROW_H = 36;
+
+    // ── Hauteurs de slot dynamiques (complet) ou uniformes (compact) ──
+    // Compact : chaque slot = 36px.
+    // Complet : chaque slot = max(36, max(content_height / span)) de toutes
+    // les résas qui couvrent le slot. Les lignes sans résa restent à 36px.
+    const slotHeights = new Array(total).fill(BASE_ROW_H);
+    if (!compactMode) {
+      const LINE_H = 16;         // ~ .72rem × 1.35 (line-height)
+      const PADDING_Y = 12;      // padding .35rem × 2 ≈ 11px
+      const EXTRA = 4;           // marge de confort
+      occs.forEach(r => {
+        if (r.isPermanent) return; // couvre tout le jour, pas d'impact per-slot
+        // Trouver startIdx et span
+        let startIdx = -1;
+        for (let j = 0; j < slots.length; j++) {
+          const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+          const jE = new Date(jS.getTime() + slotMinDay * 60000);
+          if (r._start < jE && r._end > jS) { startIdx = j; break; }
+        }
+        if (startIdx === -1) return;
+        let rSpan = 0;
+        for (let j = startIdx; j < slots.length; j++) {
+          const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+          const jE = new Date(jS.getTime() + slotMinDay * 60000);
+          if (r._start < jE && r._end > jS) rSpan++;
+          else break;
+        }
+        rSpan = Math.max(1, rSpan);
+        // Compter les lignes de contenu verbose
+        const isRdv = r.type === 'rendez-vous';
+        const svcsCount = isRdv ? 1 : Math.max(1, DB.getResSvcs(r).length);
+        let lines = svcsCount + 1 /* agent */ + 1 /* heure */;
+        if (r.comment && !isRdv) lines += 1;
+        if (r.invitedAgents && Object.keys(r.invitedAgents).length) lines += 1;
+        const needed = PADDING_Y + lines * LINE_H + EXTRA;
+        const perSlot = Math.ceil(needed / rSpan);
+        for (let s = startIdx; s < startIdx + rSpan; s++) {
+          if (perSlot > slotHeights[s]) slotHeights[s] = perSlot;
+        }
+      });
+    }
+    // Offsets cumulés : cumY[i] = top du slot i, cumY[total] = hauteur canvas
+    const cumY = [0];
+    for (let i = 0; i < total; i++) cumY.push(cumY[i] + slotHeights[i]);
+    const canvasHeight = cumY[total];
+    const ROW_H = BASE_ROW_H; // conservé pour compatibilité (ex: ghost overlay)
 
     // ── Locaux à afficher (1 colonne par local) ────────────────────
     const allLocals = CONFIG.LOCALS.map(localId => ({
@@ -413,7 +457,7 @@ const CAL = {
     // Largeurs personnalisées (localStorage) — Phase 5
     const colWidths = this._getColWidths();
 
-    h += `<table class="cv-day-table cv-day-table-new ${compactMode ? 'is-compact' : 'is-complete'}" style="--row-h:${ROW_H}px"><thead><tr>`;
+    h += `<table class="cv-day-table cv-day-table-new ${compactMode ? 'is-compact' : 'is-complete'}" style="--row-h:${ROW_H}px" data-cum-y="${cumY.join(',')}"><thead><tr>`;
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
     // Y a-t-il au moins un local avec des desks ? Si oui, on émet une
@@ -469,9 +513,9 @@ const CAL = {
         }
         span = Math.max(1, span);
 
-        const top    = startIdx * ROW_H;
-        const heightPx = span * ROW_H;
-        // Phase 2 : positionnement dans la sous-lane du desk si applicable
+        // Positionnement via cumY (hauteurs dynamiques en mode complet)
+        const top      = cumY[startIdx];
+        const heightPx = cumY[startIdx + span] - cumY[startIdx];
         const N        = l.deskList.length;
         const deskIdx  = r.deskId ? l.deskList.indexOf(r.deskId) : -1;
         const orphan   = r.deskId && deskIdx === -1;   // desk supprimé depuis
@@ -483,7 +527,7 @@ const CAL = {
         if (r.isPermanent) {
           const svc = DB.getSvcLabel(r);
           blocksByLocal[l.localId] += `<div class="resa-block is-perm"
-            style="top:0px;height:${total * ROW_H}px;left:${left}%;width:${widthPct}%"
+            style="top:0px;height:${canvasHeight}px;left:${left}%;width:${widthPct}%"
             data-id="${r.id}" data-act="detail" data-slot="0" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${total}">
             <span class="ct">🔒 ${escapeHtml(svc)}</span>
           </div>`;
@@ -569,13 +613,14 @@ const CAL = {
     });
 
     // ── Émission des <tr> ──────────────────────────────────────────
-    const canvasHeight = total * ROW_H;
     slots.forEach((slot, i) => {
       const sS = new Date(d); sS.setHours(slot.h, slot.m, 0, 0);
       const sE = new Date(sS.getTime() + slotMinDay * 60000);
 
-      h += `<tr class="cv-row${i % 2 ? ' alt' : ''}" data-slot="${i}">`;
-      h += `<td class="tc">${slot.label}</td>`;
+      // Hauteur du slot (dynamique en complet, 36 en compact)
+      const rowH = slotHeights[i];
+      h += `<tr class="cv-row${i % 2 ? ' alt' : ''}" data-slot="${i}" style="height:${rowH}px">`;
+      h += `<td class="tc" style="height:${rowH}px">${slot.label}</td>`;
 
       // Mon agenda (inchangé — rowspan par slot)
       if (myAgentName) {
@@ -611,6 +656,11 @@ const CAL = {
 
       // Canvas locaux : un seul <td rowspan=total> par local, sur la première ligne
       if (i === 0) {
+        // Dividers horizontaux : une ligne à chaque frontière de slot (suit cumY)
+        let slotDividers = '';
+        for (let k = 1; k < total; k++) {
+          slotDividers += `<div class="slot-divider" style="top:${cumY[k]}px"></div>`;
+        }
         displayLocals.forEach(l => {
           // Dividers verticaux entre sous-lanes desk (si N >= 2)
           let lanesHtml = '';
@@ -620,7 +670,8 @@ const CAL = {
               lanesHtml += `<div class="desk-lane-divider" style="left:${(k / N) * 100}%"></div>`;
             }
           }
-          h += `<td class="cv-col-canvas${N >= 2 ? ' has-desks' : ''}" rowspan="${total}" data-local="${l.localId}" style="height:${canvasHeight}px;--row-h:${ROW_H}px">
+          h += `<td class="cv-col-canvas${N >= 2 ? ' has-desks' : ''}" rowspan="${total}" data-local="${l.localId}" style="height:${canvasHeight}px">
+            ${slotDividers}
             ${lanesHtml}
             ${blocksByLocal[l.localId]}
           </td>`;
@@ -1163,6 +1214,19 @@ const CAL = {
       });
     }
 
+    // Helper : résout le slotIdx depuis une position Y dans le canvas (utilise cumY).
+    // Compatible avec les hauteurs de ligne dynamiques en mode complet.
+    function _slotIdxFromY(canvas, relY) {
+      const table = canvas.closest('table');
+      const cumY = (table?.dataset.cumY || '').split(',').map(Number);
+      if (cumY.length < 2) return Math.max(0, Math.floor(relY / ROW_H));
+      // cumY[i] = top du slot i ; la dernière valeur = hauteur totale
+      for (let i = 0; i < cumY.length - 1; i++) {
+        if (relY < cumY[i + 1]) return i;
+      }
+      return cumY.length - 2;
+    }
+
     // Clic zone vide du canvas → nouvelle résa (desk résolu depuis X)
     el.querySelectorAll('.cv-col-canvas').forEach(canvas => {
       canvas.addEventListener('click', (e) => {
@@ -1171,8 +1235,8 @@ const CAL = {
         const rect    = canvas.getBoundingClientRect();
         const relY    = e.clientY - rect.top;
         const relX    = e.clientX - rect.left;
-        const slotIdx = Math.max(0, Math.floor(relY / ROW_H));
-        if (slotIdx >= slots.length) return;
+        const slotIdx = _slotIdxFromY(canvas, relY);
+        if (slotIdx < 0 || slotIdx >= slots.length) return;
 
         const localId  = parseInt(canvas.dataset.local);
         const deskList = DB.getLocalDesks(localId);
@@ -1279,7 +1343,17 @@ const CAL = {
 
       const rect = td.getBoundingClientRect();
       const relY = e.clientY - rect.top;
-      const slotIdx = Math.max(0, Math.floor(relY / ROW_H));
+      // Résolution du slot via cumY (hauteurs dynamiques)
+      const cumY = (table.dataset.cumY || '').split(',').map(Number);
+      let slotIdx = -1;
+      if (cumY.length >= 2) {
+        for (let i = 0; i < cumY.length - 1; i++) {
+          if (relY < cumY[i + 1]) { slotIdx = i; break; }
+        }
+        if (slotIdx < 0) slotIdx = cumY.length - 2;
+      } else {
+        slotIdx = Math.max(0, Math.floor(relY / ROW_H));
+      }
       if (slotIdx < 0) return null;
 
       // Résolution du desk depuis la coord X
@@ -1296,7 +1370,7 @@ const CAL = {
         left = (idx / N) * 100;
         widthPct = 100 / N;
       }
-      return { slot: slotIdx, local: td.dataset.local, desk: deskId, td, left, widthPct };
+      return { slot: slotIdx, local: td.dataset.local, desk: deskId, td, left, widthPct, cumY };
     }
 
     // ── dragover ────────────────────────────────────────────────────
@@ -1311,10 +1385,14 @@ const CAL = {
       if (!hit) return;
 
       // Ghost overlay : rectangle absolu dans la sous-lane cible
+      // Utilise cumY pour gérer les hauteurs de ligne dynamiques
       const ghost = document.createElement('div');
       ghost.className = 'dnd-ghost';
-      ghost.style.top    = (hit.slot * ROW_H) + 'px';
-      ghost.style.height = (self._dnd.span * ROW_H) + 'px';
+      const cumY = hit.cumY;
+      const startY = cumY[hit.slot] ?? hit.slot * ROW_H;
+      const endY   = cumY[hit.slot + self._dnd.span] ?? (hit.slot + self._dnd.span) * ROW_H;
+      ghost.style.top    = startY + 'px';
+      ghost.style.height = (endY - startY) + 'px';
       ghost.style.left   = hit.left + '%';
       ghost.style.width  = hit.widthPct + '%';
       hit.td.appendChild(ghost);
@@ -1448,9 +1526,11 @@ const CAL = {
       const newEndSlot  = Math.max(_rz.startSlot, targetSlot);
       if (newEndSlot === _rz.curEndSlot) return;
       _rz.curEndSlot = newEndSlot;
-      // Preview : redimensionner le bloc en direct
-      const newSpan = _rz.curEndSlot - _rz.startSlot + 1;
-      _rz.block.style.height = (newSpan * ROW_H) + 'px';
+      // Preview : redimensionner le bloc en direct via cumY
+      const cumY = (table.dataset.cumY || '').split(',').map(Number);
+      const startY = cumY[_rz.startSlot] ?? _rz.startSlot * ROW_H;
+      const endY   = cumY[_rz.curEndSlot + 1] ?? (_rz.curEndSlot + 1) * ROW_H;
+      _rz.block.style.height = (endY - startY) + 'px';
     };
 
     self._resizeUpFn = async e => {

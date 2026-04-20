@@ -766,15 +766,21 @@ body {
   min-width: 100%;
 }
 .cv-day-table-new .loc-hd { width: 140px; position: relative; }
-.cv-day-table-new .tc,
-.cv-day-table-new .cv-cell {
-  height: var(--row-h, 36px);
-  min-height: var(--row-h, 36px);
-  max-height: var(--row-h, 36px);
+/* Compact : hauteurs de lignes lockées à 36px.
+   Complet : hauteurs de lignes dynamiques via inline style sur <tr>. */
+.cv-day-table-new.is-compact .tc,
+.cv-day-table-new.is-compact .cv-cell {
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
   box-sizing: border-box;
 }
-.cv-day-table-new .my-agenda-cell {
+.cv-day-table-new.is-compact .my-agenda-cell {
   overflow: hidden;
+}
+.cv-day-table-new.is-complete .cv-cell {
+  box-sizing: border-box;
+  vertical-align: top;
 }
 
 /* Canvas par local : un seul <td rowspan="total"> contenant les résas absolues */
@@ -784,17 +790,18 @@ body {
   border-left: 1px solid #e2e8f0;
   vertical-align: top;
   cursor: pointer;
-  /* Grille de fond : ligne toutes les --row-h */
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent calc(var(--row-h, 36px) - 1px),
-      #edf2f7 calc(var(--row-h, 36px) - 1px),
-      #edf2f7 var(--row-h, 36px)
-    );
 }
 .cv-col-canvas:hover { background-color: rgba(232, 244, 253, .35); }
+
+/* Dividers horizontaux entre slots (émis dynamiquement à chaque cumY) */
+.slot-divider {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: #edf2f7;
+  pointer-events: none;
+  z-index: 0;
+}
 
 /* Bloc réservation absolu dans le canvas */
 .resa-block {
