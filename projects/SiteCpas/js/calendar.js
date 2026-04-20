@@ -385,6 +385,9 @@ const CAL = {
     })() : '';
 
     let h = absBanner;
+    // Wrapper qui adopte la largeur du contenu (>= viewport) pour que la
+    // datebar et l'entête sticky s'étendent sur toute la zone scrollable.
+    h += '<div class="cv-day-wrapper">';
     h += `<div class="cv-day-datebar${isToday ? ' is-today' : ''}${myAbs ? ' has-abs' : ''}">
       ${dateLabel}
       ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
@@ -574,6 +577,7 @@ const CAL = {
     });
 
     h += '</tbody></table>';
+    h += '</div>'; // .cv-day-wrapper
     el.innerHTML = h;
     this._bindNew(el, d);
     this._bindDndNew(el, d);

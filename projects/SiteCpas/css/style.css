@@ -755,6 +755,12 @@ body {
 }
 
 /* ── NOUVELLE vue jour : largeur auto + scroll X ─────────────────── */
+/* Wrapper qui partage la largeur max-content entre datebar + table,
+   pour que la barre bleue de date s'étende sur toute la zone scrollable. */
+.cv-day-wrapper {
+  width: max-content;
+  min-width: 100%;
+}
 .cv-day-table-new {
   width: max-content;
   min-width: 100%;
