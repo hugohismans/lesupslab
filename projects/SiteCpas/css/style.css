@@ -835,12 +835,16 @@ body {
 }
 
 /* Header local sur 2 lignes si le local a des desks : nom + sub-labels desk */
+.cv-day-table-new .loc-hd {
+  vertical-align: top;
+  padding: .5rem 0 0 0;
+}
 .cv-day-table-new .loc-hd.has-desks {
-  padding: .3rem 0 0 0;
+  padding: .5rem 0 0 0;
 }
 .loc-hd-name {
   text-align: center;
-  padding: 0 .2rem .25rem;
+  padding: 0 .2rem .4rem;
 }
 .loc-hd-desks {
   display: flex;
@@ -861,6 +865,14 @@ body {
   white-space: nowrap;
 }
 .loc-hd-desk:last-child { border-right: none; }
+
+/* Placeholder vide pour aligner la hauteur des headers sans desks
+   sur ceux qui ont des desks (évite l'espace vertical superflu). */
+.loc-hd-desks-empty {
+  height: 22px;   /* ≈ hauteur d'une ligne .loc-hd-desks peuplée */
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
 
 /* Poignée de redimensionnement largeur colonne (Phase 5) */
 .cv-day-table-new .loc-hd { position: relative; }

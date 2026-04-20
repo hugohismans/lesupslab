@@ -400,6 +400,10 @@ const CAL = {
     h += '<table class="cv-day-table cv-day-table-new"><thead><tr>';
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
+    // Y a-t-il au moins un local avec des desks ? Si oui, on émet une
+    // sous-ligne (desks OU placeholder vide) pour que toutes les cellules
+    // de thead aient la même hauteur — évite l'espace superflu visuel.
+    const anyHasDesks = displayLocals.some(l => l.deskList.length >= 2);
     displayLocals.forEach(l => {
       const N = l.deskList.length;
       let subLabels = '';
@@ -407,6 +411,9 @@ const CAL = {
         subLabels = '<div class="loc-hd-desks">' +
           l.deskList.map(did => `<span class="loc-hd-desk" title="${escapeHtml(DB.getDeskLabel(did))}">${escapeHtml(DB.getDeskLabel(did))}</span>`).join('') +
           '</div>';
+      } else if (anyHasDesks) {
+        // Placeholder pour aligner la hauteur avec les locaux qui ont des desks
+        subLabels = '<div class="loc-hd-desks loc-hd-desks-empty"></div>';
       }
       // Mode zoom : largeur = max(stockée, N × defaultColW) pour donner ~defaultColW par desk lane
       let w = colWidths[l.localId] || this._defaultColW;
