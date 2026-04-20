@@ -16,6 +16,15 @@ const CAL = {
   _rowHeight: 36,      // hauteur d'une ligne de slot (doit matcher .cv-cell { height })
   _defaultColW: 140,   // largeur par défaut d'une colonne locale (new layout)
   _colWidthsKey: 'cpas_day_col_widths',   // clé localStorage
+  _compactKey:   'cpas_day_compact',       // clé localStorage pour vue compacte
+  get _compactMode() {
+    try { return localStorage.getItem(this._compactKey) === '1'; }
+    catch (_) { return false; }
+  },
+  set _compactMode(v) {
+    try { localStorage.setItem(this._compactKey, v ? '1' : '0'); }
+    catch (_) {}
+  },
 
   _getColWidths() {
     try { return JSON.parse(localStorage.getItem(this._colWidthsKey) || '{}'); }
@@ -321,6 +330,7 @@ const CAL = {
     const total = slots.length;
     const ROW_H = this._rowHeight || 36;
     const myKey = sessionStorage.getItem('cpas_current_agent_key');
+    const compactMode = this._compactMode;
 
     // ── Locaux à afficher (1 colonne par local) ────────────────────
     const allLocals = CONFIG.LOCALS.map(localId => ({
@@ -391,6 +401,10 @@ const CAL = {
     h += `<div class="cv-day-datebar${isToday ? ' is-today' : ''}${myAbs ? ' has-abs' : ''}">
       ${dateLabel}
       ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
+      <button class="cv-compact-toggle${compactMode ? ' is-active' : ''}" id="calCompactToggle" type="button"
+        title="Basculer entre vue compacte et vue complète">
+        ${compactMode ? '📋 Vue complète' : '📐 Vue compacte'}
+      </button>
     </div>`;
 
     // ── Table ──────────────────────────────────────────────────────
@@ -503,20 +517,51 @@ const CAL = {
           ? Object.keys(r.invitedAgents).map(k => DB.getAgentsWithKeys().find(a => a.key === k)?.name || k).join(', ')
           : '';
 
+        // Deux rendus possibles : complet (défaut) ou compact (via toggle)
+        let innerHtml;
+        if (compactMode) {
+          // Tooltip complet sur hover en mode compact
+          const tooltipParts = [
+            svcs.join(' + '),
+            agtFmt,
+            `${startH} – ${endH}${isRec ? ` (${recLabel})` : ''}`,
+            comment && !isRdv ? `💬 ${comment}` : '',
+            invitedNames ? `👥 ${invitedNames}` : '',
+          ].filter(Boolean);
+          const tooltip = tooltipParts.join('\n');
+          const metaBits = [];
+          if (agtFmt) metaBits.push(`<span class="resa-agent">${escapeHtml(agtFmt)}</span>`);
+          metaBits.push(`<span class="resa-time">${startH}–${endH}</span>`);
+          if (isRec) metaBits.push(`<span class="resa-rec">↻ ${recLabel}</span>`);
+          innerHtml = `<span class="ct ct-drag" draggable="true"
+              data-id="${r.id}" data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}"
+              data-occ-date="${isoDate(r._start)}" data-is-rec="${isRec ? '1' : '0'}"
+              title="${escapeHtml(tooltip)}">
+              <div class="resa-svc">${svcs.map(s => escapeHtml(s)).join(' + ')}</div>
+              <div class="resa-meta">${metaBits.join(' · ')}</div>
+              ${!isRdv && comment ? `<div class="resa-extra resa-comment">💬 ${escapeHtml(comment)}</div>` : ''}
+              ${invitedNames ? `<div class="resa-extra resa-invited">👥 ${escapeHtml(invitedNames)}</div>` : ''}
+            </span>
+            <div class="ct-resize" title="Étirer la réservation"></div>`;
+        } else {
+          // Rendu complet (verbose) — chaque info sur sa ligne
+          innerHtml = `<span class="ct ct-drag" draggable="true"
+              data-id="${r.id}" data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}"
+              data-occ-date="${isoDate(r._start)}" data-is-rec="${isRec ? '1' : '0'}">
+              ${svcs.map(s => `<b>${escapeHtml(s)}</b>`).join('<br>')}
+              <br><small>${agtFmt}</small><br>
+              <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
+              ${!isRdv && comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
+              ${invitedNames ? `<small class="ct-invited" title="Agents invités : ${escapeHtml(invitedNames)}">👥 ${escapeHtml(invitedNames)}</small>` : ''}
+            </span>
+            <div class="ct-resize" title="Étirer la réservation"></div>`;
+        }
+
         blocksByLocal[l.localId] += `<div class="resa-block is-booked${isRec ? ' is-rec' : ''}${isInvited ? ' is-invited' : ''}${isRdv ? ' is-rdv' : ''}"
           style="top:${top}px;height:${heightPx}px;left:${left}%;width:${widthPct}%;${colorStyle}"
           data-id="${r.id}" data-occ="${r._occDate || ''}" data-act="detail" data-type="${r.type || ''}"
           data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}" data-occ-date="${isoDate(r._start)}">
-          <span class="ct ct-drag" draggable="true"
-            data-id="${r.id}" data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}"
-            data-occ-date="${isoDate(r._start)}" data-is-rec="${isRec ? '1' : '0'}">
-            ${svcs.map(s => `<b>${escapeHtml(s)}</b>`).join('<br>')}
-            <br><small>${agtFmt}</small><br>
-            <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
-            ${!isRdv && comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
-            ${invitedNames ? `<small class="ct-invited" title="Agents invités : ${escapeHtml(invitedNames)}">👥 ${escapeHtml(invitedNames)}</small>` : ''}
-          </span>
-          <div class="ct-resize" title="Étirer la réservation"></div>
+          ${innerHtml}
         </div>`;
       });
     });
@@ -1105,6 +1150,16 @@ const CAL = {
     const self = this;
     const ROW_H = this._rowHeight || 36;
     const slots = getSlots();
+
+    // Toggle compact / complet
+    const compactBtn = el.querySelector('#calCompactToggle');
+    if (compactBtn) {
+      compactBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        self._compactMode = !self._compactMode;
+        self.render();
+      });
+    }
 
     // Clic zone vide du canvas → nouvelle résa (desk résolu depuis X)
     el.querySelectorAll('.cv-col-canvas').forEach(canvas => {
