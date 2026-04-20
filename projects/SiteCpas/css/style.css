@@ -768,11 +768,13 @@ body {
 .cv-day-table-new .loc-hd { width: 140px; position: relative; }
 .cv-day-table-new .tc,
 .cv-day-table-new .cv-cell {
-  min-height: 36px; max-height: 36px;
+  height: var(--row-h, 36px);
+  min-height: var(--row-h, 36px);
+  max-height: var(--row-h, 36px);
   box-sizing: border-box;
 }
 .cv-day-table-new .my-agenda-cell {
-  max-height: 36px; overflow: hidden;
+  overflow: hidden;
 }
 
 /* Canvas par local : un seul <td rowspan="total"> contenant les résas absolues */

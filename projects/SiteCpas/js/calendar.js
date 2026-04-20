@@ -328,9 +328,11 @@ const CAL = {
     const occs  = DB.getInRange(dS, dE);
     const slots = getSlots();
     const total = slots.length;
-    const ROW_H = this._rowHeight || 36;
     const myKey = sessionStorage.getItem('cpas_current_agent_key');
     const compactMode = this._compactMode;
+    // Hauteur de ligne : serrée en compact (36px), plus épaisse en complet
+    // pour que même les résas 30min affichent le détail complet.
+    const ROW_H = compactMode ? 36 : 72;
 
     // ── Locaux à afficher (1 colonne par local) ────────────────────
     const allLocals = CONFIG.LOCALS.map(localId => ({
@@ -411,7 +413,7 @@ const CAL = {
     // Largeurs personnalisées (localStorage) — Phase 5
     const colWidths = this._getColWidths();
 
-    h += '<table class="cv-day-table cv-day-table-new"><thead><tr>';
+    h += `<table class="cv-day-table cv-day-table-new ${compactMode ? 'is-compact' : 'is-complete'}" style="--row-h:${ROW_H}px"><thead><tr>`;
     h += '<th class="tc-hd"></th>';
     if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
     // Y a-t-il au moins un local avec des desks ? Si oui, on émet une
