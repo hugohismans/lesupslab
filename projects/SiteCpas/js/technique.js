@@ -34,7 +34,8 @@
     _allThemes:   [],  // snapshot thèmes
 
     init() {
-      // Charger la config Firebase (agents, thèmes, lieux, rôles, perms…)
+      // Initialiser Firebase database + DB._db avant d'attaquer les listeners
+      DB.init();
       DB.initConfig();
       DB.listenRequests();
 
