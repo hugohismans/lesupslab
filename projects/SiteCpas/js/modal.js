@@ -2770,6 +2770,15 @@ function openTechIssueModal() {
   if (g('techIssueDesc'))   g('techIssueDesc').value  = '';
   if (g('techIssueLocal'))  g('techIssueLocal').value = '';
   if (g('techIssueUrgent')) g('techIssueUrgent').checked = false;
+  if (g('techIssueTheme'))  g('techIssueTheme').value = '';
+  if (g('techIssueRecurring')) {
+    g('techIssueRecurring').checked = false;
+    g('techIssueRecurFields')?.classList.add('hidden');
+  }
+  if (g('techIssueRecurInterval')) g('techIssueRecurInterval').value = '1';
+  if (g('techIssueRecurUnit'))     g('techIssueRecurUnit').value = 'months';
+  if (g('techIssueRecurUntil'))    g('techIssueRecurUntil').value = '';
+  if (g('techIssueRecurPreview'))  g('techIssueRecurPreview').textContent = '';
 
   // Auto-remplir le bureau depuis la session
   const myKey  = sessionStorage.getItem('cpas_current_agent_key');
@@ -2930,10 +2939,48 @@ function _initTechIssueModal() {
     setTimeout(() => localSuggest?.classList.add('hidden'), 150);
   });
 
+  // ── Populate select thème ────────────────────────────────────
+  const themeSel = g('techIssueTheme');
+  function _populateThemes() {
+    if (!themeSel) return;
+    const themes = DB.getTechThemes();
+    themeSel.innerHTML = '<option value="">— Non précisé —</option>' +
+      themes.map(t => `<option value="${t.id}">${escapeHtml(t.label)}</option>`).join('');
+  }
+  _populateThemes();
+  // Re-populate à chaque ouverture (au cas où l'admin a modifié entre-temps)
+  DB.onConfigChange?.(_populateThemes);
+
+  // ── Récurrence : toggle + live preview ──────────────────────
+  const recurCb     = g('techIssueRecurring');
+  const recurFields = g('techIssueRecurFields');
+  const recurInt    = g('techIssueRecurInterval');
+  const recurUnit   = g('techIssueRecurUnit');
+  const recurUntil  = g('techIssueRecurUntil');
+  const recurPrev   = g('techIssueRecurPreview');
+  function _updateRecurPreview() {
+    if (!recurPrev) return;
+    if (!recurCb?.checked) { recurPrev.textContent = ''; return; }
+    const n = parseInt(recurInt?.value, 10) || 1;
+    const unitMap = { days: 'jour', weeks: 'semaine', months: 'mois' };
+    const unit = recurUnit?.value || 'months';
+    const unitLabel = unitMap[unit] + (n > 1 && unit !== 'months' ? 's' : '');
+    const untilStr  = recurUntil?.value
+      ? ` jusqu'au ${new Date(recurUntil.value).toLocaleDateString('fr-BE', { day: '2-digit', month: 'long', year: 'numeric' })}`
+      : ' (sans date de fin)';
+    recurPrev.textContent = `Cette requête se régénérera tous les ${n} ${unitLabel}${untilStr}.`;
+  }
+  recurCb?.addEventListener('change', () => {
+    recurFields?.classList.toggle('hidden', !recurCb.checked);
+    _updateRecurPreview();
+  });
+  [recurInt, recurUnit, recurUntil].forEach(el => el?.addEventListener('input', _updateRecurPreview));
+
   g('techIssueSendBtn')?.addEventListener('click', async () => {
     const desc    = g('techIssueDesc')?.value.trim();
     const local   = g('techIssueLocal')?.value.trim() || null;
     const urgent  = g('techIssueUrgent')?.checked || false;
+    const themeId = g('techIssueTheme')?.value || null;
     if (!desc) { g('techIssueDesc')?.focus(); return; }
 
     // Résoudre les rôles cochés → clés d'agents
@@ -2955,12 +3002,27 @@ function _initTechIssueModal() {
     const myKey  = sessionStorage.getItem('cpas_current_agent_key');
     const myName = DB.getAgentsWithKeys().find(a => a.key === myKey)?.name || 'Un agent';
 
+    // Récurrence (si cochée)
+    let recurrence = null;
+    if (recurCb?.checked) {
+      const interval = Math.max(1, parseInt(recurInt?.value, 10) || 1);
+      const unit     = recurUnit?.value || 'months';
+      const untilStr = recurUntil?.value || null;
+      recurrence = {
+        interval,
+        unit,
+        until: untilStr ? new Date(untilStr).getTime() : null,
+      };
+    }
+
     // Créer le ticket dans requests/ (vue Interventions)
     const requestId = await DB.createRequest({
       type:          _tiCurrentType,
       description:   desc,
       local,
       urgent,
+      themeId,
+      recurrence,
       fromAgentKey:  myKey,
       fromAgentName: myName,
     });

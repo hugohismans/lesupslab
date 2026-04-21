@@ -1649,6 +1649,14 @@
         </div>
       </div>
 
+      <!-- Thème (optionnel mais vivement recommandé pour les stats) -->
+      <div>
+        <label class="form-label">Thème <span style="color:#94a3b8;font-weight:normal;font-size:.8rem">(pour les statistiques)</span></label>
+        <select id="techIssueTheme" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.55rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+          <option value="">— Non précisé —</option>
+        </select>
+      </div>
+
       <!-- Description -->
       <div>
         <label class="form-label">Description <span style="color:#ef4444">*</span></label>
@@ -1674,6 +1682,31 @@
         <input type="checkbox" id="techIssueUrgent" style="width:1.1rem;height:1.1rem;accent-color:#ef4444">
         <span style="font-size:.88rem;color:#e2e8f0">🚨 Marquer comme <strong>urgent</strong></span>
       </label>
+
+      <!-- Récurrence -->
+      <div style="border-top:1px solid #1e293b;padding-top:.75rem">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
+          <input type="checkbox" id="techIssueRecurring" style="width:1.1rem;height:1.1rem;accent-color:#f59e0b">
+          <span style="font-size:.88rem;color:#e2e8f0">↻ Requête <strong>récurrente</strong> (se régénère automatiquement)</span>
+        </label>
+        <div id="techIssueRecurFields" class="hidden" style="margin-top:.6rem;padding:.75rem;background:#0f172a;border:1.5px solid #334155;border-radius:8px;display:flex;flex-direction:column;gap:.6rem">
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <span style="font-size:.85rem;color:#94a3b8">Tous les</span>
+            <input type="number" id="techIssueRecurInterval" min="1" max="365" value="1" style="width:70px;border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem">
+            <select id="techIssueRecurUnit" style="border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+              <option value="days">jour(s)</option>
+              <option value="weeks">semaine(s)</option>
+              <option value="months" selected>mois</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <span style="font-size:.85rem;color:#94a3b8">Jusqu'au</span>
+            <input type="date" id="techIssueRecurUntil" style="border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+            <span style="font-size:.8rem;color:#64748b">(optionnel — laisse vide pour sans fin)</span>
+          </div>
+          <div id="techIssueRecurPreview" style="font-size:.8rem;color:#f59e0b;font-style:italic"></div>
+        </div>
+      </div>
 
     </div>
     <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem">
