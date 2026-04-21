@@ -459,7 +459,13 @@ const CAL = {
 
     h += `<table class="cv-day-table cv-day-table-new ${compactMode ? 'is-compact' : 'is-complete'}" style="--row-h:${ROW_H}px" data-cum-y="${cumY.join(',')}"><thead><tr>`;
     h += '<th class="tc-hd"></th>';
-    if (myAgentName) h += '<th class="loc-hd my-agenda-hd">👤 Mon agenda</th>';
+    if (myAgentName) {
+      const anyHasDesksForMA = displayLocals.some(l => l.deskList.length >= 2);
+      h += `<th class="loc-hd my-agenda-hd">
+        <div class="loc-hd-name">👤 Mon agenda</div>
+        ${anyHasDesksForMA ? '<div class="loc-hd-desks loc-hd-desks-empty"></div>' : ''}
+      </th>`;
+    }
     // Y a-t-il au moins un local avec des desks ? Si oui, on émet une
     // sous-ligne (desks OU placeholder vide) pour que toutes les cellules
     // de thead aient la même hauteur — évite l'espace superflu visuel.
