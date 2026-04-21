@@ -2547,6 +2547,15 @@ select.field-input { cursor: pointer; }
   transition: all .15s;
 }
 .btn-interventions:hover { background: #134e4a; color: #99f6e4; }
+/* Bouton Espace Responsable technique (même style que Interventions, teinte ambrée) */
+.btn-tech-space {
+  display: inline-flex; align-items: center;
+  padding: .38rem .85rem; border-radius: 8px;
+  border: 1.5px solid #b45309; background: #451a03; color: #fcd34d;
+  font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.btn-tech-space:hover { background: #78350f; color: #fde68a; }
 .req-badge {
   position: absolute; top: -5px; right: -5px;
   background: #ef4444; color: #fff; border-radius: 999px;
