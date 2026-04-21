@@ -933,6 +933,7 @@
           <a class="st-sidenav-link" data-target="stSectLocalisation">📍 Localisation</a>
           <div class="st-sidenav-sep">Sécurité & Système</div>
           <a class="st-sidenav-link" data-target="stSectPermissions">🔐 Rôles & Droits</a>
+          <a class="st-sidenav-link" data-target="stSectTechThemes">🏷️ Thèmes techniques</a>
           <a class="st-sidenav-link" data-target="stSectAbsences">📅 Absences</a>
           <a class="st-sidenav-link" data-target="stSectNotifs">🔔 Notifications</a>
           <a class="st-sidenav-link" data-target="stSectFin">🌙 Fin de journée</a>
@@ -1233,10 +1234,23 @@
                 <option value="__chef_service__">Intro : Chef de service</option>
                 <option value="__direction__">Intro : Direction</option>
                 <option value="__technicien__">Intro : Technicien</option>
+                <option value="__responsable_technique__">Intro : Responsable technique</option>
                 <option value="__entretien__">Intro : Entretien</option>
                 <option value="__juriste__">Intro : Juriste</option>
               </select>
               <button class="btn-primary" id="stPermRoleAdd">Créer</button>
+            </div>
+          </div>
+
+          <!-- Thèmes d'intervention technique -->
+          <div class="st-section-anchor" id="stSectTechThemes"></div>
+          <h3 class="st-title" style="margin-top:1.25rem">🏷️ Thèmes d'intervention technique</h3>
+          <div class="st-admin-section" id="stTechThemesSection">
+            <p class="st-perm-intro">Catégories pour typer les requêtes techniques (chauffage, plomberie, électricité…). Utilisées pour les statistiques du responsable technique.</p>
+            <div id="stTechThemesList" class="tech-themes-list"></div>
+            <div class="st-add" style="margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stTechThemeInput" placeholder="Nouveau thème..." style="flex:1;min-width:180px">
+              <button class="btn-primary" id="stTechThemeAdd">+ Ajouter</button>
             </div>
           </div>
 
@@ -1253,6 +1267,7 @@
                 <option value="__accueil__">🌟 Accueil</option>
                 <option value="__agent__">🎉 Agent</option>
                 <option value="__technicien__">🔧 Technicien·ne</option>
+                <option value="__responsable_technique__">🛠️ Responsable technique</option>
                 <option value="__entretien__">🌿 Entretien</option>
                 <option value="__juriste__">⚖️ Juriste</option>
               </select>

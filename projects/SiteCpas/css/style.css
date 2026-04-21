@@ -3755,6 +3755,34 @@ select.field-input { cursor: pointer; }
 }
 .perm-agent-role-sel:focus { outline: none; border-color: #2a6496; }
 
+/* ── Thèmes d'intervention technique ────────────────────────────── */
+.tech-themes-list {
+  display: flex; flex-direction: column; gap: .45rem;
+}
+.tech-theme-row {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem .5rem; border-radius: 8px;
+  background: #f8fafc; border: 1.5px solid #e2e8f0;
+}
+.tech-theme-name {
+  flex: 1; font-size: .85rem; padding: .35rem .55rem;
+  border: 1.5px solid #e2e8f0; border-radius: 6px;
+  background: #fff; color: #1e293b;
+}
+.tech-theme-name:focus { outline: none; border-color: #2a6496; }
+.tech-theme-row .btn-sm {
+  padding: .3rem .65rem; font-size: .78rem; border-radius: 6px;
+  border: 1.5px solid #e2e8f0; background: #fff; cursor: pointer;
+  font-weight: 600;
+}
+.tech-theme-row .btn-sm:hover { background: #eef4fb; border-color: #2563eb; }
+.tech-theme-row .btn-sm.btn-danger {
+  border-color: #fecaca; color: #dc2626;
+}
+.tech-theme-row .btn-sm.btn-danger:hover {
+  background: #fef2f2; border-color: #ef4444;
+}
+
 /* ── Cartes de rôle ─────────────────────────────────────────────── */
 .perm-roles-list {
   display: flex; flex-direction: column; gap: .75rem;

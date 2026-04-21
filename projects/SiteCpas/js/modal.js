@@ -1039,6 +1039,9 @@ const MODAL = {
     // ── Rôles & Permissions ────────────────────────────────────────
     if (isAdmin) this._renderPermRoles();
 
+    // ── Thèmes d'intervention technique ────────────────────────────
+    if (isAdmin) this._renderTechThemes();
+
     // ── Réinitialisation des mots de passe ─────────────────────────
     const pwdList = g('stAgentPasswordList');
     if (isAdmin && pwdList) {
@@ -1208,6 +1211,63 @@ const MODAL = {
         addBtn.disabled = false;
         showToast('Rôle créé ✓');
         this._renderPermRoles();
+      });
+    }
+  },
+
+  // ─── Thèmes d'intervention technique (admin) ──────────────────────
+  _renderTechThemes() {
+    const container = g('stTechThemesList');
+    if (!container) return;
+    const themes = DB.getTechThemes();
+    if (!themes.length) {
+      container.innerHTML = '<p class="st-empty">Aucun thème. Ajoutez-en un ci-dessous.</p>';
+    } else {
+      container.innerHTML = themes.map(t => `
+        <div class="tech-theme-row" data-id="${t.id}">
+          <input type="text" class="tech-theme-name" value="${escapeHtml(t.label)}" data-orig="${escapeHtml(t.label)}">
+          <button class="btn-sm tech-theme-save" data-id="${t.id}">Renommer</button>
+          <button class="btn-sm btn-danger tech-theme-del" data-id="${t.id}" data-name="${escapeHtml(t.label)}">Supprimer</button>
+        </div>
+      `).join('');
+    }
+    // Renommer
+    container.querySelectorAll('.tech-theme-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const row   = btn.closest('.tech-theme-row');
+        const id    = btn.dataset.id;
+        const input = row.querySelector('.tech-theme-name');
+        const newLabel = (input?.value || '').trim();
+        const origLabel = input?.dataset.orig || '';
+        if (!newLabel || newLabel === origLabel) return;
+        await DB.setTechThemeLabel(id, newLabel);
+        showToast('Thème renommé ✓');
+        this._renderTechThemes();
+      }));
+    });
+    // Supprimer
+    container.querySelectorAll('.tech-theme-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer le thème "${name}" ?\nLes requêtes qui l'utilisaient passeront en "Thème supprimé".`)) return;
+        await DB.removeTechTheme(id);
+        showToast('Thème supprimé ✓');
+        this._renderTechThemes();
+      }));
+    });
+    // Ajouter
+    const addBtn = g('stTechThemeAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const input = g('stTechThemeInput');
+        const label = (input?.value || '').trim();
+        if (!label) return;
+        addBtn.disabled = true;
+        await DB.addTechTheme(label);
+        if (input) input.value = '';
+        addBtn.disabled = false;
+        showToast('Thème ajouté ✓');
+        this._renderTechThemes();
       });
     }
   },
