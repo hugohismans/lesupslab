@@ -223,7 +223,7 @@
   <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
     <span class="hs-patchnote-sparkle">✨</span>
     <span class="hs-patchnote-text">
-      <span class="hs-patchnote-tag">Patch note v1.3.0</span>
+      <span class="hs-patchnote-tag">Patch note v1.4.0</span>
       <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
     </span>
     <span class="hs-patchnote-arrow">→</span>
@@ -233,12 +233,34 @@
   <div class="modal-overlay hidden" id="patchnoteModal">
     <div class="modal-box patchnote-box">
       <div class="modal-header">
-        <span class="modal-title">✨ Patch note v1.3.0 — 21 avril 2026</span>
+        <span class="modal-title">✨ Patch note v1.4.0 — 22 avril 2026</span>
         <button class="modal-close" id="patchnoteClose">✕</button>
       </div>
       <div class="modal-body patchnote-body">
         <div class="pn-section">
-          <div class="pn-section-title">📅 Refonte de la vue Jour</div>
+          <div class="pn-section-title">🛠️ Nouveau : Espace Responsable technique</div>
+          <ul class="pn-list">
+            <li><b>Nouveau rôle "Responsable technique"</b> disponible dans la gestion des rôles — il supervise les requêtes techniques et accède à une page dédiée avec des statistiques détaillées.</li>
+            <li><b>Thèmes d'intervention</b> : chaque requête technique peut maintenant être catégorisée (Chauffage/Chaudière, Plomberie, Électricité, Serrurerie, Menuiserie, Peinture, Informatique, Mobilier, Sécurité/Alarme, Espaces verts, Nettoyage, Autre). L'admin peut ajouter/renommer/supprimer des thèmes dans Paramètres → 🏷️ Thèmes techniques.</li>
+            <li><b>Requêtes récurrentes</b> : à la création d'une requête, coche "↻ Requête récurrente" pour la faire régénérer automatiquement tous les X jours / semaines / mois, avec date de fin optionnelle. Pratique pour les entretiens périodiques (ex: vérification chaudière tous les 6 mois).</li>
+            <li><b>Page <code>/technique.html</code></b> accessible via le bouton <b>🛠️ Espace technique</b> du header (visible pour le Responsable technique et l'admin). Contient :
+              <ul>
+                <li>4 KPIs : total requêtes, ouvertes, temps moyen de résolution, top thème.</li>
+                <li>Graphe temporel des créations sur la période.</li>
+                <li>Répartition par thème, par statut, top 10 locaux, charge par agent.</li>
+                <li>Requêtes en retard (ouvertes depuis > 7 jours).</li>
+                <li>Séries récurrentes actives avec prochaine occurrence.</li>
+                <li>Timeline des dernières requêtes.</li>
+                <li>Barre de recherche universelle + filtres période/statut.</li>
+                <li>Export CSV en un clic.</li>
+              </ul>
+            </li>
+            <li><b>Badges dans le panneau Interventions</b> : chaque requête affiche son thème 🏷️ et un badge ↻ pour les récurrentes. Bouton <b>🏷️ Catégoriser</b> pour tagger les anciennes requêtes. Boutons <b>Voir la série</b> / <b>Arrêter la série</b> pour les templates récurrents.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">📅 Refonte de la vue Jour (rappel v1.3.0)</div>
           <ul class="pn-list">
             <li><b>Une colonne par local</b> (au lieu d'une par desk). Les locaux avec plusieurs desks affichent ceux-ci en <b>sous-lanes côte à côte</b> : une résa sur un desk occupe 1/N de la largeur de la colonne du local.</li>
             <li><b>Toggle « Vue compacte / Vue complète »</b> (bouton dans la barre de date, à droite) :
