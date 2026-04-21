@@ -906,9 +906,17 @@ body {
   background: #eef4fb;
 }
 .cv-day-table-new .loc-hd.has-desks { padding: 0; }
-/* Spécificité boostée : .my-agenda-hd doit garder son fond bleu foncé */
+/* Spécificité boostée : .my-agenda-hd doit garder son fond bleu foncé ET largeur fixe */
 .cv-day-table-new .loc-hd.my-agenda-hd {
   background: #1e3a5f !important;
+  width: 190px !important;
+  min-width: 190px;
+  max-width: 190px;
+}
+.cv-day-table-new .my-agenda-cell {
+  width: 190px !important;
+  min-width: 190px;
+  max-width: 190px;
 }
 .loc-hd-name {
   text-align: center;
