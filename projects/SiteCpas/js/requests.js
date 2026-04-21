@@ -32,9 +32,16 @@ const REQUESTS = {
     DB.onConfigChange(() => { _resolveRole(); });
 
     DB.listenRequests();
+    let _schedulerRan = false;
     DB.onRequestChange(() => {
       this._updateBadge();
       if (this._panelOpen) this._render();
+      // Scheduler des récurrences : une seule fois après le 1er snapshot
+      // (DB.runRecurringRequestsScheduler a son propre throttle 5min).
+      if (!_schedulerRan) {
+        _schedulerRan = true;
+        DB.runRecurringRequestsScheduler?.().catch(e => console.warn('[recurring scheduler]', e));
+      }
     });
 
     // Bouton header
