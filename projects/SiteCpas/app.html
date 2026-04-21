@@ -222,7 +222,7 @@
   <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
     <span class="hs-patchnote-sparkle">✨</span>
     <span class="hs-patchnote-text">
-      <span class="hs-patchnote-tag">Patch note v1.2.2</span>
+      <span class="hs-patchnote-tag">Patch note v1.3.0</span>
       <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
     </span>
     <span class="hs-patchnote-arrow">→</span>
@@ -232,14 +232,40 @@
   <div class="modal-overlay hidden" id="patchnoteModal">
     <div class="modal-box patchnote-box">
       <div class="modal-header">
-        <span class="modal-title">✨ Patch note v1.2.2 — 19 avril 2026</span>
+        <span class="modal-title">✨ Patch note v1.3.0 — 21 avril 2026</span>
         <button class="modal-close" id="patchnoteClose">✕</button>
       </div>
       <div class="modal-body patchnote-body">
         <div class="pn-section">
-          <div class="pn-section-title">🧹 Nouveau : Vider un local en un clic (accueil)</div>
+          <div class="pn-section-title">📅 Refonte de la vue Jour</div>
           <ul class="pn-list">
-            <li>Nouveau bouton flottant <b>🧹 en bas à gauche</b> pour l'agent d'accueil (et admin / chef de service).</li>
+            <li><b>Une colonne par local</b> (au lieu d'une par desk). Les locaux avec plusieurs desks affichent ceux-ci en <b>sous-lanes côte à côte</b> : une résa sur un desk occupe 1/N de la largeur de la colonne du local.</li>
+            <li><b>Toggle « Vue compacte / Vue complète »</b> (bouton dans la barre de date, à droite) :
+              <ul>
+                <li><b>Compacte</b> — lignes à 36px, contenu condensé (svc + agent · heure).</li>
+                <li><b>Complète</b> — <b>hauteurs de ligne dynamiques</b> : une ligne vide reste à 36px, mais s'épaissit automatiquement pour afficher tous les détails d'une résa (service, agent, heure, commentaire, invités) — même sur 30 minutes.</li>
+              </ul>
+              Ton choix est mémorisé par navigateur.
+            </li>
+            <li><b>Largeur des colonnes ajustable</b> — survole la bordure droite d'un header de local puis glisse pour redimensionner ; double-clic pour revenir à 140px. Les largeurs sont persistées localement.</li>
+            <li><b>Scroll horizontal automatique</b> quand il y a beaucoup de locaux — le tableau dépasse, la barre de date et les entêtes suivent.</li>
+            <li><b>Mode zoom</b> — clique sur un toggle « Local X » au-dessus du calendrier pour zoomer sur un seul local : sa colonne s'élargit pour laisser ~140px par desk-lane. Badge 🔍 sur le header.</li>
+            <li><b>Colonne « 👤 Mon agenda »</b> — largeur fixe, toujours accrochée à gauche à côté de la colonne des heures, peu importe le lieu sélectionné.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">✍️ Widget « Partir en mission » — commentaire sans limite</div>
+          <ul class="pn-list">
+            <li>Le champ « Destination / motif » n'est <b>plus limité à 80 caractères</b>. Écris autant que tu veux.</li>
+            <li>La zone <b>s'étire en hauteur</b> au fur et à mesure que tu tapes (multi-ligne).</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🧹 Vider un local en un clic (rappel v1.2.2)</div>
+          <ul class="pn-list">
+            <li>Bouton flottant <b>🧹 en bas à gauche</b> pour l'agent d'accueil (et admin / chef de service).</li>
             <li>Un clic ouvre la liste de tous les locaux groupés par lieu, avec <b>les agents actuellement déclarés</b> dans chacun.</li>
             <li>Sélectionne un local → confirmation → <b>toute la présence est retirée</b>, le bureau est fermé et la file locale remise à zéro.</li>
             <li>Pratique quand quelqu'un a oublié de quitter son bureau ou pour faire le ménage rapidement.</li>
