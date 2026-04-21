@@ -2616,11 +2616,27 @@ select.field-input { cursor: pointer; }
   background: #7f1d1d; color: #fca5a5; font-size: .7rem; font-weight: 700;
   border-radius: 5px; padding: .1rem .4rem;
 }
+.req-recur-badge {
+  background: #78350f; color: #fcd34d; font-size: .7rem; font-weight: 700;
+  border-radius: 5px; padding: .1rem .4rem;
+}
+.req-recur-badge.req-recur-occ {
+  background: #1e293b; color: #94a3b8; font-weight: 600;
+}
 .req-card-body { display: flex; flex-direction: column; gap: .25rem; }
 .req-desc      { color: #cbd5e1; font-size: .85rem; margin: 0; white-space: pre-wrap; }
 .req-meta      { display: flex; gap: .5rem; flex-wrap: wrap; }
 .req-local     { color: #94a3b8; font-size: .78rem; }
 .req-assigned  { color: #6ee7b7; font-size: .78rem; }
+.req-theme-badge {
+  font-size: .7rem; font-weight: 700;
+  background: #1e40af; color: #bfdbfe;
+  border-radius: 5px; padding: .1rem .4rem;
+}
+.req-theme-badge.req-theme-none {
+  background: #334155; color: #94a3b8;
+  font-weight: 600;
+}
 .req-del-btn {
   margin-left: auto; background: none; border: none; color: #ef4444;
   font-size: .85rem; cursor: pointer; opacity: .6; padding: .1rem .3rem;
