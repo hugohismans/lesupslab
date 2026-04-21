@@ -2341,9 +2341,20 @@ function _renderMissionWidget(agentKey) {
     });
   } else {
     el.innerHTML = `
-      <input class="hs-mission-input" id="hsMissionComment" type="text"
-        placeholder="Destination / motif (optionnel)" maxlength="80">
+      <textarea class="hs-mission-input" id="hsMissionComment"
+        placeholder="Destination / motif (optionnel — tu peux écrire autant que tu veux)"
+        rows="1"></textarea>
       <button class="hs-mission-go-btn" id="hsMissionGoBtn">🚗 Partir en mission</button>`;
+    // Auto-grow : la textarea s'étend verticalement au fur et à mesure qu'on tape
+    const _missionTa = document.getElementById('hsMissionComment');
+    if (_missionTa) {
+      const _autoGrow = () => {
+        _missionTa.style.height = 'auto';
+        _missionTa.style.height = _missionTa.scrollHeight + 'px';
+      };
+      _missionTa.addEventListener('input', _autoGrow);
+      _autoGrow();
+    }
     document.getElementById('hsMissionGoBtn')?.addEventListener('click', async () => {
       const openLocal = DB.getOpenBureauForCurrentAgent();
       const boLocal   = DB.getFeature('enableBackoffice') ? DB.getAgentCurrentPresenceLocal() : null;

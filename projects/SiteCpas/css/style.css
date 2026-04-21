@@ -4490,11 +4490,18 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 }
 
 /* ── Mission widget ─────────────────────────────────────────────── */
-.hs-mission-body { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.hs-mission-body { display: flex; align-items: flex-start; gap: .75rem; flex-wrap: wrap; }
 .hs-mission-input {
   flex: 1; min-width: 180px; padding: .45rem .7rem; border-radius: 8px;
   border: 1px solid #e2e8f0; font-size: .9rem; color: #1e293b;
   outline: none; transition: border-color .15s;
+  /* Textarea : auto-grow via JS (scrollHeight), pas de limite haute */
+  resize: vertical;
+  min-height: 2.3rem;
+  line-height: 1.4;
+  font-family: inherit;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .hs-mission-input:focus { border-color: #6366f1; }
 .hs-mission-go-btn {
