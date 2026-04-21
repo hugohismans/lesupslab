@@ -761,9 +761,12 @@ body {
   width: max-content;
   min-width: 100%;
 }
+/* La table prend sa largeur naturelle (somme des colonnes déclarées).
+   Pas de min-width 100% — sinon les colonnes se redistribueraient l'espace
+   extra et les largeurs fixes (Mon agenda 190px, locaux 140px) seraient
+   agrandies proportionnellement. */
 .cv-day-table-new {
   width: max-content;
-  min-width: 100%;
 }
 .cv-day-table-new .loc-hd { width: 140px; position: relative; }
 /* Compact : hauteurs de lignes lockées à 36px.
