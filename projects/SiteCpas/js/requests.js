@@ -380,7 +380,9 @@ const REQUESTS = {
     const comments = r.comments ? Object.entries(r.comments)
       .sort(([, a], [, b]) => a.createdAt - b.createdAt)
       .map(([, c]) => {
-        const ct = new Date(c.createdAt).toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        const cd = new Date(c.createdAt);
+        const ct = cd.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' }) + ' ' +
+                   cd.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
         return `<div class="req-comment"><span class="req-comment-author">${escapeHtml(c.agentName || '?')}</span> <span class="req-comment-time">${ct}</span><p class="req-comment-text">${escapeHtml(c.text)}</p></div>`;
       }).join('') : '';
 
