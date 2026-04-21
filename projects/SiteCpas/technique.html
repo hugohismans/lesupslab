@@ -57,6 +57,23 @@
     .tq-search:focus { border-color: #f59e0b; }
     .tq-search-icon { position: absolute; top: 50%; left: .75rem; transform: translateY(-50%); color: #94a3b8; pointer-events: none; }
 
+    /* ── Suggestions dropdown ────────────────────────────────── */
+    .tq-suggest {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 360px; overflow-y: auto;
+      z-index: 50;
+    }
+    .tq-suggest-group { padding: .35rem .6rem; font-size: .68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .tq-suggest-item {
+      padding: .5rem .8rem; font-size: .88rem; color: #1e293b; cursor: pointer;
+      display: flex; align-items: center; gap: .5rem; transition: background .1s;
+    }
+    .tq-suggest-item:hover, .tq-suggest-item.active { background: #fef3c7; color: #b45309; }
+    .tq-suggest-ico { font-size: 1rem; width: 1.2rem; text-align: center; }
+    .tq-suggest-count { margin-left: auto; font-size: .75rem; color: #94a3b8; font-weight: 700; }
+    .tq-suggest-empty { padding: .8rem; color: #94a3b8; font-size: .85rem; font-style: italic; text-align: center; }
+
     .tq-filter-group { display: flex; gap: .35rem; flex-wrap: wrap; }
     .tq-filter-btn {
       padding: .4rem .8rem; background: #f1f5f9; border: 1.5px solid transparent;
@@ -208,7 +225,8 @@
   <div class="tq-toolbar">
     <div class="tq-search-wrap">
       <span class="tq-search-icon">🔍</span>
-      <input type="text" id="tqSearch" class="tq-search" placeholder="Rechercher : local, description, agent, thème…">
+      <input type="text" id="tqSearch" class="tq-search" placeholder="Rechercher : local, description, agent, thème…" autocomplete="off">
+      <div id="tqSuggest" class="tq-suggest hidden"></div>
     </div>
     <div class="tq-filter-group" id="tqPeriodFilter">
       <button class="tq-filter-btn" data-period="7">7 jours</button>

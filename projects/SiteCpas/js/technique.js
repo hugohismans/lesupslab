@@ -109,17 +109,167 @@
           this._search = searchEl.value.trim().toLowerCase();
           this.render();
         }, 250);
+        this._renderSuggestions(searchEl.value);
       });
+      searchEl?.addEventListener('focus', () => this._renderSuggestions(searchEl.value));
+      searchEl?.addEventListener('blur', () => {
+        // petite latence pour permettre le clic sur l'item
+        setTimeout(() => document.getElementById('tqSuggest')?.classList.add('hidden'), 150);
+      });
+      searchEl?.addEventListener('keydown', e => this._handleSearchKeydown(e));
       document.getElementById('tqExportBtn')?.addEventListener('click', () => this.exportCSV());
     },
 
-    // Filtre de base : période + statut + recherche textuelle
+    _suggestHighlight: -1,
+
+    _renderSuggestions(query) {
+      const box = document.getElementById('tqSuggest');
+      if (!box) return;
+      const q = (query || '').toLowerCase().trim();
+      this._suggestHighlight = -1;
+
+      const reqs = Object.values(this._allRequests || {});
+
+      // Collecter les candidats uniques et leur count (occurrences dans les requêtes)
+      const countBy = (getter) => {
+        const m = {};
+        reqs.forEach(r => {
+          const v = getter(r);
+          if (v) m[v] = (m[v] || 0) + 1;
+        });
+        return m;
+      };
+      const locaux = countBy(r => r.local);
+      const themes = countBy(r => r.themeId ? DB.getTechThemeLabel(r.themeId) : null);
+      const agents = {};
+      reqs.forEach(r => {
+        if (r.fromAgentName)     agents[r.fromAgentName]     = (agents[r.fromAgentName]     || 0) + 1;
+        if (r.assignedToName)    agents[r.assignedToName]    = (agents[r.assignedToName]    || 0) + 1;
+      });
+
+      // Mots-clés rapides
+      const keywords = [
+        { label: 'urgent',      matcher: r => r.urgent,                  icon: '🚨' },
+        { label: 'récurrente',  matcher: r => r.recurrence,              icon: '↻' },
+        { label: 'non catégorisé', matcher: r => !r.themeId,             icon: '🏷️' },
+      ];
+
+      const match = (label) => !q || label.toLowerCase().includes(q);
+
+      const groups = [];
+      const mkGroup = (title, entries, icon) => {
+        if (!entries.length) return;
+        groups.push({ title, entries: entries.slice(0, 8).map(([label, count]) => ({ label, count, icon })) });
+      };
+
+      // Lieux : comptage en agrégeant les requêtes dont le local appartient au lieu
+      const lieuxObj = DB.getLieux?.() || {};
+      const lieuCounts = [];
+      Object.values(lieuxObj).forEach(lieu => {
+        if (!lieu.name) return;
+        const labels = (lieu.localIds || []).map(id => (DB.getLocalLabel(id) || '').toLowerCase());
+        const count = reqs.filter(r => {
+          if (!r.local) return false;
+          const rl = r.local.toLowerCase();
+          return labels.some(l => rl === l || rl.includes(l));
+        }).length;
+        if (count > 0 || match(lieu.name)) {
+          lieuCounts.push([lieu.name, count]);
+        }
+      });
+
+      mkGroup('Lieux',
+        lieuCounts.filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]),
+        '🏢');
+      mkGroup('Locaux',
+        Object.entries(locaux).filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]),
+        '📍');
+      mkGroup('Thèmes',
+        Object.entries(themes).filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]),
+        '🏷️');
+      mkGroup('Agents',
+        Object.entries(agents).filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]),
+        '👤');
+
+      // Mots-clés
+      const keywordItems = keywords
+        .filter(k => match(k.label))
+        .map(k => ({ label: k.label, icon: k.icon, count: reqs.filter(k.matcher).length }))
+        .filter(k => k.count > 0);
+      if (keywordItems.length) groups.push({ title: 'Filtres rapides', entries: keywordItems });
+
+      if (!groups.length) {
+        box.innerHTML = `<div class="tq-suggest-empty">Tape un local, un thème, un agent ou un mot-clé…</div>`;
+      } else {
+        box.innerHTML = groups.map(g => `
+          <div class="tq-suggest-group">${g.title}</div>
+          ${g.entries.map(e => `
+            <div class="tq-suggest-item" data-val="${e.label.replace(/"/g, '&quot;')}">
+              <span class="tq-suggest-ico">${e.icon}</span>
+              <span>${escapeHtml(e.label)}</span>
+              <span class="tq-suggest-count">${e.count}</span>
+            </div>`).join('')}
+        `).join('');
+      }
+      box.classList.remove('hidden');
+      box.querySelectorAll('.tq-suggest-item').forEach(it => {
+        it.addEventListener('mousedown', ev => {
+          ev.preventDefault();
+          this._applySuggestion(it.dataset.val);
+        });
+      });
+    },
+
+    _applySuggestion(value) {
+      const input = document.getElementById('tqSearch');
+      if (input) input.value = value;
+      this._search = value.toLowerCase();
+      document.getElementById('tqSuggest')?.classList.add('hidden');
+      this.render();
+    },
+
+    _handleSearchKeydown(e) {
+      const box = document.getElementById('tqSuggest');
+      const items = box?.querySelectorAll('.tq-suggest-item');
+      if (!items?.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this._suggestHighlight = Math.min(this._suggestHighlight + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('active', i === this._suggestHighlight));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this._suggestHighlight = Math.max(this._suggestHighlight - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('active', i === this._suggestHighlight));
+      } else if (e.key === 'Enter' && this._suggestHighlight >= 0) {
+        e.preventDefault();
+        this._applySuggestion(items[this._suggestHighlight].dataset.val);
+      } else if (e.key === 'Escape') {
+        box?.classList.add('hidden');
+      }
+    },
+
+    // Filtre de base : période + statut + recherche textuelle (inclut lieux)
     _filtered() {
       const now = Date.now();
       const periodMs = this._period === 'all' ? Infinity : this._period * 24 * 3600 * 1000;
       const cutoff = this._period === 'all' ? 0 : now - periodMs;
       const q = this._search;
       const reqs = this._allRequests || {};
+
+      // Si q matche un nom de lieu → on étend la recherche aux locaux de ce lieu.
+      const lieuLocalLabels = [];
+      if (q) {
+        const lieux = DB.getLieux?.() || {};
+        Object.values(lieux).forEach(lieu => {
+          if (lieu.name && lieu.name.toLowerCase().includes(q)) {
+            (lieu.localIds || []).forEach(id => {
+              const lbl = DB.getLocalLabel(id);
+              if (lbl) lieuLocalLabels.push(lbl.toLowerCase());
+            });
+          }
+        });
+      }
+
       return Object.entries(reqs)
         .map(([id, r]) => ({ id, ...r }))
         .filter(r => {
@@ -133,7 +283,13 @@
             r.assignedToName || '',
             DB.getTechThemeLabel?.(r.themeId) || '',
           ].join(' ').toLowerCase();
-          return hay.includes(q);
+          if (hay.includes(q)) return true;
+          // Match via lieu : si le local de la requête correspond à un local du lieu matché
+          if (lieuLocalLabels.length && r.local) {
+            const rLocal = r.local.toLowerCase();
+            if (lieuLocalLabels.some(l => rLocal === l || rLocal.includes(l))) return true;
+          }
+          return false;
         })
         .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     },
