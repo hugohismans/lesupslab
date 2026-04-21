@@ -10,7 +10,7 @@ const ORG_ID = (() => {
   if (param) return param;
   // Priorité 2 : premier segment de l'URL (prod)
   const parts = window.location.pathname.split('/').filter(Boolean);
-  const skip  = ['projects', 'SiteCpas', 'app.html', 'public.html', 'vuepublic.html', 'index.html', 'migrate.html', 'welcome.html', 'superadmin.html', 'rdv.html'];
+  const skip  = ['projects', 'SiteCpas', 'app.html', 'public.html', 'vuepublic.html', 'index.html', 'migrate.html', 'welcome.html', 'superadmin.html', 'rdv.html', 'technique.html'];
   const first = parts[0];
   return (first && !skip.includes(first)) ? first : 'cpas-quaregnon';
 })();

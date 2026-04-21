@@ -80,6 +80,7 @@ const DB = {
         ticketDisplay:   d.ticketDisplay   || {},
         localDesks:  d.localDesks  || {},   // { [localId]: { [deskId]: true } }
         deskLabels:  d.deskLabels  || {},   // { [deskId]: "Desk A" }
+        techThemes:  d.techThemes  || {},   // { [themeId]: { label, order } }
       };
 
       // Charger les lieux triés par order
@@ -1611,22 +1612,45 @@ const DB = {
   onRequestChange(fn) { this._requestCbs.push(fn); },
   getRequests()       { return this._requests; },
 
-  async createRequest({ type, description, local, urgent, fromAgentKey, fromAgentName }) {
+  async createRequest({ type, description, local, urgent, fromAgentKey, fromAgentName, themeId, recurrence }) {
     const id = `req_${Date.now()}`;
-    await this._ref(`requests/${id}`).set({
+    const payload = {
       type:         type || 'technique',
       description,
       local:        local || null,
       urgent:       urgent ? true : null,
       fromAgentKey: fromAgentKey || null,
       fromAgentName: fromAgentName || null,
+      themeId:      themeId || null,
       status:       'open',
       assignedTo:   null,
       assignedToName: null,
       assignedAt:   null,
       createdAt:    Date.now(),
-    });
+    };
+    // Récurrence : la première occurrence est aussi le "template".
+    // templateId = id de la première occurrence. Toutes les occurrences suivantes
+    // hériteront du même templateId pour retrouver la série.
+    if (recurrence && recurrence.unit && recurrence.interval > 0) {
+      payload.recurrence = {
+        unit:       recurrence.unit,       // 'days' | 'weeks' | 'months'
+        interval:   recurrence.interval,   // entier > 0
+        until:      recurrence.until || null,
+        templateId: id,                    // cette première occurrence est le template
+        nextAt:     this._computeNextAt(Date.now(), recurrence.unit, recurrence.interval),
+      };
+    }
+    await this._ref(`requests/${id}`).set(payload);
     return id;
+  },
+
+  // Calcule le prochain timestamp selon unit + interval.
+  _computeNextAt(fromMs, unit, interval) {
+    const d = new Date(fromMs);
+    if (unit === 'days')   d.setDate(d.getDate() + interval);
+    if (unit === 'weeks')  d.setDate(d.getDate() + interval * 7);
+    if (unit === 'months') d.setMonth(d.getMonth() + interval);
+    return d.getTime();
   },
 
   async claimRequest(requestId) {
@@ -1667,6 +1691,130 @@ const DB = {
 
   async deleteRequest(requestId) {
     await this._ref(`requests/${requestId}`).remove();
+  },
+
+  // ── Thèmes d'intervention technique ──────────────────────────────
+  getTechThemes() {
+    const themes = this._config.techThemes || {};
+    return Object.entries(themes)
+      .map(([id, t]) => ({ id, label: t.label || '', order: t.order ?? 999 }))
+      .sort((a, b) => a.order - b.order);
+  },
+  getTechThemeLabel(themeId) {
+    if (!themeId) return 'Non catégorisé';
+    return this._config.techThemes?.[themeId]?.label || 'Thème supprimé';
+  },
+  async addTechTheme(label) {
+    const existing = this.getTechThemes();
+    const maxOrder = existing.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
+    const ref = await this._ref('appConfig/techThemes').push({
+      label: label.trim() || 'Thème',
+      order: maxOrder + 1,
+    });
+    return ref.key;
+  },
+  async setTechThemeLabel(themeId, label) {
+    await this._ref(`appConfig/techThemes/${themeId}/label`).set(label.trim() || 'Thème');
+  },
+  async removeTechTheme(themeId) {
+    await this._ref(`appConfig/techThemes/${themeId}`).remove();
+    // Les requêtes gardent leur themeId mais celui-ci pointe vers rien → affiché "Thème supprimé".
+    // On ne cascade pas pour préserver l'historique.
+  },
+  async setRequestTheme(requestId, themeId) {
+    await this._ref(`requests/${requestId}/themeId`).set(themeId || null);
+  },
+
+  // ── Récurrence requête : gestion de série ────────────────────────
+  // Retourne toutes les requêtes d'une série (partagent le même templateId).
+  getRequestsInSeries(templateId) {
+    if (!templateId) return [];
+    return Object.entries(this._requests || {})
+      .filter(([, r]) => r.recurrence?.templateId === templateId)
+      .map(([id, r]) => ({ id, ...r }))
+      .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  },
+  // Arrête la série : met until = now sur le template (plus de nouvelles occurrences).
+  async stopRequestSeries(templateId) {
+    if (!templateId) return;
+    await this._ref(`requests/${templateId}/recurrence/until`).set(Date.now());
+  },
+  // Modifie les paramètres de récurrence d'une série.
+  async updateRequestRecurrence(templateId, { unit, interval, until }) {
+    const updates = {};
+    if (unit     !== undefined) updates[`requests/${templateId}/recurrence/unit`]     = unit;
+    if (interval !== undefined) updates[`requests/${templateId}/recurrence/interval`] = interval;
+    if (until    !== undefined) updates[`requests/${templateId}/recurrence/until`]    = until || null;
+    // Recalculer nextAt depuis le dernier createdAt de la série + nouveau interval
+    if ((unit !== undefined || interval !== undefined)) {
+      const series  = this.getRequestsInSeries(templateId);
+      const latest  = series.reduce((m, r) => Math.max(m, r.createdAt || 0), 0) || Date.now();
+      const u = unit ?? this._requests[templateId]?.recurrence?.unit;
+      const i = interval ?? this._requests[templateId]?.recurrence?.interval;
+      updates[`requests/${templateId}/recurrence/nextAt`] = this._computeNextAt(latest, u, i);
+    }
+    if (Object.keys(updates).length) await this._update(updates);
+  },
+
+  // Scheduler : génère les occurrences dues pour toutes les séries.
+  // Appelé au démarrage de l'app (protégé par throttle localStorage 5min).
+  async runRecurringRequestsScheduler() {
+    const THROTTLE_KEY = 'cpas_rec_sched_last';
+    const now = Date.now();
+    try {
+      const last = parseInt(localStorage.getItem(THROTTLE_KEY) || '0', 10);
+      if (now - last < 5 * 60 * 1000) return; // déjà tourné il y a < 5 min
+      localStorage.setItem(THROTTLE_KEY, String(now));
+    } catch (_) {}
+
+    // Regroupe par templateId : on ne traite que le template (1ère occurrence) de chaque série.
+    const templates = Object.entries(this._requests || {})
+      .filter(([id, r]) => r.recurrence?.templateId === id);  // template = celui dont templateId = son propre id
+
+    let createdCount = 0;
+    const MAX_PER_RUN = 50;
+
+    for (const [tplId, tpl] of templates) {
+      const rec = tpl.recurrence;
+      if (!rec) continue;
+      // Série terminée
+      if (rec.until && rec.nextAt && rec.nextAt > rec.until) continue;
+      // Pas encore due
+      if (!rec.nextAt || rec.nextAt > now) continue;
+
+      let cursor = rec.nextAt;
+      while (cursor <= now && createdCount < MAX_PER_RUN) {
+        if (rec.until && cursor > rec.until) break;
+        // Anti-duplicata : vérifier qu'il n'existe pas déjà une occurrence pour ce jour
+        const cursorDay = isoDate(new Date(cursor));
+        const dup = Object.values(this._requests).some(r =>
+          r.recurrence?.templateId === tplId && isoDate(new Date(r.createdAt)) === cursorDay
+        );
+        if (!dup) {
+          const newId = `req_${cursor}_${Math.random().toString(36).slice(2, 6)}`;
+          const nextCursorAt = this._computeNextAt(cursor, rec.unit, rec.interval);
+          await this._ref(`requests/${newId}`).set({
+            type:          tpl.type || 'technique',
+            description:   tpl.description,
+            local:         tpl.local || null,
+            urgent:        tpl.urgent || null,
+            fromAgentKey:  tpl.fromAgentKey || null,
+            fromAgentName: tpl.fromAgentName || null,
+            themeId:       tpl.themeId || null,
+            status:        'open',
+            assignedTo:    null,
+            assignedToName: null,
+            assignedAt:    null,
+            createdAt:     cursor,
+            recurrence:    { templateId: tplId }, // occurrence-enfant, pas un template
+          });
+          createdCount++;
+        }
+        cursor = this._computeNextAt(cursor, rec.unit, rec.interval);
+      }
+      // MAJ nextAt sur le template
+      await this._ref(`requests/${tplId}/recurrence/nextAt`).set(cursor);
+    }
   },
 
   // Fin de journée — vider tous les bureaux et présences backoffice
@@ -1902,6 +2050,8 @@ const DB = {
     { key: 'panicDemo',         label: 'Démo du bouton panique (formation) 🧪' },
     { key: 'kickFromLocal',        label: 'Retirer un agent de son local (kick)' },
     { key: 'canAnnounceArrival',   label: 'Prévenir les collègues à l\'arrivée (modal mascotte)' },
+    { key: 'viewTechAnalytics',    label: 'Accès à l\'espace Responsable technique (stats requêtes) 🔧' },
+    { key: 'manageTechRequests',   label: 'Gérer les requêtes techniques (assigner, changer le statut, commenter)' },
   ],
 
   // Rôles par défaut utilisés si aucun rôle n'est défini dans Firebase
@@ -1913,7 +2063,8 @@ const DB = {
                inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:true,
-               managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true, panicDemo:true },
+               managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true, panicDemo:true,
+               viewTechAnalytics:true, manageTechRequests:true },
     },
     '__direction__': {
       // Vue complète + analytics, pas de gestion opérationnelle directe
@@ -1963,7 +2114,17 @@ const DB = {
       perms: { createReservation:false, editReservation:false, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
+               viewTechAnalytics:false, manageTechRequests:true },
+    },
+    '__responsable_technique__': {
+      // Responsable technique : supervise les requêtes tech, accède aux stats
+      name: 'Responsable technique', color: '#f59e0b', isBuiltin: true,
+      perms: { createReservation:false, editReservation:false, deleteReservation:false,
+               inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
+               managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:true,
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
+               viewTechAnalytics:true, manageTechRequests:true },
     },
     '__entretien__': {
       // Agent d'entretien : accès minimal, juste voir la présence et les messages
@@ -1971,7 +2132,8 @@ const DB = {
       perms: { createReservation:false, editReservation:false, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
+               viewTechAnalytics:false, manageTechRequests:true },
     },
     '__juriste__': {
       // Juriste : gère ses RDV, consulte l'équipe, pas de gestion file
@@ -2100,6 +2262,26 @@ const DB = {
       const localIds = {};
       [1, 2, 3, 4, 5, 6, 7].forEach(id => { localIds[id] = true; });
       updates[`appConfig/lieux/${lieuId}`] = { name: 'CPAS', order: 0, localIds };
+    }
+    // Thèmes d'intervention technique — seed si pas encore de thèmes
+    if (!d.techThemes) {
+      const defaultThemes = [
+        'Chauffage / Chaudière',
+        'Plomberie (évier, toilette, fuite)',
+        'Électricité',
+        'Serrurerie / Clés',
+        'Menuiserie (porte, fenêtre, meuble)',
+        'Peinture / Revêtement',
+        'Nettoyage ponctuel',
+        'Informatique / Réseau',
+        'Mobilier',
+        'Sécurité / Alarme',
+        'Espaces verts',
+        'Autre',
+      ];
+      defaultThemes.forEach((label, i) => {
+        updates[`appConfig/techThemes/${genId()}`] = { label, order: i };
+      });
     }
 
     // Activer les modules principaux par défaut si pas encore définis (vérification individuelle)

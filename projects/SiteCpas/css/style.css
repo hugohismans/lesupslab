@@ -754,6 +754,263 @@ body {
   border-collapse: collapse;
 }
 
+/* ── NOUVELLE vue jour : largeur auto + scroll X ─────────────────── */
+/* Wrapper qui partage la largeur max-content entre datebar + table,
+   pour que la barre bleue de date s'étende sur toute la zone scrollable. */
+.cv-day-wrapper {
+  width: max-content;
+  min-width: 100%;
+}
+/* La table prend sa largeur naturelle (somme des colonnes déclarées).
+   Pas de min-width 100% — sinon les colonnes se redistribueraient l'espace
+   extra et les largeurs fixes (Mon agenda 190px, locaux 140px) seraient
+   agrandies proportionnellement. */
+.cv-day-table-new {
+  width: max-content;
+}
+.cv-day-table-new .loc-hd { width: 140px; position: relative; }
+/* Compact : hauteurs de lignes lockées à 36px.
+   Complet : hauteurs de lignes dynamiques via inline style sur <tr>. */
+.cv-day-table-new.is-compact .tc,
+.cv-day-table-new.is-compact .cv-cell {
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  box-sizing: border-box;
+}
+.cv-day-table-new.is-compact .my-agenda-cell {
+  overflow: hidden;
+}
+.cv-day-table-new.is-complete .cv-cell {
+  box-sizing: border-box;
+  vertical-align: top;
+}
+
+/* Canvas par local : un seul <td rowspan="total"> contenant les résas absolues */
+.cv-col-canvas {
+  position: relative;
+  padding: 0;
+  border-left: 1px solid #e2e8f0;
+  vertical-align: top;
+  cursor: pointer;
+}
+.cv-col-canvas:hover { background-color: rgba(232, 244, 253, .35); }
+
+/* Dividers horizontaux entre slots (émis dynamiquement à chaque cumY) */
+.slot-divider {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1px;
+  background: #edf2f7;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Bloc réservation absolu dans le canvas */
+.resa-block {
+  position: absolute;
+  box-sizing: border-box;
+  padding: .35rem .4rem;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: 2px;
+  background: #dbeafe;
+  border-left: 3px solid #2a6496;
+  transition: filter .1s;
+  font-size: .72rem; line-height: 1.35; color: #1e293b;
+}
+
+/* ─── Vue compacte (toggle) ───────────────────────────────────── */
+.resa-block .resa-svc {
+  font-weight: 700;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.resa-block .resa-meta {
+  font-size: .6rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+  margin-top: 1px;
+}
+.resa-block .resa-meta .resa-agent { color: #475569; font-weight: 600; }
+.resa-block .resa-meta .resa-time  { color: #94a3b8; white-space: nowrap; }
+.resa-block .resa-meta .resa-rec   { color: #0284c7; font-weight: 600; }
+.resa-block .resa-extra {
+  font-size: .55rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+  margin-top: 1px;
+}
+.resa-block .resa-invited { color: #6d28d9; }
+
+/* Bouton toggle vue compacte / complète */
+.cv-compact-toggle {
+  margin-left: auto;
+  padding: .3rem .7rem;
+  font-size: .75rem;
+  font-weight: 700;
+  background: #fff;
+  color: #1a3a5c;
+  border: 1.5px solid #c9d4e0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .12s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.cv-compact-toggle:hover { background: #eef4fb; border-color: #2563eb; color: #2563eb; }
+.cv-compact-toggle.is-active { background: #2563eb; color: #fff; border-color: #2563eb; }
+.resa-block.is-rec     { background: #e0f2fe; border-left-color: #0284c7; }
+.resa-block.is-perm    { background: #ede9fe; border-left: 3px solid #7c3aed; }
+.resa-block.is-invited { box-shadow: inset 3px 0 0 #8b5cf6; }
+.resa-block:hover      { filter: brightness(.94); }
+.resa-block.dnd-dragging { opacity: .35; }
+.resa-block.ct-resizing  { outline: 2px dashed #2563eb; outline-offset: -2px; }
+
+/* Dividers entre sous-lanes desk */
+.desk-lane-divider {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  background: #e2e8f0;
+  pointer-events: none;
+  z-index: 1;
+}
+.cv-col-canvas.has-desks .desk-lane-divider {
+  background: repeating-linear-gradient(
+    to bottom,
+    #cbd5e1 0,
+    #cbd5e1 3px,
+    transparent 3px,
+    transparent 6px
+  );
+  width: 1px;
+}
+
+/* Header local sur 2 lignes si le local a des desks : nom + sub-labels desk */
+.cv-day-table-new thead th {
+  padding: 0;
+  vertical-align: top;
+  background: #eef4fb;   /* solide — évite que le contenu du tbody montre à travers */
+  min-height: 36px;
+}
+.cv-day-table-new .loc-hd {
+  vertical-align: top;
+  padding: 0;
+  background: #eef4fb;
+}
+.cv-day-table-new .loc-hd.has-desks { padding: 0; }
+/* Spécificité boostée : .my-agenda-hd doit garder son fond bleu foncé ET largeur fixe */
+.cv-day-table-new .loc-hd.my-agenda-hd {
+  background: #1e3a5f !important;
+  width: 190px !important;
+  min-width: 190px;
+  max-width: 190px;
+}
+.cv-day-table-new .my-agenda-cell {
+  width: 190px !important;
+  min-width: 190px;
+  max-width: 190px;
+}
+.loc-hd-name {
+  text-align: center;
+  padding: .25rem .2rem .2rem;
+  line-height: 1.1;
+}
+.loc-hd-desks {
+  display: flex;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  height: 16px;
+}
+.loc-hd-desk {
+  flex: 1 1 0;
+  padding: 1px 2px;
+  font-size: .55rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  border-right: 1px solid #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 14px;
+}
+.loc-hd-desk:last-child { border-right: none; }
+
+/* Placeholder vide pour aligner la hauteur des headers sans desks
+   sur ceux qui ont des desks (évite l'espace vertical superflu). */
+.loc-hd-desks-empty {
+  height: 16px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* tc-hd : fond blanc pour continuer visuellement la colonne time en dessous */
+.cv-day-table-new .tc-hd {
+  background: #fff !important;
+  box-shadow: none;
+}
+
+/* Poignée de redimensionnement largeur colonne (Phase 5) */
+.cv-day-table-new .loc-hd { position: relative; }
+.loc-hd-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 25;
+  background: transparent;
+  transition: background .12s;
+}
+.loc-hd-resize:hover  { background: rgba(59, 130, 246, .35); }
+.loc-hd-resize:active { background: rgba(59, 130, 246, .55); }
+
+/* Indicateur visuel "mode zoom" sur un local */
+.cv-day-table-new .loc-hd.is-zoomed { background: #dbeafe; }
+.cv-day-table-new .loc-hd.is-zoomed .loc-hd-name::before { content: '🔍 '; }
+
+/* Ghost overlay pendant le drag (au-dessus du canvas) */
+.dnd-ghost {
+  position: absolute;
+  background: #bfdbfe88;
+  outline: 2px dashed #2563eb;
+  outline-offset: -2px;
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 2px;
+}
+
+/* Poignée de drag : toute la résa (pas juste le span) */
+.resa-block .ct-drag {
+  cursor: grab; display: block; user-select: none;
+  width: 100%; height: 100%;
+}
+.resa-block .ct-drag:active { cursor: grabbing; }
+
+/* Impression : fallback compact, pas de scroll */
+@media print {
+  .cv-day-table-new {
+    width: 100% !important;
+    table-layout: auto !important;
+    min-width: 0 !important;
+  }
+  .cv-col-canvas { background: none !important; }
+  .resa-block { page-break-inside: avoid; }
+}
+
 /* Bandeau période — commun semaine / mois */
 .cv-period-bar,
 .cv-day-datebar {
@@ -774,10 +1031,24 @@ body {
   letter-spacing: .01em;
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
 }
-.cv-day-datebar.is-today { background: #e8f4fd; color: #1a6496; }
+/* Date du jour affiché (tous les jours, pas juste aujourd'hui) :
+   bien visible en rouge et gros pour que l'agent sache d'un coup
+   d'œil quel jour il consulte. */
+.cv-day-datebar {
+  color: #dc2626;
+  font-size: 1.2rem;
+  letter-spacing: .02em;
+}
+/* Aujourd'hui : fond rose + suffixe '— Aujourd'hui' */
+.cv-day-datebar.is-today {
+  background: #fff5f5;
+  text-shadow: 0 1px 0 rgba(255,255,255,.4);
+}
 .cv-day-datebar.is-today::after {
   content: '— Aujourd\'hui';
-  font-weight: 600; color: #2a6496; font-size: .78rem;
+  font-weight: 700;
+  color: #dc2626;
+  font-size: .95rem;
 }
 
 /* En-tête sticky */
@@ -2276,6 +2547,15 @@ select.field-input { cursor: pointer; }
   transition: all .15s;
 }
 .btn-interventions:hover { background: #134e4a; color: #99f6e4; }
+/* Bouton Espace Responsable technique (même style que Interventions, teinte ambrée) */
+.btn-tech-space {
+  display: inline-flex; align-items: center;
+  padding: .38rem .85rem; border-radius: 8px;
+  border: 1.5px solid #b45309; background: #451a03; color: #fcd34d;
+  font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.btn-tech-space:hover { background: #78350f; color: #fde68a; }
 .req-badge {
   position: absolute; top: -5px; right: -5px;
   background: #ef4444; color: #fff; border-radius: 999px;
@@ -2345,11 +2625,27 @@ select.field-input { cursor: pointer; }
   background: #7f1d1d; color: #fca5a5; font-size: .7rem; font-weight: 700;
   border-radius: 5px; padding: .1rem .4rem;
 }
+.req-recur-badge {
+  background: #78350f; color: #fcd34d; font-size: .7rem; font-weight: 700;
+  border-radius: 5px; padding: .1rem .4rem;
+}
+.req-recur-badge.req-recur-occ {
+  background: #1e293b; color: #94a3b8; font-weight: 600;
+}
 .req-card-body { display: flex; flex-direction: column; gap: .25rem; }
 .req-desc      { color: #cbd5e1; font-size: .85rem; margin: 0; white-space: pre-wrap; }
 .req-meta      { display: flex; gap: .5rem; flex-wrap: wrap; }
 .req-local     { color: #94a3b8; font-size: .78rem; }
 .req-assigned  { color: #6ee7b7; font-size: .78rem; }
+.req-theme-badge {
+  font-size: .7rem; font-weight: 700;
+  background: #1e40af; color: #bfdbfe;
+  border-radius: 5px; padding: .1rem .4rem;
+}
+.req-theme-badge.req-theme-none {
+  background: #334155; color: #94a3b8;
+  font-weight: 600;
+}
 .req-del-btn {
   margin-left: auto; background: none; border: none; color: #ef4444;
   font-size: .85rem; cursor: pointer; opacity: .6; padding: .1rem .3rem;
@@ -3484,6 +3780,34 @@ select.field-input { cursor: pointer; }
 }
 .perm-agent-role-sel:focus { outline: none; border-color: #2a6496; }
 
+/* ── Thèmes d'intervention technique ────────────────────────────── */
+.tech-themes-list {
+  display: flex; flex-direction: column; gap: .45rem;
+}
+.tech-theme-row {
+  display: flex; align-items: center; gap: .5rem;
+  padding: .35rem .5rem; border-radius: 8px;
+  background: #f8fafc; border: 1.5px solid #e2e8f0;
+}
+.tech-theme-name {
+  flex: 1; font-size: .85rem; padding: .35rem .55rem;
+  border: 1.5px solid #e2e8f0; border-radius: 6px;
+  background: #fff; color: #1e293b;
+}
+.tech-theme-name:focus { outline: none; border-color: #2a6496; }
+.tech-theme-row .btn-sm {
+  padding: .3rem .65rem; font-size: .78rem; border-radius: 6px;
+  border: 1.5px solid #e2e8f0; background: #fff; cursor: pointer;
+  font-weight: 600;
+}
+.tech-theme-row .btn-sm:hover { background: #eef4fb; border-color: #2563eb; }
+.tech-theme-row .btn-sm.btn-danger {
+  border-color: #fecaca; color: #dc2626;
+}
+.tech-theme-row .btn-sm.btn-danger:hover {
+  background: #fef2f2; border-color: #ef4444;
+}
+
 /* ── Cartes de rôle ─────────────────────────────────────────────── */
 .perm-roles-list {
   display: flex; flex-direction: column; gap: .75rem;
@@ -4233,11 +4557,18 @@ details[open] .st-advanced-summary::before { transform: rotate(90deg); }
 }
 
 /* ── Mission widget ─────────────────────────────────────────────── */
-.hs-mission-body { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.hs-mission-body { display: flex; align-items: flex-start; gap: .75rem; flex-wrap: wrap; }
 .hs-mission-input {
   flex: 1; min-width: 180px; padding: .45rem .7rem; border-radius: 8px;
   border: 1px solid #e2e8f0; font-size: .9rem; color: #1e293b;
   outline: none; transition: border-color .15s;
+  /* Textarea : auto-grow via JS (scrollHeight), pas de limite haute */
+  resize: vertical;
+  min-height: 2.3rem;
+  line-height: 1.4;
+  font-family: inherit;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .hs-mission-input:focus { border-color: #6366f1; }
 .hs-mission-go-btn {

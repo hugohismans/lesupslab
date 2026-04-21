@@ -12,6 +12,31 @@ const CAL = {
   view: 'day',
   date: new Date(),
   _deskFilter: null,   // null = locaux sans desk | localId = desks de ce local
+  _newDayLayout: true, // feature flag : nouvelle vue jour (1 col/local + desks en sous-lanes)
+  _rowHeight: 36,      // hauteur d'une ligne de slot (doit matcher .cv-cell { height })
+  _defaultColW: 140,   // largeur par défaut d'une colonne locale (new layout)
+  _colWidthsKey: 'cpas_day_col_widths',   // clé localStorage
+  _compactKey:   'cpas_day_compact',       // clé localStorage pour vue compacte
+  get _compactMode() {
+    try { return localStorage.getItem(this._compactKey) === '1'; }
+    catch (_) { return false; }
+  },
+  set _compactMode(v) {
+    try { localStorage.setItem(this._compactKey, v ? '1' : '0'); }
+    catch (_) {}
+  },
+
+  _getColWidths() {
+    try { return JSON.parse(localStorage.getItem(this._colWidthsKey) || '{}'); }
+    catch (_) { return {}; }
+  },
+  _setColWidth(localId, widthPx) {
+    const widths = this._getColWidths();
+    if (widthPx == null) delete widths[localId];
+    else widths[localId] = widthPx;
+    try { localStorage.setItem(this._colWidthsKey, JSON.stringify(widths)); }
+    catch (_) {}
+  },
 
   setView(v) { this.view = v; this.render(); },
 
@@ -55,9 +80,18 @@ const CAL = {
   },
 
   // ─────────────────────────────────────────────────────────────────
-  // VUE JOUR — table avec fusion des créneaux identiques (rowspan)
+  // VUE JOUR — dispatcher (ancienne table vs nouvelle canvas par local)
   // ─────────────────────────────────────────────────────────────────
   _renderDay(el) {
+    if (this._newDayLayout) return this._renderDayNew(el);
+    return this._renderDayOld(el);
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // VUE JOUR — ANCIENNE : table avec 1 colonne par desk, rowspan
+  // (conservée derrière le feature flag pour rollback rapide)
+  // ─────────────────────────────────────────────────────────────────
+  _renderDayOld(el) {
     const d     = this.date;
     const { openHour, closeHour, slotMin: slotMinDay } = DB.getLieuConfig();
     const dS    = new Date(d); dS.setHours(openHour,  0, 0, 0);
@@ -280,6 +314,385 @@ const CAL = {
     this._bindDnd(el, d);
     this._renderNowLine(el, d);
 
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // VUE JOUR — NOUVELLE : 1 colonne par local, résas positionnées en
+  // absolu dans un <td rowspan> canvas. Desks = sous-lanes (Phase 2+).
+  // ─────────────────────────────────────────────────────────────────
+  _renderDayNew(el) {
+    const d     = this.date;
+    const { openHour, closeHour, slotMin: slotMinDay } = DB.getLieuConfig();
+    const dS    = new Date(d); dS.setHours(openHour,  0, 0, 0);
+    const dE    = new Date(d); dE.setHours(closeHour, 0, 0, 0);
+    const occs  = DB.getInRange(dS, dE);
+    const slots = getSlots();
+    const total = slots.length;
+    const myKey = sessionStorage.getItem('cpas_current_agent_key');
+    const compactMode = this._compactMode;
+    const BASE_ROW_H = 36;
+
+    // ── Hauteurs de slot dynamiques (complet) ou uniformes (compact) ──
+    // Compact : chaque slot = 36px.
+    // Complet : chaque slot = max(36, max(content_height / span)) de toutes
+    // les résas qui couvrent le slot. Les lignes sans résa restent à 36px.
+    const slotHeights = new Array(total).fill(BASE_ROW_H);
+    if (!compactMode) {
+      const LINE_H = 16;         // ~ .72rem × 1.35 (line-height)
+      const PADDING_Y = 12;      // padding .35rem × 2 ≈ 11px
+      const EXTRA = 4;           // marge de confort
+      occs.forEach(r => {
+        if (r.isPermanent) return; // couvre tout le jour, pas d'impact per-slot
+        // Trouver startIdx et span
+        let startIdx = -1;
+        for (let j = 0; j < slots.length; j++) {
+          const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+          const jE = new Date(jS.getTime() + slotMinDay * 60000);
+          if (r._start < jE && r._end > jS) { startIdx = j; break; }
+        }
+        if (startIdx === -1) return;
+        let rSpan = 0;
+        for (let j = startIdx; j < slots.length; j++) {
+          const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+          const jE = new Date(jS.getTime() + slotMinDay * 60000);
+          if (r._start < jE && r._end > jS) rSpan++;
+          else break;
+        }
+        rSpan = Math.max(1, rSpan);
+        // Compter les lignes de contenu verbose
+        const isRdv = r.type === 'rendez-vous';
+        const svcsCount = isRdv ? 1 : Math.max(1, DB.getResSvcs(r).length);
+        let lines = svcsCount + 1 /* agent */ + 1 /* heure */;
+        if (r.comment && !isRdv) lines += 1;
+        if (r.invitedAgents && Object.keys(r.invitedAgents).length) lines += 1;
+        const needed = PADDING_Y + lines * LINE_H + EXTRA;
+        const perSlot = Math.ceil(needed / rSpan);
+        for (let s = startIdx; s < startIdx + rSpan; s++) {
+          if (perSlot > slotHeights[s]) slotHeights[s] = perSlot;
+        }
+      });
+    }
+    // Offsets cumulés : cumY[i] = top du slot i, cumY[total] = hauteur canvas
+    const cumY = [0];
+    for (let i = 0; i < total; i++) cumY.push(cumY[i] + slotHeights[i]);
+    const canvasHeight = cumY[total];
+    const ROW_H = BASE_ROW_H; // conservé pour compatibilité (ex: ghost overlay)
+
+    // ── Locaux à afficher (1 colonne par local) ────────────────────
+    const allLocals = CONFIG.LOCALS.map(localId => ({
+      localId,
+      label:    DB.getLocalLabel(localId),
+      deskList: DB.getLocalDesks(localId),    // [] si pas de desks
+    }));
+    // _deskFilter = localId → mode zoom (1 seul local affiché), voir Phase 6
+    if (this._deskFilter && !allLocals.some(l => l.localId === this._deskFilter)) this._deskFilter = null;
+    const displayLocals = this._deskFilter
+      ? allLocals.filter(l => l.localId === this._deskFilter)
+      : allLocals;
+
+    // ── Barre de toggles desk-filter (mode zoom) ───────────────────
+    const filterBar = document.getElementById('deskFilterBar');
+    if (filterBar) {
+      const deskLocals = allLocals.filter(l => l.deskList.length > 0);
+      if (deskLocals.length) {
+        let fb = `<button class="cv-desk-toggle${!this._deskFilter ? ' active' : ''}" data-filter="">Tous les locaux</button>`;
+        deskLocals.forEach(dl => {
+          fb += `<button class="cv-desk-toggle${this._deskFilter === dl.localId ? ' active' : ''}" data-filter="${dl.localId}">${escapeHtml(dl.label)} <small>(${dl.deskList.length})</small></button>`;
+        });
+        filterBar.innerHTML = fb;
+        filterBar.classList.remove('hidden');
+        filterBar.querySelectorAll('.cv-desk-toggle').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const val = btn.dataset.filter;
+            this._deskFilter = val ? parseInt(val) : null;
+            this.render();
+          });
+        });
+      } else {
+        filterBar.innerHTML = '';
+        filterBar.classList.add('hidden');
+      }
+    }
+
+    // ── Colonne "Mon agenda" (inchangée : rowspan par slot) ────────
+    const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
+    const myOccs = myAgentName
+      ? occs.filter(r => !r.isPermanent && (
+          r.agent === myAgentName ||
+          (r.agent === 'Autre' && r.agentCustom === myAgentName) ||
+          (Array.isArray(r.agents) && r.agents.includes(myAgentName))
+        ))
+      : [];
+    const myAgentColor = myAgentName ? DB.getAgentColor(myAgentName) : null;
+    let coveredUntilMe = 0;
+
+    // ── Date bar + absence ─────────────────────────────────────────
+    const dateLabel = d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const isToday   = sameDay(d, new Date());
+    const holidayName = isBelgianHoliday(isoDate(d)) ? getHolidayName(isoDate(d)) : '';
+    const myAbs = _myAbsenceOn(isoDate(d));
+    const absBanner = myAbs ? (() => {
+      const a = myAbs[1];
+      const m = (DB.ABSENCE_MOTIFS && DB.ABSENCE_MOTIFS[a.motif]) || { icon: '📝', label: 'Absence' };
+      return `<div class="cv-abs-banner">
+        <span class="cv-abs-icon">${m.icon}</span>
+        <span class="cv-abs-text">Vous êtes en ${m.label.toLowerCase()} ce jour${a.comment ? ` — ${escapeHtml(a.comment)}` : ''}</span>
+      </div>`;
+    })() : '';
+
+    let h = absBanner;
+    // Wrapper qui adopte la largeur du contenu (>= viewport) pour que la
+    // datebar et l'entête sticky s'étendent sur toute la zone scrollable.
+    h += '<div class="cv-day-wrapper">';
+    h += `<div class="cv-day-datebar${isToday ? ' is-today' : ''}${myAbs ? ' has-abs' : ''}">
+      ${dateLabel}
+      ${holidayName ? `<span class="cv-holiday-badge">🇧🇪 ${holidayName}</span>` : ''}
+      <button class="cv-compact-toggle${compactMode ? ' is-active' : ''}" id="calCompactToggle" type="button"
+        title="Basculer entre vue compacte et vue complète">
+        ${compactMode ? '📋 Vue complète' : '📐 Vue compacte'}
+      </button>
+    </div>`;
+
+    // ── Table ──────────────────────────────────────────────────────
+    // Largeurs personnalisées (localStorage) — Phase 5
+    const colWidths = this._getColWidths();
+
+    h += `<table class="cv-day-table cv-day-table-new ${compactMode ? 'is-compact' : 'is-complete'}" style="--row-h:${ROW_H}px" data-cum-y="${cumY.join(',')}"><thead><tr>`;
+    h += '<th class="tc-hd"></th>';
+    if (myAgentName) {
+      const anyHasDesksForMA = displayLocals.some(l => l.deskList.length >= 2);
+      h += `<th class="loc-hd my-agenda-hd">
+        <div class="loc-hd-name">👤 Mon agenda</div>
+        ${anyHasDesksForMA ? '<div class="loc-hd-desks loc-hd-desks-empty"></div>' : ''}
+      </th>`;
+    }
+    // Y a-t-il au moins un local avec des desks ? Si oui, on émet une
+    // sous-ligne (desks OU placeholder vide) pour que toutes les cellules
+    // de thead aient la même hauteur — évite l'espace superflu visuel.
+    const anyHasDesks = displayLocals.some(l => l.deskList.length >= 2);
+    displayLocals.forEach(l => {
+      const N = l.deskList.length;
+      let subLabels = '';
+      if (N >= 2) {
+        subLabels = '<div class="loc-hd-desks">' +
+          l.deskList.map(did => `<span class="loc-hd-desk" title="${escapeHtml(DB.getDeskLabel(did))}">${escapeHtml(DB.getDeskLabel(did))}</span>`).join('') +
+          '</div>';
+      } else if (anyHasDesks) {
+        // Placeholder pour aligner la hauteur avec les locaux qui ont des desks
+        subLabels = '<div class="loc-hd-desks loc-hd-desks-empty"></div>';
+      }
+      // Mode zoom : largeur = max(stockée, N × defaultColW) pour donner ~defaultColW par desk lane
+      let w = colWidths[l.localId] || this._defaultColW;
+      if (this._deskFilter === l.localId && N >= 1) {
+        w = Math.max(w, N * this._defaultColW);
+      }
+      h += `<th class="loc-hd${N >= 2 ? ' has-desks' : ''}${this._deskFilter === l.localId ? ' is-zoomed' : ''}" data-local="${l.localId}" style="width:${w}px">
+        <div class="loc-hd-name">${escapeHtml(l.label)}</div>
+        ${subLabels}
+        <span class="loc-hd-resize" data-local="${l.localId}" title="Glisser pour redimensionner — double-clic pour réinitialiser"></span>
+      </th>`;
+    });
+    h += '</tr></thead><tbody>';
+
+    // ── Pré-calcul des blocs HTML par local ────────────────────────
+    const blocksByLocal = {};
+    displayLocals.forEach(l => { blocksByLocal[l.localId] = ''; });
+
+    displayLocals.forEach(l => {
+      const localResas = occs.filter(r => parseInt(r.localId) === l.localId);
+      localResas.forEach(r => {
+        // Trouver le slot de début
+        let startIdx = -1;
+        for (let j = 0; j < slots.length; j++) {
+          const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+          const jE = new Date(jS.getTime() + slotMinDay * 60000);
+          if (r._start < jE && r._end > jS) { startIdx = j; break; }
+        }
+        if (startIdx === -1) return;
+        // Calculer le span
+        let span = 0;
+        for (let j = startIdx; j < slots.length; j++) {
+          const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+          const jE = new Date(jS.getTime() + slotMinDay * 60000);
+          if (r._start < jE && r._end > jS) span++;
+          else break;
+        }
+        span = Math.max(1, span);
+
+        // Positionnement via cumY (hauteurs dynamiques en mode complet)
+        const top      = cumY[startIdx];
+        const heightPx = cumY[startIdx + span] - cumY[startIdx];
+        const N        = l.deskList.length;
+        const deskIdx  = r.deskId ? l.deskList.indexOf(r.deskId) : -1;
+        const orphan   = r.deskId && deskIdx === -1;   // desk supprimé depuis
+        const fullWidth = !r.deskId || orphan || N === 0;
+        const left     = fullWidth ? 0 : (deskIdx / N) * 100;
+        const widthPct = fullWidth ? 100 : (100 / N);
+
+        // Résa permanente → bloc spécial pleine hauteur
+        if (r.isPermanent) {
+          const svc = DB.getSvcLabel(r);
+          blocksByLocal[l.localId] += `<div class="resa-block is-perm"
+            style="top:0px;height:${canvasHeight}px;left:${left}%;width:${widthPct}%"
+            data-id="${r.id}" data-act="detail" data-slot="0" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${total}">
+            <span class="ct">🔒 ${escapeHtml(svc)}</span>
+          </div>`;
+          return;
+        }
+
+        // Résa normale : reprise de la logique de _renderDayOld
+        const isRdv = r.type === 'rendez-vous';
+        const isConcernedRdv = !r.secret || (myKey && (myKey === r.requesterAgentKey || myKey === r.targetAgentKey));
+        let svcs, svc;
+        if (isRdv) {
+          const noteDisplay = r.secret && !isConcernedRdv ? '🔒 Confidentiel' : (r.note || '');
+          svcs = ['📅 Rendez-vous' + (noteDisplay ? ` · ${noteDisplay}` : '')];
+          svc  = svcs[0];
+        } else {
+          svcs = DB.getResSvcs(r).map(s => s === 'Autre' ? (r.serviceCustom || 'Autre') : s);
+          svc  = svcs.join(' + ');
+        }
+        const agt = r.agent === 'Autre' ? r.agentCustom : r.agent;
+        const allAgts = Array.isArray(r.agents) && r.agents.length > 1 ? r.agents : (agt ? [agt] : []);
+        const agtFmt = allAgts.map(n => fmtAgent(n)).join(', ');
+        const recType = r.recurrence?.type;
+        const isRec   = recType && recType !== 'none';
+        const recLabels = { daily: 'Quotidien', weekly: 'Hebdomadaire', monthly: 'Mensuel' };
+        const recLabel  = isRec ? recLabels[recType] || '' : '';
+        const startH = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        const endH   = r._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+        const agentColor = isRdv ? null : DB.getAgentColor(agt);
+        const colorStyle = agentColor ? `background:${agentColor}20;border-left:3px solid ${agentColor};` : '';
+        const comment = r.comment ? r.comment.trim() : '';
+        const isInvited = myKey && r.invitedAgents?.[myKey];
+        const invitedNames = r.invitedAgents
+          ? Object.keys(r.invitedAgents).map(k => DB.getAgentsWithKeys().find(a => a.key === k)?.name || k).join(', ')
+          : '';
+
+        // Deux rendus possibles : complet (défaut) ou compact (via toggle)
+        let innerHtml;
+        if (compactMode) {
+          // Tooltip complet sur hover en mode compact
+          const tooltipParts = [
+            svcs.join(' + '),
+            agtFmt,
+            `${startH} – ${endH}${isRec ? ` (${recLabel})` : ''}`,
+            comment && !isRdv ? `💬 ${comment}` : '',
+            invitedNames ? `👥 ${invitedNames}` : '',
+          ].filter(Boolean);
+          const tooltip = tooltipParts.join('\n');
+          const metaBits = [];
+          if (agtFmt) metaBits.push(`<span class="resa-agent">${escapeHtml(agtFmt)}</span>`);
+          metaBits.push(`<span class="resa-time">${startH}–${endH}</span>`);
+          if (isRec) metaBits.push(`<span class="resa-rec">↻ ${recLabel}</span>`);
+          innerHtml = `<span class="ct ct-drag" draggable="true"
+              data-id="${r.id}" data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}"
+              data-occ-date="${isoDate(r._start)}" data-is-rec="${isRec ? '1' : '0'}"
+              title="${escapeHtml(tooltip)}">
+              <div class="resa-svc">${svcs.map(s => escapeHtml(s)).join(' + ')}</div>
+              <div class="resa-meta">${metaBits.join(' · ')}</div>
+              ${!isRdv && comment ? `<div class="resa-extra resa-comment">💬 ${escapeHtml(comment)}</div>` : ''}
+              ${invitedNames ? `<div class="resa-extra resa-invited">👥 ${escapeHtml(invitedNames)}</div>` : ''}
+            </span>
+            <div class="ct-resize" title="Étirer la réservation"></div>`;
+        } else {
+          // Rendu complet (verbose) — chaque info sur sa ligne
+          innerHtml = `<span class="ct ct-drag" draggable="true"
+              data-id="${r.id}" data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}"
+              data-occ-date="${isoDate(r._start)}" data-is-rec="${isRec ? '1' : '0'}">
+              ${svcs.map(s => `<b>${escapeHtml(s)}</b>`).join('<br>')}
+              <br><small>${agtFmt}</small><br>
+              <small class="ct-time">${startH} – ${endH}${isRec ? ` ↻ ${recLabel}` : ''}</small>
+              ${!isRdv && comment ? `<small class="ct-comment" title="${escapeHtml(comment)}">💬 ${escapeHtml(comment)}</small>` : ''}
+              ${invitedNames ? `<small class="ct-invited" title="Agents invités : ${escapeHtml(invitedNames)}">👥 ${escapeHtml(invitedNames)}</small>` : ''}
+            </span>
+            <div class="ct-resize" title="Étirer la réservation"></div>`;
+        }
+
+        blocksByLocal[l.localId] += `<div class="resa-block is-booked${isRec ? ' is-rec' : ''}${isInvited ? ' is-invited' : ''}${isRdv ? ' is-rdv' : ''}"
+          style="top:${top}px;height:${heightPx}px;left:${left}%;width:${widthPct}%;${colorStyle}"
+          data-id="${r.id}" data-occ="${r._occDate || ''}" data-act="detail" data-type="${r.type || ''}"
+          data-slot="${startIdx}" data-local="${l.localId}" data-desk="${r.deskId || ''}" data-span="${span}" data-occ-date="${isoDate(r._start)}">
+          ${innerHtml}
+        </div>`;
+      });
+    });
+
+    // ── Émission des <tr> ──────────────────────────────────────────
+    slots.forEach((slot, i) => {
+      const sS = new Date(d); sS.setHours(slot.h, slot.m, 0, 0);
+      const sE = new Date(sS.getTime() + slotMinDay * 60000);
+
+      // Hauteur du slot (dynamique en complet, 36 en compact)
+      const rowH = slotHeights[i];
+      h += `<tr class="cv-row${i % 2 ? ' alt' : ''}" data-slot="${i}" style="height:${rowH}px">`;
+      h += `<td class="tc" style="height:${rowH}px">${slot.label}</td>`;
+
+      // Mon agenda (inchangé — rowspan par slot)
+      if (myAgentName) {
+        if (coveredUntilMe <= i) {
+          const myRes = myOccs.find(r => r._start < sE && r._end > sS);
+          if (myRes) {
+            let mySpan = 0;
+            for (let j = i; j < total; j++) {
+              const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+              const jE = new Date(jS.getTime() + slotMinDay * 60000);
+              if (myRes._start < jE && myRes._end > jS) mySpan++;
+              else if (jS >= myRes._end) break;
+            }
+            mySpan = Math.max(1, mySpan);
+            coveredUntilMe = i + mySpan;
+            const mySvc  = DB.getSvcLabel(myRes);
+            const myLoc  = DB.getUnitLabel(parseInt(myRes.localId), myRes.deskId || null);
+            const myStartH = myRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+            const myEndH   = myRes._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+            const myStyle  = myAgentColor ? ` style="background:${myAgentColor}20;border-left:3px solid ${myAgentColor}"` : '';
+            h += `<td class="cv-cell is-booked my-agenda-cell" rowspan="${mySpan}"
+              data-id="${myRes.id}" data-occ="${myRes._occDate || ''}" data-act="detail"
+              data-occ-date="${isoDate(myRes._start)}"${myStyle}>
+              <span class="ct"><b>${escapeHtml(mySvc)}</b><br>
+              <small>${escapeHtml(myLoc)}</small><br>
+              <small class="ct-time">${myStartH} – ${myEndH}</small></span>
+            </td>`;
+          } else {
+            h += `<td class="cv-cell my-agenda-cell my-agenda-free"></td>`;
+          }
+        }
+      }
+
+      // Canvas locaux : un seul <td rowspan=total> par local, sur la première ligne
+      if (i === 0) {
+        // Dividers horizontaux : une ligne à chaque frontière de slot (suit cumY)
+        let slotDividers = '';
+        for (let k = 1; k < total; k++) {
+          slotDividers += `<div class="slot-divider" style="top:${cumY[k]}px"></div>`;
+        }
+        displayLocals.forEach(l => {
+          // Dividers verticaux entre sous-lanes desk (si N >= 2)
+          let lanesHtml = '';
+          const N = l.deskList.length;
+          if (N >= 2) {
+            for (let k = 1; k < N; k++) {
+              lanesHtml += `<div class="desk-lane-divider" style="left:${(k / N) * 100}%"></div>`;
+            }
+          }
+          h += `<td class="cv-col-canvas${N >= 2 ? ' has-desks' : ''}" rowspan="${total}" data-local="${l.localId}" style="height:${canvasHeight}px">
+            ${slotDividers}
+            ${lanesHtml}
+            ${blocksByLocal[l.localId]}
+          </td>`;
+        });
+      }
+
+      h += '</tr>';
+    });
+
+    h += '</tbody></table>';
+    h += '</div>'; // .cv-day-wrapper
+    el.innerHTML = h;
+    this._bindNew(el, d);
+    this._bindDndNew(el, d);
+    this._renderNowLine(el, d);
   },
 
   // ─────────────────────────────────────────────────────────────────
@@ -737,6 +1150,422 @@ const CAL = {
         .filter(r => DB.unitOccupies(r, rz.localId, rz.deskId) && r.id !== rz.resId);
       if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé dans cette unité.'); self.render(); return; }
       // Vérifier conflits — agents (principal + invités) dans un autre local
+      const _rzRes = DB.getReservationById?.(rz.resId);
+      if (_rzRes) {
+        const _rzNames = DB.getResAgentNames(_rzRes);
+        if (_rzNames.size) {
+          const agentClash = DB.getInRange(_rzNewStart, _rzNewEnd).find(r => {
+            if (r.isPermanent || r.id === rz.resId) return false;
+            const rNames = DB.getResAgentNames(r);
+            for (const n of _rzNames) { if (rNames.has(n)) return true; }
+            return false;
+          });
+          if (agentClash) {
+            const overlap = [..._rzNames].find(n => DB.getResAgentNames(agentClash).has(n));
+            const clashLoc = DB.getLocalLabel(parseInt(agentClash.localId));
+            showToast(`⚠ Conflit agenda : ${overlap} est déjà dans "${clashLoc}" sur ce créneau.`);
+            self.render(); return;
+          }
+        }
+      }
+
+      if (rz.isRec) {
+        const fromDate = new Date(rz.occDate + 'T00:00:00')
+          .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        showBureauConfirm({
+          icon: '🔁', title: 'Réservation récurrente',
+          info: `Voulez-vous modifier seulement l'occurrence du <strong>${fromDate}</strong>, ou toute la série ?`,
+          okLabel: 'Cette occurrence', okClass: 'ok-open',
+          onOk: async () => {
+            try { await DB.moveOccurrence(rz.resId, rz.occDate, rz.localId, newStart, newEnd, rz.deskId); showToast('Occurrence redimensionnée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+            self.render();
+          },
+          ok2Label: 'Toute la série', ok2Class: 'ok-close',
+          onOk2: async () => {
+            try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd, rz.deskId); showToast('Série redimensionnée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+            self.render();
+          },
+        });
+      } else {
+        try { await DB.moveReservation(rz.resId, rz.localId, newStart, newEnd, rz.deskId); showToast('Réservation redimensionnée ✓'); }
+        catch(err) { showToast('Erreur : ' + err.message); }
+        self.render();
+      }
+    };
+
+    document.addEventListener('mousemove', self._resizeMoveFn);
+    document.addEventListener('mouseup',   self._resizeUpFn);
+  },
+
+  // ─────────────────────────────────────────────────────────────────
+  // Bindings NOUVELLE vue jour — clics canvas + drag/resize sur .resa-block
+  // ─────────────────────────────────────────────────────────────────
+  _bindNew(el, d) {
+    // Clics "detail" sur les blocs résa (data-act="detail")
+    this._bind(el);
+
+    const self = this;
+    const ROW_H = this._rowHeight || 36;
+    const slots = getSlots();
+
+    // Toggle compact / complet
+    const compactBtn = el.querySelector('#calCompactToggle');
+    if (compactBtn) {
+      compactBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        self._compactMode = !self._compactMode;
+        self.render();
+      });
+    }
+
+    // Helper : résout le slotIdx depuis une position Y dans le canvas (utilise cumY).
+    // Compatible avec les hauteurs de ligne dynamiques en mode complet.
+    function _slotIdxFromY(canvas, relY) {
+      const table = canvas.closest('table');
+      const cumY = (table?.dataset.cumY || '').split(',').map(Number);
+      if (cumY.length < 2) return Math.max(0, Math.floor(relY / ROW_H));
+      // cumY[i] = top du slot i ; la dernière valeur = hauteur totale
+      for (let i = 0; i < cumY.length - 1; i++) {
+        if (relY < cumY[i + 1]) return i;
+      }
+      return cumY.length - 2;
+    }
+
+    // Clic zone vide du canvas → nouvelle résa (desk résolu depuis X)
+    el.querySelectorAll('.cv-col-canvas').forEach(canvas => {
+      canvas.addEventListener('click', (e) => {
+        if (self._justDragged) { self._justDragged = false; return; }
+        if (e.target.closest('.resa-block')) return; // géré par _bind (data-act=detail)
+        const rect    = canvas.getBoundingClientRect();
+        const relY    = e.clientY - rect.top;
+        const relX    = e.clientX - rect.left;
+        const slotIdx = _slotIdxFromY(canvas, relY);
+        if (slotIdx < 0 || slotIdx >= slots.length) return;
+
+        const localId  = parseInt(canvas.dataset.local);
+        const deskList = DB.getLocalDesks(localId);
+        const N = deskList.length;
+        let deskId = null;
+        if (N >= 1) {
+          const lanePx = rect.width / N;
+          const idx    = Math.max(0, Math.min(N - 1, Math.floor(relX / lanePx)));
+          deskId = deskList[idx];
+        }
+        MODAL.openNew({
+          local: localId,
+          desk: deskId,
+          date: isoDate(d),
+          time: slots[slotIdx].label,
+        });
+      });
+    });
+
+    // ── Drag-resize largeur colonne (Phase 5) ─────────────────────
+    const MIN_W = 80, MAX_W = 600;
+    el.querySelectorAll('.loc-hd-resize').forEach(handle => {
+      let _colRz = null;
+
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault(); e.stopPropagation();
+        const th = handle.closest('th[data-local]');
+        if (!th) return;
+        _colRz = {
+          th,
+          localId: parseInt(handle.dataset.local),
+          startX: e.clientX,
+          startW: th.getBoundingClientRect().width,
+        };
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
+
+      const moveFn = e => {
+        if (!_colRz) return;
+        const newW = Math.max(MIN_W, Math.min(MAX_W, _colRz.startW + (e.clientX - _colRz.startX)));
+        _colRz.th.style.width = newW + 'px';
+      };
+      const upFn = () => {
+        if (!_colRz) return;
+        const newW = parseInt(_colRz.th.style.width) || self._defaultColW;
+        self._setColWidth(_colRz.localId, newW);
+        _colRz = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      document.addEventListener('mousemove', moveFn);
+      document.addEventListener('mouseup', upFn);
+
+      // Double-clic : reset largeur par défaut
+      handle.addEventListener('dblclick', e => {
+        e.preventDefault(); e.stopPropagation();
+        const th = handle.closest('th[data-local]');
+        if (!th) return;
+        th.style.width = self._defaultColW + 'px';
+        self._setColWidth(parseInt(handle.dataset.local), null);
+      });
+    });
+  },
+
+  _bindDndNew(el, d) {
+    const self  = this;
+    const pad   = n => String(n).padStart(2, '0');
+    const table = el.querySelector('.cv-day-table');
+    if (!table) return;
+    const ROW_H = this._rowHeight || 36;
+
+    // ── dragstart ───────────────────────────────────────────────────
+    table.addEventListener('dragstart', e => {
+      const handle = e.target.closest('.ct-drag');
+      if (!handle) { e.preventDefault(); return; }
+      const span  = parseInt(handle.dataset.span) || 1;
+      const isRec = handle.dataset.isRec === '1';
+      self._dnd = {
+        resId:       handle.dataset.id,
+        isRec,
+        span,
+        durMs:       span * DB.getLieuConfig().slotMin * 60000,
+        occDate:     handle.dataset.occDate,
+        origLocalId: parseInt(handle.dataset.local),
+        origDeskId:  handle.dataset.desk || null,
+      };
+      const block = handle.closest('.resa-block');
+      if (block) block.classList.add('dnd-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', handle.dataset.id);
+    });
+
+    // ── helper : retrouve slot + local + desk à partir de XY ────────
+    function getDndTarget(e) {
+      // Trouver le canvas cible (le <td data-local>)
+      let td = e.target.closest('td[data-local]');
+      if (!td) {
+        // Si on survole un .resa-block, remonter au canvas parent
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        td = el ? el.closest('td[data-local]') : null;
+      }
+      if (!td || !td.classList.contains('cv-col-canvas')) return null;
+
+      const rect = td.getBoundingClientRect();
+      const relY = e.clientY - rect.top;
+      // Résolution du slot via cumY (hauteurs dynamiques)
+      const cumY = (table.dataset.cumY || '').split(',').map(Number);
+      let slotIdx = -1;
+      if (cumY.length >= 2) {
+        for (let i = 0; i < cumY.length - 1; i++) {
+          if (relY < cumY[i + 1]) { slotIdx = i; break; }
+        }
+        if (slotIdx < 0) slotIdx = cumY.length - 2;
+      } else {
+        slotIdx = Math.max(0, Math.floor(relY / ROW_H));
+      }
+      if (slotIdx < 0) return null;
+
+      // Résolution du desk depuis la coord X
+      const localId  = parseInt(td.dataset.local);
+      const deskList = DB.getLocalDesks(localId);
+      const N = deskList.length;
+      let deskId = null;
+      let left = 0, widthPct = 100;
+      if (N >= 1) {
+        const relX   = e.clientX - rect.left;
+        const lanePx = rect.width / N;
+        const idx    = Math.max(0, Math.min(N - 1, Math.floor(relX / lanePx)));
+        deskId = deskList[idx];
+        left = (idx / N) * 100;
+        widthPct = 100 / N;
+      }
+      return { slot: slotIdx, local: td.dataset.local, desk: deskId, td, left, widthPct, cumY };
+    }
+
+    // ── dragover ────────────────────────────────────────────────────
+    table.addEventListener('dragover', e => {
+      if (!self._dnd) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+
+      // Nettoyer anciens ghosts
+      table.querySelectorAll('.dnd-ghost').forEach(g => g.remove());
+      const hit = getDndTarget(e);
+      if (!hit) return;
+
+      // Ghost overlay : rectangle absolu dans la sous-lane cible
+      // Utilise cumY pour gérer les hauteurs de ligne dynamiques
+      const ghost = document.createElement('div');
+      ghost.className = 'dnd-ghost';
+      const cumY = hit.cumY;
+      const startY = cumY[hit.slot] ?? hit.slot * ROW_H;
+      const endY   = cumY[hit.slot + self._dnd.span] ?? (hit.slot + self._dnd.span) * ROW_H;
+      ghost.style.top    = startY + 'px';
+      ghost.style.height = (endY - startY) + 'px';
+      ghost.style.left   = hit.left + '%';
+      ghost.style.width  = hit.widthPct + '%';
+      hit.td.appendChild(ghost);
+    });
+
+    // ── dragend ─────────────────────────────────────────────────────
+    table.addEventListener('dragend', e => {
+      const block = e.target.closest('.resa-block') || e.target.closest('.ct-drag')?.closest('.resa-block');
+      if (block) block.classList.remove('dnd-dragging');
+      table.querySelectorAll('.dnd-ghost').forEach(g => g.remove());
+      self._justDragged = true;
+      self._dnd = null;
+    });
+
+    // ── drop ────────────────────────────────────────────────────────
+    table.addEventListener('drop', async e => {
+      e.preventDefault();
+      table.querySelectorAll('.dnd-ghost').forEach(g => g.remove());
+      const dnd = self._dnd;
+      if (!dnd) return;
+
+      const hit = getDndTarget(e);
+      if (!hit) return;
+
+      const allSlots = getSlots();
+      const slotInfo = allSlots[hit.slot];
+      if (!slotInfo) return;
+
+      if (hit.slot + dnd.span > allSlots.length) {
+        showToast('⚠ Déplacement hors des horaires de la journée.');
+        return;
+      }
+
+      const newLocalId  = parseInt(hit.local);
+      const newDeskId   = hit.desk || null;
+      const dateStr     = isoDate(d);
+      const hh = slotInfo.h, mm = slotInfo.m;
+      const newStart    = new Date(`${dateStr}T${pad(hh)}:${pad(mm)}:00`);
+      const newEnd      = new Date(newStart.getTime() + dnd.durMs);
+      const newStartISO = `${dateStr}T${pad(hh)}:${pad(mm)}`;
+      const newEndISO   = `${isoDate(newEnd)}T${pad(newEnd.getHours())}:${pad(newEnd.getMinutes())}`;
+
+      // Conflit unité
+      const conflicts = DB.getInRange(newStart, newEnd)
+        .filter(r => DB.unitOccupies(r, newLocalId, newDeskId) && r.id !== dnd.resId);
+      if (conflicts.length) {
+        showToast('⚠ Conflit : créneau déjà occupé pour cette unité.');
+        return;
+      }
+      // Conflit agenda agents
+      const _dndRes = DB.getReservationById?.(dnd.resId);
+      if (_dndRes) {
+        const _dndNames = DB.getResAgentNames(_dndRes);
+        if (_dndNames.size) {
+          const agentClash = DB.getInRange(newStart, newEnd).find(r => {
+            if (r.isPermanent || r.id === dnd.resId) return false;
+            const rNames = DB.getResAgentNames(r);
+            for (const n of _dndNames) { if (rNames.has(n)) return true; }
+            return false;
+          });
+          if (agentClash) {
+            const overlap = [..._dndNames].find(n => DB.getResAgentNames(agentClash).has(n));
+            const clashLoc = DB.getLocalLabel(parseInt(agentClash.localId));
+            showToast(`⚠ Conflit agenda : ${overlap} est déjà dans "${clashLoc}" sur ce créneau.`);
+            return;
+          }
+        }
+      }
+
+      if (dnd.isRec) {
+        const fromDate = new Date(dnd.occDate + 'T00:00:00')
+          .toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        showBureauConfirm({
+          icon: '🔁', title: 'Réservation récurrente',
+          info: `Voulez-vous déplacer seulement l'occurrence du <strong>${fromDate}</strong>, ou toute la série ?`,
+          okLabel: 'Cette occurrence', okClass: 'ok-open',
+          onOk: async () => {
+            try { await DB.moveOccurrence(dnd.resId, dnd.occDate, newLocalId, newStartISO, newEndISO, newDeskId); showToast('Occurrence déplacée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+          },
+          ok2Label: 'Toute la série', ok2Class: 'ok-close',
+          onOk2: async () => {
+            try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO, newDeskId); showToast('Série déplacée ✓'); }
+            catch(err) { showToast('Erreur : ' + err.message); }
+          },
+        });
+      } else {
+        try { await DB.moveReservation(dnd.resId, newLocalId, newStartISO, newEndISO, newDeskId); showToast('Réservation déplacée ✓'); }
+        catch(err) { showToast('Erreur : ' + err.message); }
+      }
+    });
+
+    // ── Resize (étirer verticalement) ──────────────────────────────
+    if (self._resizeMoveFn) document.removeEventListener('mousemove', self._resizeMoveFn);
+    if (self._resizeUpFn)   document.removeEventListener('mouseup',   self._resizeUpFn);
+
+    let _rz = null;
+
+    table.addEventListener('mousedown', e => {
+      const handle = e.target.closest('.ct-resize');
+      if (!handle) return;
+      e.preventDefault(); e.stopPropagation();
+      const block = handle.closest('.resa-block');
+      if (!block) return;
+      const drag = block.querySelector('.ct-drag');
+      _rz = {
+        resId:    block.dataset.id,
+        isRec:    drag?.dataset.isRec === '1',
+        occDate:  block.dataset.occDate || '',
+        localId:  parseInt(block.dataset.local),
+        deskId:   block.dataset.desk || null,
+        startSlot: parseInt(block.dataset.slot),
+        origSpan:  parseInt(block.dataset.span) || 1,
+        curEndSlot: parseInt(block.dataset.slot) + (parseInt(block.dataset.span) || 1) - 1,
+        block,
+      };
+      block.classList.add('ct-resizing');
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    self._resizeMoveFn = e => {
+      if (!_rz) return;
+      const rows = [...table.querySelectorAll('tr[data-slot]')];
+      const row  = rows.find(r => {
+        const rect = r.getBoundingClientRect();
+        return e.clientY >= rect.top && e.clientY < rect.bottom;
+      });
+      if (!row) return;
+      const targetSlot  = parseInt(row.dataset.slot);
+      const newEndSlot  = Math.max(_rz.startSlot, targetSlot);
+      if (newEndSlot === _rz.curEndSlot) return;
+      _rz.curEndSlot = newEndSlot;
+      // Preview : redimensionner le bloc en direct via cumY
+      const cumY = (table.dataset.cumY || '').split(',').map(Number);
+      const startY = cumY[_rz.startSlot] ?? _rz.startSlot * ROW_H;
+      const endY   = cumY[_rz.curEndSlot + 1] ?? (_rz.curEndSlot + 1) * ROW_H;
+      _rz.block.style.height = (endY - startY) + 'px';
+    };
+
+    self._resizeUpFn = async e => {
+      if (!_rz) return;
+      const rz = _rz; _rz = null;
+      rz.block.classList.remove('ct-resizing');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      const allSlots  = getSlots();
+      const { slotMin } = DB.getLieuConfig();
+      const newSpan   = rz.curEndSlot - rz.startSlot + 1;
+      if (newSpan === rz.origSpan) { self.render(); return; }
+
+      const startInfo = allSlots[rz.startSlot];
+      const endInfo   = allSlots[rz.curEndSlot];
+      if (!startInfo || !endInfo) return;
+
+      const dateStr   = isoDate(d);
+      const newStart  = `${dateStr}T${pad(startInfo.h)}:${pad(startInfo.m)}`;
+      const endDT     = new Date(d);
+      endDT.setHours(endInfo.h, endInfo.m + slotMin, 0, 0);
+      const newEnd    = `${isoDate(endDT)}T${pad(endDT.getHours())}:${pad(endDT.getMinutes())}`;
+
+      const _rzNewStart = new Date(`${newStart}:00`);
+      const _rzNewEnd   = new Date(`${newEnd}:00`);
+      const clashCheck = DB.getInRange(_rzNewStart, _rzNewEnd)
+        .filter(r => DB.unitOccupies(r, rz.localId, rz.deskId) && r.id !== rz.resId);
+      if (clashCheck.length) { showToast('⚠ Conflit : créneau déjà occupé dans cette unité.'); self.render(); return; }
       const _rzRes = DB.getReservationById?.(rz.resId);
       if (_rzRes) {
         const _rzNames = DB.getResAgentNames(_rzRes);

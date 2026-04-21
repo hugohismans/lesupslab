@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Espace Responsable technique — SiteCpas</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Layout page technique ───────────────────────────────── */
+    body { background: #f8fafc; color: #1e293b; font-family: system-ui, sans-serif; }
+    .tq-hd {
+      background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+      color: #fff; padding: .85rem 1.25rem; display: flex;
+      align-items: center; gap: .75rem; flex-wrap: wrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,.1); position: sticky; top: 0; z-index: 100;
+    }
+    .tq-hd-title  { font-size: 1.15rem; font-weight: 900; letter-spacing: .02em; }
+    .tq-hd-sub    { font-size: .82rem; opacity: .88; }
+    .tq-hd-spacer { flex: 1; }
+    .tq-back {
+      background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.35);
+      color: #fff; border-radius: 8px; padding: .4rem .85rem; font-size: .85rem;
+      font-weight: 700; cursor: pointer; text-decoration: none;
+      transition: background .15s;
+    }
+    .tq-back:hover { background: rgba(255,255,255,.3); }
+    .tq-agent-badge {
+      background: rgba(255,255,255,.18); padding: .3rem .7rem; border-radius: 6px;
+      font-size: .8rem; font-weight: 700;
+    }
+
+    /* ── Guard refus ──────────────────────────────────────────── */
+    .tq-refused {
+      max-width: 460px; margin: 4rem auto; background: #fff;
+      border: 1.5px solid #fecaca; border-radius: 16px; padding: 2rem;
+      text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+    .tq-refused-icon { font-size: 3rem; margin-bottom: .5rem; }
+    .tq-refused-title { font-size: 1.2rem; font-weight: 800; color: #dc2626; margin-bottom: .5rem; }
+    .tq-refused-msg { color: #64748b; font-size: .9rem; line-height: 1.5; margin-bottom: 1.25rem; }
+
+    /* ── Layout dashboard ─────────────────────────────────────── */
+    .tq-body { max-width: 1400px; margin: 0 auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* Barre de recherche + filtres */
+    .tq-toolbar {
+      background: #fff; border-radius: 14px; padding: 1rem 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+    }
+    .tq-search-wrap { flex: 1 1 300px; position: relative; }
+    .tq-search {
+      width: 100%; padding: .6rem .9rem .6rem 2.2rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: .9rem;
+      outline: none; transition: border-color .12s;
+    }
+    .tq-search:focus { border-color: #f59e0b; }
+    .tq-search-icon { position: absolute; top: 50%; left: .75rem; transform: translateY(-50%); color: #94a3b8; pointer-events: none; }
+
+    /* ── Suggestions dropdown ────────────────────────────────── */
+    .tq-suggest {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 360px; overflow-y: auto;
+      z-index: 50;
+    }
+    .tq-suggest-group { padding: .35rem .6rem; font-size: .68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .tq-suggest-item {
+      padding: .5rem .8rem; font-size: .88rem; color: #1e293b; cursor: pointer;
+      display: flex; align-items: center; gap: .5rem; transition: background .1s;
+    }
+    .tq-suggest-item:hover, .tq-suggest-item.active { background: #fef3c7; color: #b45309; }
+    .tq-suggest-ico { font-size: 1rem; width: 1.2rem; text-align: center; }
+    .tq-suggest-count { margin-left: auto; font-size: .75rem; color: #94a3b8; font-weight: 700; }
+    .tq-suggest-empty { padding: .8rem; color: #94a3b8; font-size: .85rem; font-style: italic; text-align: center; }
+
+    .tq-filter-group { display: flex; gap: .35rem; flex-wrap: wrap; }
+    .tq-filter-btn {
+      padding: .4rem .8rem; background: #f1f5f9; border: 1.5px solid transparent;
+      border-radius: 7px; font-size: .83rem; font-weight: 700; color: #475569;
+      cursor: pointer; transition: all .12s; font-family: inherit;
+    }
+    .tq-filter-btn:hover { background: #e2e8f0; }
+    .tq-filter-btn.active {
+      background: #fef3c7; border-color: #f59e0b; color: #b45309;
+    }
+
+    .tq-export-btn {
+      padding: .5rem 1rem; background: #1e3a5f; color: #fff; border: none;
+      border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer;
+      transition: opacity .12s;
+    }
+    .tq-export-btn:hover { opacity: .88; }
+
+    /* Grid widgets */
+    .tq-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    }
+    @media (max-width: 1200px) { .tq-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px)  { .tq-grid { grid-template-columns: 1fr; } }
+
+    .tq-widget {
+      background: #fff; border-radius: 14px; padding: 1.1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      display: flex; flex-direction: column; gap: .6rem;
+    }
+    .tq-widget.w-medium { grid-column: span 2; }
+    .tq-widget.w-large  { grid-column: span 4; }
+    @media (max-width: 1200px) {
+      .tq-widget.w-large { grid-column: span 2; }
+    }
+    @media (max-width: 640px) {
+      .tq-widget.w-medium, .tq-widget.w-large { grid-column: span 1; }
+    }
+
+    .tq-widget-title { font-size: .85rem; font-weight: 800; color: #1a3a5c; display: flex; align-items: center; gap: .4rem; }
+    .tq-widget-sub   { font-size: .75rem; color: #64748b; }
+    .tq-widget-body  { font-size: .88rem; color: #1e293b; }
+
+    .tq-kpi-value { font-size: 2rem; font-weight: 900; color: #b45309; line-height: 1; }
+    .tq-kpi-label { font-size: .72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+
+    /* Placeholder des widgets non encore implémentés */
+    .tq-placeholder {
+      color: #94a3b8; font-size: .8rem; font-style: italic;
+      border: 1.5px dashed #e2e8f0; border-radius: 8px; padding: 1rem;
+      text-align: center;
+    }
+
+    .tq-loading {
+      text-align: center; color: #94a3b8; font-size: .95rem; padding: 2rem;
+    }
+
+    /* ── Barres horizontales (rankings) ─────────────────────── */
+    .tq-hbars { display: flex; flex-direction: column; gap: .3rem; }
+    .tq-hbar-row {
+      display: grid; grid-template-columns: minmax(80px, 1fr) 2fr auto;
+      align-items: center; gap: .5rem; font-size: .78rem;
+    }
+    .tq-hbar-row[data-hbar-click]:hover { background: #fef3c7; border-radius: 4px; }
+    .tq-hbar-label  { color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tq-hbar-track  { background: #f1f5f9; border-radius: 4px; height: 14px; overflow: hidden; }
+    .tq-hbar-fill   { background: linear-gradient(90deg, #f59e0b, #b45309); height: 100%; border-radius: 4px; transition: width .3s; }
+    .tq-hbar-count  { font-weight: 800; color: #b45309; font-size: .82rem; min-width: 30px; text-align: right; }
+
+    /* ── Barres verticales (timeline daily) ──────────────────── */
+    .tq-vbars { display: flex; gap: 2px; align-items: flex-end; height: 150px; padding: .25rem 0; }
+    .tq-vbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 12px; }
+    .tq-vbar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+    .tq-vbar-fill  { width: 100%; background: linear-gradient(180deg, #f59e0b, #b45309); border-radius: 2px 2px 0 0; min-height: 2px; transition: height .3s; }
+    .tq-vbar-label { font-size: .62rem; color: #94a3b8; margin-top: .2rem; }
+
+    /* ── Status distribution ─────────────────────────────────── */
+    .tq-status-bar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; margin-bottom: .5rem; }
+    .tq-status-seg { height: 100%; }
+    .tq-status-legend { display: flex; flex-wrap: wrap; gap: .6rem; font-size: .78rem; color: #64748b; }
+    .tq-status-item  { display: inline-flex; align-items: center; gap: .3rem; }
+    .tq-status-dot   { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ── Timeline récente ────────────────────────────────────── */
+    .tq-tl-wrap { max-height: 380px; overflow-y: auto; }
+    .tq-timeline { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .tq-timeline th { text-align: left; padding: .4rem .5rem; color: #64748b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; position: sticky; top: 0; }
+    .tq-timeline td { padding: .35rem .5rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .tq-tl-date  { white-space: nowrap; color: #94a3b8; }
+    .tq-tl-theme { color: #b45309; font-weight: 600; }
+    .tq-tl-local { color: #1a3a5c; font-weight: 600; }
+    .tq-tl-desc  { color: #475569; }
+
+    /* ── Récurrences actives ─────────────────────────────────── */
+    .tq-rec-row {
+      padding: .5rem .6rem; border-left: 3px solid #f59e0b;
+      background: #fffbeb; border-radius: 0 6px 6px 0; margin-bottom: .4rem;
+    }
+    .tq-rec-desc { font-size: .85rem; font-weight: 700; color: #1e293b; margin-bottom: .2rem; }
+    .tq-rec-meta { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .72rem; color: #64748b; }
+    .tq-rec-freq { color: #b45309; font-weight: 700; }
+    .tq-rec-next { color: #065f46; font-weight: 600; }
+
+    /* ── Requêtes en retard ──────────────────────────────────── */
+    .tq-late-list { display: flex; flex-direction: column; gap: .3rem; }
+    .tq-late-row {
+      display: grid; grid-template-columns: 50px 1fr 1fr 2fr;
+      gap: .5rem; padding: .35rem .5rem; font-size: .78rem;
+      background: #fef2f2; border-radius: 5px; align-items: center;
+    }
+    .tq-late-days  { font-weight: 900; color: #dc2626; font-size: .9rem; text-align: center; }
+    .tq-late-theme { color: #b45309; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tq-late-local { color: #1a3a5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tq-late-desc  { color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+
+<body>
+
+<!-- Header -->
+<div class="tq-hd" id="tqHeader" style="display:none">
+  <div>
+    <div class="tq-hd-title">🛠️ Espace Responsable technique</div>
+    <div class="tq-hd-sub" id="tqOrgName">—</div>
+  </div>
+  <div class="tq-hd-spacer"></div>
+  <span class="tq-agent-badge" id="tqAgentBadge">—</span>
+  <a href="app.html" class="tq-back" id="tqBackBtn">← Retour à l'app</a>
+</div>
+
+<!-- Loading -->
+<div class="tq-loading" id="tqLoading">Chargement de l'espace technique…</div>
+
+<!-- Accès refusé -->
+<div class="tq-refused" id="tqRefused" style="display:none">
+  <div class="tq-refused-icon">🚫</div>
+  <div class="tq-refused-title">Accès refusé</div>
+  <div class="tq-refused-msg">
+    Cette page est réservée au <b>Responsable technique</b> (ou à l'admin).
+    Ton rôle actuel ne te permet pas d'y accéder.
+  </div>
+  <a href="app.html" class="tq-back" style="background:#f59e0b;color:#fff">← Retour à l'app</a>
+</div>
+
+<!-- Dashboard -->
+<main class="tq-body" id="tqBody" style="display:none">
+
+  <!-- Toolbar : recherche + filtres globaux -->
+  <div class="tq-toolbar">
+    <div class="tq-search-wrap">
+      <span class="tq-search-icon">🔍</span>
+      <input type="text" id="tqSearch" class="tq-search" placeholder="Rechercher : local, description, agent, thème…" autocomplete="off">
+      <div id="tqSuggest" class="tq-suggest hidden"></div>
+    </div>
+    <div class="tq-filter-group" id="tqPeriodFilter">
+      <button class="tq-filter-btn" data-period="7">7 jours</button>
+      <button class="tq-filter-btn active" data-period="30">30 jours</button>
+      <button class="tq-filter-btn" data-period="90">90 jours</button>
+      <button class="tq-filter-btn" data-period="365">12 mois</button>
+      <button class="tq-filter-btn" data-period="all">Tout</button>
+    </div>
+    <div class="tq-filter-group" id="tqStatusFilter">
+      <button class="tq-filter-btn active" data-status="all">Tous statuts</button>
+      <button class="tq-filter-btn" data-status="open">Ouvertes</button>
+      <button class="tq-filter-btn" data-status="in_progress">En cours</button>
+      <button class="tq-filter-btn" data-status="done">Terminées</button>
+    </div>
+    <button class="tq-export-btn" id="tqExportBtn">⬇ Export CSV</button>
+  </div>
+
+  <!-- Grid widgets -->
+  <div class="tq-grid" id="tqGrid">
+    <div class="tq-loading">Calcul des statistiques…</div>
+  </div>
+
+</main>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- App scripts (minimal pour cette page) -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+
+<!-- Logique page technique -->
+<script src="js/technique.js"></script>
+
+</body>
+</html>

@@ -82,6 +82,7 @@
         <span class="req-badge hidden" id="interventionsBadge"></span>
       </button>
     </div>
+    <a class="btn-tech-space" id="btnTechSpace" href="technique.html" title="Espace Responsable technique — statistiques et suivi" style="display:none;text-decoration:none">🛠️ Espace technique</a>
     <button class="btn-calendar-export" id="btnCalendarExport" title="Exporter mon agenda (.ics)" style="display:none">📅 Agenda</button>
     <a class="btn-rdv" href="rdv.html" title="Disponibilité pour rendez-vous">📅 RDV</a>
     <a class="btn-live" id="btnPublic" href="vuepublic.html" target="_blank" title="Vue publique">🖥 Public</a>
@@ -222,7 +223,7 @@
   <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
     <span class="hs-patchnote-sparkle">✨</span>
     <span class="hs-patchnote-text">
-      <span class="hs-patchnote-tag">Patch note v1.2.2</span>
+      <span class="hs-patchnote-tag">Patch note v1.4.0</span>
       <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
     </span>
     <span class="hs-patchnote-arrow">→</span>
@@ -232,14 +233,62 @@
   <div class="modal-overlay hidden" id="patchnoteModal">
     <div class="modal-box patchnote-box">
       <div class="modal-header">
-        <span class="modal-title">✨ Patch note v1.2.2 — 19 avril 2026</span>
+        <span class="modal-title">✨ Patch note v1.4.0 — 22 avril 2026</span>
         <button class="modal-close" id="patchnoteClose">✕</button>
       </div>
       <div class="modal-body patchnote-body">
         <div class="pn-section">
-          <div class="pn-section-title">🧹 Nouveau : Vider un local en un clic (accueil)</div>
+          <div class="pn-section-title">🛠️ Nouveau : Espace Responsable technique</div>
           <ul class="pn-list">
-            <li>Nouveau bouton flottant <b>🧹 en bas à gauche</b> pour l'agent d'accueil (et admin / chef de service).</li>
+            <li><b>Nouveau rôle "Responsable technique"</b> disponible dans la gestion des rôles — il supervise les requêtes techniques et accède à une page dédiée avec des statistiques détaillées.</li>
+            <li><b>Thèmes d'intervention</b> : chaque requête technique peut maintenant être catégorisée (Chauffage/Chaudière, Plomberie, Électricité, Serrurerie, Menuiserie, Peinture, Informatique, Mobilier, Sécurité/Alarme, Espaces verts, Nettoyage, Autre). L'admin peut ajouter/renommer/supprimer des thèmes dans Paramètres → 🏷️ Thèmes techniques.</li>
+            <li><b>Requêtes récurrentes</b> : à la création d'une requête, coche "↻ Requête récurrente" pour la faire régénérer automatiquement tous les X jours / semaines / mois, avec date de fin optionnelle. Pratique pour les entretiens périodiques (ex: vérification chaudière tous les 6 mois).</li>
+            <li><b>Page <code>/technique.html</code></b> accessible via le bouton <b>🛠️ Espace technique</b> du header (visible pour le Responsable technique et l'admin). Contient :
+              <ul>
+                <li>4 KPIs : total requêtes, ouvertes, temps moyen de résolution, top thème.</li>
+                <li>Graphe temporel des créations sur la période.</li>
+                <li>Répartition par thème, par statut, top 10 locaux, charge par agent.</li>
+                <li>Requêtes en retard (ouvertes depuis > 7 jours).</li>
+                <li>Séries récurrentes actives avec prochaine occurrence.</li>
+                <li>Timeline des dernières requêtes.</li>
+                <li>Barre de recherche universelle + filtres période/statut.</li>
+                <li>Export CSV en un clic.</li>
+              </ul>
+            </li>
+            <li><b>Badges dans le panneau Interventions</b> : chaque requête affiche son thème 🏷️ et un badge ↻ pour les récurrentes. Bouton <b>🏷️ Catégoriser</b> pour tagger les anciennes requêtes. Boutons <b>Voir la série</b> / <b>Arrêter la série</b> pour les templates récurrents.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">📅 Refonte de la vue Jour (rappel v1.3.0)</div>
+          <ul class="pn-list">
+            <li><b>Une colonne par local</b> (au lieu d'une par desk). Les locaux avec plusieurs desks affichent ceux-ci en <b>sous-lanes côte à côte</b> : une résa sur un desk occupe 1/N de la largeur de la colonne du local.</li>
+            <li><b>Toggle « Vue compacte / Vue complète »</b> (bouton dans la barre de date, à droite) :
+              <ul>
+                <li><b>Compacte</b> — lignes à 36px, contenu condensé (svc + agent · heure).</li>
+                <li><b>Complète</b> — <b>hauteurs de ligne dynamiques</b> : une ligne vide reste à 36px, mais s'épaissit automatiquement pour afficher tous les détails d'une résa (service, agent, heure, commentaire, invités) — même sur 30 minutes.</li>
+              </ul>
+              Ton choix est mémorisé par navigateur.
+            </li>
+            <li><b>Largeur des colonnes ajustable</b> — survole la bordure droite d'un header de local puis glisse pour redimensionner ; double-clic pour revenir à 140px. Les largeurs sont persistées localement.</li>
+            <li><b>Scroll horizontal automatique</b> quand il y a beaucoup de locaux — le tableau dépasse, la barre de date et les entêtes suivent.</li>
+            <li><b>Mode zoom</b> — clique sur un toggle « Local X » au-dessus du calendrier pour zoomer sur un seul local : sa colonne s'élargit pour laisser ~140px par desk-lane. Badge 🔍 sur le header.</li>
+            <li><b>Colonne « 👤 Mon agenda »</b> — largeur fixe, toujours accrochée à gauche à côté de la colonne des heures, peu importe le lieu sélectionné.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">✍️ Widget « Partir en mission » — commentaire sans limite</div>
+          <ul class="pn-list">
+            <li>Le champ « Destination / motif » n'est <b>plus limité à 80 caractères</b>. Écris autant que tu veux.</li>
+            <li>La zone <b>s'étire en hauteur</b> au fur et à mesure que tu tapes (multi-ligne).</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🧹 Vider un local en un clic (rappel v1.2.2)</div>
+          <ul class="pn-list">
+            <li>Bouton flottant <b>🧹 en bas à gauche</b> pour l'agent d'accueil (et admin / chef de service).</li>
             <li>Un clic ouvre la liste de tous les locaux groupés par lieu, avec <b>les agents actuellement déclarés</b> dans chacun.</li>
             <li>Sélectionne un local → confirmation → <b>toute la présence est retirée</b>, le bureau est fermé et la file locale remise à zéro.</li>
             <li>Pratique quand quelqu'un a oublié de quitter son bureau ou pour faire le ménage rapidement.</li>
@@ -907,6 +956,7 @@
           <a class="st-sidenav-link" data-target="stSectLocalisation">📍 Localisation</a>
           <div class="st-sidenav-sep">Sécurité & Système</div>
           <a class="st-sidenav-link" data-target="stSectPermissions">🔐 Rôles & Droits</a>
+          <a class="st-sidenav-link" data-target="stSectTechThemes">🏷️ Thèmes techniques</a>
           <a class="st-sidenav-link" data-target="stSectAbsences">📅 Absences</a>
           <a class="st-sidenav-link" data-target="stSectNotifs">🔔 Notifications</a>
           <a class="st-sidenav-link" data-target="stSectFin">🌙 Fin de journée</a>
@@ -1207,10 +1257,23 @@
                 <option value="__chef_service__">Intro : Chef de service</option>
                 <option value="__direction__">Intro : Direction</option>
                 <option value="__technicien__">Intro : Technicien</option>
+                <option value="__responsable_technique__">Intro : Responsable technique</option>
                 <option value="__entretien__">Intro : Entretien</option>
                 <option value="__juriste__">Intro : Juriste</option>
               </select>
               <button class="btn-primary" id="stPermRoleAdd">Créer</button>
+            </div>
+          </div>
+
+          <!-- Thèmes d'intervention technique -->
+          <div class="st-section-anchor" id="stSectTechThemes"></div>
+          <h3 class="st-title" style="margin-top:1.25rem">🏷️ Thèmes d'intervention technique</h3>
+          <div class="st-admin-section" id="stTechThemesSection">
+            <p class="st-perm-intro">Catégories pour typer les requêtes techniques (chauffage, plomberie, électricité…). Utilisées pour les statistiques du responsable technique.</p>
+            <div id="stTechThemesList" class="tech-themes-list"></div>
+            <div class="st-add" style="margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stTechThemeInput" placeholder="Nouveau thème..." style="flex:1;min-width:180px">
+              <button class="btn-primary" id="stTechThemeAdd">+ Ajouter</button>
             </div>
           </div>
 
@@ -1227,6 +1290,7 @@
                 <option value="__accueil__">🌟 Accueil</option>
                 <option value="__agent__">🎉 Agent</option>
                 <option value="__technicien__">🔧 Technicien·ne</option>
+                <option value="__responsable_technique__">🛠️ Responsable technique</option>
                 <option value="__entretien__">🌿 Entretien</option>
                 <option value="__juriste__">⚖️ Juriste</option>
               </select>
@@ -1608,6 +1672,14 @@
         </div>
       </div>
 
+      <!-- Thème (optionnel mais vivement recommandé pour les stats) -->
+      <div>
+        <label class="form-label">Thème <span style="color:#94a3b8;font-weight:normal;font-size:.8rem">(pour les statistiques)</span></label>
+        <select id="techIssueTheme" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.55rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+          <option value="">— Non précisé —</option>
+        </select>
+      </div>
+
       <!-- Description -->
       <div>
         <label class="form-label">Description <span style="color:#ef4444">*</span></label>
@@ -1633,6 +1705,31 @@
         <input type="checkbox" id="techIssueUrgent" style="width:1.1rem;height:1.1rem;accent-color:#ef4444">
         <span style="font-size:.88rem;color:#e2e8f0">🚨 Marquer comme <strong>urgent</strong></span>
       </label>
+
+      <!-- Récurrence -->
+      <div style="border-top:1px solid #1e293b;padding-top:.75rem">
+        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
+          <input type="checkbox" id="techIssueRecurring" style="width:1.1rem;height:1.1rem;accent-color:#f59e0b">
+          <span style="font-size:.88rem;color:#e2e8f0">↻ Requête <strong>récurrente</strong> (se régénère automatiquement)</span>
+        </label>
+        <div id="techIssueRecurFields" class="hidden" style="margin-top:.6rem;padding:.75rem;background:#0f172a;border:1.5px solid #334155;border-radius:8px;display:flex;flex-direction:column;gap:.6rem">
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <span style="font-size:.85rem;color:#94a3b8">Tous les</span>
+            <input type="number" id="techIssueRecurInterval" min="1" max="365" value="1" style="width:70px;border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem">
+            <select id="techIssueRecurUnit" style="border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+              <option value="days">jour(s)</option>
+              <option value="weeks">semaine(s)</option>
+              <option value="months" selected>mois</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <span style="font-size:.85rem;color:#94a3b8">Jusqu'au</span>
+            <input type="date" id="techIssueRecurUntil" style="border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+            <span style="font-size:.8rem;color:#64748b">(optionnel — laisse vide pour sans fin)</span>
+          </div>
+          <div id="techIssueRecurPreview" style="font-size:.8rem;color:#f59e0b;font-style:italic"></div>
+        </div>
+      </div>
 
     </div>
     <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.5rem">
@@ -1875,6 +1972,7 @@
   <button class="mob-drawer-btn" data-target="btnBroadcast">📢 Diffuser</button>
   <button class="mob-drawer-btn" data-target="btnTechIssue">📤 Requête</button>
   <button class="mob-drawer-btn" data-target="btnInterventions">🛠️ Interventions</button>
+  <button class="mob-drawer-btn" data-target="btnTechSpace">🔧 Espace technique</button>
 
   <div class="mob-drawer-section">Paramètres</div>
   <button class="mob-drawer-btn" data-target="btnSettings">⚙️ Paramètres</button>
