@@ -1031,12 +1031,17 @@ body {
   letter-spacing: .01em;
   box-shadow: 0 2px 6px rgba(0,0,0,.06);
 }
-/* Jour = aujourd'hui : date en gros + rouge pour être clairement repérable */
-.cv-day-datebar.is-today {
-  background: #fff5f5;
+/* Date du jour affiché (tous les jours, pas juste aujourd'hui) :
+   bien visible en rouge et gros pour que l'agent sache d'un coup
+   d'œil quel jour il consulte. */
+.cv-day-datebar {
   color: #dc2626;
   font-size: 1.2rem;
   letter-spacing: .02em;
+}
+/* Aujourd'hui : fond rose + suffixe '— Aujourd'hui' */
+.cv-day-datebar.is-today {
+  background: #fff5f5;
   text-shadow: 0 1px 0 rgba(255,255,255,.4);
 }
 .cv-day-datebar.is-today::after {
