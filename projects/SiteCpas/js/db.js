@@ -58,16 +58,33 @@ const DB = {
     if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
     this._db = firebase.database();
 
-    // Phase 0 sécu : anonymous auth pour satisfaire les Rules Firebase
-    // qui exigent auth != null. Phase 2+ : on passera sur des customTokens
-    // signés par le CloudFlare Worker.
+    // Phase 0 → auth anonymous ; Phase 2 → respecter la session nominative
+    // (customToken) déjà présente si l'agent vient juste de se logger via
+    // auth.js sur index.html. On attend onAuthStateChanged et on ne tombe
+    // sur signInAnonymously qu'en dernier recours.
     if (firebase.auth) {
-      this._authReady = firebase.auth().signInAnonymously()
-        .then(cred => { console.log('%c[DB] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid); })
-        .catch(err => {
-          console.error('[DB] 🔐 anonymous auth FAILED', err);
-          // Ne throw pas — laisse les listeners tenter quand même.
+      this._authReady = new Promise(resolve => {
+        const unsub = firebase.auth().onAuthStateChanged(user => {
+          if (user) {
+            unsub();
+            const mode = user.isAnonymous ? 'anonymous' : 'custom';
+            console.log(`%c[DB] 🔐 auth ${mode} OK`, 'color:#10b981;font-weight:bold', 'uid=', user.uid);
+            resolve();
+            return;
+          }
+          // Pas de session → anonymous comme fallback (pages sans login agent)
+          unsub();
+          firebase.auth().signInAnonymously()
+            .then(cred => {
+              console.log('%c[DB] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid);
+              resolve();
+            })
+            .catch(err => {
+              console.error('[DB] 🔐 anonymous auth FAILED', err);
+              resolve();
+            });
         });
+      });
     } else {
       console.warn('[DB] firebase-auth-compat non chargé — mode legacy');
       this._authReady = Promise.resolve();

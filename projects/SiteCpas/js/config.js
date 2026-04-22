@@ -33,6 +33,10 @@ const CONFIG = {
     appId:             '1:1028628915813:web:dbca4db8ed5b511321c88c'
   },
 
+  // ── WORKER CLOUDFLARE (Phase 2) ──────────────────────────────────
+  // Endpoint d'auth nominative et (plus tard) proxy CRUD.
+  WORKER_URL: 'https://sitecpas-worker.hugo-hismans.workers.dev',
+
   // ── HORAIRES D'OUVERTURE ─────────────────────────────────────────
   // [FAKE — À CONFIRMER AVEC LE CLIENT]
   HOURS_START: 0,   // 0h00 (TEST — remettre 8 en prod)
