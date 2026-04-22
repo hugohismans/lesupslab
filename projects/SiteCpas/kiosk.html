@@ -176,6 +176,13 @@ const _app = firebase.initializeApp(CONFIG.FIREBASE);
 const _db  = firebase.database(_app);
 const _base = `orgs/${ORG_ID}`;
 
+// Phase 0 sécu : anonymous auth avant tout read (Rules exigent auth != null)
+const _authReady = firebase.auth
+  ? firebase.auth().signInAnonymously()
+      .then(cred => console.log('%c[auth] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+      .catch(err => console.error('[auth] 🔐 anonymous auth FAILED', err))
+  : Promise.resolve();
+
 // ── Helpers ───────────────────────────────────────────────────────
 const show = id => document.getElementById(id).style.display = '';
 const hide = id => document.getElementById(id).style.display = 'none';
@@ -209,7 +216,7 @@ let _config     = null;
 let _countdownT = null;
 
 // ── Initialisation ────────────────────────────────────────────────
-_db.ref(`${_base}/appConfig`).once('value').then(snap => {
+_authReady.then(() => _db.ref(`${_base}/appConfig`).once('value')).then(snap => {
   _config = snap.val() || {};
 
   const feats = _config.features || {};

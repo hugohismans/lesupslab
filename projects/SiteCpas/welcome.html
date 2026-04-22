@@ -942,13 +942,19 @@
       try {
         if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
         const db = firebase.database();
-        Promise.all([
+        // Phase 0 sécu : anonymous auth avant reads (Rules exigent auth != null)
+        const authReady = firebase.auth
+          ? firebase.auth().signInAnonymously()
+              .then(cred => console.log('%c[auth] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+              .catch(err => console.error('[auth] 🔐 anonymous auth FAILED', err))
+          : Promise.resolve();
+        authReady.then(() => Promise.all([
           db.ref(`orgs/${ORG_ID}/appConfig/agents/${agentKey}`).once('value'),
           db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).once('value'),
           db.ref(`orgs/${ORG_ID}/appConfig/mascotId`).once('value'),
           db.ref(`orgs/${ORG_ID}/appConfig/permRoles`).once('value'),
           db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${agentKey}`).once('value'),
-        ]).then(([nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap]) => {
+        ])).then(([nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap]) => {
           clearTimeout(_safetyTimer);
           _handleFirebaseData(nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap, db);
         }).catch(err => {
@@ -962,13 +968,16 @@
         // Firebase déjà initialisé — récupérer l'instance existante
         try {
           const db = firebase.app().database();
-          Promise.all([
+          const authReady2 = firebase.auth
+            ? firebase.auth().signInAnonymously().catch(() => {})
+            : Promise.resolve();
+          authReady2.then(() => Promise.all([
             db.ref(`orgs/${ORG_ID}/appConfig/agents/${agentKey}`).once('value'),
             db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).once('value'),
             db.ref(`orgs/${ORG_ID}/appConfig/mascotId`).once('value'),
             db.ref(`orgs/${ORG_ID}/appConfig/permRoles`).once('value'),
             db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${agentKey}`).once('value'),
-          ]).then(([nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap]) => {
+          ])).then(([nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap]) => {
             _handleFirebaseData(nameSnap, roleSnap, mascotSnap, customRolesSnap, genderSnap, db);
           }).catch(() => finish());
         } catch(e2) { finish(); }
