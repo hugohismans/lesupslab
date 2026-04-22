@@ -43,10 +43,21 @@ const SCOPED_RULES = [
     ops: ['set', 'remove'],
     check: (p, op, a) => isAdmin(a) || a.uid === p.agentKey },
 
-  // Rôle agent — admin ONLY (empêche un agent de s'auto-promouvoir)
+  // Rôle agent :
+  //  - admin : tout autorisé (assigner/retirer n'importe quel rôle à n'importe qui)
+  //  - agent : set SON propre rôle UNIQUEMENT si la valeur n'est pas
+  //    '__admin__' (anti auto-promotion). La règle autorise aussi le
+  //    changement de rôle custom (Phase 3ter welcome.html flow).
   { pattern: 'appConfig/agentRoles/:agentKey',
     ops: ALL_OPS,
-    check: (p, op, a) => isAdmin(a) },
+    check: (p, op, a, value) => {
+      if (isAdmin(a)) return true;
+      if (a.uid !== p.agentKey) return false;
+      if (op === 'remove') return true; // l'agent peut retirer son rôle
+      if (typeof value !== 'string') return false;
+      if (value === '__admin__') return false;
+      return true;
+    }},
   { pattern: 'appConfig/agentPermRoles/:agentKey',
     ops: ALL_OPS,
     check: (p, op, a) => isAdmin(a) },
@@ -96,7 +107,7 @@ const ZONE_RULES = [
   { prefix: 'appConfig',                ops: ALL_OPS, check: (a) => isAdmin(a) },
 ];
 
-export function isAuthorized(path, op, auth) {
+export function isAuthorized(path, op, auth, value) {
   // 0. Superadmin bypass : n'importe quel path, n'importe quelle op.
   if (isSuperadmin(auth)) return { allowed: true, rule: 'superadmin_bypass' };
 
@@ -106,7 +117,7 @@ export function isAuthorized(path, op, auth) {
     if (!params) continue;
     if (!rule.ops.includes(op)) continue;
     try {
-      if (rule.check(params, op, auth)) return { allowed: true, rule: rule.pattern };
+      if (rule.check(params, op, auth, value)) return { allowed: true, rule: rule.pattern };
       // Scoped match mais check refuse → ne pas tomber dans ZONE_RULES
       // (on ne veut pas qu'une règle zone plus large autorise ce qu'une
       // règle scoped spécifique refuse — principe deny-overrides-allow

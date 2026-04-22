@@ -289,6 +289,7 @@
   <script src="js/config.js"></script>
   <script src="js/gender.js"></script>
   <script src="js/mascots.js"></script>
+  <script src="js/worker-client.js"></script>
   <script>
   (function () {
     const AUTH_KEY  = 'cpas_auth_v1';
@@ -874,9 +875,17 @@
           grid.querySelectorAll('.wl-role-btn').forEach(b => { b.disabled = true; b.classList.remove('selected'); });
           btn.classList.add('selected');
 
-          // Sauvegarder le rôle dans Firebase (en parallèle de la mascotte)
-          db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).set(id)
-            .catch(e => console.warn('[WELCOME] Impossible de sauvegarder le rôle:', e));
+          // Phase 3ter — passage via Worker (authz scoped : agent peut
+          // set son propre rôle SAUF __admin__). Refus silencieux si
+          // le Worker rejette (pas d'impact fonctionnel — l'agent peut
+          // choisir son rôle via le panneau admin plus tard).
+          if (typeof WORKER !== 'undefined') {
+            WORKER.write('set', `appConfig/agentRoles/${agentKey}`, id)
+              .catch(e => console.warn('[WELCOME] Impossible de sauvegarder le rôle:', e?.message || e));
+          } else {
+            db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${agentKey}`).set(id)
+              .catch(e => console.warn('[WELCOME] Impossible de sauvegarder le rôle (fallback):', e));
+          }
 
           // Message mascotte — attendre la fin du typewriter, puis pause de 900 ms
           typewrite(genf(`${icon} ${label} ! Parfait·e — je te prépare le guide de ton poste… ✨`), () => {

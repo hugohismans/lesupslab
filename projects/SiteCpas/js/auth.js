@@ -263,12 +263,12 @@
     if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
 
     try {
-      // Save gender + color + emoji for this agent
+      // Phase 3ter — passage via Worker (authz scoped agentKey == uid).
       if (_obGender) {
-        await db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${_obAgentKey}`).set(_obGender);
+        await WORKER.write('set', `appConfig/agentGenders/${_obAgentKey}`, _obGender);
       }
-      await db.ref(`orgs/${ORG_ID}/appConfig/agentColors/${_obAgentKey}`).set(_obColor);
-      await db.ref(`orgs/${ORG_ID}/appConfig/agentEmojis/${_obAgentKey}`).set(_obEmoji);
+      await WORKER.write('set', `appConfig/agentColors/${_obAgentKey}`, _obColor);
+      await WORKER.write('set', `appConfig/agentEmojis/${_obAgentKey}`, _obEmoji);
     } catch (e) { console.warn('[AUTH] onboarding save failed', e); }
 
     // Mascot reaction phrase (genrée !)
@@ -492,6 +492,19 @@
           password: pwd,
         });
         if (!res?.ok) throw new Error('bad_response');
+
+        // Phase 3ter — signIn nominatif immédiat pour que l'onboarding
+        // (qui écrit agentColors/Emojis/Genders via Worker) soit
+        // authentifié en tant qu'agent.
+        const login = await WORKER.authLogin({
+          orgId:    ORG_ID,
+          agentKey: key,
+          password: pwd,
+        });
+        if (login?.customToken && firebase.auth) {
+          await firebase.auth().signInWithCustomToken(login.customToken);
+          console.log('%c[auth] 🛡 signInWithCustomToken OK (post-create)', 'color:#10b981;font-weight:bold', 'uid=', firebase.auth().currentUser?.uid);
+        }
       } catch (e) {
         newBtn.disabled = false;
         newBtn.textContent = 'Confirmer';
@@ -499,7 +512,7 @@
         errEl.textContent = e?.status === 403
           ? 'Un mot de passe est déjà défini pour cet agent. Demandez à l\'admin de le réinitialiser.'
           : 'Création impossible : service indisponible. Réessayez.';
-        console.error('[auth] authSetPassword failed', e?.message || e);
+        console.error('[auth] authSetPassword/login failed', e?.message || e);
         return;
       }
 
