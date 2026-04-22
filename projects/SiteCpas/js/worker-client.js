@@ -89,13 +89,22 @@ const WORKER = {
   // ── Endpoints authentifiés (Phase 3) ───────────────────────────
 
   // Écriture CRUD générique. op = 'set'|'update'|'push'|'remove'.
-  // path = chemin relatif à orgs/{orgId}/ (sans préfixe).
-  // Retourne le JSON Worker { ok, result? }.
-  async write(op, path, value) {
+  // path = chemin relatif à orgs/{orgId}/ (sans préfixe) pour les agents,
+  // OU chemin absolu (orgs/{orgId}/…, superadmin/…) si opts.absolute=true
+  // (utilisé par la session superadmin qui n'a pas de orgId dans son token).
+  async write(op, path, value, opts = {}) {
     return this._fetch('/data/write', {
       method: 'POST',
       authed: true,
-      body:   { op, path, value },
+      body:   { op, path, value, absolute: !!opts.absolute },
+    });
+  },
+
+  // Superadmin login : reçoit un customToken avec claim superadmin: true.
+  async superadminLogin(password) {
+    return this._fetch('/superadmin/login', {
+      method: 'POST',
+      body:   { password },
     });
   },
 

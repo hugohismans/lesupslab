@@ -1,75 +1,57 @@
 // ═══════════════════════════════════════════════════════════════════
 // authz.js — règles d'autorisation côté Worker pour /data/write
 //
-// Chaque règle reçoit { path, op, auth, env, value } et retourne true
-// si l'opération est autorisée. Le premier match gagne.
+// Deux niveaux de règles :
+//  1. Règles "scoped" (match path exact avec :params) — utilisées pour
+//     les cas où l'autorisation dépend de l'identité (ex: un agent ne
+//     peut modifier que son propre mdp). Évaluées en PREMIER.
+//  2. Règles "zone" (startsWith) — catch-all pour les collections
+//     entières. Évaluées EN SECOND si aucune scoped rule ne matche.
+//
 // Path = chemin relatif à orgs/{orgId}/ (sans ce préfixe).
 // ═══════════════════════════════════════════════════════════════════
 
 // Match un pattern avec des :param. Ex: "reservations/:id"
-// retourne { id: 'abc' } ou null si pas de match.
 function match(pattern, path) {
   const pp = pattern.split('/').filter(Boolean);
   const qp = path.split('/').filter(Boolean);
-  if (pp.length !== qp.length && !pattern.endsWith('/*')) return null;
+  if (pp.length !== qp.length) return null;
   const params = {};
   for (let i = 0; i < pp.length; i++) {
     const p = pp[i];
-    if (p === '*') return params;
     if (p.startsWith(':')) params[p.slice(1)] = qp[i];
     else if (p !== qp[i]) return null;
   }
   return params;
 }
 
-function matchPrefix(prefix, path) {
+function startsWithPath(prefix, path) {
   return path === prefix || path.startsWith(prefix + '/');
 }
 
-// ── Rôle effectif de l'auth ─────────────────────────────────────────
-// Pour l'instant on se base sur le claim role embarqué dans le token
-// (mis lors de createCustomToken). Un tempAdminGrant actif sera ajouté
-// dans une version future — les grants sont vérifiés côté DB mais
-// pour la Phase 3 MVP on considère que le role embarqué au login suffit.
 function isAdmin(auth)  { return auth.role === '__admin__' || auth.raw?.admin === true; }
-function isSuper(auth)  { return auth.raw?.superadmin === true; }
+function isSuperadmin(auth) { return auth.raw?.superadmin === true; }
 
-// ── Liste des règles ────────────────────────────────────────────────
-// Les règles plus spécifiques doivent venir avant les plus génériques.
-// eslint-disable-next-line no-unused-vars
-const RULES = [
-  // ── Réservations : tout agent authentifié peut créer/modifier/supprimer
-  // (le code métier côté client s'occupe de la cohérence). Le Worker
-  // vérifie juste que l'op est autorisée à ce path par ce role.
-  { pattern: 'reservations',              ops: ['push'],                    check: (p, op, a) => !!a.uid },
-  { pattern: 'reservations/:id',          ops: ['set', 'update', 'remove'], check: (p, op, a) => !!a.uid },
-  { pattern: 'reservations/:id/exceptions/:date', ops: ['set', 'remove'],   check: (p, op, a) => !!a.uid },
+const ALL_OPS = ['set', 'update', 'push', 'remove'];
 
-  // ── Appointment requests (RDV)
-  { pattern: 'appState/appointmentRequests',       ops: ['push'],                      check: (p, op, a) => !!a.uid },
-  { pattern: 'appState/appointmentRequests/:id',   ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-
-  // ── État temps réel des bureaux (ouvert / pause / lastCall / etc.)
-  { pattern: 'appState/bureaux/:localId',          ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-  { pattern: 'appState/bureaux/:localId/:field',   ops: ['set', 'remove'],             check: (p, op, a) => !!a.uid },
-  { pattern: 'appState/lastCall',                  ops: ['set'],                       check: (p, op, a) => !!a.uid },
-  { pattern: 'appState/lastCalls/:localId',        ops: ['set'],                       check: (p, op, a) => !!a.uid },
-  { pattern: 'appState/preferredPending/:localId', ops: ['set', 'remove'],             check: (p, op, a) => !!a.uid },
-
-  // ── Files d'attente
-  { pattern: 'queues/:date/:key',                  ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-  { pattern: 'queues/:date/:key/:sub',             ops: ['set', 'remove'],             check: (p, op, a) => !!a.uid },
-  { pattern: 'queueHistory/:date',                 ops: ['set', 'push'],               check: (p, op, a) => !!a.uid },
-
-  // ── Statut agent du jour
-  { pattern: 'agentStatus/:date/:agentKey',        ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-
-  // ── Agent settings perso (mdp, couleur, emoji, genre, mascot pref)
-  // L'agent peut modifier SON propre compte uniquement.
-  // L'admin peut gérer n'importe qui.
+// ── 1. SCOPED RULES — évaluées en premier ──────────────────────────
+// Premier match gagne. Ne PAS faire de catch-all ici (le catch-all
+// est dans ZONE_RULES).
+const SCOPED_RULES = [
+  // Mdp agent — agent lui-même OU admin
   { pattern: 'appConfig/agentPasswords/:agentKey',
     ops: ['set', 'remove'],
     check: (p, op, a) => isAdmin(a) || a.uid === p.agentKey },
+
+  // Rôle agent — admin ONLY (empêche un agent de s'auto-promouvoir)
+  { pattern: 'appConfig/agentRoles/:agentKey',
+    ops: ALL_OPS,
+    check: (p, op, a) => isAdmin(a) },
+  { pattern: 'appConfig/agentPermRoles/:agentKey',
+    ops: ALL_OPS,
+    check: (p, op, a) => isAdmin(a) },
+
+  // Paramètres perso de l'agent — lui ou l'admin
   { pattern: 'appConfig/agentColors/:agentKey',
     ops: ['set', 'remove'],
     check: (p, op, a) => isAdmin(a) || a.uid === p.agentKey },
@@ -79,54 +61,68 @@ const RULES = [
   { pattern: 'appConfig/agentGenders/:agentKey',
     ops: ['set', 'remove'],
     check: (p, op, a) => isAdmin(a) || a.uid === p.agentKey },
-  { pattern: 'appConfig/agentRoles/:agentKey',
+  { pattern: 'appConfig/agentPublicNames/:agentKey',
     ops: ['set', 'remove'],
     check: (p, op, a) => isAdmin(a) || a.uid === p.agentKey },
-  { pattern: 'appConfig/mascotId',
-    ops: ['set'],
-    check: (p, op, a) => !!a.uid }, // tout agent peut changer la mascotte partagée (admin only si tu veux restreindre → à ajuster)
-  { pattern: 'appConfig/agentPermRoles/:agentKey',
-    ops: ['set', 'remove'],
-    check: (p, op, a) => isAdmin(a) },
+];
 
-  // ── Reste de appConfig : admin uniquement
-  { pattern: 'appConfig/*',                        ops: ['set', 'update', 'remove', 'push'], check: (p, op, a) => isAdmin(a) },
+// ── 2. ZONE RULES — prefix-based, ordre important ──────────────────
+// Une règle zone couvre tout sous-path à partir du prefix.
+const ZONE_RULES = [
+  // ── Zones agent (toute écriture OK si authentifié) ──
+  { prefix: 'reservations',             ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState/bureaux',         ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState/appointmentRequests', ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState/preferredRequests',   ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState/preferredPending', ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState/lastCall',        ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState/lastCalls',       ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'appState',                 ops: ALL_OPS, check: (a) => !!a.uid }, // catch-all appState
+  { prefix: 'queues',                   ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'queueHistory',             ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'agentStatus',              ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'notifications',            ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'requests',                 ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'planning',                 ops: ALL_OPS, check: (a) => !!a.uid },
+  { prefix: 'absences',                 ops: ALL_OPS, check: (a) => !!a.uid },
 
-  // ── Notifications (envoi à d'autres agents, marquage lu, cleanup)
-  { pattern: 'notifications/:agentKey',            ops: ['set', 'update', 'remove', 'push'], check: (p, op, a) => !!a.uid },
-  { pattern: 'notifications/:agentKey/:notifId',   ops: ['set', 'update', 'remove'],         check: (p, op, a) => !!a.uid },
+  // Audit : append-only côté client (push seul autorisé)
+  { prefix: 'audit',                    ops: ['push'], check: (a) => !!a.uid },
 
-  // ── Requêtes techniques / interventions
-  { pattern: 'requests',                           ops: ['push'],                      check: (p, op, a) => !!a.uid },
-  { pattern: 'requests/:id',                       ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-
-  // ── Planning
-  { pattern: 'planning',                           ops: ['push'],                      check: (p, op, a) => !!a.uid },
-  { pattern: 'planning/:taskId',                   ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-
-  // ── Absences
-  { pattern: 'absences',                           ops: ['push'],                      check: (p, op, a) => !!a.uid },
-  { pattern: 'absences/:id',                       ops: ['set', 'update', 'remove'],   check: (p, op, a) => !!a.uid },
-
-  // ── Audit : écriture en append-only (jamais modifier/supprimer côté client)
-  { pattern: 'audit',                              ops: ['push'],                      check: (p, op, a) => !!a.uid },
+  // ── Zones admin ──
+  // appConfig est admin-only par défaut (les scoped rules ci-dessus
+  // ont déjà traité les sous-champs self-scope). Couvre aussi le
+  // 'appConfig' exact (multi-path update sur l'objet parent).
+  { prefix: 'appConfig',                ops: ALL_OPS, check: (a) => isAdmin(a) },
 ];
 
 export function isAuthorized(path, op, auth) {
-  for (const rule of RULES) {
-    const params = match(rule.pattern, path) || matchPrefixParams(rule.pattern, path);
+  // 0. Superadmin bypass : n'importe quel path, n'importe quelle op.
+  if (isSuperadmin(auth)) return { allowed: true, rule: 'superadmin_bypass' };
+
+  // 1. Scoped rules d'abord
+  for (const rule of SCOPED_RULES) {
+    const params = match(rule.pattern, path);
     if (!params) continue;
     if (!rule.ops.includes(op)) continue;
     try {
       if (rule.check(params, op, auth)) return { allowed: true, rule: rule.pattern };
+      // Scoped match mais check refuse → ne pas tomber dans ZONE_RULES
+      // (on ne veut pas qu'une règle zone plus large autorise ce qu'une
+      // règle scoped spécifique refuse — principe deny-overrides-allow
+      // pour les sous-champs sensibles).
+      return { allowed: false, reason: 'scoped_denied', rule: rule.pattern };
+    } catch { return { allowed: false, reason: 'scoped_error' }; }
+  }
+
+  // 2. Zone rules (prefix)
+  for (const rule of ZONE_RULES) {
+    if (!startsWithPath(rule.prefix, path)) continue;
+    if (!rule.ops.includes(op)) continue;
+    try {
+      if (rule.check(auth)) return { allowed: true, rule: rule.prefix };
     } catch { /* fall through */ }
   }
-  return { allowed: false };
-}
 
-function matchPrefixParams(pattern, path) {
-  if (!pattern.endsWith('/*')) return null;
-  const prefix = pattern.slice(0, -2);
-  if (!matchPrefix(prefix, path)) return null;
-  return {};
+  return { allowed: false, reason: 'no_matching_rule' };
 }

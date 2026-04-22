@@ -91,6 +91,16 @@ export default {
       return handleAuthSetPassword(request, env);
     }
 
+    // ── Phase 3bis : superadmin ────────────────────────────────────
+    if (url.pathname === '/superadmin/login' && request.method === 'POST') {
+      return handleSuperadminLogin(request, env);
+    }
+
+    // ── Phase 3bis : kiosk (non-authentifié + rate limit) ──────────
+    if (url.pathname === '/kiosk/issue-ticket' && request.method === 'POST') {
+      return handleKioskIssueTicket(request, env, corsHeaders(request));
+    }
+
     // ── Phase 3 : CRUD proxy authentifié + chiffrement ────────────
     if (url.pathname === '/data/write' && request.method === 'POST') {
       return requireAuth(request, env, (req, e, auth) => handleDataWrite(req, e, auth, corsHeaders(request)));
@@ -260,17 +270,29 @@ async function handleDataWrite(request, env, auth, cors) {
     return jsonWithCors({ error: 'bad_request', detail: 'invalid_path' }, cors, 400);
   }
 
-  // orgId obligatoire dans les claims du token
-  const orgId = auth.orgId;
-  if (!orgId || !/^[a-z0-9-]+$/.test(orgId)) {
-    return jsonWithCors({ error: 'unauthorized', detail: 'no_org_in_token' }, cors, 401);
-  }
-
-  // Vérifier autorisation par rules (path relatif à l'org)
-  const check = isAuthorized(path, op, auth);
-  if (!check.allowed) {
-    console.warn('[data/write] denied', { uid: auth.uid, orgId, op, path });
-    return jsonWithCors({ error: 'forbidden', detail: 'authz_denied', path, op }, cors, 403);
+  // Le superadmin peut écrire n'importe où (même hors /orgs/, ex:
+  // /superadmin/onboardingToken, /superadmin/mascotTypes…). Le client
+  // précise dans ce cas un path préfixé par "superadmin/" ou un
+  // "orgs/<orgId>/…" absolu via { absolute: true }.
+  const superMode = auth.raw?.superadmin === true;
+  let absPath;
+  if (superMode && body.absolute === true) {
+    absPath = path;
+  } else if (superMode && path.startsWith('superadmin/')) {
+    absPath = path;
+  } else {
+    // Agent normal : orgId obligatoire dans les claims du token
+    const orgId = auth.orgId;
+    if (!orgId || !/^[a-z0-9-]+$/.test(orgId)) {
+      return jsonWithCors({ error: 'unauthorized', detail: 'no_org_in_token' }, cors, 401);
+    }
+    // Vérifier autorisation par rules (path relatif à l'org)
+    const check = isAuthorized(path, op, auth);
+    if (!check.allowed) {
+      console.warn('[data/write] denied', { uid: auth.uid, orgId, op, path, reason: check.reason });
+      return jsonWithCors({ error: 'forbidden', detail: 'authz_denied', path, op }, cors, 403);
+    }
+    absPath = `orgs/${orgId}/${path}`;
   }
 
   try {
@@ -279,7 +301,6 @@ async function handleDataWrite(request, env, auth, cors) {
     const dbUrl = env.FIREBASE_DB_URL;
     if (!dbUrl) throw new Error('FIREBASE_DB_URL var missing');
 
-    const absPath = `orgs/${orgId}/${path}`;
     let result = null;
 
     if (op === 'remove') {
@@ -292,13 +313,15 @@ async function handleDataWrite(request, env, auth, cors) {
       if (op === 'push')   result = await dbPush(dbUrl, absPath, processed, accessToken);
     }
 
-    // AUDIT signé côté serveur (append-only)
+    // AUDIT signé côté serveur (append-only). Pour un superadmin on log
+    // sous /superadmin/audit (hors orgs), sinon sous orgs/{orgId}/audit.
     try {
-      await dbPush(dbUrl, `orgs/${orgId}/audit`, {
+      const auditPath = superMode ? 'superadmin/audit' : `orgs/${auth.orgId}/audit`;
+      await dbPush(dbUrl, auditPath, {
         ts:     Date.now(),
         action: `data.${op}`,
-        actor:  `agent:${auth.uid}`,
-        details: { path, op, resKey: result?.name || null },
+        actor:  superMode ? 'superadmin' : `agent:${auth.uid}`,
+        details: { path, op, absPath, resKey: result?.name || null },
         origin: 'worker',
       }, accessToken);
     } catch (auditErr) {
@@ -368,6 +391,169 @@ function jsonWithCors(data, cors, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', ...cors },
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 3bis — Superadmin login
+// Body : { password }
+// Réponse succès : { customToken } — contient claims { superadmin: true }.
+// Le client signInWithCustomToken avec ce token → uid = "superadmin".
+// Les routes /data/write et /superadmin/data/* reconnaissent ce claim
+// et autorisent toutes les opérations.
+// ═══════════════════════════════════════════════════════════════════
+async function handleSuperadminLogin(request, env) {
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'bad_request', detail: 'invalid_json' }, request, { status: 400 }); }
+
+  const password = String(body.password || '');
+  if (!password) return json({ error: 'bad_request', detail: 'missing_password' }, request, { status: 400 });
+
+  try {
+    const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(sa);
+    const dbUrl = env.FIREBASE_DB_URL;
+
+    const storedHash = await dbGet(dbUrl, 'superadmin/passwordHash', accessToken);
+    if (!storedHash) {
+      return json({ error: 'forbidden', detail: 'not_configured' }, request, { status: 403 });
+    }
+    const enc = new TextEncoder().encode(password);
+    const hashBuf = await crypto.subtle.digest('SHA-256', enc);
+    const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (!constantTimeEquals(hash, storedHash)) {
+      // Audit des échecs (anti-bruteforce observability)
+      try {
+        await dbPush(dbUrl, 'superadmin/audit', {
+          ts: Date.now(),
+          action: 'superadmin.login.failed',
+          ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+          origin: 'worker',
+        }, accessToken);
+      } catch { /* non-fatal */ }
+      return json({ error: 'invalid_credentials' }, request, { status: 401 });
+    }
+
+    const customToken = await createCustomToken(sa, 'superadmin', { superadmin: true });
+    try {
+      await dbPush(dbUrl, 'superadmin/audit', {
+        ts: Date.now(),
+        action: 'superadmin.login',
+        ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+        origin: 'worker',
+      }, accessToken);
+    } catch { /* non-fatal */ }
+    return json({ customToken }, request);
+  } catch (e) {
+    console.error('[superadmin/login] error', e?.message || e);
+    return json({ error: 'internal', detail: e?.message || String(e) }, request, { status: 500 });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 3bis — Kiosk issue ticket (borne publique, non-authentifiée)
+// Body : { orgId, groupId, name? }
+// Rate limit : 30 req/min par IP via un compteur in-memory simple
+// (pas durable entre requests du même Worker instance, mais bon
+// compromis pour un MVP anti-flood). Idéalement on utiliserait
+// Cloudflare Rate Limiting API ou Durable Objects.
+// ═══════════════════════════════════════════════════════════════════
+const _kioskRate = new Map(); // ip → { count, resetAt }
+const KIOSK_RATE_LIMIT = 30;  // 30 tickets/min/IP max
+const KIOSK_RATE_WINDOW_MS = 60 * 1000;
+
+function _kioskCheckRate(ip) {
+  const now = Date.now();
+  const cur = _kioskRate.get(ip);
+  if (!cur || cur.resetAt < now) {
+    _kioskRate.set(ip, { count: 1, resetAt: now + KIOSK_RATE_WINDOW_MS });
+    return true;
+  }
+  if (cur.count >= KIOSK_RATE_LIMIT) return false;
+  cur.count++;
+  return true;
+}
+
+async function handleKioskIssueTicket(request, env, cors) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  if (!_kioskCheckRate(ip)) {
+    return jsonWithCors({ error: 'rate_limited', detail: 'max 30 tickets/min/ip' }, cors, 429);
+  }
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonWithCors({ error: 'bad_request', detail: 'invalid_json' }, cors, 400); }
+
+  const orgId   = String(body.orgId || '').trim();
+  const groupId = String(body.groupId || '').trim();
+  const name    = body.name ? String(body.name).trim().slice(0, 50) : null;
+  if (!orgId || !groupId) {
+    return jsonWithCors({ error: 'bad_request', detail: 'missing_fields' }, cors, 400);
+  }
+  if (!/^[a-z0-9-]+$/.test(orgId) || !/^[a-zA-Z0-9_-]+$/.test(groupId)) {
+    return jsonWithCors({ error: 'bad_request', detail: 'invalid_id_format' }, cors, 400);
+  }
+
+  try {
+    const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(sa);
+    const dbUrl = env.FIREBASE_DB_URL;
+
+    // Vérifier que la borne kiosk est activée pour l'org
+    const features = await dbGet(dbUrl, `orgs/${orgId}/appConfig/features`, accessToken);
+    if (!features || features.enableKiosk !== true) {
+      return jsonWithCors({ error: 'forbidden', detail: 'kiosk_disabled' }, cors, 403);
+    }
+    // Vérifier que le groupe existe
+    const group = await dbGet(dbUrl, `orgs/${orgId}/appConfig/queueGroups/${groupId}`, accessToken);
+    if (!group) {
+      return jsonWithCors({ error: 'not_found', detail: 'group_unknown' }, cors, 404);
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const basePath = `orgs/${orgId}/queues/${today}`;
+
+    // Incrémentation du compteur. Pas de transaction REST native —
+    // on lit+écrit, risque théorique de double-numéro si 2 kiosques
+    // incrémentent simultanément. Acceptable pour un CPAS (un seul
+    // kiosque en pratique, et le rate limit bride la concurrence).
+    const currentTick = await dbGet(dbUrl, `${basePath}/tick_${groupId}`, accessToken);
+    const n = (parseInt(currentTick) || 0) + 1;
+
+    const writes = {
+      [`${basePath}/tick_${groupId}`]:       n,
+      [`${basePath}/times_${groupId}/${n}`]: Date.now(),
+    };
+    if (name) writes[`${basePath}/names_${groupId}/${n}`] = name;
+
+    // Multi-path update via root ref
+    const r = await fetch(`${dbUrl.replace(/\/$/, '')}/.json`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body:    JSON.stringify(writes),
+    });
+    if (!r.ok) throw new Error(`multi-write ${r.status} ${await r.text()}`);
+
+    // Audit
+    try {
+      await dbPush(dbUrl, `orgs/${orgId}/audit`, {
+        ts: Date.now(),
+        action: 'kiosk.ticket.issue',
+        actor: `kiosk:${ip}`,
+        details: { groupId, number: n, hasName: !!name },
+        origin: 'worker',
+      }, accessToken);
+    } catch { /* non-fatal */ }
+
+    // Format ticket : première lettre groupName + numéro
+    const prefix = (group.name || 'T').trim().charAt(0).toUpperCase();
+    const label  = `${prefix}${String(n).padStart(2, '0')}`;
+
+    return jsonWithCors({ ok: true, label, number: n }, cors, 200);
+  } catch (e) {
+    console.error('[kiosk/issue-ticket] error', e?.message || e);
+    return jsonWithCors({ error: 'internal', detail: e?.message || String(e) }, cors, 500);
+  }
 }
 
 function constantTimeEquals(a, b) {
