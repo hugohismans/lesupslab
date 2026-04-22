@@ -1,29 +1,38 @@
 {
   "rules": {
     "orgs": {
-      // Lecture/écriture : nécessite Firebase Auth (anonymous suffit pour l'instant
-      // — le vrai gardien de permissions sera le CloudFlare Worker en Phase 2+).
-      // Cette règle bloque déjà les attaques directes depuis internet via l'URL
-      // Firebase sans token.
+      // Phase 3 — Lecture toujours auth != null (temps réel Firebase
+      // indispensable pour calendrier / files). Écriture : "auth != null"
+      // par défaut, mais chirurgicalement refusée (false) sur les paths
+      // sensibles migrés sur le Worker. Le service account du Worker
+      // bypass toutes les rules → il peut toujours écrire ces paths.
+      // Phase 3bis : élargir le blocage quand superadmin + kiosk seront
+      // aussi migrés sur le Worker.
       ".read": "auth != null",
       "$orgId": {
         ".read": "auth != null",
         ".write": "auth != null",
 
         // ── Configuration (appConfig) ─────────────────────────────
+        // agentPasswords migrés sur le Worker (POST /auth/set-password +
+        // /data/write avec authz). Client ne peut plus écrire directement.
         "appConfig": {
           ".validate": "newData.exists()",
           "agents":   { ".validate": "newData.exists()" },
           "lieux":    { ".validate": "newData.exists()" },
-          "services": { ".validate": "newData.exists()" }
+          "services": { ".validate": "newData.exists()" },
+          "agentPasswords": {
+            ".write": false
+          }
         },
 
-        // ── Réservations : structure minimale + anti-flood ───────
+        // ── Réservations : CRUD migré sur le Worker (Phase 3) ────
         "reservations": {
+          ".write": false,
           "$resId": {
             ".validate": "!newData.exists() || newData.hasChildren(['localId', 'startDateTime'])",
-            "note":          { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" },
-            "agent":         { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" }
+            "note":  { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 10000)" },
+            "agent": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" }
           }
         },
 
@@ -32,7 +41,7 @@
           "appointmentRequests": {
             "$reqId": {
               ".validate": "!newData.exists() || newData.hasChildren(['targetAgentKey', 'requesterAgentKey'])",
-              "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+              "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 10000)" }
             }
           }
         },
@@ -48,18 +57,20 @@
           }
         },
 
-        // ── Requêtes techniques / interventions ───────────────────
+        // ── Requêtes techniques : CRUD migré sur le Worker ────────
         "requests": {
+          ".write": false,
           "$reqId": {
-            "description": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+            "description": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 10000)" }
           }
         },
 
-        // ── Planning : anti-flood ─────────────────────────────────
+        // ── Planning : CRUD migré sur le Worker ───────────────────
         "planning": {
+          ".write": false,
           "$taskId": {
             "title": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" },
-            "notes": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+            "notes": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 10000)" }
           }
         },
 

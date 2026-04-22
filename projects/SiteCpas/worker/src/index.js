@@ -1,11 +1,18 @@
 // ═══════════════════════════════════════════════════════════════════
-// sitecpas-worker — Phase 2a auth endpoint
-// /ping /version /health — squelette Phase 1
-// /auth/login — Phase 2a : valide mdp agent + retourne customToken
-// Phase 2b câblera le client (auth.js) sur cet endpoint.
+// sitecpas-worker
+// Phase 1  : /ping /version /health — squelette
+// Phase 2  : POST /auth/login — customToken Firebase
+// Phase 3  : POST /data/write — proxy CRUD avec autorisation + chiffrement
+//            POST /data/decrypt — déchiffrement batch côté serveur
 // ═══════════════════════════════════════════════════════════════════
 
-import { parseServiceAccount, getAccessToken, dbGet, createCustomToken } from './firebase.js';
+import {
+  parseServiceAccount, getAccessToken, createCustomToken,
+  dbGet, dbSet, dbUpdate, dbPush, dbRemove,
+} from './firebase.js';
+import { requireAuth } from './auth-middleware.js';
+import { isAuthorized } from './authz.js';
+import { encryptForWrite, decryptForRead } from './sensitive.js';
 
 const ALLOWED_ORIGINS = [
   'https://cpasquaregnon.vercel.app',
@@ -70,14 +77,26 @@ export default {
 
     if (url.pathname === '/') {
       return json({
-        message: 'sitecpas-worker — Phase 2a',
-        routes:  ['/ping', '/version', '/health', 'POST /auth/login'],
+        message: 'sitecpas-worker — Phase 3',
+        routes:  ['/ping', '/version', '/health', 'POST /auth/login', 'POST /data/write', 'POST /data/decrypt'],
       }, request);
     }
 
     // ── Phase 2a : auth login ──────────────────────────────────────
     if (url.pathname === '/auth/login' && request.method === 'POST') {
       return handleAuthLogin(request, env);
+    }
+    // ── Phase 3 : création mdp (premier login / post-reset) ────────
+    if (url.pathname === '/auth/set-password' && request.method === 'POST') {
+      return handleAuthSetPassword(request, env);
+    }
+
+    // ── Phase 3 : CRUD proxy authentifié + chiffrement ────────────
+    if (url.pathname === '/data/write' && request.method === 'POST') {
+      return requireAuth(request, env, (req, e, auth) => handleDataWrite(req, e, auth, corsHeaders(request)));
+    }
+    if (url.pathname === '/data/decrypt' && request.method === 'POST') {
+      return requireAuth(request, env, (req, e, auth) => handleDataDecrypt(req, e, auth, corsHeaders(request)));
     }
 
     return json({ error: 'not_found', path: url.pathname }, request, { status: 404 });
@@ -138,6 +157,217 @@ async function handleAuthLogin(request, env) {
     console.error('[auth/login] error', e?.message || e);
     return json({ error: 'internal', detail: e?.message || String(e) }, request, { status: 500 });
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 3 — set-password (création du 1er mdp ou après reset admin)
+// Body : { orgId, agentKey, password }
+// Accept NON-authentifié car l'agent n'a pas encore de mdp.
+// Refuse si agentPasswords/{key} existe déjà (donc remise à zéro admin
+// est un prérequis). Si c'est le 1er agent à créer un mdp dans l'org,
+// lui assigne automatiquement le rôle __admin__.
+// ═══════════════════════════════════════════════════════════════════
+async function handleAuthSetPassword(request, env) {
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'bad_request', detail: 'invalid_json' }, request, { status: 400 }); }
+
+  const orgId    = String(body.orgId || '').trim();
+  const agentKey = String(body.agentKey || '').trim();
+  const password = String(body.password || '');
+  if (!orgId || !agentKey || !password) {
+    return json({ error: 'bad_request', detail: 'missing_fields' }, request, { status: 400 });
+  }
+  if (password.length < 4 || password.length > 200) {
+    return json({ error: 'bad_request', detail: 'invalid_password_length' }, request, { status: 400 });
+  }
+  if (!/^[a-z0-9-]+$/.test(orgId) || !/^[a-zA-Z0-9_-]+$/.test(agentKey)) {
+    return json({ error: 'bad_request', detail: 'invalid_id_format' }, request, { status: 400 });
+  }
+
+  try {
+    const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(sa);
+    const dbUrl = env.FIREBASE_DB_URL;
+    if (!dbUrl) throw new Error('FIREBASE_DB_URL var missing');
+
+    // Vérifier que l'agent existe
+    const agentExists = await dbGet(dbUrl, `orgs/${orgId}/appConfig/agents/${agentKey}`, accessToken);
+    if (!agentExists) {
+      return json({ error: 'forbidden', detail: 'agent_not_found' }, request, { status: 403 });
+    }
+
+    // Refuser si mdp déjà défini
+    const existingHash = await dbGet(dbUrl, `orgs/${orgId}/appConfig/agentPasswords/${agentKey}`, accessToken);
+    if (existingHash) {
+      return json({ error: 'forbidden', detail: 'password_already_set' }, request, { status: 403 });
+    }
+
+    // Hash + set
+    const enc = new TextEncoder().encode(password);
+    const hashBuf = await crypto.subtle.digest('SHA-256', enc);
+    const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    await dbSet(dbUrl, `orgs/${orgId}/appConfig/agentPasswords/${agentKey}`, hash, accessToken);
+
+    // Si aucun admin n'existe dans l'org → ce 1er est admin
+    const roles = await dbGet(dbUrl, `orgs/${orgId}/appConfig/agentRoles`, accessToken);
+    const hasAdmin = roles && Object.values(roles).includes('__admin__');
+    let wasFirstAdmin = false;
+    if (!hasAdmin) {
+      await dbSet(dbUrl, `orgs/${orgId}/appConfig/agentRoles/${agentKey}`, '__admin__', accessToken);
+      wasFirstAdmin = true;
+    }
+
+    // Audit
+    try {
+      await dbPush(dbUrl, `orgs/${orgId}/audit`, {
+        ts:     Date.now(),
+        action: 'agent.pwd.create',
+        actor:  `agent:${agentKey}`,
+        details: { agentKey, wasFirstAdmin },
+        origin: 'worker',
+      }, accessToken);
+    } catch { /* non-fatal */ }
+
+    return json({ ok: true, wasFirstAdmin }, request);
+  } catch (e) {
+    console.error('[auth/set-password] error', e?.message || e);
+    return json({ error: 'internal', detail: e?.message || String(e) }, request, { status: 500 });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 3 — CRUD proxy générique avec autorisation + chiffrement auto
+// Body : { op, path, value }
+//   op : 'set' | 'update' | 'push' | 'remove'
+//   path : relatif à orgs/{orgId}/ (jamais commence par /orgs/)
+//   value : payload pour set/update/push (ignoré pour remove)
+// Réponse : { ok: true, result? } ou { error, detail }
+// ═══════════════════════════════════════════════════════════════════
+const ALLOWED_OPS = ['set', 'update', 'push', 'remove'];
+
+async function handleDataWrite(request, env, auth, cors) {
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonWithCors({ error: 'bad_request', detail: 'invalid_json' }, cors, 400); }
+
+  const op    = String(body.op || '').trim();
+  const path  = String(body.path || '').trim().replace(/^\/+|\/+$/g, '');
+  const value = body.value;
+  if (!ALLOWED_OPS.includes(op)) return jsonWithCors({ error: 'bad_request', detail: 'invalid_op' }, cors, 400);
+  if (!path)                     return jsonWithCors({ error: 'bad_request', detail: 'missing_path' }, cors, 400);
+  if (path.includes('..') || path.includes('//')) {
+    return jsonWithCors({ error: 'bad_request', detail: 'invalid_path' }, cors, 400);
+  }
+
+  // orgId obligatoire dans les claims du token
+  const orgId = auth.orgId;
+  if (!orgId || !/^[a-z0-9-]+$/.test(orgId)) {
+    return jsonWithCors({ error: 'unauthorized', detail: 'no_org_in_token' }, cors, 401);
+  }
+
+  // Vérifier autorisation par rules (path relatif à l'org)
+  const check = isAuthorized(path, op, auth);
+  if (!check.allowed) {
+    console.warn('[data/write] denied', { uid: auth.uid, orgId, op, path });
+    return jsonWithCors({ error: 'forbidden', detail: 'authz_denied', path, op }, cors, 403);
+  }
+
+  try {
+    const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(sa);
+    const dbUrl = env.FIREBASE_DB_URL;
+    if (!dbUrl) throw new Error('FIREBASE_DB_URL var missing');
+
+    const absPath = `orgs/${orgId}/${path}`;
+    let result = null;
+
+    if (op === 'remove') {
+      await dbRemove(dbUrl, absPath, accessToken);
+    } else {
+      // Chiffrement automatique des champs sensibles
+      const processed = await encryptForWrite(path, value, env);
+      if (op === 'set')    result = await dbSet(dbUrl, absPath, processed, accessToken);
+      if (op === 'update') result = await dbUpdate(dbUrl, absPath, processed, accessToken);
+      if (op === 'push')   result = await dbPush(dbUrl, absPath, processed, accessToken);
+    }
+
+    // AUDIT signé côté serveur (append-only)
+    try {
+      await dbPush(dbUrl, `orgs/${orgId}/audit`, {
+        ts:     Date.now(),
+        action: `data.${op}`,
+        actor:  `agent:${auth.uid}`,
+        details: { path, op, resKey: result?.name || null },
+        origin: 'worker',
+      }, accessToken);
+    } catch (auditErr) {
+      console.warn('[data/write] audit append failed (non-fatal)', auditErr?.message || auditErr);
+    }
+
+    return jsonWithCors({ ok: true, result }, cors, 200);
+  } catch (e) {
+    console.error('[data/write] error', e?.message || e);
+    return jsonWithCors({ error: 'internal', detail: e?.message || String(e) }, cors, 500);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Phase 3 — déchiffrement batch
+// Body : { paths: [path, path, ...] }
+//   paths = chemins relatifs à orgs/{orgId}/, soit directement une feuille
+//   sensible (ex "reservations/abc/note"), soit un objet parent
+//   (ex "reservations/abc") auquel cas on déchiffre ses champs sensibles.
+// Réponse : { results: { path: plaintextValue | null } }
+// ═══════════════════════════════════════════════════════════════════
+async function handleDataDecrypt(request, env, auth, cors) {
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonWithCors({ error: 'bad_request', detail: 'invalid_json' }, cors, 400); }
+
+  const paths = Array.isArray(body.paths) ? body.paths : [];
+  if (!paths.length) return jsonWithCors({ error: 'bad_request', detail: 'empty_paths' }, cors, 400);
+  if (paths.length > 500) return jsonWithCors({ error: 'bad_request', detail: 'too_many_paths' }, cors, 400);
+
+  const orgId = auth.orgId;
+  if (!orgId) return jsonWithCors({ error: 'unauthorized', detail: 'no_org_in_token' }, cors, 401);
+
+  try {
+    const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
+    const accessToken = await getAccessToken(sa);
+    const dbUrl = env.FIREBASE_DB_URL;
+
+    const results = {};
+    // Concurrence limitée à 20 reads en parallèle pour ne pas saturer.
+    const queue = [...paths];
+    async function worker() {
+      while (queue.length) {
+        const p = queue.shift();
+        try {
+          const pRel = String(p || '').replace(/^\/+|\/+$/g, '');
+          if (!pRel) { results[p] = null; continue; }
+          const raw = await dbGet(dbUrl, `orgs/${orgId}/${pRel}`, accessToken);
+          results[p] = await decryptForRead(pRel, raw, env);
+        } catch (e) {
+          console.warn('[data/decrypt] path failed', p, e?.message || e);
+          results[p] = null;
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(20, paths.length) }, () => worker()));
+
+    return jsonWithCors({ results }, cors, 200);
+  } catch (e) {
+    console.error('[data/decrypt] error', e?.message || e);
+    return jsonWithCors({ error: 'internal', detail: e?.message || String(e) }, cors, 500);
+  }
+}
+
+function jsonWithCors(data, cors, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...cors },
+  });
 }
 
 function constantTimeEquals(a, b) {

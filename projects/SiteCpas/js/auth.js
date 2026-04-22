@@ -402,41 +402,30 @@
       const err   = newForm.querySelector('#loginErr');
       const pwd   = input.value;
 
-      // Phase 2b — auth via Worker Cloudflare (signInWithCustomToken).
-      // Fallback silencieux sur l'ancien check local si le Worker est
-      // indisponible (panne réseau, 5xx, timeout). Un vrai échec de
-      // credentials (401 du Worker) ne déclenche PAS le fallback.
-      let authed = false;
-      if (typeof WORKER !== 'undefined' && CONFIG.WORKER_URL) {
-        try {
-          const res = await WORKER.authLogin({
-            orgId:    ORG_ID,
-            agentKey: _selectedAgent.key,
-            password: pwd,
-          });
-          if (res?.customToken && firebase.auth) {
-            await firebase.auth().signInWithCustomToken(res.customToken);
-            console.log('%c[auth] 🛡 signInWithCustomToken OK', 'color:#10b981;font-weight:bold', 'uid=', firebase.auth().currentUser?.uid);
-            authed = true;
-          }
-        } catch (e) {
-          if (e?.status === 401) {
-            err.classList.remove('hidden');
-            input.select();
-            return;
-          }
-          console.warn('[auth] Worker indisponible, fallback hash local', e?.message || e);
-        }
-      }
-
-      if (!authed) {
-        // Fallback : ancien check local (SHA-256 vs hash Firebase).
-        const hash = await sha256(pwd);
-        if (hash !== storedHash) {
+      // Phase 3 — Auth OBLIGATOIRE via le Worker Cloudflare.
+      // Plus de fallback hash local : si le Worker est down, login impossible.
+      // Le Worker vérifie le hash contre Firebase (service account REST)
+      // et signe un customToken RS256 avec uid = agentKey.
+      try {
+        const res = await WORKER.authLogin({
+          orgId:    ORG_ID,
+          agentKey: _selectedAgent.key,
+          password: pwd,
+        });
+        if (!res?.customToken || !firebase.auth) throw new Error('bad_response');
+        await firebase.auth().signInWithCustomToken(res.customToken);
+        console.log('%c[auth] 🛡 signInWithCustomToken OK', 'color:#10b981;font-weight:bold', 'uid=', firebase.auth().currentUser?.uid);
+      } catch (e) {
+        if (e?.status === 401) {
           err.classList.remove('hidden');
+          err.textContent = 'Mot de passe incorrect';
           input.select();
-          return;
+        } else {
+          err.classList.remove('hidden');
+          err.textContent = "Service d'authentification indisponible. Réessayez dans quelques instants.";
+          console.error('[auth] Worker login failed', e?.message || e);
         }
+        return;
       }
 
       _loginSuccess(_selectedAgent.key);
@@ -492,13 +481,26 @@
       newBtn.disabled = true;
       newBtn.textContent = 'Création…';
 
-      const hash = await sha256(pwd);
-      await db.ref(`orgs/${ORG_ID}/appConfig/agentPasswords/${key}`).set(hash);
-      if (typeof AUDIT !== 'undefined') AUDIT.log('agent.pwd.create', { agentKey: key, firstAdmin: !!isFirstAdmin });
-
-      // Premier admin : assigner le rôle __admin__ automatiquement
-      if (isFirstAdmin) {
-        await db.ref(`orgs/${ORG_ID}/appConfig/agentRoles/${key}`).set('__admin__');
+      // Phase 3 — création du mdp via le Worker. Le Worker hash, vérifie
+      // que le mdp n'est pas déjà défini, écrit le hash, et assigne
+      // automatiquement le rôle __admin__ si c'est le premier agent
+      // avec un mdp dans l'org. Audit log signé server-side.
+      try {
+        const res = await WORKER.authSetPassword({
+          orgId:    ORG_ID,
+          agentKey: key,
+          password: pwd,
+        });
+        if (!res?.ok) throw new Error('bad_response');
+      } catch (e) {
+        newBtn.disabled = false;
+        newBtn.textContent = 'Confirmer';
+        errEl.classList.remove('hidden');
+        errEl.textContent = e?.status === 403
+          ? 'Un mot de passe est déjà défini pour cet agent. Demandez à l\'admin de le réinitialiser.'
+          : 'Création impossible : service indisponible. Réessayez.';
+        console.error('[auth] authSetPassword failed', e?.message || e);
+        return;
       }
 
       // Réinitialiser le flag "tutorial vu" pour que le tuto repasse
