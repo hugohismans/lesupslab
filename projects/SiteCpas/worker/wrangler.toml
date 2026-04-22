@@ -1,0 +1,21 @@
+name = "sitecpas-worker"
+main = "src/index.js"
+compatibility_date = "2026-04-22"
+compatibility_flags = ["nodejs_compat"]
+
+# Observabilité (logs via `wrangler tail`)
+[observability]
+enabled = true
+
+# Variables non-sensibles (les secrets se mettent via `wrangler secret put`)
+[vars]
+ENVIRONMENT = "production"
+APP_VERSION = "0.1.0"
+
+# ── Environnements ─────────────────────────────────────────────────
+# Preview (dev)
+[env.dev]
+name = "sitecpas-worker-dev"
+[env.dev.vars]
+ENVIRONMENT = "dev"
+APP_VERSION = "0.1.0"

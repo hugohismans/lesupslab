@@ -1,0 +1,16 @@
+{
+  "name": "sitecpas-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CloudFlare Worker for SiteCpas — Phase 1 skeleton",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "login": "wrangler login",
+    "whoami": "wrangler whoami"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}
