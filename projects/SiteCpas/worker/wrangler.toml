@@ -10,7 +10,8 @@ enabled = true
 # Variables non-sensibles (les secrets se mettent via `wrangler secret put`)
 [vars]
 ENVIRONMENT = "production"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
+FIREBASE_DB_URL = "https://cpasquaregnon-70f59-default-rtdb.europe-west1.firebasedatabase.app"
 
 # ── Environnements ─────────────────────────────────────────────────
 # Preview (dev)
@@ -18,4 +19,5 @@ APP_VERSION = "0.1.0"
 name = "sitecpas-worker-dev"
 [env.dev.vars]
 ENVIRONMENT = "dev"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.2.0"
+FIREBASE_DB_URL = "https://cpasquaregnon-70f59-default-rtdb.europe-west1.firebasedatabase.app"
