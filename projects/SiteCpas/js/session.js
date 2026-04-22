@@ -25,16 +25,11 @@ const SESSION = {
 
   init() {
     const key = this._agentKey();
-    if (!key) {
-      console.log('%c[session]', 'color:#94a3b8', 'init skipped (pas d\'agent connecté)');
-      return;
-    }
-    console.log('%c[session]', 'color:#10b981;font-weight:bold', 'init', 'agentKey=', key, 'interval=', this.VALIDATE_INTERVAL_MS, 'ms');
+    if (!key) return;
+    console.log('%c[session] 🛡 active', 'color:#10b981;font-weight:bold', 'agent=', key, 'interval=', this.VALIDATE_INTERVAL_MS + 'ms');
 
-    // Check initial — attendre que DB._authReady soit disponible (DB.init() lancé depuis app.js)
     const waitForDb = (retries = 30) => {
       if (typeof DB !== 'undefined' && DB._db && DB._authReady) {
-        console.log('%c[session]', 'color:#10b981', 'DB prêt, validate() initial');
         DB._authReady.finally(() => this.validate());
       } else if (retries > 0) {
         setTimeout(() => waitForDb(retries - 1), 300);
@@ -48,10 +43,7 @@ const SESSION = {
     this._timer = setInterval(() => this.validate(), this.VALIDATE_INTERVAL_MS);
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        console.log('%c[session]', 'color:#94a3b8', 'visibilitychange visible → validate()');
-        this.validate();
-      }
+      if (document.visibilityState === 'visible') this.validate();
     });
   },
 
@@ -83,14 +75,11 @@ const SESSION = {
 
       await this.checkGrantExpiration();
 
-      if (typeof DB === 'undefined' || !DB._db) {
-        console.log('%c[session]', 'color:#94a3b8', 'validate skipped (DB non prête)');
-        return;
-      }
+      if (typeof DB === 'undefined' || !DB._db) return;
       if (DB._authReady) await DB._authReady;
 
-      // IMPORTANT : on contourne le wrap _ref() (qui met en cache la ref)
-      // et passe directement par DB._db pour forcer un fetch frais.
+      // Contourne le wrap DB._ref() (qui met en cache la ref) pour forcer
+      // un fetch frais à chaque tick.
       const base = `orgs/${ORG_ID}`;
       const [agentSnap, pwdSnap] = await Promise.all([
         DB._db.ref(`${base}/appConfig/agents/${key}`).once('value'),
@@ -99,8 +88,6 @@ const SESSION = {
 
       const agentExists = agentSnap.exists() && !!agentSnap.val();
       const pwdExists   = pwdSnap.exists();
-
-      console.log('%c[session]', 'color:#10b981', 'validate OK', 'agent=', agentExists, 'pwd=', pwdExists);
 
       if (!agentExists) return this._invalidate('agent_deleted');
       if (!pwdExists)   return this._invalidate('pwd_reset');
