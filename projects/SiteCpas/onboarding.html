@@ -490,6 +490,13 @@
 firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
+// Phase 0 sécu : anonymous auth avant les writes sur /superadmin (Rules exigent auth != null)
+const authReady = firebase.auth
+  ? firebase.auth().signInAnonymously()
+      .then(cred => console.log('%c[onboarding] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+      .catch(err => console.error('[onboarding] 🔐 anonymous auth FAILED', err))
+  : Promise.resolve();
+
 // ── EmailJS ───────────────────────────────────────────────────────
 // Pour configurer : https://www.emailjs.com
 //   1. Créer un compte EmailJS (gratuit — 200 emails/mois)
@@ -1086,6 +1093,7 @@ const STEPS = [
         btn.textContent = 'Envoi en cours…';
         try {
           const json = buildJson();
+          await authReady;
           const submissionRef = db.ref('superadmin/onboardingSubmissions').push();
           await submissionRef.set({
             ...json,
@@ -1234,6 +1242,7 @@ const TOKEN_PATH = 'superadmin/onboardingToken';
 
 async function validateToken(pwd) {
   const hash = await sha256(pwd.trim().toUpperCase());
+  await authReady;
   const snap = await db.ref(TOKEN_PATH).once('value');
   const token = snap.val();
   if (!token) return { ok: false, reason: 'notoken' };
@@ -1243,6 +1252,7 @@ async function validateToken(pwd) {
 }
 
 async function markTokenUsed() {
+  await authReady;
   await db.ref(`${TOKEN_PATH}/usedAt`).set(Date.now());
 }
 

@@ -373,6 +373,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/config.js"></script>
+<script src="js/audit.js"></script>
 <script>
 // ── Config ────────────────────────────────────────────────────────
 const SA_KEY       = 'sitecpas_superadmin';
@@ -457,8 +458,10 @@ document.getElementById('saBtnLogin').addEventListener('click', async () => {
   const snap = await db.ref(SA_HASH_PATH).once('value');
   if (inputHash === snap.val()) {
     sessionStorage.setItem(SA_KEY, '1');
+    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.login', null);
     showApp();
   } else {
+    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.login.failed', null);
     document.getElementById('saLoginErr').classList.remove('hidden');
   }
 });
@@ -473,6 +476,7 @@ document.getElementById('saBtnCreate').addEventListener('click', async () => {
   const hash = await sha256(pwd);
   await db.ref(SA_HASH_PATH).set(hash);
   sessionStorage.setItem(SA_KEY, '1');
+  if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.pwd.create', null);
   showApp();
 });
 
@@ -576,6 +580,7 @@ async function loadOrgs() {
     const flags = data?.appConfig?.features || {};
     buildFlagGrid(document.getElementById(`flags-grid-${orgId}`), flags, async (key, val) => {
       await db.ref(`orgs/${orgId}/appConfig/features/${key}`).set(val || null);
+      if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.feature.update', { orgId, key, value: !!val });
     });
   });
 }
@@ -744,6 +749,7 @@ document.getElementById('saBtnCreateOrg').addEventListener('click', async () => 
     logCreate('✓ Lieu + 3 locaux par défaut créés', 'ok');
 
     await db.ref().update(updates);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.create', { orgId, name, logoUrl: logoUrl || null });
 
     logCreate(`✅ Organisation "${orgId}" créée avec succès !`, 'ok');
     logCreate(`🔗 URL : <a href="index.html?org=${orgId}" target="_blank" style="color:#38bdf8">index.html?org=${orgId}</a>`, 'ok');
@@ -772,6 +778,7 @@ async function resetPostTest(orgId, orgName) {
   try {
     await db.ref(`orgs/${orgId}/appConfig/agentRoles`).remove();
     await db.ref(`orgs/${orgId}/appConfig/agentPasswords`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.resetAuth', { orgId });
     alert(`✅ Reset effectué pour "${orgName}".\nLe prochain connecté sera admin.`);
     loadOrgs();
   } catch (e) {
@@ -793,6 +800,7 @@ async function purgeQueueDay(orgId, orgName) {
   try {
     await db.ref(`orgs/${orgId}/queues/${target}`).remove();
     await db.ref(`orgs/${orgId}/queueHistory/${target}`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.purgeQueues', { orgId, date: target });
     alert(`✅ Tickets du ${target} supprimés pour "${orgName}".`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
@@ -835,6 +843,7 @@ async function purgeCalendar(orgId, orgName) {
   if (input !== 'SUPPRIMER') { if (input !== null) alert('Annulé — vous devez taper exactement "SUPPRIMER".'); return; }
   try {
     await db.ref(`orgs/${orgId}/reservations`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.purgeCalendar', { orgId });
     alert(`✅ Toutes les réservations supprimées pour "${orgName}".\nLe calendrier est vide.`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);

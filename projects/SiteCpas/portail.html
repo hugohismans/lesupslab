@@ -122,7 +122,14 @@
   const db   = firebase.database();
   const grid = document.getElementById('ptGrid');
 
-  db.ref('orgs').once('value').then(snap => {
+  // Phase 0 sécu : anonymous auth avant read (Rules exigent auth != null)
+  const authReady = firebase.auth
+    ? firebase.auth().signInAnonymously()
+        .then(cred => console.log('%c[portail] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+        .catch(err => console.error('[portail] 🔐 anonymous auth FAILED', err))
+    : Promise.resolve();
+
+  authReady.then(() => db.ref('orgs').once('value')).then(snap => {
     const orgs = snap.val() || {};
     const entries = Object.entries(orgs)
       .filter(([, d]) => !!d?.appConfig)          // org configurée uniquement

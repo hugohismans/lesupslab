@@ -2261,9 +2261,11 @@ const DB = {
   agentHasPassword(agentKey) { return !!this._config.agentPasswords[agentKey]; },
   async setAgentPasswordHash(agentKey, hash) {
     await this._ref(`appConfig/agentPasswords/${agentKey}`).set(hash);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('agent.pwd.set', { agentKey });
   },
   async resetAgentPassword(agentKey) {
     await this._ref(`appConfig/agentPasswords/${agentKey}`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('admin.agent.resetPwd', { agentKey });
   },
   // Vérifie si au moins un agent a le rôle Admin (pour la détection du premier superadmin)
   hasAnySuperAdmin() {
@@ -2272,19 +2274,49 @@ const DB = {
 
   getAgentPermRole(agentKey) {
     // Grant temporaire : l'agent désigné obtient le rôle __admin__ pendant l'absence
+    // — mais seulement si le grant n'est pas expiré (grantEnd). Sinon on retombe
+    // immédiatement sur le rôle normal même si le grant n'a pas encore été révoqué
+    // côté Firebase.
     const grant = this._config.tempAdminGrant;
-    if (grant && grant.grantedTo === agentKey) return '__admin__';
+    if (grant && grant.grantedTo === agentKey && !this.isTempAdminGrantExpired()) {
+      return '__admin__';
+    }
     return this._config.agentRoles[agentKey] || null;
   },
 
   getTempAdminGrant() { return this._config.tempAdminGrant || null; },
 
+  // Retourne le timestamp de la prochaine fin de journée (today EoD si
+  // pas encore passée, sinon demain EoD).
+  _nextEndOfDay() {
+    const h = this.getEndOfDayHour();
+    const now = new Date();
+    const eod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, 0, 0, 0);
+    if (eod.getTime() <= now.getTime()) eod.setDate(eod.getDate() + 1);
+    return eod.getTime();
+  },
+
   async setTempAdminGrant(grantedTo, grantedBy) {
-    await this._ref('appConfig/tempAdminGrant').set({ grantedTo, grantedBy, grantedAt: Date.now() });
+    await this._ref('appConfig/tempAdminGrant').set({
+      grantedTo,
+      grantedBy,
+      grantedAt: Date.now(),
+      grantEnd:  this._nextEndOfDay(),
+    });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('admin.grant.set', { grantedTo, grantedBy });
   },
 
   async revokeTempAdminGrant() {
     await this._ref('appConfig/tempAdminGrant').remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('admin.grant.revoke', null);
+  },
+
+  // Retourne true si le grant est expiré (grantEnd dépassé). Grants
+  // antérieurs à la Phase 0.5 (sans grantEnd) considérés non expirés.
+  isTempAdminGrantExpired() {
+    const g = this._config.tempAdminGrant;
+    if (!g || !g.grantEnd) return false;
+    return Date.now() > g.grantEnd;
   },
 
   // Vérifie si l'utilisateur courant a une permission donnée.
@@ -2483,6 +2515,7 @@ const DB = {
       localId:     String(localId),
       respondedAt: Date.now(),
     });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('rdv.accept', { requestId, localId: String(localId) });
   },
 
   async refuseAppointmentRequest(requestId) {
@@ -2490,6 +2523,7 @@ const DB = {
       status:      'refused',
       respondedAt: Date.now(),
     });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('rdv.refuse', { requestId });
   },
 
   // Vérifie si un slot a déjà une demande acceptée
@@ -2521,28 +2555,45 @@ const DB = {
     const needsSeries = !data.isPermanent && data.recurrence?.type !== 'none';
     const seriesId = needsSeries ? genId() : null;
     await ref.set({ ...data, recurrence: { ...data.recurrence, seriesId }, createdAt: Date.now() });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.create', {
+      resId: ref.key,
+      localId: data.localId,
+      agent: data.agent,
+      startDateTime: data.startDateTime,
+      endDateTime: data.endDateTime,
+      type: data.type || null,
+      recurrence: data.recurrence?.type || 'none',
+    });
     return ref.key;
   },
 
   async update(id, data) {
     await this._ref(`reservations/${id}`).update({ ...data, updatedAt: Date.now() });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.update', {
+      resId: id,
+      fields: Object.keys(data || {}),
+    });
   },
 
   async remove(id) {
     await this._ref(`reservations/${id}`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.delete', { resId: id });
   },
 
   // Ajoute une date d'exception (suppression d'une seule occurrence)
   async addException(id, occDate) {
     await this._ref(`reservations/${id}/exceptions/${occDate}`).set(true);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.exception', { resId: id, occDate });
   },
 
   async removeSeries(seriesId) {
     const updates = {};
+    const removed = [];
     Object.entries(this._data).forEach(([id, r]) => {
-      if (r.recurrence?.seriesId === seriesId) updates[`reservations/${id}`] = null;
+      if (r.recurrence?.seriesId === seriesId) { updates[`reservations/${id}`] = null; removed.push(id); }
     });
     if (Object.keys(updates).length) await this._update(updates);
+    if (removed.length && typeof AUDIT !== 'undefined') AUDIT.log('res.deleteSeries', { seriesId, count: removed.length });
   },
 
   // Charge des données de démonstration si Firebase est vide (premier lancement)

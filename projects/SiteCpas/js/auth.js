@@ -14,6 +14,8 @@
     }
     document.getElementById('btnLogout')?.addEventListener('click', function () {
       if (confirm('Se déconnecter ?')) {
+        const agentKey = sessionStorage.getItem(AGENT_KEY);
+        if (typeof AUDIT !== 'undefined') AUDIT.log('agent.logout', { agentKey });
         sessionStorage.removeItem(AUTH_KEY);
         sessionStorage.removeItem(AGENT_KEY);
         sessionStorage.removeItem('cpas_admin'); // compat legacy
@@ -26,6 +28,17 @@
   // ── Page index.html ──────────────────────────────────────────────
   if (sessionStorage.getItem(AUTH_KEY) === '1') {
     location.href = `app.html${orgParam}`; return;
+  }
+
+  // Message si arrivée depuis une session invalidée (Phase 0.5)
+  const _reason = new URLSearchParams(location.search).get('reason');
+  if (_reason) {
+    const msgs = {
+      pwd_reset:     'Votre mot de passe a été réinitialisé. Veuillez en créer un nouveau.',
+      agent_deleted: 'Votre compte a été supprimé. Contactez votre administrateur.',
+    };
+    const txt = msgs[_reason];
+    if (txt) setTimeout(() => alert(txt), 100);
   }
 
   async function sha256(str) {
@@ -448,6 +461,7 @@
 
       const hash = await sha256(pwd);
       await db.ref(`orgs/${ORG_ID}/appConfig/agentPasswords/${key}`).set(hash);
+      if (typeof AUDIT !== 'undefined') AUDIT.log('agent.pwd.create', { agentKey: key, firstAdmin: !!isFirstAdmin });
 
       // Premier admin : assigner le rôle __admin__ automatiquement
       if (isFirstAdmin) {
@@ -465,6 +479,7 @@
   async function _loginSuccess(agentKey) {
     sessionStorage.setItem(AUTH_KEY, '1');
     sessionStorage.setItem(AGENT_KEY, agentKey);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('agent.login', { agentKey });
     // Charger le genre sauvegardé et le mettre en session
     try {
       const gSnap = await db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${agentKey}`).once('value');
