@@ -24,22 +24,34 @@ const SESSION = {
   _inflight: false,
 
   init() {
-    // Pas de validation si pas connecté
-    if (!this._agentKey()) return;
-
-    // Check initial rapide (après que DB soit prête)
-    if (typeof DB !== 'undefined' && DB._authReady) {
-      DB._authReady.finally(() => this.validate());
-    } else {
-      setTimeout(() => this.validate(), 2000);
+    const key = this._agentKey();
+    if (!key) {
+      console.log('%c[session]', 'color:#94a3b8', 'init skipped (pas d\'agent connecté)');
+      return;
     }
+    console.log('%c[session]', 'color:#10b981;font-weight:bold', 'init', 'agentKey=', key, 'interval=', this.VALIDATE_INTERVAL_MS, 'ms');
 
-    // Interval régulier
+    // Check initial — attendre que DB._authReady soit disponible (DB.init() lancé depuis app.js)
+    const waitForDb = (retries = 30) => {
+      if (typeof DB !== 'undefined' && DB._db && DB._authReady) {
+        console.log('%c[session]', 'color:#10b981', 'DB prêt, validate() initial');
+        DB._authReady.finally(() => this.validate());
+      } else if (retries > 0) {
+        setTimeout(() => waitForDb(retries - 1), 300);
+      } else {
+        console.warn('[session] DB.init() pas détecté après 9s, fallback');
+        this.validate();
+      }
+    };
+    waitForDb();
+
     this._timer = setInterval(() => this.validate(), this.VALIDATE_INTERVAL_MS);
 
-    // Re-check quand l'onglet reprend le focus (l'utilisateur revient après un moment)
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') this.validate();
+      if (document.visibilityState === 'visible') {
+        console.log('%c[session]', 'color:#94a3b8', 'visibilitychange visible → validate()');
+        this.validate();
+      }
     });
   },
 
@@ -67,27 +79,32 @@ const SESSION = {
     this._inflight = true;
     try {
       const key = this._agentKey();
-      if (!key) return; // logged out entre-temps
+      if (!key) return;
 
-      // 1. Auto-révocation du grant expiré (indépendant de la session)
       await this.checkGrantExpiration();
 
-      // 2. Vérifs de session agent
-      if (typeof DB === 'undefined' || !DB._db) return;
+      if (typeof DB === 'undefined' || !DB._db) {
+        console.log('%c[session]', 'color:#94a3b8', 'validate skipped (DB non prête)');
+        return;
+      }
       if (DB._authReady) await DB._authReady;
 
+      // IMPORTANT : on contourne le wrap _ref() (qui met en cache la ref)
+      // et passe directement par DB._db pour forcer un fetch frais.
+      const base = `orgs/${ORG_ID}`;
       const [agentSnap, pwdSnap] = await Promise.all([
-        DB._ref(`appConfig/agents/${key}`).once('value'),
-        DB._ref(`appConfig/agentPasswords/${key}`).once('value'),
+        DB._db.ref(`${base}/appConfig/agents/${key}`).once('value'),
+        DB._db.ref(`${base}/appConfig/agentPasswords/${key}`).once('value'),
       ]);
 
       const agentExists = agentSnap.exists() && !!agentSnap.val();
       const pwdExists   = pwdSnap.exists();
 
+      console.log('%c[session]', 'color:#10b981', 'validate OK', 'agent=', agentExists, 'pwd=', pwdExists);
+
       if (!agentExists) return this._invalidate('agent_deleted');
       if (!pwdExists)   return this._invalidate('pwd_reset');
     } catch (e) {
-      // Erreur réseau / Firebase — ne pas invalider par erreur, on réessaiera
       console.warn('[session] validate failed (ignoré)', e?.message || e);
     } finally {
       this._inflight = false;
