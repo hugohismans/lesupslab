@@ -37,9 +37,11 @@
           }
         },
 
-        // ── Notifications : plafond de taille ─────────────────────
+        // ── Notifications : plafond de taille + index pour perf ───
         "notifications": {
+          ".indexOn": ["createdAt"],
           "$agentKey": {
+            ".indexOn": ["createdAt"],
             "$notifId": {
               "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 2000)" }
             }
