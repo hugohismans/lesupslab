@@ -378,6 +378,13 @@ const CAL = {
     const canvasHeight = cumY[total];
     const ROW_H = BASE_ROW_H; // conservé pour compatibilité (ex: ghost overlay)
 
+    // ── Pré-construction des blocs Mon agenda (canvas absolu) ──────
+    // Même modèle que les canvas locaux — garantit un alignement
+    // parfait avec les <tr> (pas de contenu qui pousse la ligne).
+    let myAgendaBlocksHtml = '';
+    // myOccs sera défini juste après (dépend de myAgentName). On reporte
+    // la construction à plus bas après sa définition.
+
     // ── Locaux à afficher (1 colonne par local) ────────────────────
     const allLocals = CONFIG.LOCALS.map(localId => ({
       localId,
@@ -414,7 +421,7 @@ const CAL = {
       }
     }
 
-    // ── Colonne "Mon agenda" (inchangée : rowspan par slot) ────────
+    // ── Colonne "Mon agenda" (canvas absolu — même modèle que locaux) ──
     const myAgentName = document.getElementById('hsGreeting')?.dataset?.agentName || '';
     const myOccs = myAgentName
       ? occs.filter(r => !r.isPermanent && (
@@ -424,7 +431,40 @@ const CAL = {
         ))
       : [];
     const myAgentColor = myAgentName ? DB.getAgentColor(myAgentName) : null;
-    let coveredUntilMe = 0;
+
+    // Construction des blocs Mon agenda en position absolue (aligne avec cumY)
+    myOccs.forEach(r => {
+      let startIdx = -1;
+      for (let j = 0; j < slots.length; j++) {
+        const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+        const jE = new Date(jS.getTime() + slotMinDay * 60000);
+        if (r._start < jE && r._end > jS) { startIdx = j; break; }
+      }
+      if (startIdx === -1) return;
+      let rSpan = 0;
+      for (let j = startIdx; j < slots.length; j++) {
+        const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
+        const jE = new Date(jS.getTime() + slotMinDay * 60000);
+        if (r._start < jE && r._end > jS) rSpan++;
+        else break;
+      }
+      rSpan = Math.max(1, rSpan);
+      const myTop    = cumY[startIdx];
+      const myHeight = cumY[startIdx + rSpan] - cumY[startIdx];
+      const mySvc  = DB.getSvcLabel(r);
+      const myLoc  = DB.getUnitLabel(parseInt(r.localId), r.deskId || null);
+      const myStartH = r._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+      const myEndH   = r._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
+      const myBg     = myAgentColor ? `background:${myAgentColor}20;border-left:3px solid ${myAgentColor};` : '';
+      myAgendaBlocksHtml += `<div class="resa-block is-booked my-agenda-block"
+        style="top:${myTop}px;height:${myHeight}px;left:0;right:0;${myBg}"
+        data-id="${r.id}" data-occ="${r._occDate || ''}" data-act="detail"
+        data-occ-date="${isoDate(r._start)}">
+        <span class="ct"><b>${escapeHtml(mySvc)}</b><br>
+        <small>${escapeHtml(myLoc)}</small><br>
+        <small class="ct-time">${myStartH} – ${myEndH}</small></span>
+      </div>`;
+    });
 
     // ── Date bar + absence ─────────────────────────────────────────
     const dateLabel = d.toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -628,42 +668,13 @@ const CAL = {
       h += `<tr class="cv-row${i % 2 ? ' alt' : ''}" data-slot="${i}" style="height:${rowH}px">`;
       h += `<td class="tc" style="height:${rowH}px">${slot.label}</td>`;
 
-      // Mon agenda (inchangé — rowspan par slot)
-      if (myAgentName) {
-        if (coveredUntilMe <= i) {
-          const myRes = myOccs.find(r => r._start < sE && r._end > sS);
-          if (myRes) {
-            let mySpan = 0;
-            for (let j = i; j < total; j++) {
-              const jS = new Date(d); jS.setHours(slots[j].h, slots[j].m, 0, 0);
-              const jE = new Date(jS.getTime() + slotMinDay * 60000);
-              if (myRes._start < jE && myRes._end > jS) mySpan++;
-              else if (jS >= myRes._end) break;
-            }
-            mySpan = Math.max(1, mySpan);
-            coveredUntilMe = i + mySpan;
-            const mySvc  = DB.getSvcLabel(myRes);
-            const myLoc  = DB.getUnitLabel(parseInt(myRes.localId), myRes.deskId || null);
-            const myStartH = myRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
-            const myEndH   = myRes._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
-            // Hauteur imposée pour éviter que le contenu pousse le <tr>
-            // au-delà de slotHeights[i..i+mySpan-1] → désaligne les canvas locaux.
-            const myCellH = cumY[i + mySpan] - cumY[i];
-            const myStyle = (myAgentColor
-              ? `background:${myAgentColor}20;border-left:3px solid ${myAgentColor};`
-              : '') + `height:${myCellH}px;max-height:${myCellH}px;overflow:hidden;`;
-            h += `<td class="cv-cell is-booked my-agenda-cell" rowspan="${mySpan}"
-              data-id="${myRes.id}" data-occ="${myRes._occDate || ''}" data-act="detail"
-              data-occ-date="${isoDate(myRes._start)}" style="${myStyle}">
-              <span class="ct"><b>${escapeHtml(mySvc)}</b><br>
-              <small>${escapeHtml(myLoc)}</small><br>
-              <small class="ct-time">${myStartH} – ${myEndH}</small></span>
-            </td>`;
-          } else {
-            // Slot libre Mon agenda : hauteur forcée = slotHeights[i]
-            h += `<td class="cv-cell my-agenda-cell my-agenda-free" style="height:${slotHeights[i]}px;max-height:${slotHeights[i]}px"></td>`;
-          }
-        }
+      // Mon agenda : canvas unique (rowspan=total) sur la 1ère ligne,
+      // avec les blocs en position absolue. Pas de cellule sur les
+      // lignes suivantes — rowspan couvre tout.
+      if (myAgentName && i === 0) {
+        h += `<td class="my-agenda-canvas" rowspan="${total}" style="height:${canvasHeight}px">
+          ${myAgendaBlocksHtml}
+        </td>`;
       }
 
       // Canvas locaux : un seul <td rowspan=total> par local, sur la première ligne
