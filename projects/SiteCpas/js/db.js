@@ -63,14 +63,12 @@ const DB = {
     // signés par le CloudFlare Worker.
     if (firebase.auth) {
       this._authReady = firebase.auth().signInAnonymously()
-        .then(cred => { console.debug('[DB] anonymous auth OK', cred?.user?.uid); })
+        .then(cred => { console.log('%c[DB] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid); })
         .catch(err => {
-          console.warn('[DB] anonymous auth failed', err);
+          console.error('[DB] 🔐 anonymous auth FAILED', err);
           // Ne throw pas — laisse les listeners tenter quand même.
-          // Si les rules bloquent, on aura un log explicite.
         });
     } else {
-      // SDK firebase-auth-compat pas chargé sur cette page → skip
       console.warn('[DB] firebase-auth-compat non chargé — mode legacy');
       this._authReady = Promise.resolve();
     }
