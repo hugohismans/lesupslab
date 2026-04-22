@@ -286,8 +286,10 @@ async function handleDataWrite(request, env, auth, cors) {
     if (!orgId || !/^[a-z0-9-]+$/.test(orgId)) {
       return jsonWithCors({ error: 'unauthorized', detail: 'no_org_in_token' }, cors, 401);
     }
-    // Vérifier autorisation par rules (path relatif à l'org)
-    const check = isAuthorized(path, op, auth);
+    // Vérifier autorisation par rules (path relatif à l'org). On passe
+    // la value pour les règles qui inspectent son contenu (ex: agentRoles
+    // self-set refuse __admin__).
+    const check = isAuthorized(path, op, auth, value);
     if (!check.allowed) {
       console.warn('[data/write] denied', { uid: auth.uid, orgId, op, path, reason: check.reason });
       return jsonWithCors({ error: 'forbidden', detail: 'authz_denied', path, op }, cors, 403);

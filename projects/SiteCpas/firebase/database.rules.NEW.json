@@ -14,16 +14,22 @@
         ".write": "auth != null",
 
         // ── Configuration (appConfig) ─────────────────────────────
-        // agentPasswords migrés sur le Worker (POST /auth/set-password +
-        // /data/write avec authz). Client ne peut plus écrire directement.
+        // Phase 3 + 3bis + 3ter — tout appConfig migré sur le Worker
+        // (admin-only via /data/write avec authz ; champs self-scope
+        // agent autorisés selon SCOPED_RULES). Le service account
+        // bypass les Rules pour permettre ces écritures.
         "appConfig": {
           ".validate": "newData.exists()",
-          "agents":   { ".validate": "newData.exists()" },
-          "lieux":    { ".validate": "newData.exists()" },
-          "services": { ".validate": "newData.exists()" },
-          "agentPasswords": {
-            ".write": false
-          }
+          "agents":    { ".validate": "newData.exists()" },
+          "lieux":     { ".validate": "newData.exists()" },
+          "services":  { ".validate": "newData.exists()" },
+          "agentPasswords":  { ".write": false },
+          "agentRoles":      { ".write": false },
+          "agentColors":     { ".write": false },
+          "agentEmojis":     { ".write": false },
+          "agentGenders":    { ".write": false },
+          "agentPublicNames":{ ".write": false },
+          "agentPermRoles":  { ".write": false }
         },
 
         // ── Réservations : CRUD migré sur le Worker (Phase 3) ────
