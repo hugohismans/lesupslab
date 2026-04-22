@@ -280,30 +280,49 @@ async function _resolveKioskName(groupId, name) {
 }
 
 // ── Émettre un ticket ─────────────────────────────────────────────
+// Phase 3bis — toutes les écritures passent par le Worker (/kiosk/issue-ticket).
+// Le Worker vérifie enableKiosk, incrémente le compteur côté serveur,
+// enregistre le nom si fourni, et log en audit. Rate limit 30/min/IP.
 async function _issueTicket(groupId, groupName) {
   const rawName = document.getElementById('kBenefName').value.trim();
   const today = isoDate(new Date());
 
-  // Lire le compteur actuel
-  const tickSnap   = await _db.ref(`${_base}/queues/${today}/tick_${groupId}`).once('value');
-  const tcallSnap  = await _db.ref(`${_base}/queues/${today}/tcall_${groupId}`).once('value');
-  const n = (tickSnap.val() || 0) + 1;
+  // Lire la position dans la file (juste pour l'affichage "X personnes avant vous")
+  const tcallSnap = await _db.ref(`${_base}/queues/${today}/tcall_${groupId}`).once('value');
   const called = tcallSnap.val() || 0;
 
-  // Résoudre les conflits de prénom dans la même file
+  // Résoudre les conflits de prénom (lecture seule, OK côté client)
   const name = rawName ? await _resolveKioskName(groupId, rawName) : null;
 
-  // Incrémenter
-  await _db.ref(`${_base}/queues/${today}/tick_${groupId}`).set(n);
-  if (name) {
-    await _db.ref(`${_base}/queues/${today}/names_${groupId}/${n}`).set(name);
+  // Appeler le Worker pour émettre le ticket
+  const workerUrl = (typeof CONFIG !== 'undefined' && CONFIG.WORKER_URL) || '';
+  if (!workerUrl) {
+    alert('Service indisponible (WORKER_URL manquant).');
+    return;
+  }
+  let result;
+  try {
+    const r = await fetch(`${workerUrl}/kiosk/issue-ticket`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ orgId: ORG_ID, groupId, name }),
+    });
+    result = await r.json();
+    if (!r.ok) {
+      if (r.status === 429) alert('Trop de demandes. Patientez une minute.');
+      else if (r.status === 403 && result.detail === 'kiosk_disabled') alert('Borne désactivée par l\'administrateur.');
+      else alert(`Erreur : ${result.detail || result.error || r.status}`);
+      return;
+    }
+  } catch (e) {
+    alert('Service d\'émission de tickets indisponible.');
+    console.error('[kiosk] issue-ticket failed', e);
+    return;
   }
 
-  // Calcul du numéro formaté
-  const prefix = (groupName.trim()[0] || 'T').toUpperCase();
-  const ticket = `${prefix}${String(n).padStart(2, '0')}`;
+  const ticket  = result.label;
+  const n       = result.number;
   const waiting = Math.max(0, n - called - 1);
-
   _showTicket(ticket, groupName, name, waiting);
 }
 

@@ -374,6 +374,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="js/config.js"></script>
 <script src="js/audit.js"></script>
+<script src="js/worker-client.js"></script>
 <script>
 // ── Config ────────────────────────────────────────────────────────
 const SA_KEY       = 'sitecpas_superadmin';
@@ -416,6 +417,14 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Phase 3bis — helper pour les writes superadmin via le Worker.
+// Toutes les écritures passent par POST /data/write avec absolute:true
+// (paths absolus sous orgs/xxx/ ou superadmin/xxx). Le Worker valide
+// le claim superadmin dans le token et bypass l'authz normale.
+async function saWrite(op, path, value = null) {
+  return await WORKER.write(op, path, value, { absolute: true });
+}
+
 // ── Auth superadmin ───────────────────────────────────────────────
 const saLogin  = document.getElementById('saLogin');
 const saApp    = document.getElementById('saApp');
@@ -454,15 +463,29 @@ if (sessionStorage.getItem(SA_KEY) === '1') {
 document.getElementById('saBtnLogin').addEventListener('click', async () => {
   const pwd = document.getElementById('saPwd').value;
   if (!pwd) return;
-  const inputHash = await sha256(pwd);
-  const snap = await db.ref(SA_HASH_PATH).once('value');
-  if (inputHash === snap.val()) {
+  // Phase 3bis — auth via Worker. Retourne un customToken avec claim
+  // superadmin: true → signInWithCustomToken → toutes les ops Firebase
+  // passent par le Worker sous cette identité superadmin.
+  const btn = document.getElementById('saBtnLogin');
+  btn.disabled = true;
+  const origLabel = btn.textContent;
+  btn.textContent = 'Connexion…';
+  try {
+    const res = await WORKER.superadminLogin(pwd);
+    if (!res?.customToken) throw new Error('bad_response');
+    await firebase.auth().signInWithCustomToken(res.customToken);
+    console.log('%c[superadmin] 🛡 signInWithCustomToken OK', 'color:#10b981;font-weight:bold', 'uid=', firebase.auth().currentUser?.uid);
     sessionStorage.setItem(SA_KEY, '1');
-    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.login', null);
     showApp();
-  } else {
-    if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.login.failed', null);
+  } catch (e) {
+    console.warn('[superadmin] login failed', e?.status, e?.message || e);
     document.getElementById('saLoginErr').classList.remove('hidden');
+    if (e?.status !== 401) {
+      document.getElementById('saLoginErr').textContent = 'Service indisponible. Réessayez.';
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origLabel;
   }
 });
 document.getElementById('saPwd').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('saBtnLogin').click(); });
@@ -579,7 +602,7 @@ async function loadOrgs() {
   Object.entries(orgs).forEach(([orgId, data]) => {
     const flags = data?.appConfig?.features || {};
     buildFlagGrid(document.getElementById(`flags-grid-${orgId}`), flags, async (key, val) => {
-      await db.ref(`orgs/${orgId}/appConfig/features/${key}`).set(val || null);
+      await saWrite('set', `orgs/${orgId}/appConfig/features/${key}`, val || null);
       if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.feature.update', { orgId, key, value: !!val });
     });
   });
@@ -600,9 +623,9 @@ function toggleIntegratorPanel(orgId) {
 async function saveIntegratorSettings(orgId) {
   const enabled = document.getElementById(`int-enabled-${orgId}`).value === 'true';
   const key     = document.getElementById(`int-key-${orgId}`).value.trim();
-  await db.ref(`orgs/${orgId}/appConfig/integratorRdvEnabled`).set(enabled);
-  if (key) await db.ref(`orgs/${orgId}/appConfig/integratorAgentKey`).set(key);
-  else      await db.ref(`orgs/${orgId}/appConfig/integratorAgentKey`).remove();
+  await saWrite('set', `orgs/${orgId}/appConfig/integratorRdvEnabled`, enabled);
+  if (key) await saWrite('set', `orgs/${orgId}/appConfig/integratorAgentKey`, key);
+  else      await saWrite('remove', `orgs/${orgId}/appConfig/integratorAgentKey`);
   alert(`✅ Paramètres intégrateur enregistrés pour "${orgId}".`);
 }
 
@@ -637,7 +660,10 @@ async function saveMeta(orgId) {
   const updates = { [`orgs/${orgId}/appConfig/meta/name`]: name };
   if (logoUrl) updates[`orgs/${orgId}/appConfig/meta/logoUrl`] = logoUrl;
   else updates[`orgs/${orgId}/appConfig/meta/logoUrl`] = null;
-  await db.ref().update(updates);
+  for (const [p, v] of Object.entries(updates)) {
+    if (v === null) await saWrite('remove', p);
+    else            await saWrite('set', p, v);
+  }
   document.getElementById(`meta-${orgId}`).classList.remove('open');
   loadOrgs();
 }
@@ -748,7 +774,11 @@ document.getElementById('saBtnCreateOrg').addEventListener('click', async () => 
     updates[`orgs/${orgId}/appConfig/localLabels/3`] = 'Bureau 3';
     logCreate('✓ Lieu + 3 locaux par défaut créés', 'ok');
 
-    await db.ref().update(updates);
+    // Phase 3bis — éclate le multi-path update en plusieurs writes
+    // via le Worker (chacun avec absolute:true). Moins atomique mais sûr.
+    for (const [p, v] of Object.entries(updates)) {
+      await saWrite('set', p, v);
+    }
     if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.create', { orgId, name, logoUrl: logoUrl || null });
 
     logCreate(`✅ Organisation "${orgId}" créée avec succès !`, 'ok');
@@ -776,8 +806,8 @@ async function resetPostTest(orgId, orgName) {
   if (!confirm(msg)) return;
 
   try {
-    await db.ref(`orgs/${orgId}/appConfig/agentRoles`).remove();
-    await db.ref(`orgs/${orgId}/appConfig/agentPasswords`).remove();
+    await saWrite('remove', `orgs/${orgId}/appConfig/agentRoles`);
+    await saWrite('remove', `orgs/${orgId}/appConfig/agentPasswords`);
     if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.resetAuth', { orgId });
     alert(`✅ Reset effectué pour "${orgName}".\nLe prochain connecté sera admin.`);
     loadOrgs();
@@ -798,8 +828,8 @@ async function purgeQueueDay(orgId, orgName) {
     `La configuration, les réservations et les autres jours NE SONT PAS affectés.\n\nConfirmer ?`;
   if (!confirm(msg)) return;
   try {
-    await db.ref(`orgs/${orgId}/queues/${target}`).remove();
-    await db.ref(`orgs/${orgId}/queueHistory/${target}`).remove();
+    await saWrite('remove', `orgs/${orgId}/queues/${target}`);
+    await saWrite('remove', `orgs/${orgId}/queueHistory/${target}`);
     if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.purgeQueues', { orgId, date: target });
     alert(`✅ Tickets du ${target} supprimés pour "${orgName}".`);
   } catch (e) {
@@ -811,7 +841,7 @@ async function purgeQueueDay(orgId, orgName) {
 async function purgeRdvRequests(orgId, orgName) {
   if (!confirm(`Supprimer TOUTES les demandes de rendez-vous de "${orgName}" ?\n\nCela débloque tous les créneaux verrouillés par des demandes en attente.`)) return;
   try {
-    await db.ref(`orgs/${orgId}/appState/appointmentRequests`).remove();
+    await saWrite('remove', `orgs/${orgId}/appState/appointmentRequests`);
     alert(`✅ Demandes de RDV supprimées pour "${orgName}".`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
@@ -822,7 +852,7 @@ async function purgeRdvRequests(orgId, orgName) {
 async function purgeNotifications(orgId, orgName) {
   if (!confirm(`⚠️ Supprimer TOUTES les notifications de "${orgName}" ?\n\nCela vide la cloche de tous les agents.\nLes réservations, files et configuration ne sont PAS affectées.`)) return;
   try {
-    await db.ref(`orgs/${orgId}/notifications`).remove();
+    await saWrite('remove', `orgs/${orgId}/notifications`);
     alert(`✅ Toutes les notifications supprimées pour "${orgName}".`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
@@ -842,7 +872,7 @@ async function purgeCalendar(orgId, orgName) {
   const input = prompt(msg);
   if (input !== 'SUPPRIMER') { if (input !== null) alert('Annulé — vous devez taper exactement "SUPPRIMER".'); return; }
   try {
-    await db.ref(`orgs/${orgId}/reservations`).remove();
+    await saWrite('remove', `orgs/${orgId}/reservations`);
     if (typeof AUDIT !== 'undefined') AUDIT.log('superadmin.org.purgeCalendar', { orgId });
     alert(`✅ Toutes les réservations supprimées pour "${orgName}".\nLe calendrier est vide.`);
   } catch (e) {
@@ -903,7 +933,10 @@ async function purgeUserData(orgId, orgName) {
       });
     });
 
-    await db.ref().update(updates);
+    for (const [p, v] of Object.entries(updates)) {
+      if (v === null) await saWrite('remove', p);
+      else            await saWrite('set', p, v);
+    }
     alert(`✅ Données utilisateur purgées pour "${orgName}".\nConfig + préférences RDV conservées.`);
   } catch (e) {
     alert(`❌ Erreur : ${e.message}`);
@@ -960,7 +993,7 @@ document.getElementById('saGenToken')?.addEventListener('click', async () => {
   try {
     const raw  = generateToken();
     const hash = await sha256(raw.trim().toUpperCase());
-    await db.ref(TOKEN_PATH).set({ hash, createdAt: Date.now(), usedAt: null });
+    await saWrite('set', TOKEN_PATH, { hash, createdAt: Date.now(), usedAt: null });
     // Show modal
     document.getElementById('saModalPwd').textContent = raw;
     document.getElementById('saTokenModal').classList.remove('hidden');
@@ -1170,12 +1203,14 @@ async function deploySubmission(subKey) {
       logDeploy('✓ Lieu par défaut créé (liste vide dans la config)', 'ok');
     }
 
-    // ── Écriture atomique ─────────────────────────────────────────
-    logDeploy('Écriture dans Firebase…');
-    await db.ref().update(updates);
+    // ── Écritures via Worker (éclatées) ────────────────────────────
+    logDeploy('Écriture via Worker…');
+    for (const [p, v] of Object.entries(updates)) {
+      await saWrite('set', p, v);
+    }
 
     // ── Marquer comme déployé ─────────────────────────────────────
-    await db.ref(`superadmin/onboardingSubmissions/${subKey}/deployedAt`).set(Date.now());
+    await saWrite('set', `superadmin/onboardingSubmissions/${subKey}/deployedAt`, Date.now());
 
     logDeploy(`✅ Organisation "${orgId}" déployée avec succès !`, 'ok');
     logDeploy(`🔗 Lien : index.html?org=${orgId}`, 'ok');
@@ -1239,7 +1274,7 @@ async function loadOrgDirectory() {
       const mascot  = list.querySelector(`.sa-dir-mascot[data-id="${id}"]`)?.value || 'poulpe';
       const enabled = list.querySelector(`.sa-dir-enabled[data-id="${id}"]`)?.checked !== false;
       const name    = MASCOT_TYPES[mascot]?.name || 'Bulbi';
-      await _orgDirRef().child(id).update({ mascotType: mascot, mascotName: name, visitsEnabled: enabled });
+      await saWrite('update', `superadmin/orgDirectory/${id}`, { mascotType: mascot, mascotName: name, visitsEnabled: enabled });
       btn.textContent = '✓ Sauvegardé';
       setTimeout(() => btn.textContent = '💾 Sauvegarder', 2000);
     });
@@ -1247,7 +1282,7 @@ async function loadOrgDirectory() {
   list.querySelectorAll('.sa-dir-remove').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm(`Retirer "${btn.dataset.id}" de l'annuaire ?`)) return;
-      await _orgDirRef().child(btn.dataset.id).remove();
+      await saWrite('remove', `superadmin/orgDirectory/${btn.dataset.id}`);
       loadOrgDirectory();
     });
   });
@@ -1280,7 +1315,9 @@ document.getElementById('saSyncOrgDir')?.addEventListener('click', async () => {
     if (!Object.keys(updates).length) {
       alert('Toutes les organisations sont déjà dans l\'annuaire.');
     } else {
-      await _orgDirRef().update(updates);
+      for (const [id, v] of Object.entries(updates)) {
+        await saWrite('set', `superadmin/orgDirectory/${id}`, v);
+      }
       alert(`${Object.keys(updates).length} organisation(s) ajoutée(s) à l'annuaire.`);
     }
     loadOrgDirectory();
@@ -1294,7 +1331,7 @@ document.getElementById('saAddOrgEntry')?.addEventListener('click', async () => 
   if (!id) return;
   const name = prompt('Nom complet (ex: CPAS de Mons) :')?.trim();
   if (!name) return;
-  await _orgDirRef().child(id).set({ orgName: name, mascotType: 'poulpe', mascotName: 'Bulbi', visitsEnabled: true });
+  await saWrite('set', `superadmin/orgDirectory/${id}`, { orgName: name, mascotType: 'poulpe', mascotName: 'Bulbi', visitsEnabled: true });
   loadOrgDirectory();
 });
 
@@ -1322,7 +1359,7 @@ document.getElementById('saDocsAdminSave')?.addEventListener('click', async () =
   if (!pwd) { err.textContent = 'Veuillez saisir un mot de passe.'; err.classList.remove('hidden'); return; }
   err.classList.add('hidden');
   const hash = await sha256(pwd);
-  await db.ref(DOCS_ADMIN_HASH_PATH).set(hash);
+  await saWrite('set', DOCS_ADMIN_HASH_PATH, hash);
   document.getElementById('docsAdminPwd').value = '';
   loadDocsAdminStatus();
   const btn = document.getElementById('saDocsAdminSave');
@@ -1332,7 +1369,7 @@ document.getElementById('saDocsAdminSave')?.addEventListener('click', async () =
 
 document.getElementById('saDocsAdminRemove')?.addEventListener('click', async () => {
   if (!confirm('Supprimer le mot de passe ? La documentation admin sera accessible sans restriction.')) return;
-  await db.ref(DOCS_ADMIN_HASH_PATH).remove();
+  await saWrite('remove', DOCS_ADMIN_HASH_PATH);
   loadDocsAdminStatus();
 });
 

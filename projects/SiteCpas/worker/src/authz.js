@@ -30,6 +30,7 @@ function startsWithPath(prefix, path) {
 }
 
 function isAdmin(auth)  { return auth.role === '__admin__' || auth.raw?.admin === true; }
+function isSuperadmin(auth) { return auth.raw?.superadmin === true; }
 
 const ALL_OPS = ['set', 'update', 'push', 'remove'];
 
@@ -96,6 +97,9 @@ const ZONE_RULES = [
 ];
 
 export function isAuthorized(path, op, auth) {
+  // 0. Superadmin bypass : n'importe quel path, n'importe quelle op.
+  if (isSuperadmin(auth)) return { allowed: true, rule: 'superadmin_bypass' };
+
   // 1. Scoped rules d'abord
   for (const rule of SCOPED_RULES) {
     const params = match(rule.pattern, path);

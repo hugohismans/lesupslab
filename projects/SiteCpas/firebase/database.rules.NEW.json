@@ -37,8 +37,10 @@
         },
 
         // ── État temps réel (appState) ────────────────────────────
+        // appointmentRequests migré sur le Worker (Phase 3bis).
         "appState": {
           "appointmentRequests": {
+            ".write": false,
             "$reqId": {
               ".validate": "!newData.exists() || newData.hasChildren(['targetAgentKey', 'requesterAgentKey'])",
               "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 10000)" }
@@ -90,13 +92,22 @@
       }
     },
 
-    // ── Superadmin (hash mdp + token onboarding + métadonnées orgs) ──
-    // Lecture publique pour que le login puisse comparer le hash.
-    // Écriture réservée aux sessions authentifiées (anonymous au minimum).
-    // Le vrai gardien = CloudFlare Worker en Phase 2+.
+    // ── Superadmin (Phase 3bis) ───────────────────────────────────
+    // Read : auth requise (anonymous OK) — avant : public. Les pages
+    // onboarding.html / docs-admin.html font déjà signInAnonymously()
+    // donc elles continuent de fonctionner.
+    // Write : bloquée (false) → passe par le Worker (service account
+    // qui bypass les Rules). Le passwordHash est lisible uniquement
+    // par le service account. Exception : bootstrap du 1er mdp
+    // superadmin tant qu'il n'existe pas encore (pour éviter de
+    // devoir créer une org vide à la main dans Firebase Console).
     "superadmin": {
-      ".read": true,
-      ".write": "auth != null"
+      ".read":  "auth != null",
+      ".write": false,
+      "passwordHash": {
+        ".read":  false,
+        ".write": "auth != null && !data.exists()"
+      }
     },
 
     // ── TOUT LE RESTE → INTERDIT ──────────────────────────────────

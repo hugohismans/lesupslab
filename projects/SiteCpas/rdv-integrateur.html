@@ -280,6 +280,24 @@ const authReady = firebase.auth
       .catch(err => console.error('[rdv] 🔐 anonymous auth FAILED', err))
   : Promise.resolve();
 
+// Phase 3bis — helper pour les writes via Worker (chiffrement + authz
+// + audit côté serveur). L'user doit être nominativement authentifié
+// (signInWithCustomToken depuis index.html). Si session anonyme → 401.
+const WORKER_URL = 'https://sitecpas-worker.hugo-hismans.workers.dev';
+async function workerWrite(op, path, value) {
+  const user = firebase.auth().currentUser;
+  if (!user || user.isAnonymous) throw new Error('Agent non authentifié nominativement — reconnectez-vous');
+  const token = await user.getIdToken();
+  const r = await fetch(`${WORKER_URL}/data/write`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body:    JSON.stringify({ op, path, value }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data?.detail || data?.error || `HTTP ${r.status}`);
+  return data;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -748,9 +766,10 @@ async function main() {
 
       const allNames = allParticipants.map(p => p.name);
 
-      // Un seul appointmentRequest + une seule réservation (agents[] = tous les participants)
+      // Phase 3bis — writes via le Worker (chiffrement auto + audit).
+      // Un seul appointmentRequest + une seule réservation.
       await Promise.all([
-        db.ref(`orgs/${ORG_ID}/appState/appointmentRequests`).push({
+        workerWrite('push', 'appState/appointmentRequests', {
           slotId:            _selectedChunk._slotId,
           startDateTime:     sStart,
           endDateTime:       sEnd,
@@ -768,16 +787,16 @@ async function main() {
           createdAt:         Date.now(),
           respondedAt:       Date.now(),
         }),
-        db.ref(`orgs/${ORG_ID}/reservations`).push({
+        workerWrite('push', 'reservations', {
           localId:       String(localId),
           deskId:        deskId || null,
-          agent:         agentName,          // demandeur principal (agent = premier pour compat)
-          agents:        allNames,           // tous les participants → visibles dans "Mon agenda"
+          agent:         agentName,
+          agents:        allNames,
           services:      ['Rendez-vous intégrateur'],
           type:          'rendez-vous',
           startDateTime: sStart,
           endDateTime:   sEnd,
-          note:          baseMsg,
+          comment:       baseMsg,
           recurrence:    { type: 'none' },
           createdAt:     Date.now(),
         }),
