@@ -646,16 +646,22 @@ const CAL = {
             const myLoc  = DB.getUnitLabel(parseInt(myRes.localId), myRes.deskId || null);
             const myStartH = myRes._start.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
             const myEndH   = myRes._end.toLocaleTimeString('fr-BE',   { hour: '2-digit', minute: '2-digit' });
-            const myStyle  = myAgentColor ? ` style="background:${myAgentColor}20;border-left:3px solid ${myAgentColor}"` : '';
+            // Hauteur imposée pour éviter que le contenu pousse le <tr>
+            // au-delà de slotHeights[i..i+mySpan-1] → désaligne les canvas locaux.
+            const myCellH = cumY[i + mySpan] - cumY[i];
+            const myStyle = (myAgentColor
+              ? `background:${myAgentColor}20;border-left:3px solid ${myAgentColor};`
+              : '') + `height:${myCellH}px;max-height:${myCellH}px;overflow:hidden;`;
             h += `<td class="cv-cell is-booked my-agenda-cell" rowspan="${mySpan}"
               data-id="${myRes.id}" data-occ="${myRes._occDate || ''}" data-act="detail"
-              data-occ-date="${isoDate(myRes._start)}"${myStyle}>
+              data-occ-date="${isoDate(myRes._start)}" style="${myStyle}">
               <span class="ct"><b>${escapeHtml(mySvc)}</b><br>
               <small>${escapeHtml(myLoc)}</small><br>
               <small class="ct-time">${myStartH} – ${myEndH}</small></span>
             </td>`;
           } else {
-            h += `<td class="cv-cell my-agenda-cell my-agenda-free"></td>`;
+            // Slot libre Mon agenda : hauteur forcée = slotHeights[i]
+            h += `<td class="cv-cell my-agenda-cell my-agenda-free" style="height:${slotHeights[i]}px;max-height:${slotHeights[i]}px"></td>`;
           }
         }
       }
