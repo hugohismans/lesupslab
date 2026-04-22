@@ -398,6 +398,7 @@ const DEFAULT_AGENTS = ['Agent 1', 'Agent 2'];
 firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
+
 function genId() { return Math.random().toString(36).slice(2, 11); }
 
 async function sha256(str) {
@@ -420,9 +421,12 @@ async function showApp() {
   loadDocsAdminStatus();
 }
 
-// Vérifier session
+// Vérifier session. showApp() est différé via queueMicrotask pour garantir
+// que TOUTES les const/let du script soient initialisées avant qu'il ne les
+// référence (éviter les erreurs TDZ : ex. TOKEN_PATH, DOCS_ADMIN_HASH_PATH,
+// MASCOT_TYPES déclarés plus bas dans le fichier).
 if (sessionStorage.getItem(SA_KEY) === '1') {
-  showApp();
+  queueMicrotask(showApp);
 } else {
   db.ref(SA_HASH_PATH).once('value').then(snap => {
     const hash = snap.val();
