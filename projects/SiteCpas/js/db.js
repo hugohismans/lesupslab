@@ -14,7 +14,31 @@ const DB = {
   // ── Helpers multi-tenant ─────────────────────────────────────────
   // Toutes les refs Firebase passent par _ref() pour le préfixe org
   _ref(path) {
-    return this._db.ref(`orgs/${ORG_ID}/${path}`);
+    const ref = this._db.ref(`orgs/${ORG_ID}/${path}`);
+    // Phase 0 sécu : si l'anonymous auth n'est pas encore résolue, on
+    // différe l'attache du listener .on('value'). Sans ça, les Rules
+    // exigeant "auth != null" renverraient PERMISSION_DENIED une fois
+    // et le listener ne serait pas réessayé automatiquement.
+    const self = this;
+    if (self._authReady && !ref._authWrapped) {
+      ref._authWrapped = true;
+      const origOn   = ref.on.bind(ref);
+      const origOnce = ref.once.bind(ref);
+      ref.on = function (event, cb, errCb, ctx) {
+        if (event === 'value' && self._authReady) {
+          self._authReady.finally(() => origOn(event, cb, errCb, ctx));
+          return cb;
+        }
+        return origOn(event, cb, errCb, ctx);
+      };
+      ref.once = function (event) {
+        if (self._authReady) {
+          return self._authReady.finally(() => {}).then(() => origOnce(event));
+        }
+        return origOnce(event);
+      };
+    }
+    return ref;
   },
   async _update(updates) {
     const prefixed = {};
@@ -24,13 +48,48 @@ const DB = {
     return this._db.ref().update(prefixed);
   },
 
+  _authReady: null,     // Promise résolue quand l'anonymous auth est OK
+  _initialized: false,
+
   init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
     if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
     this._db = firebase.database();
-    this._ref('reservations').on('value', snap => {
-      this._data = snap.val() || {};
-      this._cbs.forEach(fn => fn());
+
+    // Phase 0 sécu : anonymous auth pour satisfaire les Rules Firebase
+    // qui exigent auth != null. Phase 2+ : on passera sur des customTokens
+    // signés par le CloudFlare Worker.
+    if (firebase.auth) {
+      this._authReady = firebase.auth().signInAnonymously()
+        .then(cred => { console.debug('[DB] anonymous auth OK', cred?.user?.uid); })
+        .catch(err => {
+          console.warn('[DB] anonymous auth failed', err);
+          // Ne throw pas — laisse les listeners tenter quand même.
+          // Si les rules bloquent, on aura un log explicite.
+        });
+    } else {
+      // SDK firebase-auth-compat pas chargé sur cette page → skip
+      console.warn('[DB] firebase-auth-compat non chargé — mode legacy');
+      this._authReady = Promise.resolve();
+    }
+
+    // Attacher les listeners APRÈS l'auth pour éviter les permission denied
+    this._whenAuthReady(() => {
+      this._ref('reservations').on('value', snap => {
+        this._data = snap.val() || {};
+        this._cbs.forEach(fn => fn());
+      });
     });
+  },
+
+  // Helper : exécute fn quand _authReady est résolue (ou rejetée).
+  // Utilisé pour tout `_ref().on('value')` — garantit que l'auth a eu
+  // sa chance avant d'attacher le listener.
+  _whenAuthReady(fn) {
+    if (!this._authReady) { fn(); return; }
+    this._authReady.finally(fn);
   },
 
   // ── Config dynamique (agents / services) ─────────────────────────
