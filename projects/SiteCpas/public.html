@@ -77,6 +77,13 @@ function isoDateStr(d) { return isoDate(d); }
 firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
+// Phase 0 sécu : anonymous auth avant tout read (Rules exigent auth != null)
+const authReady = firebase.auth
+  ? firebase.auth().signInAnonymously()
+      .then(cred => console.log('%c[auth] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+      .catch(err => console.error('[auth] 🔐 anonymous auth FAILED', err))
+  : Promise.resolve();
+
 // ── Paramètre écran ───────────────────────────────────────────────
 // ?screen={id} → filtrer uniquement les locaux de cet écran
 const _screenParam = new URLSearchParams(window.location.search).get('screen');
@@ -534,6 +541,7 @@ function render() {
 }
 
 // ── Init Firebase listeners ───────────────────────────────────────
+authReady.then(() => {
 db.ref(`orgs/${ORG_ID}/reservations`).on('value', snap => {
   _reservations = snap.val() || {};
   render();
@@ -597,6 +605,7 @@ db.ref(`orgs/${ORG_ID}/agentStatus/${isoDate(new Date())}`).on('value', snap => 
   _agentStatus = snap.val() || {};
   render();
 });
+}); // end authReady.then (zone 1)
 
 // ── Son (Web Audio API) ───────────────────────────────────────────
 let _audioCtx   = null;
@@ -714,6 +723,7 @@ document.getElementById('nextCallOverlay').addEventListener('click', () => {
 
 // Écoute Firebase — état ouverture bureaux
 let _bureauState = {};
+authReady.then(() => {
 db.ref(`orgs/${ORG_ID}/appState/bureaux`).on('value', snap => {
   _bureauState = snap.val() || {};
   render();
@@ -756,6 +766,7 @@ db.ref(`orgs/${ORG_ID}/appState/preferredPending`).on('value', snap => {
   _preferredPending = snap.val() || {};
   render();
 });
+}); // end authReady.then (zone 2)
 
 // Horloge chaque seconde
 setInterval(updateClock, 1000);

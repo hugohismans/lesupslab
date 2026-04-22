@@ -127,6 +127,13 @@
   const db   = firebase.database();
   const grid = document.getElementById('vpGrid');
 
+  // Phase 0 sécu : anonymous auth avant tout read (Rules exigent auth != null)
+  const authReady = firebase.auth
+    ? firebase.auth().signInAnonymously()
+        .then(cred => console.log('%c[auth] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+        .catch(err => console.error('[auth] 🔐 anonymous auth FAILED', err))
+    : Promise.resolve();
+
   function esc(s) {
     return String(s ?? '')
       .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
@@ -137,7 +144,7 @@
   const orgParam = ORG_ID !== 'cpas-quaregnon' ? `?org=${encodeURIComponent(ORG_ID)}` : '';
   const sep      = orgParam ? '&' : '?';
 
-  db.ref(`orgs/${ORG_ID}/appConfig`).once('value').then(snap => {
+  authReady.then(() => db.ref(`orgs/${ORG_ID}/appConfig`).once('value')).then(snap => {
     const d        = snap.val() || {};
     const meta     = d.meta     || {};
     const screens  = d.screens  || {};
