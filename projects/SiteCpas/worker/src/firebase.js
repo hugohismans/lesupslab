@@ -71,6 +71,55 @@ export async function dbGet(dbUrl, path, accessToken) {
   return await r.json(); // peut être null, string, object...
 }
 
+// PUT — remplace entièrement la valeur au path (équivalent .set()).
+// Retourne la nouvelle valeur.
+export async function dbSet(dbUrl, path, value, accessToken) {
+  const url = `${dbUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}.json`;
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body:    JSON.stringify(value ?? null),
+  });
+  if (!r.ok) throw new Error(`dbSet ${path} ${r.status} ${await r.text()}`);
+  return await r.json();
+}
+
+// PATCH — merge partiel (équivalent .update()).
+export async function dbUpdate(dbUrl, path, value, accessToken) {
+  const url = `${dbUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}.json`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body:    JSON.stringify(value || {}),
+  });
+  if (!r.ok) throw new Error(`dbUpdate ${path} ${r.status} ${await r.text()}`);
+  return await r.json();
+}
+
+// POST — crée un nouvel enfant avec clé auto (équivalent .push()).
+// Retourne { name: "-Nxxxx" } la clé générée.
+export async function dbPush(dbUrl, path, value, accessToken) {
+  const url = `${dbUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}.json`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+    body:    JSON.stringify(value ?? null),
+  });
+  if (!r.ok) throw new Error(`dbPush ${path} ${r.status} ${await r.text()}`);
+  return await r.json(); // { name: "-NxxxxKey" }
+}
+
+// DELETE
+export async function dbRemove(dbUrl, path, accessToken) {
+  const url = `${dbUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}.json`;
+  const r = await fetch(url, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) throw new Error(`dbRemove ${path} ${r.status} ${await r.text()}`);
+  return null;
+}
+
 // Génère un customToken Firebase pour signInWithCustomToken côté client.
 // uid = identifiant utilisateur Firebase (on utilise l'agentKey).
 // claims = claims custom embarqués dans auth.token (ex: orgId, role).

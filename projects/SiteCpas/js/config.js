@@ -33,9 +33,14 @@ const CONFIG = {
     appId:             '1:1028628915813:web:dbca4db8ed5b511321c88c'
   },
 
-  // ── WORKER CLOUDFLARE (Phase 2) ──────────────────────────────────
-  // Endpoint d'auth nominative et (plus tard) proxy CRUD.
+  // ── WORKER CLOUDFLARE (Phase 2 + 3) ──────────────────────────────
+  // Endpoint d'auth nominative et proxy CRUD + chiffrement field-level.
   WORKER_URL: 'https://sitecpas-worker.hugo-hismans.workers.dev',
+  // Phase 3 — Si true, toutes les écritures Firebase (set/update/push/
+  // remove) passent par le Worker (autorisation + chiffrement + audit
+  // server-side). Les reads restent directs (temps réel critique).
+  // Feature flag prévu pour rollback rapide en cas de souci prod.
+  WORKER_CRUD: true,
 
   // ── HORAIRES D'OUVERTURE ─────────────────────────────────────────
   // [FAKE — À CONFIRMER AVEC LE CLIENT]

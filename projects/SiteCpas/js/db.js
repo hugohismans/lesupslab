@@ -12,35 +12,117 @@ const DB = {
   _currentLieuId: null,
 
   // ── Helpers multi-tenant ─────────────────────────────────────────
-  // Toutes les refs Firebase passent par _ref() pour le préfixe org
+  // Toutes les refs Firebase passent par _ref() pour le préfixe org.
+  // Phase 3 : reads restent directs Firebase (temps réel critique
+  // pour files d'attente / statuts), writes passent par le Worker
+  // via un proxy transparent qui expose la même API que Firebase Ref.
   _ref(path) {
-    const ref = this._db.ref(`orgs/${ORG_ID}/${path}`);
-    // Phase 0 sécu : si l'anonymous auth n'est pas encore résolue, on
-    // différe l'attache du listener .on('value'). Sans ça, les Rules
-    // exigeant "auth != null" renverraient PERMISSION_DENIED une fois
-    // et le listener ne serait pas réessayé automatiquement.
+    const rel = String(path || '').replace(/^\/+|\/+$/g, '');
+    const fbRef = this._db.ref(`orgs/${ORG_ID}/${rel}`);
     const self = this;
-    if (self._authReady && !ref._authWrapped) {
-      ref._authWrapped = true;
-      const origOn   = ref.on.bind(ref);
-      const origOnce = ref.once.bind(ref);
-      ref.on = function (event, cb, errCb, ctx) {
+
+    // Wrapper les reads pour attendre authReady (Phase 0.2).
+    if (self._authReady && !fbRef._authWrapped) {
+      fbRef._authWrapped = true;
+      const origOn   = fbRef.on.bind(fbRef);
+      const origOnce = fbRef.once.bind(fbRef);
+      fbRef.on = function (event, cb, errCb, ctx) {
         if (event === 'value' && self._authReady) {
           self._authReady.finally(() => origOn(event, cb, errCb, ctx));
           return cb;
         }
         return origOn(event, cb, errCb, ctx);
       };
-      ref.once = function (event) {
+      fbRef.once = function (event) {
         if (self._authReady) {
           return self._authReady.finally(() => {}).then(() => origOnce(event));
         }
         return origOnce(event);
       };
     }
-    return ref;
+
+    // Phase 3 : si WORKER_CRUD est activé, on route les writes via le Worker.
+    if (typeof CONFIG !== 'undefined' && CONFIG.WORKER_CRUD && typeof WORKER !== 'undefined') {
+      return self._makeWorkerRoutedRef(rel, fbRef);
+    }
+    return fbRef;
   },
+
+  // Construit un objet ref qui :
+  //  - expose les méthodes Firebase de lecture directement (passthrough)
+  //  - intercepte .set/.update/.push/.remove pour passer par le Worker
+  _makeWorkerRoutedRef(rel, fbRef) {
+    const self = this;
+    const wrapped = {
+      _rel:   rel,
+      _fbRef: fbRef,
+      key:    fbRef.key,
+
+      // ── Reads : passthrough ──
+      on:  (...args) => fbRef.on(...args),
+      off: (...args) => fbRef.off(...args),
+      once:(...args) => fbRef.once(...args),
+      orderByChild: (...args) => fbRef.orderByChild(...args),
+      orderByKey:   (...args) => fbRef.orderByKey(...args),
+      orderByValue: (...args) => fbRef.orderByValue(...args),
+      limitToFirst: (...args) => fbRef.limitToFirst(...args),
+      limitToLast:  (...args) => fbRef.limitToLast(...args),
+      equalTo:      (...args) => fbRef.equalTo(...args),
+
+      // ── child : retourne un nouveau ref wrapped ──
+      child(sub) {
+        return self._makeWorkerRoutedRef(rel ? `${rel}/${sub}` : String(sub), fbRef.child(sub));
+      },
+
+      // ── Writes : via Worker ──
+      async set(value)    { await WORKER.write('set',    rel, value); return null; },
+      async update(value) { await WORKER.write('update', rel, value); return null; },
+      async remove()      { await WORKER.write('remove', rel, null);  return null; },
+
+      // .push() peut être appelé :
+      //  - avec une valeur : Firebase génère une clé et écrit → on retourne
+      //    un ThenableReference équivalent (avec .key)
+      //  - sans valeur : on génère la clé localement (Firebase le fait
+      //    offline), et on retourne un ref enfant non-écrit. L'écriture
+      //    se fait plus tard via .set(value).
+      push(value) {
+        if (value !== undefined) {
+          // Aller-retour Worker pour créer la clé
+          const p = WORKER.write('push', rel, value).then(res => res?.result?.name || null);
+          // ThenableReference-like
+          const promise = p.then(key => ({ key }));
+          promise.key = null; // inconnu tant que le Worker n'a pas répondu — warning, rare usage
+          return promise;
+        }
+        // Générer la clé localement via Firebase (algo déterministe + random)
+        const childFbRef = fbRef.push(); // Firebase génère la clé
+        const key = childFbRef.key;
+        return self._makeWorkerRoutedRef(rel ? `${rel}/${key}` : key, childFbRef);
+      },
+    };
+    return wrapped;
+  },
+
   async _update(updates) {
+    // Phase 3 : si WORKER_CRUD actif, on éclate le multi-path update en
+    // plusieurs appels Worker (un par path). Moins atomique mais sûr.
+    if (typeof CONFIG !== 'undefined' && CONFIG.WORKER_CRUD && typeof WORKER !== 'undefined') {
+      const entries = Object.entries(updates);
+      for (const [rel, v] of entries) {
+        const op = (v === null) ? 'remove' : 'update';
+        const path = rel.replace(/^\/+|\/+$/g, '');
+        if (op === 'remove') await WORKER.write('remove', path, null);
+        else {
+          // update "set à null/valeur" sur un path leaf = set, sur un objet = update
+          if (v && typeof v === 'object' && !Array.isArray(v)) {
+            await WORKER.write('update', path, v);
+          } else {
+            await WORKER.write('set', path, v);
+          }
+        }
+      }
+      return;
+    }
     const prefixed = {};
     Object.entries(updates).forEach(([k, v]) => {
       prefixed[`orgs/${ORG_ID}/${k}`] = v;
@@ -92,8 +174,10 @@ const DB = {
 
     // Attacher les listeners APRÈS l'auth pour éviter les permission denied
     this._whenAuthReady(() => {
-      this._ref('reservations').on('value', snap => {
-        this._data = snap.val() || {};
+      this._ref('reservations').on('value', async snap => {
+        const raw = snap.val() || {};
+        // Phase 3 : déchiffrer les notes avant de notifier les callbacks.
+        this._data = await this._decryptReservations(raw);
         this._cbs.forEach(fn => fn());
       });
     });
@@ -105,6 +189,55 @@ const DB = {
   _whenAuthReady(fn) {
     if (!this._authReady) { fn(); return; }
     this._authReady.finally(fn);
+  },
+
+  // ── Phase 3 : déchiffrement transparent ────────────────────────────
+  // Cache des textes déchiffrés (évite de re-déchiffrer à chaque snapshot).
+  // Clé = path absolu (ex: reservations/abc/note), valeur = { _cipher, plain }.
+  _decCache: {},
+
+  async _decryptReservations(raw) {
+    return this._decryptCollection(raw, 'reservations', 'note');
+  },
+
+  async _decryptCollection(raw, parent, field) {
+    if (!raw || typeof raw !== 'object') return raw;
+    if (!(typeof CONFIG !== 'undefined' && CONFIG.WORKER_CRUD && typeof WORKER !== 'undefined')) return raw;
+
+    const pathsToFetch = [];
+    const targetIds = [];
+    for (const [id, r] of Object.entries(raw)) {
+      if (!r || typeof r !== 'object') continue;
+      const v = r[field];
+      if (typeof v === 'string' && v.startsWith('enc:v1:')) {
+        const p = `${parent}/${id}/${field}`;
+        const cached = this._decCache[p];
+        if (cached && cached._cipher === v) {
+          raw[id] = { ...r, [field]: cached.plain };
+        } else {
+          pathsToFetch.push(p);
+          targetIds.push(id);
+        }
+      }
+    }
+    if (!pathsToFetch.length) return raw;
+
+    try {
+      const results = await WORKER.decryptBatch(pathsToFetch);
+      for (let i = 0; i < pathsToFetch.length; i++) {
+        const p = pathsToFetch[i];
+        const id = targetIds[i];
+        const plain = results[p];
+        const cipher = raw[id]?.[field];
+        if (typeof plain === 'string') {
+          this._decCache[p] = { _cipher: cipher, plain };
+          raw[id] = { ...raw[id], [field]: plain };
+        }
+      }
+    } catch (e) {
+      console.warn(`[DB] decryptBatch ${parent}/${field} failed`, e?.message || e);
+    }
+    return raw;
   },
 
   // ── Config dynamique (agents / services) ─────────────────────────
@@ -1678,8 +1811,9 @@ const DB = {
   _requests:    {},
   _requestCbs:  [],
   listenRequests() {
-    this._ref('requests').on('value', snap => {
-      this._requests = snap.val() || {};
+    this._ref('requests').on('value', async snap => {
+      const raw = snap.val() || {};
+      this._requests = await this._decryptCollection(raw, 'requests', 'description');
       this._requestCbs.forEach(fn => fn(this._requests));
     });
   },
@@ -2491,14 +2625,15 @@ const DB = {
   // ── Demandes de RDV ─────────────────────────────────────────────
   listenAppointmentRequests(agentKey, cb) {
     // Écoute les demandes où cet agent est la cible OU le demandeur
-    this._ref('appState/appointmentRequests').on('value', snap => {
+    this._ref('appState/appointmentRequests').on('value', async snap => {
+      const raw = snap.val() || {};
+      const decrypted = await this._decryptCollection(raw, 'appState/appointmentRequests', 'message');
       const all = [];
-      snap.forEach(c => {
-        const v = c.val();
-        if (v.targetAgentKey === agentKey || v.requesterAgentKey === agentKey) {
-          all.push({ id: c.key, ...v });
+      for (const [id, v] of Object.entries(decrypted)) {
+        if (v && (v.targetAgentKey === agentKey || v.requesterAgentKey === agentKey)) {
+          all.push({ id, ...v });
         }
-      });
+      }
       all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       cb(all);
     });
@@ -2677,8 +2812,9 @@ const DB = {
   _planningCbs:  [],
 
   initPlanning() {
-    this._ref('planning').on('value', snap => {
-      this._planningData = snap.val() || {};
+    this._ref('planning').on('value', async snap => {
+      const raw = snap.val() || {};
+      this._planningData = await this._decryptCollection(raw, 'planning', 'notes');
       this._planningCbs.forEach(fn => fn());
     });
   },
