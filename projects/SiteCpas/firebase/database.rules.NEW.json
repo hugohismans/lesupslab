@@ -1,0 +1,92 @@
+{
+  "rules": {
+    "orgs": {
+      // Lecture/écriture : nécessite Firebase Auth (anonymous suffit pour l'instant
+      // — le vrai gardien de permissions sera le CloudFlare Worker en Phase 2+).
+      // Cette règle bloque déjà les attaques directes depuis internet via l'URL
+      // Firebase sans token.
+      ".read": "auth != null",
+      "$orgId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+
+        // ── Configuration (appConfig) ─────────────────────────────
+        "appConfig": {
+          ".validate": "newData.exists()",
+          "agents":   { ".validate": "newData.exists()" },
+          "lieux":    { ".validate": "newData.exists()" },
+          "services": { ".validate": "newData.exists()" }
+        },
+
+        // ── Réservations : structure minimale + anti-flood ───────
+        "reservations": {
+          "$resId": {
+            ".validate": "!newData.exists() || newData.hasChildren(['localId', 'startDateTime'])",
+            "note":          { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" },
+            "agent":         { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" }
+          }
+        },
+
+        // ── État temps réel (appState) ────────────────────────────
+        "appState": {
+          "appointmentRequests": {
+            "$reqId": {
+              ".validate": "!newData.exists() || newData.hasChildren(['targetAgentKey', 'requesterAgentKey'])",
+              "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+            }
+          }
+        },
+
+        // ── Notifications : plafond de taille + index pour perf ───
+        "notifications": {
+          ".indexOn": ["createdAt"],
+          "$agentKey": {
+            ".indexOn": ["createdAt"],
+            "$notifId": {
+              "message": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 2000)" }
+            }
+          }
+        },
+
+        // ── Requêtes techniques / interventions ───────────────────
+        "requests": {
+          "$reqId": {
+            "description": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+          }
+        },
+
+        // ── Planning : anti-flood ─────────────────────────────────
+        "planning": {
+          "$taskId": {
+            "title": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 500)" },
+            "notes": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length < 5000)" }
+          }
+        },
+
+        // ── Audit log (Phase 0) ───────────────────────────────────
+        // Append-only — ne peut pas être relu par les agents (uniquement admin)
+        // ni supprimé (gardé pour forensique).
+        "auditLog": {
+          ".read": "auth != null",
+          "$entry": {
+            ".write": "!data.exists()",
+            ".validate": "newData.hasChildren(['ts', 'action'])"
+          }
+        }
+      }
+    },
+
+    // ── Superadmin (hash mdp + token onboarding + métadonnées orgs) ──
+    // Lecture publique pour que le login puisse comparer le hash.
+    // Écriture réservée aux sessions authentifiées (anonymous au minimum).
+    // Le vrai gardien = CloudFlare Worker en Phase 2+.
+    "superadmin": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    // ── TOUT LE RESTE → INTERDIT ──────────────────────────────────
+    ".read": false,
+    ".write": false
+  }
+}

@@ -36,6 +36,16 @@
   if (!firebase.apps.length) firebase.initializeApp(CONFIG.FIREBASE);
   const db = firebase.database();
 
+  // Phase 0 sécu : Firebase Anonymous Auth pour satisfaire les Rules
+  // qui exigent auth != null sur /orgs/*. Sans ça, même la liste des
+  // agents (nécessaire au login) est inaccessible.
+  // authReady est une promise résolue quand l'auth anonyme est OK.
+  const authReady = (firebase.auth
+    ? firebase.auth().signInAnonymously()
+        .then(cred => { console.log('%c[auth] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid); })
+        .catch(err => console.error('[auth] 🔐 anonymous auth FAILED', err))
+    : Promise.resolve());
+
   // ════════════════════════════════════════════════════════════════
   // Mascot bubble system
   // ════════════════════════════════════════════════════════════════
@@ -269,7 +279,7 @@
   // ════════════════════════════════════════════════════════════════
   // Org config load (name, logo, mascot)
   // ════════════════════════════════════════════════════════════════
-  db.ref(`orgs/${ORG_ID}/appConfig`).once('value').then(snap => {
+  authReady.then(() => db.ref(`orgs/${ORG_ID}/appConfig`).once('value')).then(snap => {
     const cfg  = snap.val() || {};
     const meta = cfg.meta   || {};
     const name = meta.name  || ORG_ID;
@@ -298,7 +308,7 @@
   let _agents = []; // [{ key, name }]
   let _selectedAgent = null;
 
-  db.ref(`orgs/${ORG_ID}/appConfig/agents`).once('value').then(snap => {
+  authReady.then(() => db.ref(`orgs/${ORG_ID}/appConfig/agents`).once('value')).then(snap => {
     const raw = snap.val();
     if (!raw) {
       document.getElementById('agentList').innerHTML =
