@@ -15,18 +15,18 @@ import { encryptString, decryptString, isEncrypted } from './crypto.js';
 // { pathPattern: [field, field, ...] }
 // pathPattern = pattern d'objet parent
 const SENSITIVE_FIELDS_BY_PARENT = [
-  { pattern: /^reservations(\/[^/]+)?$/,                  fields: ['note'] },
+  { pattern: /^reservations(\/[^/]+)?$/,                  fields: ['comment'] },
   { pattern: /^appState\/appointmentRequests(\/[^/]+)?$/, fields: ['message'] },
   { pattern: /^requests(\/[^/]+)?$/,                      fields: ['description'] },
-  { pattern: /^planning(\/[^/]+)?$/,                      fields: ['notes'] },
+  { pattern: /^planning(\/[^/]+)?$/,                      fields: ['description'] },
 ];
 
 // Patterns qui matchent DIRECTEMENT un champ sensible (valeur scalaire à chiffrer).
 const SENSITIVE_LEAF_PATTERNS = [
-  /^reservations\/[^/]+\/note$/,
+  /^reservations\/[^/]+\/comment$/,
   /^appState\/appointmentRequests\/[^/]+\/message$/,
   /^requests\/[^/]+\/description$/,
-  /^planning\/[^/]+\/notes$/,
+  /^planning\/[^/]+\/description$/,
 ];
 
 export function isSensitiveLeaf(path) {

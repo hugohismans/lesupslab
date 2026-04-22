@@ -197,7 +197,7 @@ const DB = {
   _decCache: {},
 
   async _decryptReservations(raw) {
-    return this._decryptCollection(raw, 'reservations', 'note');
+    return this._decryptCollection(raw, 'reservations', 'comment');
   },
 
   async _decryptCollection(raw, parent, field) {
@@ -2814,7 +2814,7 @@ const DB = {
   initPlanning() {
     this._ref('planning').on('value', async snap => {
       const raw = snap.val() || {};
-      this._planningData = await this._decryptCollection(raw, 'planning', 'notes');
+      this._planningData = await this._decryptCollection(raw, 'planning', 'description');
       this._planningCbs.forEach(fn => fn());
     });
   },
