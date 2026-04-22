@@ -400,13 +400,46 @@
       e.preventDefault();
       const input = newForm.querySelector('#password');
       const err   = newForm.querySelector('#loginErr');
-      const hash  = await sha256(input.value);
-      if (hash === storedHash) {
-        _loginSuccess(_selectedAgent.key);
-      } else {
-        err.classList.remove('hidden');
-        input.select();
+      const pwd   = input.value;
+
+      // Phase 2b — auth via Worker Cloudflare (signInWithCustomToken).
+      // Fallback silencieux sur l'ancien check local si le Worker est
+      // indisponible (panne réseau, 5xx, timeout). Un vrai échec de
+      // credentials (401 du Worker) ne déclenche PAS le fallback.
+      let authed = false;
+      if (typeof WORKER !== 'undefined' && CONFIG.WORKER_URL) {
+        try {
+          const res = await WORKER.authLogin({
+            orgId:    ORG_ID,
+            agentKey: _selectedAgent.key,
+            password: pwd,
+          });
+          if (res?.customToken && firebase.auth) {
+            await firebase.auth().signInWithCustomToken(res.customToken);
+            console.log('%c[auth] 🛡 signInWithCustomToken OK', 'color:#10b981;font-weight:bold', 'uid=', firebase.auth().currentUser?.uid);
+            authed = true;
+          }
+        } catch (e) {
+          if (e?.status === 401) {
+            err.classList.remove('hidden');
+            input.select();
+            return;
+          }
+          console.warn('[auth] Worker indisponible, fallback hash local', e?.message || e);
+        }
       }
+
+      if (!authed) {
+        // Fallback : ancien check local (SHA-256 vs hash Firebase).
+        const hash = await sha256(pwd);
+        if (hash !== storedHash) {
+          err.classList.remove('hidden');
+          input.select();
+          return;
+        }
+      }
+
+      _loginSuccess(_selectedAgent.key);
     });
 
     // Mot de passe oublié
