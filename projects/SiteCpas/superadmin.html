@@ -399,6 +399,14 @@ const DEFAULT_AGENTS = ['Agent 1', 'Agent 2'];
 firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
 
+// Phase 0 sécu : anonymous auth pour satisfaire les Rules qui exigent
+// auth != null. authReady est une promise résolue quand l'auth est OK.
+const authReady = (firebase.auth
+  ? firebase.auth().signInAnonymously()
+      .then(cred => { console.log('%c[superadmin] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid); })
+      .catch(err => console.error('[superadmin] 🔐 anonymous auth FAILED', err))
+  : Promise.resolve());
+
 
 function genId() { return Math.random().toString(36).slice(2, 11); }
 
@@ -414,6 +422,9 @@ const saApp    = document.getElementById('saApp');
 async function showApp() {
   saLogin.style.display = 'none';
   saApp.style.display   = 'flex';
+  // Attendre que l'anonymous auth soit résolue avant tout read Firebase
+  // (sinon PERMISSION_DENIED avec les Rules auth != null).
+  await authReady;
   loadOrgs();
   buildFlagToggles();
   loadTokenStatus();
