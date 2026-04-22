@@ -112,6 +112,83 @@ const MODAL = {
     this._renderSettingsList();
     g('settingsOverlay').classList.remove('hidden');
     this._initSidenavScroll();
+    if (isAdmin) this._initAuditLogView();
+  },
+
+  // Vue Journal (Phase 0.4 audit log)
+  _initAuditLogView() {
+    const listEl    = g('stAuditList');
+    const refreshEl = g('stAuditRefresh');
+    const filterEl  = g('stAuditFilter');
+    if (!listEl || !refreshEl || !filterEl) return;
+
+    const ACTION_ICONS = {
+      'res.create': '🆕', 'res.update': '✏️', 'res.delete': '🗑', 'res.exception': '⤫', 'res.deleteSeries': '🗑',
+      'rdv.accept': '✅', 'rdv.refuse': '❌',
+      'agent.login': '🔑', 'agent.pwd.create': '🆕🔒', 'agent.pwd.set': '🔒',
+      'admin.agent.resetPwd': '🔁',
+      'superadmin.login': '🛡', 'superadmin.login.failed': '⚠️',
+      'superadmin.pwd.create': '🆕🛡',
+      'superadmin.org.create': '🏢', 'superadmin.org.feature.update': '🎛',
+      'superadmin.org.resetAuth': '🔁', 'superadmin.org.purgeQueues': '🗑',
+      'superadmin.org.purgeCalendar': '🗑',
+    };
+
+    const fmtDate = ts => {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+    const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    let _entries = [];
+    const render = () => {
+      const q = (filterEl.value || '').trim().toLowerCase();
+      const filtered = q
+        ? _entries.filter(e =>
+            (e.action || '').toLowerCase().includes(q) ||
+            (e.actor  || '').toLowerCase().includes(q) ||
+            JSON.stringify(e.details || {}).toLowerCase().includes(q))
+        : _entries;
+      if (!filtered.length) {
+        listEl.innerHTML = '<p class="st-empty" style="padding:1rem;text-align:center;color:#64748b">Aucune entrée.</p>';
+        return;
+      }
+      listEl.innerHTML = filtered.map(e => {
+        const icon = ACTION_ICONS[e.action] || '•';
+        const det  = e.details ? esc(JSON.stringify(e.details)) : '';
+        return `<div style="padding:.5rem .75rem;border-bottom:1px solid #1e293b;font-size:.82rem;line-height:1.45">
+          <div style="display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap">
+            <span>${icon}</span>
+            <strong style="color:#93c5fd">${esc(e.action || '?')}</strong>
+            <span style="color:#94a3b8">${esc(e.actor || 'anon')}</span>
+            <span style="color:#64748b;margin-left:auto;font-size:.75rem">${fmtDate(e.ts)}</span>
+          </div>
+          ${det ? `<div style="color:#64748b;font-family:monospace;font-size:.72rem;margin-top:.2rem;word-break:break-all">${det}</div>` : ''}
+        </div>`;
+      }).join('');
+    };
+
+    const load = async () => {
+      listEl.innerHTML = '<p class="st-empty" style="padding:1rem;text-align:center;color:#64748b">Chargement…</p>';
+      try {
+        _entries = await AUDIT.fetchRecent(200);
+      } catch (e) {
+        listEl.innerHTML = `<p class="st-empty" style="padding:1rem;text-align:center;color:#f87171">Erreur : ${esc(e?.message || e)}</p>`;
+        return;
+      }
+      render();
+    };
+
+    // Bindings (une seule fois)
+    if (!this._auditBound) {
+      this._auditBound = true;
+      refreshEl.addEventListener('click', load);
+      filterEl.addEventListener('input', render);
+    }
+
+    // Charge à chaque ouverture du panneau (le log évolue en continu)
+    load();
   },
 
   // Sidebar navigation — scroll to section + highlight active link

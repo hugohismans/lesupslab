@@ -448,6 +448,7 @@
 
       const hash = await sha256(pwd);
       await db.ref(`orgs/${ORG_ID}/appConfig/agentPasswords/${key}`).set(hash);
+      if (typeof AUDIT !== 'undefined') AUDIT.log('agent.pwd.create', { agentKey: key, firstAdmin: !!isFirstAdmin });
 
       // Premier admin : assigner le rôle __admin__ automatiquement
       if (isFirstAdmin) {
@@ -465,6 +466,7 @@
   async function _loginSuccess(agentKey) {
     sessionStorage.setItem(AUTH_KEY, '1');
     sessionStorage.setItem(AGENT_KEY, agentKey);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('agent.login', { agentKey });
     // Charger le genre sauvegardé et le mettre en session
     try {
       const gSnap = await db.ref(`orgs/${ORG_ID}/appConfig/agentGenders/${agentKey}`).once('value');

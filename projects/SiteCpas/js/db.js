@@ -2261,9 +2261,11 @@ const DB = {
   agentHasPassword(agentKey) { return !!this._config.agentPasswords[agentKey]; },
   async setAgentPasswordHash(agentKey, hash) {
     await this._ref(`appConfig/agentPasswords/${agentKey}`).set(hash);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('agent.pwd.set', { agentKey });
   },
   async resetAgentPassword(agentKey) {
     await this._ref(`appConfig/agentPasswords/${agentKey}`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('admin.agent.resetPwd', { agentKey });
   },
   // Vérifie si au moins un agent a le rôle Admin (pour la détection du premier superadmin)
   hasAnySuperAdmin() {
@@ -2483,6 +2485,7 @@ const DB = {
       localId:     String(localId),
       respondedAt: Date.now(),
     });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('rdv.accept', { requestId, localId: String(localId) });
   },
 
   async refuseAppointmentRequest(requestId) {
@@ -2490,6 +2493,7 @@ const DB = {
       status:      'refused',
       respondedAt: Date.now(),
     });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('rdv.refuse', { requestId });
   },
 
   // Vérifie si un slot a déjà une demande acceptée
@@ -2521,28 +2525,45 @@ const DB = {
     const needsSeries = !data.isPermanent && data.recurrence?.type !== 'none';
     const seriesId = needsSeries ? genId() : null;
     await ref.set({ ...data, recurrence: { ...data.recurrence, seriesId }, createdAt: Date.now() });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.create', {
+      resId: ref.key,
+      localId: data.localId,
+      agent: data.agent,
+      startDateTime: data.startDateTime,
+      endDateTime: data.endDateTime,
+      type: data.type || null,
+      recurrence: data.recurrence?.type || 'none',
+    });
     return ref.key;
   },
 
   async update(id, data) {
     await this._ref(`reservations/${id}`).update({ ...data, updatedAt: Date.now() });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.update', {
+      resId: id,
+      fields: Object.keys(data || {}),
+    });
   },
 
   async remove(id) {
     await this._ref(`reservations/${id}`).remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.delete', { resId: id });
   },
 
   // Ajoute une date d'exception (suppression d'une seule occurrence)
   async addException(id, occDate) {
     await this._ref(`reservations/${id}/exceptions/${occDate}`).set(true);
+    if (typeof AUDIT !== 'undefined') AUDIT.log('res.exception', { resId: id, occDate });
   },
 
   async removeSeries(seriesId) {
     const updates = {};
+    const removed = [];
     Object.entries(this._data).forEach(([id, r]) => {
-      if (r.recurrence?.seriesId === seriesId) updates[`reservations/${id}`] = null;
+      if (r.recurrence?.seriesId === seriesId) { updates[`reservations/${id}`] = null; removed.push(id); }
     });
     if (Object.keys(updates).length) await this._update(updates);
+    if (removed.length && typeof AUDIT !== 'undefined') AUDIT.log('res.deleteSeries', { seriesId, count: removed.length });
   },
 
   // Charge des données de démonstration si Firebase est vide (premier lancement)

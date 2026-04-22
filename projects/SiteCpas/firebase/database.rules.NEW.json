@@ -63,14 +63,17 @@
           }
         },
 
-        // ── Audit log (Phase 0) ───────────────────────────────────
-        // Append-only — ne peut pas être relu par les agents (uniquement admin)
-        // ni supprimé (gardé pour forensique).
-        "auditLog": {
+        // ── Audit log (Phase 0.4) ─────────────────────────────────
+        // Append-only côté client — les agents peuvent écrire une entrée
+        // mais jamais la modifier ni la supprimer (gardé pour forensique).
+        // La lecture est nécessaire pour la vue "Journal" côté admin.
+        // La vraie restriction de lecture viendra en Phase 2+ via le Worker.
+        "audit": {
           ".read": "auth != null",
+          ".indexOn": ["ts"],
           "$entry": {
             ".write": "!data.exists()",
-            ".validate": "newData.hasChildren(['ts', 'action'])"
+            ".validate": "newData.hasChildren(['ts', 'action']) && newData.child('action').isString() && newData.child('action').val().length < 100 && newData.child('ts').isNumber()"
           }
         }
       }
