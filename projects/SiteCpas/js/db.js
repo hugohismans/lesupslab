@@ -151,6 +151,25 @@ const DB = {
             unsub();
             const mode = user.isAnonymous ? 'anonymous' : 'custom';
             console.log(`%c[DB] 🔐 auth ${mode} OK`, 'color:#10b981;font-weight:bold', 'uid=', user.uid);
+
+            // Phase 3 : si l'agent prétend être loggé (session flag)
+            // MAIS firebase est en anonymous, c'est une session stale
+            // (ancienne avant Phase 2, ou custom token perdu). Force
+            // un re-login sinon les calls Worker échoueront en 401.
+            const hasAgentFlag = (typeof sessionStorage !== 'undefined')
+              && sessionStorage.getItem('cpas_auth_v1') === '1'
+              && sessionStorage.getItem('cpas_current_agent_key');
+            if (user.isAnonymous && hasAgentFlag) {
+              console.warn('[DB] Session anonymous alors qu\'un agent est en session → redirection login');
+              try {
+                sessionStorage.removeItem('cpas_auth_v1');
+                sessionStorage.removeItem('cpas_current_agent_key');
+              } catch (e) { /* ignore */ }
+              const orgParam = (typeof ORG_ID !== 'undefined' && ORG_ID !== 'cpas-quaregnon')
+                ? `?org=${ORG_ID}&reason=session_expired` : '?reason=session_expired';
+              location.replace(`index.html${orgParam}`);
+              return;
+            }
             resolve();
             return;
           }

@@ -30,12 +30,13 @@
     location.href = `app.html${orgParam}`; return;
   }
 
-  // Message si arrivée depuis une session invalidée (Phase 0.5)
+  // Message si arrivée depuis une session invalidée (Phase 0.5 + 3)
   const _reason = new URLSearchParams(location.search).get('reason');
   if (_reason) {
     const msgs = {
-      pwd_reset:     'Votre mot de passe a été réinitialisé. Veuillez en créer un nouveau.',
-      agent_deleted: 'Votre compte a été supprimé. Contactez votre administrateur.',
+      pwd_reset:       'Votre mot de passe a été réinitialisé. Veuillez en créer un nouveau.',
+      agent_deleted:   'Votre compte a été supprimé. Contactez votre administrateur.',
+      session_expired: 'Votre session a expiré. Veuillez vous reconnecter.',
     };
     const txt = msgs[_reason];
     if (txt) setTimeout(() => alert(txt), 100);
