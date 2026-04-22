@@ -2274,19 +2274,49 @@ const DB = {
 
   getAgentPermRole(agentKey) {
     // Grant temporaire : l'agent désigné obtient le rôle __admin__ pendant l'absence
+    // — mais seulement si le grant n'est pas expiré (grantEnd). Sinon on retombe
+    // immédiatement sur le rôle normal même si le grant n'a pas encore été révoqué
+    // côté Firebase.
     const grant = this._config.tempAdminGrant;
-    if (grant && grant.grantedTo === agentKey) return '__admin__';
+    if (grant && grant.grantedTo === agentKey && !this.isTempAdminGrantExpired()) {
+      return '__admin__';
+    }
     return this._config.agentRoles[agentKey] || null;
   },
 
   getTempAdminGrant() { return this._config.tempAdminGrant || null; },
 
+  // Retourne le timestamp de la prochaine fin de journée (today EoD si
+  // pas encore passée, sinon demain EoD).
+  _nextEndOfDay() {
+    const h = this.getEndOfDayHour();
+    const now = new Date();
+    const eod = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, 0, 0, 0);
+    if (eod.getTime() <= now.getTime()) eod.setDate(eod.getDate() + 1);
+    return eod.getTime();
+  },
+
   async setTempAdminGrant(grantedTo, grantedBy) {
-    await this._ref('appConfig/tempAdminGrant').set({ grantedTo, grantedBy, grantedAt: Date.now() });
+    await this._ref('appConfig/tempAdminGrant').set({
+      grantedTo,
+      grantedBy,
+      grantedAt: Date.now(),
+      grantEnd:  this._nextEndOfDay(),
+    });
+    if (typeof AUDIT !== 'undefined') AUDIT.log('admin.grant.set', { grantedTo, grantedBy });
   },
 
   async revokeTempAdminGrant() {
     await this._ref('appConfig/tempAdminGrant').remove();
+    if (typeof AUDIT !== 'undefined') AUDIT.log('admin.grant.revoke', null);
+  },
+
+  // Retourne true si le grant est expiré (grantEnd dépassé). Grants
+  // antérieurs à la Phase 0.5 (sans grantEnd) considérés non expirés.
+  isTempAdminGrantExpired() {
+    const g = this._config.tempAdminGrant;
+    if (!g || !g.grantEnd) return false;
+    return Date.now() > g.grantEnd;
   },
 
   // Vérifie si l'utilisateur courant a une permission donnée.
