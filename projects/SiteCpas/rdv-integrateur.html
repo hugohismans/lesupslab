@@ -273,6 +273,13 @@ firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.database();
 const ref = path => db.ref(`orgs/${ORG_ID}/${path}`);
 
+// Phase 0 sécu : anonymous auth avant tout read (Rules exigent auth != null)
+const authReady = firebase.auth
+  ? firebase.auth().signInAnonymously()
+      .then(cred => console.log('%c[rdv] 🔐 anonymous auth OK', 'color:#10b981;font-weight:bold', 'uid=', cred?.user?.uid))
+      .catch(err => console.error('[rdv] 🔐 anonymous auth FAILED', err))
+  : Promise.resolve();
+
 // ── Helpers ───────────────────────────────────────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -462,6 +469,7 @@ function renderColleagues(agentsData, myKey, integratorKey) {
 
 // ── Main ──────────────────────────────────────────────────────────────
 async function main() {
+  await authReady;
   const enabledSnap = await ref('appConfig/integratorRdvEnabled').once('value');
   if (enabledSnap.val() === false) { showScreen('screenDisabled'); return; }
 
