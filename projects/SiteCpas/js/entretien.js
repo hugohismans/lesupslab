@@ -446,7 +446,11 @@
       const todayIso     = isoDate(new Date());
       const opts         = this._getBilanOpts();
 
-      let html = '<table class="ent-month-table"><thead><tr><th class="ent-local-col">Local</th>';
+      const monthLabel = (month >= 1 && month <= 12)
+        ? `${MONTH_NAMES_FR[month - 1].toUpperCase()} ${year}`
+        : `${year}`;
+      let html = `<div class="ent-month-header">${escapeHtml(monthLabel)}</div>`;
+      html += '<table class="ent-month-table"><thead><tr><th class="ent-local-col">Local</th>';
       for (let d = 1; d <= daysInMonth; d++) {
         const dObj = new Date(year, month - 1, d);
         const weekend = dObj.getDay() === 0 || dObj.getDay() === 6;
