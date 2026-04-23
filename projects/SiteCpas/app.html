@@ -78,8 +78,13 @@
     <button class="btn-broadcast" id="btnBroadcast" title="Diffuser un message à des agents" style="display:none">📢 Diffuser</button>
     <button class="btn-tech-issue" id="btnTechIssue" title="Envoyer une requête (technique, entretien…)">📤 Requête</button>
     <div class="req-bell-wrap" style="position:relative;display:inline-flex">
-      <button class="btn-interventions" id="btnInterventions" title="Interventions en cours" style="display:none">🛠️ Interventions
-        <span class="req-badge hidden" id="interventionsBadge"></span>
+      <button class="btn-interventions" id="btnInterventionsTech" title="Interventions techniques en cours" style="display:none">🔧 Interventions tech
+        <span class="req-badge hidden" id="interventionsBadgeTech"></span>
+      </button>
+    </div>
+    <div class="req-bell-wrap" style="position:relative;display:inline-flex">
+      <button class="btn-interventions" id="btnInterventionsCleaning" title="Interventions entretien en cours" style="display:none">🧹 Interventions entretien
+        <span class="req-badge hidden" id="interventionsBadgeCleaning"></span>
       </button>
     </div>
     <a class="btn-tech-space" id="btnTechSpace" href="technique.html" title="Espace Responsable technique — statistiques et suivi" style="display:none;text-decoration:none">🛠️ Espace technique</a>
@@ -2025,7 +2030,8 @@
   <button class="mob-drawer-btn" data-target="btnAnalytics">📊 Stats</button>
   <button class="mob-drawer-btn" data-target="btnBroadcast">📢 Diffuser</button>
   <button class="mob-drawer-btn" data-target="btnTechIssue">📤 Requête</button>
-  <button class="mob-drawer-btn" data-target="btnInterventions">🛠️ Interventions</button>
+  <button class="mob-drawer-btn" data-target="btnInterventionsTech">🔧 Interventions tech</button>
+  <button class="mob-drawer-btn" data-target="btnInterventionsCleaning">🧹 Interventions entretien</button>
   <button class="mob-drawer-btn" data-target="btnTechSpace">🔧 Espace technique</button>
 
   <div class="mob-drawer-section">Paramètres</div>

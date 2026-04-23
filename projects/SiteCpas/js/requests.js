@@ -4,12 +4,12 @@
 
 const REQUESTS = {
   _panel:       null,
-  _badge:       null,
   _panelOpen:   false,
   _agentKey:    null,
   _agentName:   null,
   _agentRole:   null,
-  _filter:      'open', // 'open' | 'in_progress' | 'postponed' | 'done'
+  _filter:      'open',       // 'open' | 'in_progress' | 'postponed' | 'done'
+  _typeFilter:  'technique',  // 'technique' | 'entretien' — contexte du panneau ouvert
 
   // Rôles qui voient le panneau interventions
   _TECH_ROLES: new Set(['__technicien__', '__entretien__', '__admin__', '__chef_service__', '__direction__', '__responsable_technique__']),
@@ -17,7 +17,6 @@ const REQUESTS = {
   init() {
     this._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
     this._panel     = document.getElementById('interventionsPanel');
-    this._badge     = document.getElementById('interventionsBadge');
 
     // Résolution immédiate du rôle (config déjà chargée à ce stade)
     const _resolveRole = () => {
@@ -44,17 +43,22 @@ const REQUESTS = {
       }
     });
 
-    // Bouton header
-    document.getElementById('btnInterventions')?.addEventListener('click', (e) => {
+    // Boutons header séparés (technique / entretien)
+    document.getElementById('btnInterventionsTech')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.togglePanel();
+      this.togglePanel('technique');
+    });
+    document.getElementById('btnInterventionsCleaning')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.togglePanel('entretien');
     });
 
     // Fermer en cliquant ailleurs
     document.addEventListener('click', (e) => {
       if (this._panelOpen &&
           this._panel && !this._panel.contains(e.target) &&
-          !document.getElementById('btnInterventions')?.contains(e.target)) {
+          !document.getElementById('btnInterventionsTech')?.contains(e.target) &&
+          !document.getElementById('btnInterventionsCleaning')?.contains(e.target)) {
         this._closePanel();
       }
     });
@@ -64,37 +68,57 @@ const REQUESTS = {
     return this._TECH_ROLES.has(this._agentRole);
   },
 
-  // Types de requêtes visibles selon le rôle
-  _visibleTypes() {
-    if (!this._agentRole) return new Set(); // rôle inconnu → rien
-    if (this._agentRole === '__technicien__') return new Set(['technique']);
-    if (this._agentRole === '__entretien__')  return new Set(['entretien']);
-    return null; // admin/direction/chef → voit tout (null = pas de filtre)
+  // Retourne true si ce rôle peut voir ce type de requête.
+  // technicien → seulement technique, entretien → seulement entretien,
+  // admin/direction/chef/responsable → les deux.
+  _canSeeType(type) {
+    if (!this._agentRole) return false;
+    if (this._agentRole === '__technicien__') return type === 'technique';
+    if (this._agentRole === '__entretien__')  return type === 'entretien';
+    return true;
   },
 
   _filterByRole(req) {
-    const types = this._visibleTypes();
-    return !types || types.has(req.type);
+    // Un requête de type "autre" est visible par tous les rôles tech.
+    if (req.type === 'autre') return this._canSee();
+    return this._canSeeType(req.type);
   },
 
   _updateHeaderBtn() {
-    const btn = document.getElementById('btnInterventions');
-    if (!btn) return;
     const featureOn = DB._config.features?.['enableInterventions'] !== false;
-    btn.style.display = (featureOn && this._canSee()) ? '' : 'none';
+    const btnTech     = document.getElementById('btnInterventionsTech');
+    const btnCleaning = document.getElementById('btnInterventionsCleaning');
+    if (btnTech)     btnTech.style.display     = (featureOn && this._canSeeType('technique')) ? '' : 'none';
+    if (btnCleaning) btnCleaning.style.display = (featureOn && this._canSeeType('entretien')) ? '' : 'none';
   },
 
   _updateBadge() {
-    if (!this._badge) return;
-    const reqs = DB.getRequests();
-    const open = Object.values(reqs).filter(r => r.status === 'open' && this._filterByRole(r)).length;
-    this._badge.textContent = open > 9 ? '9+' : (open || '');
-    this._badge.classList.toggle('hidden', !open);
+    const reqs = Object.values(DB.getRequests());
+    const countForType = (type) =>
+      reqs.filter(r => r.status === 'open' &&
+        (r.type === type || (type === 'technique' && r.type === 'autre' && this._canSeeType('technique')))
+      ).length;
+
+    const setBadge = (id, n) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = n > 9 ? '9+' : (n || '');
+      el.classList.toggle('hidden', !n);
+    };
+    setBadge('interventionsBadgeTech',     countForType('technique'));
+    setBadge('interventionsBadgeCleaning', countForType('entretien'));
   },
 
-  togglePanel() {
-    if (this._panelOpen) this._closePanel();
-    else this._openPanel();
+  // Ouvre le panneau pour un type donné ('technique' | 'entretien').
+  // Si le panneau est déjà ouvert sur le même type → fermeture.
+  // Si ouvert sur l'autre type → on bascule au nouveau type sans fermer.
+  togglePanel(type = 'technique') {
+    if (this._panelOpen && this._typeFilter === type) {
+      this._closePanel();
+      return;
+    }
+    this._typeFilter = type;
+    this._openPanel();
   },
 
   _openPanel() {
@@ -124,14 +148,22 @@ const REQUESTS = {
       done:        '✅ Terminée',
     };
 
-    // Compter par statut (filtré par rôle)
+    // Filtre par type courant (bouton cliqué) : les requêtes "autre"
+    // suivent le panneau technique par défaut (hérité du legacy).
+    const typeFilterFn = (r) => {
+      if (this._typeFilter === 'entretien') return r.type === 'entretien';
+      // 'technique' — inclut 'autre' pour ne pas perdre les requêtes legacy
+      return r.type === 'technique' || r.type === 'autre';
+    };
+
+    // Compter par statut (filtré par rôle ET type courant)
     const counts = { open: 0, in_progress: 0, postponed: 0, done: 0 };
     Object.values(reqs).forEach(r => {
-      if (counts[r.status] !== undefined && this._filterByRole(r)) counts[r.status]++;
+      if (counts[r.status] !== undefined && this._filterByRole(r) && typeFilterFn(r)) counts[r.status]++;
     });
 
     const filtered = Object.entries(reqs)
-      .filter(([, r]) => r.status === this._filter && this._filterByRole(r))
+      .filter(([, r]) => r.status === this._filter && this._filterByRole(r) && typeFilterFn(r))
       .sort(([, a], [, b]) => b.createdAt - a.createdAt);
 
     const tabBtn = (status, label) => {
@@ -142,9 +174,13 @@ const REQUESTS = {
       </button>`;
     };
 
+    const panelTitle = this._typeFilter === 'entretien'
+      ? '🧹 Interventions entretien'
+      : '🔧 Interventions techniques';
+
     this._panel.innerHTML = `
       <div class="req-panel-hd">
-        <span>🛠️ Interventions</span>
+        <span>${panelTitle}</span>
         <button class="req-close-btn" id="reqCloseBtn">✕</button>
       </div>
       <div class="req-tabs">
