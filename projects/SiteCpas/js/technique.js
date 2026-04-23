@@ -639,6 +639,110 @@
       });
     },
 
+    // Construit et imprime la liste des requêtes filtrées, groupée par ouvrier.
+    // Utilisé par le responsable technique pour distribuer la liste du matin.
+    _printRequestsList() {
+      const area = document.getElementById('tqPrintArea');
+      if (!area) return;
+      const reqs = this._allRequests || {};
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+      // Appliquer les mêmes filtres que le pane actuel.
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
+
+      if (!entries.length) {
+        alert('Aucune requête à imprimer avec les filtres actuels.');
+        return;
+      }
+
+      // Grouper par ouvrier (workerId > assignedTo legacy > "Non assignée")
+      const groups = new Map(); // key = worker identifier string, value = { label, badge, list: [] }
+      const UNASSIGNED_KEY = '__unassigned__';
+      for (const [id, r] of entries) {
+        let key = UNASSIGNED_KEY;
+        let label = 'Non assignée';
+        let badge = '';
+        if (r.workerId) {
+          key   = `w:${r.workerId}`;
+          label = r.workerName || 'Ouvrier';
+          badge = r.workerBadge || '';
+        } else if (r.assignedTo) {
+          key   = `a:${r.assignedTo}`;
+          label = r.assignedToName || r.assignedTo;
+          badge = '';
+        }
+        if (!groups.has(key)) groups.set(key, { label, badge, list: [] });
+        groups.get(key).list.push({ id, r });
+      }
+
+      // Tri à l'intérieur de chaque groupe : urgence desc, puis createdAt desc
+      groups.forEach(g => {
+        g.list.sort((x, y) => (urg(y.r) - urg(x.r)) || (y.r.createdAt - x.r.createdAt));
+      });
+
+      // Tri des groupes : non-assignée en dernier, le reste par label
+      const groupEntries = Array.from(groups.entries()).sort(([ka, va], [kb, vb]) => {
+        if (ka === UNASSIGNED_KEY) return 1;
+        if (kb === UNASSIGNED_KEY) return -1;
+        return va.label.localeCompare(vb.label, 'fr');
+      });
+
+      // Titre selon filtre statut
+      const statusLabels = {
+        open: 'Requêtes ouvertes',
+        in_progress: 'Requêtes en cours',
+        postponed: 'Requêtes reportées',
+        done: 'Requêtes terminées',
+      };
+      const statusTitle = statusLabels[this._reqStatusFilter] || 'Requêtes';
+      const typeLabels = { technique: 'techniques', entretien: 'entretien', autre: 'autres', all: '(tous types)' };
+      const typeTitle = typeLabels[this._reqTypeFilter] || '';
+      const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+      // Rendu
+      let html = `<div class="tq-print-title">${esc(statusTitle)} ${esc(typeTitle)}</div>`;
+      html += `<div class="tq-print-sub">Imprimé le ${esc(dateStr)} · ${entries.length} requête(s) au total</div>`;
+
+      for (const [, g] of groupEntries) {
+        html += `<div class="tq-print-worker-block">
+          <div class="tq-print-worker-hd">
+            ${g.badge ? `<span class="tq-print-worker-badge">${esc(g.badge)}</span>` : ''}
+            <span>${esc(g.label)}</span>
+            <span class="tq-print-worker-count">${g.list.length} requête${g.list.length > 1 ? 's' : ''}</span>
+          </div>`;
+        for (const { id, r } of g.list) {
+          const u = urg(r);
+          const icon = TYPE_ICONS[r.type] || '📋';
+          const themeLabel = DB.getThemeLabelForRequestType?.(r.type, r.themeId) || '';
+          const themeTxt = r.themeId ? ` · ${themeLabel}` : '';
+          const localTxt = r.local ? ` · 📍 ${esc(r.local)}` : '';
+          const reopenTxt = (r.status === 'postponed' && r.reopenAt)
+            ? ` · ⏰ rouvre ${new Date(r.reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit' })}` : '';
+          const from = r.fromAgentName ? `<small>— par ${esc(r.fromAgentName)}</small>` : '';
+          html += `<div class="tq-print-req">
+            <span class="tq-print-req-urg tq-print-req-urg-${u}">${u}</span>
+            <span class="tq-print-req-type">${icon} ${esc(r.type || 'autre')}</span>
+            <span class="tq-print-req-desc">${esc(r.description || '')} ${from}</span>
+            <span class="tq-print-req-meta">${esc(themeTxt)}${esc(localTxt)}${esc(reopenTxt)}</span>
+          </div>`;
+        }
+        html += `</div>`;
+      }
+
+      area.innerHTML = html;
+      // Le CSS @media print affiche #tqPrintArea et cache tout le reste.
+      setTimeout(() => window.print(), 50);
+    },
+
     _bindRequestsPaneFilters() {
       document.querySelectorAll('#tqReqTabs .req-tab').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -664,6 +768,7 @@
           if (this._tab === 'requests') this._renderRequestsPane();
         });
       });
+      document.getElementById('tqReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
     },
 
     _renderRequestsPane() {

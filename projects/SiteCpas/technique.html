@@ -188,6 +188,61 @@
     .tq-late-theme { color: #b45309; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tq-late-local { color: #1a3a5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tq-late-desc  { color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Zone d'impression des requêtes (cachée à l'écran) ──────── */
+    .tq-print-area { display: none; }
+    .tq-print-title {
+      font-size: 1.2rem; font-weight: 900; color: #1a3a5c;
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 2px solid #1a3a5c; padding-bottom: .3rem;
+      margin-bottom: 1rem;
+    }
+    .tq-print-sub { font-size: .8rem; color: #475569; margin-bottom: 1rem; }
+    .tq-print-worker-block { margin-bottom: 1.1rem; page-break-inside: avoid; }
+    .tq-print-worker-hd {
+      background: #e0e7ff; border-left: 4px solid #3730a3;
+      padding: .35rem .7rem; margin-bottom: .4rem;
+      font-size: .95rem; font-weight: 800; color: #1e1b4b;
+      display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+    }
+    .tq-print-worker-badge { font-size: .8rem; background: #3730a3; color: #fff; padding: .1rem .4rem; border-radius: 4px; }
+    .tq-print-worker-count { margin-left: auto; font-size: .78rem; color: #3730a3; font-weight: 700; }
+    .tq-print-req {
+      display: grid; grid-template-columns: 36px 60px 1fr auto;
+      gap: .5rem; align-items: baseline;
+      padding: .3rem .6rem; border-bottom: 1px dashed #cbd5e1;
+      font-size: .85rem; color: #1e293b;
+    }
+    .tq-print-req-urg {
+      text-align: center; font-weight: 900; color: #fff;
+      border-radius: 4px; padding: .1rem .2rem;
+      font-size: .78rem;
+    }
+    .tq-print-req-urg-1 { background: #22c55e; }
+    .tq-print-req-urg-2 { background: #84cc16; color: #1a1a1a; }
+    .tq-print-req-urg-3 { background: #eab308; color: #1a1a1a; }
+    .tq-print-req-urg-4 { background: #f97316; }
+    .tq-print-req-urg-5 { background: #ef4444; }
+    .tq-print-req-type  { font-size: .75rem; color: #64748b; text-transform: uppercase; letter-spacing: .02em; }
+    .tq-print-req-desc  { color: #1e293b; font-weight: 600; }
+    .tq-print-req-desc small { font-weight: 500; color: #475569; margin-left: .3rem; }
+    .tq-print-req-meta  { font-size: .72rem; color: #64748b; white-space: nowrap; }
+
+    @media print {
+      @page { size: portrait; margin: 1cm; }
+      body { background: #fff !important; color: #000 !important; }
+      /* Override la règle globale body > *:not(#ticketPrintArea) display:none */
+      body > #tqPrintArea.tq-print-area { display: block !important; }
+      body > #tqPrintArea.tq-print-area .tq-print-req-urg-1,
+      body > #tqPrintArea.tq-print-area .tq-print-req-urg-2,
+      body > #tqPrintArea.tq-print-area .tq-print-req-urg-3,
+      body > #tqPrintArea.tq-print-area .tq-print-req-urg-4,
+      body > #tqPrintArea.tq-print-area .tq-print-req-urg-5,
+      body > #tqPrintArea.tq-print-area .tq-print-worker-hd {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
   </style>
 </head>
 
@@ -280,6 +335,7 @@
           <button class="tq-filter-btn active" data-urg="all">Toutes urgences</button>
           <button class="tq-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
         </div>
+        <button class="tq-export-btn" id="tqReqPrintBtn" title="Imprimer la liste filtrée, groupée par ouvrier assigné">🖨 Imprimer</button>
       </div>
     </div>
     <div class="tq-req-list" id="tqReqList">
@@ -288,6 +344,9 @@
   </section>
 
 </main>
+
+<!-- Container dédié à l'impression des requêtes (caché à l'écran) -->
+<div id="tqPrintArea" class="tq-print-area"></div>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
