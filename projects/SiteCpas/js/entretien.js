@@ -38,6 +38,15 @@
   const bilanMonth = document.getElementById('entBilanMonth');
   const bilanLieu  = document.getElementById('entBilanLieu');
   const bilanTable = document.getElementById('entBilanTable');
+  const btnPrint   = document.getElementById('entBtnPrint');
+  const btnExport  = document.getElementById('entBtnExport');
+  const printTitle = document.getElementById('entPrintTitle');
+
+  const MONTH_NAMES_FR = ['janvier','février','mars','avril','mai','juin',
+                          'juillet','août','septembre','octobre','novembre','décembre'];
+  const slug = s => String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
   function showToast(msg, err = false) {
     if (!toastEl) return;
@@ -284,6 +293,83 @@
     _bindBilan() {
       bilanMonth.addEventListener('change', () => this._renderBilan());
       bilanLieu.addEventListener('change',  () => this._renderBilan());
+      btnPrint?.addEventListener('click', () => this._printBilan());
+      btnExport?.addEventListener('click', () => this._exportCsv());
+    },
+
+    // Impression via window.print() avec CSS @media print. L'utilisateur
+    // peut aussi choisir "Enregistrer en PDF" dans la boîte d'impression.
+    _printBilan() {
+      if (!bilanMonth.value || !bilanLieu.value) {
+        showToast('Sélectionne un mois et un lieu avant d\'imprimer.', true);
+        return;
+      }
+      // Injecter le titre visible uniquement à l'impression
+      if (printTitle) printTitle.textContent = this._bilanTitle();
+      setTimeout(() => window.print(), 50);
+    },
+
+    _bilanTitle() {
+      const [year, month] = (bilanMonth.value || '').split('-').map(Number);
+      const lieuId = bilanLieu.value;
+      const lieu   = DB.getLieux()[lieuId];
+      const lieuName = lieu?.name || lieuId || '—';
+      const mName = (month >= 1 && month <= 12) ? MONTH_NAMES_FR[month - 1] : '?';
+      return `Bilan entretien — ${lieuName} — ${mName} ${year}`;
+    },
+
+    // Export CSV détaillé : 1 ligne par log, format pivotable dans Excel.
+    _exportCsv() {
+      const mkey   = bilanMonth.value;
+      const lieuId = bilanLieu.value;
+      if (!mkey || !lieuId) {
+        showToast('Sélectionne un mois et un lieu avant d\'exporter.', true);
+        return;
+      }
+      const [year, month] = mkey.split('-').map(Number);
+      const monthPrefix = `${year}-${pad(month)}-`;
+      const typesById = Object.fromEntries(DB.getCleaningTypes().map(t => [t.id, t.label]));
+      const cleanersById = Object.fromEntries(DB.getCleaners().map(c => [c.id, c.name]));
+
+      const rows = [[
+        'Date', 'Local ID', 'Local', 'Badge', 'Agent entretien',
+        'Type', 'Approfondi', 'Enregistré par (agentKey)', 'Enregistré à',
+      ]];
+      const logs = Object.values(this._logs || {})
+        .filter(l => l && l.lieuId === String(lieuId) && typeof l.date === 'string' && l.date.startsWith(monthPrefix))
+        .sort((a, b) => (a.date || '').localeCompare(b.date) || (a.ts || 0) - (b.ts || 0));
+
+      for (const l of logs) {
+        const tsStr = l.ts ? new Date(l.ts).toLocaleString('fr-BE') : '';
+        rows.push([
+          l.date || '',
+          l.localId != null ? String(l.localId) : '',
+          DB.getLocalLabel(l.localId) || `Local ${l.localId}`,
+          l.cleanerBadge || '',
+          cleanersById[l.cleanerId] || '',
+          typesById[l.typeId] || '',
+          l.approfondi ? 'Oui' : 'Non',
+          l.byAgentKey || '',
+          tsStr,
+        ]);
+      }
+
+      // Séparateur ; (Excel FR par défaut). BOM UTF-8 pour les accents.
+      const csv = rows.map(r => r.map(v => {
+        const s = String(v ?? '');
+        return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      }).join(';')).join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const lieuSlug = slug(DB.getLieux()[lieuId]?.name || lieuId);
+      a.href = url;
+      a.download = `bilan-entretien-${lieuSlug}-${year}-${pad(month)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(`✓ Export : ${logs.length} ligne${logs.length > 1 ? 's' : ''}`);
     },
 
     _renderBilan() {

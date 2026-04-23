@@ -144,6 +144,41 @@
       margin-bottom: 1rem;
     }
     .ent-bilan-toolbar .ent-field { flex: 1 1 200px; }
+    .ent-bilan-actions { display: flex; gap: .5rem; align-items: center; margin-left: auto; }
+    .ent-btn-sec {
+      padding: .55rem 1rem; background: #1e293b; color: #fff;
+      border: none; border-radius: 8px; font-size: .85rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+      white-space: nowrap;
+    }
+    .ent-btn-sec:hover { background: #0f172a; }
+    .ent-btn-sec:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .ent-print-title { display: none; }
+
+    @media print {
+      @page { size: landscape; margin: 1cm; }
+      body { background: #fff !important; color: #000 !important; }
+      .ent-hd, .ent-tabs, .ent-bilan-toolbar, .ent-legend, .ent-toast,
+      #entPaneRegister { display: none !important; }
+      .ent-bilan-wrap { box-shadow: none !important; padding: 0 !important; border: none !important; overflow: visible !important; }
+      .ent-body { padding: 0 !important; max-width: none !important; }
+      .ent-print-title {
+        display: block !important; margin-bottom: .75rem;
+        font-size: 1.1rem; font-weight: 800; color: #1e293b;
+        border-bottom: 2px solid #1e293b; padding-bottom: .25rem;
+      }
+      .ent-month-table { font-size: .68rem; min-width: 0 !important; }
+      .ent-month-table th, .ent-month-table td { padding: .2rem .25rem; }
+      .ent-month-table td.ent-local-col { position: static !important; }
+      .ent-month-table thead th { position: static !important; }
+      /* Forcer l'impression des couleurs de fond des cellules */
+      .ent-status-ok, .ent-status-deep, .ent-status-conflict, .ent-day-today, .ent-day-weekend {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+    }
 
     .ent-bilan-wrap {
       background: #fff; border-radius: 14px; padding: 1rem;
@@ -288,7 +323,14 @@
           <option value="">— Sélectionner —</option>
         </select>
       </div>
+      <div class="ent-bilan-actions">
+        <button type="button" class="ent-btn-sec" id="entBtnPrint" title="Imprimer le tableau (ou sauvegarder en PDF via la boîte d'impression)">🖨 Imprimer</button>
+        <button type="button" class="ent-btn-sec" id="entBtnExport" title="Télécharger un CSV détaillé (compatible Excel)">⬇ Export CSV</button>
+      </div>
     </div>
+
+    <!-- Titre visible uniquement à l'impression -->
+    <div class="ent-print-title" id="entPrintTitle"></div>
 
     <div class="ent-bilan-wrap">
       <div id="entBilanTable">
