@@ -44,6 +44,8 @@
   const optBadge   = document.getElementById('entOptBadge');
   const optName    = document.getElementById('entOptName');
   const optType    = document.getElementById('entOptType');
+  const annulList  = document.getElementById('entAnnulList');
+  const annulMineOnly = document.getElementById('entAnnulMineOnly');
 
   const OPTS_KEY = 'cpas_entretien_bilan_opts';
 
@@ -79,11 +81,13 @@
       DB.onCleaningLogsChange(logs => {
         this._logs = logs || {};
         if (this._tab === 'bilan') this._renderBilan();
+        if (this._tab === 'annul') this._renderAnnul();
       });
 
       this._bindTabs();
       this._bindRegister();
       this._bindBilan();
+      this._bindAnnul();
     },
 
     _guard() {
@@ -112,7 +116,9 @@
           this._tab = btn.dataset.tab;
           document.getElementById('entPaneRegister').style.display = (this._tab === 'register') ? '' : 'none';
           document.getElementById('entPaneBilan').style.display    = (this._tab === 'bilan')    ? '' : 'none';
+          document.getElementById('entPaneAnnul').style.display    = (this._tab === 'annul')    ? '' : 'none';
           if (this._tab === 'bilan') this._renderBilan();
+          if (this._tab === 'annul') this._renderAnnul();
         });
       });
     },
@@ -496,6 +502,79 @@
       }
       html += '</tbody></table>';
       bilanTable.innerHTML = html;
+    },
+
+    // ── Onglet Annuler une saisie ───────────────────────────────
+    _bindAnnul() {
+      annulMineOnly?.addEventListener('change', () => this._renderAnnul());
+    },
+
+    _renderAnnul() {
+      if (!annulList) return;
+      const myKey = sessionStorage.getItem('cpas_current_agent_key') || null;
+      const mineOnly = !!annulMineOnly?.checked;
+      const typesById    = Object.fromEntries(DB.getCleaningTypes().map(t => [t.id, t.label]));
+      const cleanersById = Object.fromEntries(DB.getCleaners().map(c => [c.id, c.name]));
+      const lieuxById    = DB.getLieux();
+
+      const entries = Object.entries(this._logs || {})
+        .map(([id, l]) => ({ id, ...l }))
+        .filter(l => !mineOnly || l.byAgentKey === myKey)
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+        .slice(0, 100); // limite affichage aux 100 plus récentes
+
+      if (!entries.length) {
+        annulList.innerHTML = '<div class="ent-empty-hint">' +
+          (mineOnly ? 'Aucune saisie de votre part.' : 'Aucune saisie enregistrée.') +
+          '</div>';
+        return;
+      }
+
+      annulList.innerHTML = entries.map(e => {
+        const when = e.ts ? new Date(e.ts) : null;
+        const whenStr = when
+          ? `${pad(when.getDate())}/${pad(when.getMonth()+1)} ${pad(when.getHours())}:${pad(when.getMinutes())}`
+          : (e.date || '');
+        const lieuName = lieuxById[e.lieuId]?.name || e.lieuId || '?';
+        const localName = DB.getLocalLabel(e.localId) || `Local ${e.localId}`;
+        const cleanerName = cleanersById[e.cleanerId] || '';
+        const typeLabel = typesById[e.typeId] || '?';
+        const deepTag = e.approfondi ? ' <span class="ent-annul-deep">(approfondi)</span>' : '';
+        const mine = e.byAgentKey === myKey;
+        return `<div class="ent-annul-item" data-id="${escapeHtml(e.id)}">
+          <div class="ent-annul-item-when">${escapeHtml(whenStr)}</div>
+          <div class="ent-annul-item-desc">
+            <b>${escapeHtml(localName)}</b> — ${escapeHtml(lieuName)} — ${escapeHtml(typeLabel)}${deepTag}
+            <span class="ent-annul-meta">
+              ${escapeHtml(e.cleanerBadge || '?')}${cleanerName ? ' · ' + escapeHtml(cleanerName) : ''}
+              ${mine ? ' · <em style="color:#15803d">par vous</em>' : ''}
+            </span>
+          </div>
+          <button type="button" class="ent-annul-del" data-id="${escapeHtml(e.id)}">🗑 Supprimer</button>
+        </div>`;
+      }).join('');
+
+      annulList.querySelectorAll('.ent-annul-del').forEach(btn => {
+        btn.addEventListener('click', () => this._removeLog(btn));
+      });
+    },
+
+    async _removeLog(btn) {
+      const id = btn.dataset.id;
+      if (!id) return;
+      const log = (this._logs || {})[id];
+      if (!log) { showToast('Saisie introuvable', true); return; }
+      const localName = DB.getLocalLabel(log.localId) || `Local ${log.localId}`;
+      if (!confirm(`Supprimer la saisie "${localName}" du ${log.date} ?`)) return;
+      btn.disabled = true;
+      try {
+        await DB.removeCleaningLog(id);
+        showToast('✓ Saisie supprimée');
+      } catch (e) {
+        console.warn('[ENTRETIEN] remove failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+        btn.disabled = false;
+      }
     },
   };
 

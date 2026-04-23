@@ -240,6 +240,52 @@
     }
     .ent-day-cell[title] { cursor: help; }
 
+    /* ── Onglet Annuler ────────────────────────────────── */
+    .ent-annul-wrap {
+      background: #fff; border-radius: 14px; padding: 1rem 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .ent-annul-head {
+      display: flex; align-items: flex-start; gap: 1rem;
+      flex-wrap: wrap; margin-bottom: 1rem;
+      padding-bottom: .75rem; border-bottom: 1px solid #e5e7eb;
+    }
+    .ent-annul-title { font-size: 1rem; font-weight: 800; color: #1a3a5c; }
+    .ent-annul-sub   { font-size: .82rem; color: #64748b; margin-top: .2rem; }
+
+    .ent-annul-list {
+      display: flex; flex-direction: column; gap: .4rem;
+      max-height: 60vh; overflow-y: auto;
+    }
+    .ent-annul-item {
+      display: grid; grid-template-columns: auto 1fr auto; gap: .75rem;
+      align-items: center; padding: .55rem .75rem;
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
+      font-size: .88rem;
+    }
+    .ent-annul-item-when {
+      font-size: .72rem; color: #64748b; font-weight: 700;
+      min-width: 110px; white-space: nowrap;
+    }
+    .ent-annul-item-desc {
+      color: #1e293b; overflow: hidden;
+    }
+    .ent-annul-item-desc b { color: #15803d; }
+    .ent-annul-item-desc .ent-annul-meta {
+      display: block; font-size: .74rem; color: #64748b; margin-top: .15rem;
+    }
+    .ent-annul-item-desc .ent-annul-deep {
+      color: #d97706; font-weight: 700; font-style: italic;
+    }
+    .ent-annul-del {
+      background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5;
+      padding: .35rem .7rem; border-radius: 8px; font-size: .78rem;
+      font-weight: 800; cursor: pointer; font-family: inherit;
+      transition: background .12s, color .12s;
+    }
+    .ent-annul-del:hover { background: #fca5a5; color: #fff; }
+    .ent-annul-del:disabled { opacity: .5; cursor: wait; }
+
     .ent-bilan-opts {
       display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
       padding: .5rem .75rem; margin-bottom: .75rem;
@@ -300,6 +346,7 @@
   <div class="ent-tabs" role="tablist">
     <button class="ent-tab ent-tab-active" data-tab="register" role="tab">📝 Enregistrer un nettoyage</button>
     <button class="ent-tab" data-tab="bilan" role="tab">📊 Bilan mensuel</button>
+    <button class="ent-tab" data-tab="annul" role="tab">↩ Annuler une saisie</button>
   </div>
 
   <!-- ──── Onglet Enregistrer ──── -->
@@ -379,6 +426,24 @@
         <span class="ent-legend-chip"><span class="sw" style="background:#fed7aa"></span> Approfondi</span>
         <span class="ent-legend-chip"><span class="sw" style="background:repeating-linear-gradient(45deg,#fecaca 0 6px,#fca5a5 6px 12px)"></span> Conflit (plusieurs agents)</span>
         <span class="ent-legend-chip"><span class="sw" style="background:transparent"></span> Non nettoyé</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──── Onglet Annuler ──── -->
+  <section class="ent-pane" id="entPaneAnnul" style="display:none">
+    <div class="ent-annul-wrap">
+      <div class="ent-annul-head">
+        <div>
+          <div class="ent-annul-title">Dernières saisies</div>
+          <div class="ent-annul-sub">Classées de la plus récente à la plus ancienne. Supprimer une saisie effectuée par erreur.</div>
+        </div>
+        <label class="ent-opts-check" style="margin-left:auto">
+          <input type="checkbox" id="entAnnulMineOnly"> Uniquement mes saisies
+        </label>
+      </div>
+      <div id="entAnnulList" class="ent-annul-list">
+        <div class="ent-empty-hint">Chargement…</div>
       </div>
     </div>
   </section>

@@ -2178,6 +2178,10 @@ const DB = {
   onCleaningLogsChange(fn) { this._cleaningLogsCbs.push(fn); },
   getCleaningLogs() { return this._cleaningLogs; },
 
+  async removeCleaningLog(id) {
+    await this._ref(`entretien/logs/${id}`).remove();
+  },
+
   async addService(name) {
     await this._ref('appConfig/services').push(name);
   },
