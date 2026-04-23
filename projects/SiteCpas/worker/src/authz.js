@@ -62,6 +62,18 @@ const SCOPED_RULES = [
     ops: ALL_OPS,
     check: (p, op, a) => isAdmin(a) },
 
+  // ── Paths partagés agent-facing au milieu d'appConfig (défaut admin) ──
+  // Un agent s'inscrit/se désinscrit d'une file d'attente dynamique
+  // (join/leave queue group depuis la vue bureau).
+  { pattern: 'appConfig/queueGroups/:groupId/localIds',
+    ops: ['set', 'update', 'remove'],
+    check: (p, op, a) => !!a.uid },
+  // Cache météo partagé : tous les agents peuvent refresh le cache
+  // (TTL court, pas sensible).
+  { pattern: 'appConfig/weather',
+    ops: ['set', 'update', 'remove'],
+    check: (p, op, a) => !!a.uid },
+
   // Paramètres perso de l'agent — lui ou l'admin
   { pattern: 'appConfig/agentColors/:agentKey',
     ops: ['set', 'remove'],
