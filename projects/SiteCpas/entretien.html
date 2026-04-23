@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Management Entretien — SiteCpas</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ── Layout page entretien ──────────────────────────────── */
+    body { background: #f8fafc; color: #1e293b; font-family: system-ui, sans-serif; }
+    .ent-hd {
+      background: linear-gradient(135deg, #15803d 0%, #064e3b 100%);
+      color: #fff; padding: .85rem 1.25rem; display: flex;
+      align-items: center; gap: .75rem; flex-wrap: wrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,.1); position: sticky; top: 0; z-index: 100;
+    }
+    .ent-hd-title  { font-size: 1.15rem; font-weight: 900; letter-spacing: .02em; }
+    .ent-hd-sub    { font-size: .82rem; opacity: .88; }
+    .ent-hd-spacer { flex: 1; }
+    .ent-back {
+      background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.35);
+      color: #fff; border-radius: 8px; padding: .4rem .85rem; font-size: .85rem;
+      font-weight: 700; cursor: pointer; text-decoration: none;
+      transition: background .15s;
+    }
+    .ent-back:hover { background: rgba(255,255,255,.3); }
+    .ent-agent-badge {
+      background: rgba(255,255,255,.18); padding: .3rem .7rem; border-radius: 6px;
+      font-size: .8rem; font-weight: 700;
+    }
+
+    /* ── Guard refus ────────────────────────────────────────── */
+    .ent-refused {
+      max-width: 460px; margin: 4rem auto; background: #fff;
+      border: 1.5px solid #fecaca; border-radius: 16px; padding: 2rem;
+      text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,.08);
+    }
+    .ent-refused-icon  { font-size: 3rem; margin-bottom: .5rem; }
+    .ent-refused-title { font-size: 1.2rem; font-weight: 800; color: #dc2626; margin-bottom: .5rem; }
+    .ent-refused-msg   { color: #64748b; font-size: .9rem; line-height: 1.5; margin-bottom: 1.25rem; }
+
+    .ent-loading { text-align: center; padding: 3rem; color: #64748b; font-size: .95rem; }
+
+    /* ── Layout body ─────────────────────────────────────── */
+    .ent-body { max-width: 1400px; margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+
+    /* ── Tabs ─────────────────────────────────────────────── */
+    .ent-tabs {
+      display: flex; gap: .4rem; margin-bottom: 1rem;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .ent-tab {
+      padding: .55rem 1rem; background: none; border: none;
+      border-bottom: 3px solid transparent; font-size: .92rem;
+      font-weight: 700; color: #64748b; cursor: pointer;
+      transition: color .12s, border-color .12s;
+      font-family: inherit; margin-bottom: -2px;
+    }
+    .ent-tab:hover   { color: #15803d; }
+    .ent-tab-active  { color: #15803d; border-bottom-color: #15803d; }
+
+    /* ── Formulaire Enregistrer ───────────────────────────── */
+    .ent-form {
+      background: #fff; border-radius: 14px; padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04); display: flex;
+      flex-direction: column; gap: 1rem;
+    }
+    .ent-form-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+    }
+    @media (max-width: 720px) { .ent-form-row { grid-template-columns: 1fr; } }
+    .ent-field-label {
+      display: block; font-size: .78rem; font-weight: 800;
+      color: #1a3a5c; text-transform: uppercase; letter-spacing: .05em;
+      margin-bottom: .35rem;
+    }
+    .ent-select {
+      width: 100%; padding: .55rem .75rem; border: 1.5px solid #d1d5db;
+      border-radius: 8px; background: #fff; color: #1e293b;
+      font-size: .9rem; font-family: inherit; outline: none;
+    }
+    .ent-select:focus { border-color: #15803d; }
+
+    .ent-locals-list {
+      display: flex; flex-direction: column; gap: .35rem;
+      border: 1.5px solid #e5e7eb; border-radius: 10px;
+      padding: .5rem; background: #f9fafb; max-height: 420px; overflow-y: auto;
+    }
+    .ent-local-row {
+      display: grid; grid-template-columns: 1fr auto auto;
+      align-items: center; gap: 1rem; padding: .55rem .75rem;
+      background: #fff; border-radius: 8px; border: 1px solid #e5e7eb;
+      font-size: .92rem;
+    }
+    .ent-local-name { font-weight: 600; color: #1e293b; }
+    .ent-local-check {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .82rem; color: #475569; cursor: pointer; user-select: none;
+    }
+    .ent-local-check input[type=checkbox] { cursor: pointer; accent-color: #15803d; }
+    .ent-local-check-deep input[type=checkbox] { accent-color: #d97706; }
+
+    .ent-save-btn {
+      padding: .7rem 1.4rem; background: #15803d; color: #fff;
+      border: none; border-radius: 10px; font-size: .95rem; font-weight: 800;
+      cursor: pointer; align-self: flex-end; transition: background .15s;
+      font-family: inherit;
+    }
+    .ent-save-btn:hover:not(:disabled) { background: #166534; }
+    .ent-save-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .ent-empty-hint {
+      padding: 2rem; text-align: center; color: #94a3b8; font-size: .9rem;
+      font-style: italic;
+    }
+
+    .ent-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: #064e3b; color: #fff; padding: .65rem 1.25rem;
+      border-radius: 10px; font-weight: 700; font-size: .9rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2); z-index: 200;
+      opacity: 0; transition: opacity .25s, transform .25s;
+      pointer-events: none;
+    }
+    .ent-toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+    .ent-toast.err  { background: #991b1b; }
+
+    /* ── Bilan mensuel ───────────────────────────────────── */
+    .ent-bilan-toolbar {
+      background: #fff; border-radius: 14px; padding: 1rem 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      display: flex; gap: 1rem; flex-wrap: wrap; align-items: end;
+      margin-bottom: 1rem;
+    }
+    .ent-bilan-toolbar .ent-field { flex: 1 1 200px; }
+
+    .ent-bilan-wrap {
+      background: #fff; border-radius: 14px; padding: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04); overflow-x: auto;
+    }
+    .ent-month-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: .8rem; min-width: 900px;
+    }
+    .ent-month-table th, .ent-month-table td {
+      border: 1px solid #e5e7eb; padding: .3rem .35rem;
+      text-align: center; vertical-align: middle;
+    }
+    .ent-month-table thead th {
+      background: #f8fafc; color: #1a3a5c; font-weight: 700;
+      position: sticky; top: 0; z-index: 2;
+    }
+    .ent-month-table th.ent-day-weekend { background: #eef2ff; color: #4338ca; }
+    .ent-month-table th.ent-day-today {
+      background: #15803d; color: #fff;
+    }
+    .ent-month-table td.ent-local-col {
+      text-align: left; padding-left: .6rem; font-weight: 700;
+      color: #1e293b; background: #f8fafc;
+      position: sticky; left: 0; z-index: 1; min-width: 160px;
+    }
+    .ent-day-cell {
+      min-width: 38px; height: 38px; cursor: default; position: relative;
+    }
+    .ent-status-empty    { background: transparent; }
+    .ent-status-ok       { background: #dcfce7; }
+    .ent-status-deep     { background: #fed7aa; }
+    .ent-status-conflict {
+      background: repeating-linear-gradient(
+        45deg, #fecaca 0 6px, #fca5a5 6px 12px
+      );
+    }
+    .ent-day-cell .ent-cell-badge {
+      display: inline-block; font-size: .62rem; font-weight: 800;
+      color: #1e293b; letter-spacing: .02em; padding: 0 .15rem;
+      line-height: 1;
+    }
+    .ent-day-cell[title] { cursor: help; }
+
+    .ent-legend {
+      display: flex; gap: .8rem; flex-wrap: wrap; padding: .5rem 0 0 0;
+      font-size: .78rem; color: #475569;
+    }
+    .ent-legend-chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      padding: .1rem .45rem; border-radius: 4px;
+      border: 1px solid #e5e7eb;
+    }
+    .ent-legend-chip .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.1); display: inline-block; }
+  </style>
+</head>
+
+<body>
+
+<!-- Header -->
+<div class="ent-hd" id="entHeader" style="display:none">
+  <div>
+    <div class="ent-hd-title">🧹 Management Entretien</div>
+    <div class="ent-hd-sub" id="entOrgName">—</div>
+  </div>
+  <div class="ent-hd-spacer"></div>
+  <span class="ent-agent-badge" id="entAgentBadge">—</span>
+  <a href="app.html" class="ent-back" id="entBackBtn">← Retour à l'app</a>
+</div>
+
+<!-- Loading -->
+<div class="ent-loading" id="entLoading">Chargement de l'espace entretien…</div>
+
+<!-- Accès refusé -->
+<div class="ent-refused" id="entRefused" style="display:none">
+  <div class="ent-refused-icon">🚫</div>
+  <div class="ent-refused-title">Accès refusé</div>
+  <div class="ent-refused-msg">
+    Cette page est réservée aux <b>agents d'entretien</b> et aux <b>administrateurs</b>.
+    Ton rôle actuel ne te permet pas d'y accéder.
+  </div>
+  <a href="app.html" class="ent-back" style="background:#15803d;color:#fff">← Retour à l'app</a>
+</div>
+
+<!-- Body -->
+<main class="ent-body" id="entBody" style="display:none">
+
+  <!-- Onglets -->
+  <div class="ent-tabs" role="tablist">
+    <button class="ent-tab ent-tab-active" data-tab="register" role="tab">📝 Enregistrer un nettoyage</button>
+    <button class="ent-tab" data-tab="bilan" role="tab">📊 Bilan mensuel</button>
+  </div>
+
+  <!-- ──── Onglet Enregistrer ──── -->
+  <section class="ent-pane" id="entPaneRegister">
+    <div class="ent-form">
+      <div class="ent-form-row">
+        <div>
+          <label class="ent-field-label" for="entSelLieu">Lieu</label>
+          <select id="entSelLieu" class="ent-select">
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+        <div>
+          <label class="ent-field-label" for="entSelCleaner">Agent d'entretien</label>
+          <select id="entSelCleaner" class="ent-select">
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+        <div>
+          <label class="ent-field-label" for="entSelType">Type de nettoyage</label>
+          <select id="entSelType" class="ent-select">
+            <option value="">— Sélectionner —</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="ent-field-label">Locaux à marquer comme nettoyés</label>
+        <div class="ent-locals-list" id="entLocalsList">
+          <div class="ent-empty-hint">Sélectionnez un lieu pour afficher ses locaux.</div>
+        </div>
+      </div>
+
+      <button type="button" class="ent-save-btn" id="entBtnSave" disabled>💾 Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- ──── Onglet Bilan ──── -->
+  <section class="ent-pane" id="entPaneBilan" style="display:none">
+    <div class="ent-bilan-toolbar">
+      <div class="ent-field">
+        <label class="ent-field-label" for="entBilanMonth">Mois</label>
+        <input type="month" id="entBilanMonth" class="ent-select">
+      </div>
+      <div class="ent-field">
+        <label class="ent-field-label" for="entBilanLieu">Lieu</label>
+        <select id="entBilanLieu" class="ent-select">
+          <option value="">— Sélectionner —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ent-bilan-wrap">
+      <div id="entBilanTable">
+        <div class="ent-empty-hint">Sélectionnez un mois et un lieu pour voir le bilan.</div>
+      </div>
+      <div class="ent-legend">
+        <span class="ent-legend-chip"><span class="sw" style="background:#dcfce7"></span> Nettoyé</span>
+        <span class="ent-legend-chip"><span class="sw" style="background:#fed7aa"></span> Approfondi</span>
+        <span class="ent-legend-chip"><span class="sw" style="background:repeating-linear-gradient(45deg,#fecaca 0 6px,#fca5a5 6px 12px)"></span> Conflit (plusieurs agents)</span>
+        <span class="ent-legend-chip"><span class="sw" style="background:transparent"></span> Non nettoyé</span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="ent-toast" id="entToast"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<!-- App scripts (minimal pour cette page) -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/audit.js"></script>
+<script src="js/worker-client.js"></script>
+<script src="js/db.js"></script>
+<script src="js/session.js"></script>
+
+<!-- Logique page entretien -->
+<script src="js/entretien.js"></script>
+
+</body>
+</html>

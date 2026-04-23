@@ -31,6 +31,7 @@ function startsWithPath(prefix, path) {
 
 function isAdmin(auth)  { return auth.role === '__admin__' || auth.raw?.admin === true; }
 function isSuperadmin(auth) { return auth.raw?.superadmin === true; }
+function isCleaningStaff(auth) { return isAdmin(auth) || auth.role === '__entretien__'; }
 
 const ALL_OPS = ['set', 'update', 'push', 'remove'];
 
@@ -74,6 +75,18 @@ const SCOPED_RULES = [
     ops: ['set', 'update', 'remove'],
     check: (p, op, a) => !!a.uid },
 
+  // ── Management entretien : cleaners et types, admin only ──
+  // Défense en profondeur : la ZONE 'appConfig' admin-only couvre déjà
+  // ces paths, mais on les rend explicites pour la lisibilité.
+  { pattern: 'appConfig/cleaners',
+    ops: ['push'],                           check: (p, op, a) => isAdmin(a) },
+  { pattern: 'appConfig/cleaners/:id',
+    ops: ['set', 'update', 'remove'],        check: (p, op, a) => isAdmin(a) },
+  { pattern: 'appConfig/cleaningTypes',
+    ops: ['push'],                           check: (p, op, a) => isAdmin(a) },
+  { pattern: 'appConfig/cleaningTypes/:id',
+    ops: ['set', 'update', 'remove'],        check: (p, op, a) => isAdmin(a) },
+
   // Paramètres perso de l'agent — lui ou l'admin
   { pattern: 'appConfig/agentColors/:agentKey',
     ops: ['set', 'remove'],
@@ -111,6 +124,10 @@ const ZONE_RULES = [
 
   // Audit : append-only côté client (push seul autorisé)
   { prefix: 'audit',                    ops: ['push'], check: (a) => !!a.uid },
+
+  // Management entretien : push/set/update/remove réservés aux agents
+  // avec rôle __entretien__ ou __admin__.
+  { prefix: 'entretien',                ops: ALL_OPS, check: (a) => isCleaningStaff(a) },
 
   // ── Zones admin ──
   // appConfig est admin-only par défaut (les scoped rules ci-dessus

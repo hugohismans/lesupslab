@@ -1116,6 +1116,10 @@ const MODAL = {
     // ── Rôles & Permissions ────────────────────────────────────────
     if (isAdmin) this._renderPermRoles();
 
+    // ── Entretien : agents sans compte + types de nettoyage ───────
+    if (isAdmin) this._renderCleaners();
+    if (isAdmin) this._renderCleaningTypes();
+
     // ── Thèmes d'intervention technique ────────────────────────────
     if (isAdmin) this._renderTechThemes();
 
@@ -1288,6 +1292,91 @@ const MODAL = {
         addBtn.disabled = false;
         showToast('Rôle créé ✓');
         this._renderPermRoles();
+      });
+    }
+  },
+
+  // ─── Entretien : agents sans compte (admin) ───────────────────────
+  _renderCleaners() {
+    const container = g('stCleanersList');
+    if (!container) return;
+    const cleaners = DB.getCleaners();
+    if (!cleaners.length) {
+      container.innerHTML = '<p class="st-empty">Aucun agent. Ajoutez-en un ci-dessous (badge + nom).</p>';
+    } else {
+      container.innerHTML = cleaners.map(c => `
+        <div class="st-item" data-id="${c.id}">
+          <span class="st-name"><strong>${escapeHtml(c.badge || '—')}</strong> — ${escapeHtml(c.name || '')}</span>
+          <button class="st-del cleaner-del" data-id="${c.id}" data-name="${escapeHtml(c.name)}" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+    // Supprimer
+    container.querySelectorAll('.cleaner-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer l'agent d'entretien "${name}" ?\nLes logs passés conservent son badge, il disparaît juste de la liste de sélection.`)) return;
+        await DB.removeCleaner(id);
+        showToast('Agent retiré ✓');
+        this._renderCleaners();
+      }));
+    });
+    // Ajouter
+    const addBtn = g('stCleanerAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const bIn = g('stCleanerBadgeInput');
+        const nIn = g('stCleanerNameInput');
+        const badge = (bIn?.value || '').trim();
+        const name  = (nIn?.value || '').trim();
+        if (!badge || !name) { alert('Badge et nom requis.'); return; }
+        addBtn.disabled = true;
+        await DB.addCleaner(badge, name);
+        if (bIn) bIn.value = '';
+        if (nIn) nIn.value = '';
+        addBtn.disabled = false;
+        showToast('Agent ajouté ✓');
+        this._renderCleaners();
+      });
+    }
+  },
+
+  // ─── Entretien : types de nettoyage (admin) ───────────────────────
+  _renderCleaningTypes() {
+    const container = g('stCleaningTypesList');
+    if (!container) return;
+    const types = DB.getCleaningTypes();
+    if (!types.length) {
+      container.innerHTML = '<p class="st-empty">Aucun type de nettoyage. Ajoutez-en un ci-dessous.</p>';
+    } else {
+      container.innerHTML = types.map(t => `
+        <div class="st-item" data-id="${t.id}">
+          <span class="st-name">${escapeHtml(t.label || '—')}</span>
+          <button class="st-del cleaning-type-del" data-id="${t.id}" data-label="${escapeHtml(t.label)}" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+    container.querySelectorAll('.cleaning-type-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, label = btn.dataset.label;
+        if (!confirm(`Supprimer le type "${label}" ?\nLes logs passés conservent le type, il disparaît juste de la liste de sélection.`)) return;
+        await DB.removeCleaningType(id);
+        showToast('Type retiré ✓');
+        this._renderCleaningTypes();
+      }));
+    });
+    const addBtn = g('stCleaningTypeAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const input = g('stCleaningTypeInput');
+        const label = (input?.value || '').trim();
+        if (!label) return;
+        addBtn.disabled = true;
+        await DB.addCleaningType(label);
+        if (input) input.value = '';
+        addBtn.disabled = false;
+        showToast('Type ajouté ✓');
+        this._renderCleaningTypes();
       });
     }
   },

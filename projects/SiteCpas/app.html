@@ -83,6 +83,7 @@
       </button>
     </div>
     <a class="btn-tech-space" id="btnTechSpace" href="technique.html" title="Espace Responsable technique — statistiques et suivi" style="display:none;text-decoration:none">🛠️ Espace technique</a>
+    <a class="btn-maintenance-space" id="btnMaintenanceSpace" href="entretien.html" title="Management entretien — enregistrer le nettoyage et consulter le bilan" style="display:none;text-decoration:none">🧹 Entretien</a>
     <button class="btn-calendar-export" id="btnCalendarExport" title="Exporter mon agenda (.ics)" style="display:none">📅 Agenda</button>
     <a class="btn-rdv" href="rdv.html" title="Disponibilité pour rendez-vous">📅 RDV</a>
     <a class="btn-live" id="btnPublic" href="vuepublic.html" target="_blank" title="Vue publique">🖥 Public</a>
@@ -956,6 +957,7 @@
           <a class="st-sidenav-link" data-target="stSectLocalisation">📍 Localisation</a>
           <div class="st-sidenav-sep">Sécurité & Système</div>
           <a class="st-sidenav-link" data-target="stSectPermissions">🔐 Rôles & Droits</a>
+          <a class="st-sidenav-link" data-target="stSectEntretien">🧹 Entretien</a>
           <a class="st-sidenav-link" data-target="stSectTechThemes">🏷️ Thèmes techniques</a>
           <a class="st-sidenav-link" data-target="stSectAbsences">📅 Absences</a>
           <a class="st-sidenav-link" data-target="stSectNotifs">🔔 Notifications</a>
@@ -1277,6 +1279,28 @@
                 <option value="__juriste__">Intro : Juriste</option>
               </select>
               <button class="btn-primary" id="stPermRoleAdd">Créer</button>
+            </div>
+          </div>
+
+          <!-- Entretien : agents sans compte + types de nettoyage -->
+          <div class="st-section-anchor" id="stSectEntretien"></div>
+          <h3 class="st-title" style="margin-top:1.25rem">🧹 Entretien</h3>
+          <div class="st-admin-section">
+            <p class="st-perm-intro">Configure la liste des agents d'entretien (sans compte) et les types de nettoyage. Ces listes sont utilisées sur la page <b>Management Entretien</b> (🧹 Entretien dans le header) par les agents ayant le rôle Entretien.</p>
+
+            <h4 style="margin-top:1rem;margin-bottom:.35rem;font-size:.88rem;color:#1a3a5c">👷 Agents d'entretien sans compte</h4>
+            <div id="stCleanersList" class="st-list"></div>
+            <div class="st-add" style="flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stCleanerBadgeInput" placeholder="Badge (ex: C001)" style="flex:0 0 140px">
+              <input type="text" id="stCleanerNameInput"  placeholder="Nom de l'agent..." style="flex:1;min-width:180px">
+              <button class="btn-primary" id="stCleanerAdd">+ Ajouter</button>
+            </div>
+
+            <h4 style="margin-top:1.25rem;margin-bottom:.35rem;font-size:.88rem;color:#1a3a5c">🧼 Types de nettoyage</h4>
+            <div id="stCleaningTypesList" class="st-list"></div>
+            <div class="st-add" style="flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stCleaningTypeInput" placeholder="Nouveau type (ex: Nettoyage frigo, Global, Salle de bain, ...)" style="flex:1;min-width:200px">
+              <button class="btn-primary" id="stCleaningTypeAdd">+ Ajouter</button>
             </div>
           </div>
 

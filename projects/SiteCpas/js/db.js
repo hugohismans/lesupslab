@@ -307,6 +307,9 @@ const DB = {
         localDesks:  d.localDesks  || {},   // { [localId]: { [deskId]: true } }
         deskLabels:  d.deskLabels  || {},   // { [deskId]: "Desk A" }
         techThemes:  d.techThemes  || {},   // { [themeId]: { label, order } }
+        // Management entretien
+        cleaners:       d.cleaners       || {},   // { [cleanerId]: { badge, name, order } }
+        cleaningTypes:  d.cleaningTypes  || {},   // { [typeId]: { label, order } }
       };
 
       // Charger les lieux triés par order
@@ -2098,6 +2101,83 @@ const DB = {
   async removeAgentByKey(key) {
     await this._ref(`appConfig/agents/${key}`).remove();
   },
+
+  // ── Management entretien (Phase "entretien") ─────────────────────
+  // Agents sans compte (badge + nom) configurés par l'admin dans
+  // Paramètres > Entretien. Utilisés côté entretien.html pour
+  // attribuer un nettoyage à une personne physique.
+  getCleaners() {
+    const raw = this._config.cleaners || {};
+    return Object.entries(raw)
+      .map(([id, c]) => ({ id, badge: c.badge || '', name: c.name || '', order: c.order ?? 999 }))
+      .sort((a, b) => (a.order - b.order) || a.badge.localeCompare(b.badge, 'fr'));
+  },
+  async addCleaner(badge, name) {
+    const order = Object.values(this._config.cleaners || {})
+      .reduce((m, c) => Math.max(m, c.order ?? -1), -1) + 1;
+    const ref = await this._ref('appConfig/cleaners').push({ badge, name, order });
+    return ref.key;
+  },
+  async updateCleaner(id, fields) {
+    await this._ref(`appConfig/cleaners/${id}`).update(fields);
+  },
+  async removeCleaner(id) {
+    await this._ref(`appConfig/cleaners/${id}`).remove();
+  },
+
+  // Types de nettoyage (nettoyage frigo, global, salle de bain, ...)
+  // configurables par l'admin.
+  getCleaningTypes() {
+    const raw = this._config.cleaningTypes || {};
+    return Object.entries(raw)
+      .map(([id, t]) => ({ id, label: t.label || '', order: t.order ?? 999 }))
+      .sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label, 'fr'));
+  },
+  async addCleaningType(label) {
+    const order = Object.values(this._config.cleaningTypes || {})
+      .reduce((m, t) => Math.max(m, t.order ?? -1), -1) + 1;
+    const ref = await this._ref('appConfig/cleaningTypes').push({ label, order });
+    return ref.key;
+  },
+  async updateCleaningType(id, fields) {
+    await this._ref(`appConfig/cleaningTypes/${id}`).update(fields);
+  },
+  async removeCleaningType(id) {
+    await this._ref(`appConfig/cleaningTypes/${id}`).remove();
+  },
+
+  // Logs de nettoyage : append-only (push) côté client, rangés par
+  // autoId. Le filtrage par mois/lieu se fait côté lecture.
+  async addCleaningLog({ date, lieuId, localId, cleanerId, cleanerBadge, typeId, approfondi }) {
+    const byAgentKey = (typeof sessionStorage !== 'undefined')
+      ? sessionStorage.getItem('cpas_current_agent_key')
+      : null;
+    const payload = {
+      ts:           Date.now(),
+      date,
+      lieuId:       lieuId != null ? String(lieuId) : null,
+      localId:      localId != null ? Number(localId) : null,
+      cleanerId:    cleanerId || null,
+      cleanerBadge: cleanerBadge || null,
+      typeId:       typeId || null,
+      approfondi:   !!approfondi,
+      byAgentKey:   byAgentKey || null,
+    };
+    const ref = await this._ref('entretien/logs').push(payload);
+    return ref.key;
+  },
+
+  _cleaningLogs: {},
+  _cleaningLogsCbs: [],
+  listenCleaningLogs() {
+    this._ref('entretien/logs').on('value', snap => {
+      this._cleaningLogs = snap.val() || {};
+      this._cleaningLogsCbs.forEach(fn => fn(this._cleaningLogs));
+    });
+  },
+  onCleaningLogsChange(fn) { this._cleaningLogsCbs.push(fn); },
+  getCleaningLogs() { return this._cleaningLogs; },
+
   async addService(name) {
     await this._ref('appConfig/services').push(name);
   },
@@ -2279,6 +2359,7 @@ const DB = {
     { key: 'canAnnounceArrival',   label: 'Prévenir les collègues à l\'arrivée (modal mascotte)' },
     { key: 'viewTechAnalytics',    label: 'Accès à l\'espace Responsable technique (stats requêtes) 🔧' },
     { key: 'manageTechRequests',   label: 'Gérer les requêtes techniques (assigner, changer le statut, commenter)' },
+    { key: 'manageCleaning',       label: 'Accès à l\'espace Entretien (enregistrer le nettoyage + bilan mensuel) 🧹' },
   ],
 
   // Rôles par défaut utilisés si aucun rôle n'est défini dans Firebase
@@ -2291,7 +2372,8 @@ const DB = {
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:true,
                managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true, panicDemo:true,
-               viewTechAnalytics:true, manageTechRequests:true },
+               viewTechAnalytics:true, manageTechRequests:true,
+               manageCleaning:true },
     },
     '__direction__': {
       // Vue complète + analytics, pas de gestion opérationnelle directe
@@ -2354,13 +2436,14 @@ const DB = {
                viewTechAnalytics:true, manageTechRequests:true },
     },
     '__entretien__': {
-      // Agent d'entretien : accès minimal, juste voir la présence et les messages
+      // Agent d'entretien : accès minimal + gestion du nettoyage des locaux
       name: 'Entretien', color: '#15803d', isBuiltin: true,
       perms: { createReservation:false, editReservation:false, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
                sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
-               viewTechAnalytics:false, manageTechRequests:true },
+               viewTechAnalytics:false, manageTechRequests:true,
+               manageCleaning:true },
     },
     '__juriste__': {
       // Juriste : gère ses RDV, consulte l'équipe, pas de gestion file
