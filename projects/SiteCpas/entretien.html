@@ -81,6 +81,17 @@
     }
     .ent-select:focus { border-color: #15803d; }
 
+    .ent-locals-header {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: .5rem; margin-bottom: .35rem;
+    }
+    .ent-toggle-all {
+      background: none; border: 1.5px solid #15803d; color: #15803d;
+      padding: .25rem .7rem; border-radius: 6px;
+      font-size: .78rem; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: all .12s;
+    }
+    .ent-toggle-all:hover { background: #15803d; color: #fff; }
     .ent-locals-list {
       display: flex; flex-direction: column; gap: .35rem;
       border: 1.5px solid #e5e7eb; border-radius: 10px;
@@ -251,7 +262,10 @@
       </div>
 
       <div>
-        <label class="ent-field-label">Locaux à marquer comme nettoyés</label>
+        <div class="ent-locals-header">
+          <label class="ent-field-label" style="margin-bottom:0">Locaux à marquer comme nettoyés</label>
+          <button type="button" class="ent-toggle-all" id="entToggleAll" style="display:none">Tout sélectionner</button>
+        </div>
         <div class="ent-locals-list" id="entLocalsList">
           <div class="ent-empty-hint">Sélectionnez un lieu pour afficher ses locaux.</div>
         </div>

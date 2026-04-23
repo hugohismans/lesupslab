@@ -33,6 +33,8 @@
   const localsList = document.getElementById('entLocalsList');
   const btnSave    = document.getElementById('entBtnSave');
 
+  const btnToggleAll = document.getElementById('entToggleAll');
+
   const bilanMonth = document.getElementById('entBilanMonth');
   const bilanLieu  = document.getElementById('entBilanLieu');
   const bilanTable = document.getElementById('entBilanTable');
@@ -142,6 +144,32 @@
       selCleaner.addEventListener('change', () => this._updateSaveState());
       selType.addEventListener('change', () => this._updateSaveState());
       btnSave.addEventListener('click', () => this._save());
+      btnToggleAll?.addEventListener('click', () => this._toggleAllLocals());
+    },
+
+    // Bascule tous les locaux visibles entre "tous cochés" et "tous décochés".
+    // Agit sur "Nettoyé" uniquement — "Approfondi" suit la règle existante
+    // (décoché automatiquement si "Nettoyé" est décoché).
+    _toggleAllLocals() {
+      const dones = Array.from(localsList.querySelectorAll('.ent-chk-done'));
+      if (!dones.length) return;
+      const allChecked = dones.every(cb => cb.checked);
+      dones.forEach(cb => { cb.checked = !allChecked; });
+      // Si on décoche tout, décocher aussi les "approfondi"
+      if (allChecked) {
+        localsList.querySelectorAll('.ent-chk-deep').forEach(cb => { cb.checked = false; });
+      }
+      this._updateToggleAllLabel();
+      this._updateSaveState();
+    },
+
+    _updateToggleAllLabel() {
+      if (!btnToggleAll) return;
+      const dones = localsList.querySelectorAll('.ent-chk-done');
+      if (!dones.length) { btnToggleAll.style.display = 'none'; return; }
+      btnToggleAll.style.display = '';
+      const allChecked = Array.from(dones).every(cb => cb.checked);
+      btnToggleAll.textContent = allChecked ? 'Tout désélectionner' : 'Tout sélectionner';
     },
 
     _renderLocals() {
@@ -179,6 +207,7 @@
             const done = localsList.querySelector(`.ent-chk-done[data-local="${id}"]`);
             if (done) done.checked = true;
           }
+          this._updateToggleAllLabel();
           this._updateSaveState();
         });
       });
@@ -190,9 +219,11 @@
             const deep = localsList.querySelector(`.ent-chk-deep[data-local="${id}"]`);
             if (deep) deep.checked = false;
           }
+          this._updateToggleAllLabel();
           this._updateSaveState();
         });
       });
+      this._updateToggleAllLabel();
     },
 
     _updateSaveState() {
@@ -245,6 +276,7 @@
         // Réinitialiser les checkboxes
         localsList.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
       }
+      this._updateToggleAllLabel();
       this._updateSaveState();
     },
 
