@@ -308,8 +308,9 @@ const DB = {
         deskLabels:  d.deskLabels  || {},   // { [deskId]: "Desk A" }
         techThemes:  d.techThemes  || {},   // { [themeId]: { label, order } }
         // Management entretien
-        cleaners:       d.cleaners       || {},   // { [cleanerId]: { badge, name, order } }
-        cleaningTypes:  d.cleaningTypes  || {},   // { [typeId]: { label, order } }
+        cleaners:        d.cleaners        || {},   // { [cleanerId]: { badge, name, order } }
+        cleaningTypes:   d.cleaningTypes   || {},   // { [typeId]: { label, order } }
+        cleaningThemes:  d.cleaningThemes  || {},   // thèmes de requête "Entretien / Nettoyage"
       };
 
       // Charger les lieux triés par order
@@ -1950,6 +1951,47 @@ const DB = {
     await this._ref(`appConfig/techThemes/${themeId}`).remove();
     // Les requêtes gardent leur themeId mais celui-ci pointe vers rien → affiché "Thème supprimé".
     // On ne cascade pas pour préserver l'historique.
+  },
+
+  // ── Thèmes pour les requêtes d'entretien/nettoyage ────────────────
+  // Liste séparée des techThemes — propre à l'entretien ménager (poubelles,
+  // vitres, bureaux, sanitaires…). Utilisée dans le formulaire TechIssue
+  // quand l'utilisateur choisit le type "Entretien / Nettoyage".
+  getCleaningThemes() {
+    const themes = this._config.cleaningThemes || {};
+    return Object.entries(themes)
+      .map(([id, t]) => ({ id, label: t.label || '', order: t.order ?? 999 }))
+      .sort((a, b) => a.order - b.order);
+  },
+  getCleaningThemeLabel(themeId) {
+    if (!themeId) return 'Non catégorisé';
+    return this._config.cleaningThemes?.[themeId]?.label || 'Thème supprimé';
+  },
+  async addCleaningTheme(label) {
+    const existing = this.getCleaningThemes();
+    const maxOrder = existing.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
+    const ref = await this._ref('appConfig/cleaningThemes').push({
+      label: label.trim() || 'Thème',
+      order: maxOrder + 1,
+    });
+    return ref.key;
+  },
+  async setCleaningThemeLabel(themeId, label) {
+    await this._ref(`appConfig/cleaningThemes/${themeId}/label`).set(label.trim() || 'Thème');
+  },
+  async removeCleaningTheme(themeId) {
+    await this._ref(`appConfig/cleaningThemes/${themeId}`).remove();
+  },
+
+  // Wrapper générique : retourne la bonne liste selon le type de requête.
+  // type = 'technique' | 'entretien' | 'autre'.
+  getThemesForRequestType(type) {
+    if (type === 'entretien') return this.getCleaningThemes();
+    return this.getTechThemes();
+  },
+  getThemeLabelForRequestType(type, themeId) {
+    if (type === 'entretien') return this.getCleaningThemeLabel(themeId);
+    return this.getTechThemeLabel(themeId);
   },
   async setRequestTheme(requestId, themeId) {
     await this._ref(`requests/${requestId}/themeId`).set(themeId || null);

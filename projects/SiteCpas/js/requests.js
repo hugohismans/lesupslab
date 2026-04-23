@@ -231,7 +231,7 @@ const REQUESTS = {
   _openThemePicker(reqId) {
     const req = DB.getRequests()[reqId];
     if (!req) return;
-    const themes = DB.getTechThemes();
+    const themes = DB.getThemesForRequestType?.(req.type) || DB.getTechThemes();
     let box = document.getElementById('reqThemePickerBox');
     if (!box) {
       box = document.createElement('div');
@@ -316,8 +316,10 @@ const REQUESTS = {
     const assignedTxt = r.assignedTo
       ? `<span class="req-assigned">👷 ${escapeHtml(r.assignedToName || r.assignedTo)}</span>` : '';
 
-    // Badge thème
-    const themeLabel = DB.getTechThemeLabel?.(r.themeId) || 'Non catégorisé';
+    // Badge thème (liste dépend du type de requête)
+    const themeLabel = DB.getThemeLabelForRequestType?.(r.type, r.themeId)
+      || DB.getTechThemeLabel?.(r.themeId)
+      || 'Non catégorisé';
     const themeBadge = r.themeId
       ? `<span class="req-theme-badge">🏷️ ${escapeHtml(themeLabel)}</span>`
       : `<span class="req-theme-badge req-theme-none">🏷️ Non catégorisé</span>`;

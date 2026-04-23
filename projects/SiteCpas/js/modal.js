@@ -1123,6 +1123,9 @@ const MODAL = {
     // ── Thèmes d'intervention technique ────────────────────────────
     if (isAdmin) this._renderTechThemes();
 
+    // ── Thèmes de requête entretien/nettoyage ──────────────────────
+    if (isAdmin) this._renderCleaningThemes();
+
     // ── Réinitialisation des mots de passe ─────────────────────────
     const pwdList = g('stAgentPasswordList');
     if (isAdmin && pwdList) {
@@ -1434,6 +1437,63 @@ const MODAL = {
         addBtn.disabled = false;
         showToast('Thème ajouté ✓');
         this._renderTechThemes();
+      });
+    }
+  },
+
+  // ─── Thèmes de requête entretien/nettoyage (admin) ───────────────
+  _renderCleaningThemes() {
+    const container = g('stCleaningThemesList');
+    if (!container) return;
+    const themes = DB.getCleaningThemes();
+    if (!themes.length) {
+      container.innerHTML = '<p class="st-empty">Aucun thème entretien. Ajoutez-en un ci-dessous (ex: Poubelles, Vitres, Sanitaires, Sols…).</p>';
+    } else {
+      container.innerHTML = themes.map(t => `
+        <div class="tech-theme-row" data-id="${t.id}">
+          <input type="text" class="cleaning-theme-name" value="${escapeHtml(t.label)}" data-orig="${escapeHtml(t.label)}">
+          <button class="btn-sm cleaning-theme-save" data-id="${t.id}">Renommer</button>
+          <button class="btn-sm btn-danger cleaning-theme-del" data-id="${t.id}" data-name="${escapeHtml(t.label)}">Supprimer</button>
+        </div>
+      `).join('');
+    }
+    // Renommer
+    container.querySelectorAll('.cleaning-theme-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const row   = btn.closest('.tech-theme-row');
+        const id    = btn.dataset.id;
+        const input = row.querySelector('.cleaning-theme-name');
+        const newLabel = (input?.value || '').trim();
+        const origLabel = input?.dataset.orig || '';
+        if (!newLabel || newLabel === origLabel) return;
+        await DB.setCleaningThemeLabel(id, newLabel);
+        showToast('Thème renommé ✓');
+        this._renderCleaningThemes();
+      }));
+    });
+    // Supprimer
+    container.querySelectorAll('.cleaning-theme-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer le thème "${name}" ?\nLes requêtes qui l'utilisaient passeront en "Thème supprimé".`)) return;
+        await DB.removeCleaningTheme(id);
+        showToast('Thème supprimé ✓');
+        this._renderCleaningThemes();
+      }));
+    });
+    // Ajouter
+    const addBtn = g('stCleaningThemeAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const input = g('stCleaningThemeInput');
+        const label = (input?.value || '').trim();
+        if (!label) return;
+        addBtn.disabled = true;
+        await DB.addCleaningTheme(label);
+        if (input) input.value = '';
+        addBtn.disabled = false;
+        showToast('Thème ajouté ✓');
+        this._renderCleaningThemes();
       });
     }
   },
@@ -3105,17 +3165,29 @@ function _initTechIssueModal() {
     setTimeout(() => localSuggest?.classList.add('hidden'), 150);
   });
 
-  // ── Populate select thème ────────────────────────────────────
+  // ── Populate select thème (dépend du type de requête) ──────────
   const themeSel = g('techIssueTheme');
   function _populateThemes() {
     if (!themeSel) return;
-    const themes = DB.getTechThemes();
+    // La liste de thèmes dépend du type courant : technique → techThemes,
+    // entretien → cleaningThemes. Préserve la sélection si possible.
+    const currentVal = themeSel.value;
+    const themes = DB.getThemesForRequestType?.(_tiCurrentType) || DB.getTechThemes();
     themeSel.innerHTML = '<option value="">— Non précisé —</option>' +
       themes.map(t => `<option value="${t.id}">${escapeHtml(t.label)}</option>`).join('');
+    if (currentVal && themes.find(t => t.id === currentVal)) themeSel.value = currentVal;
   }
   _populateThemes();
   // Re-populate à chaque ouverture (au cas où l'admin a modifié entre-temps)
   DB.onConfigChange?.(_populateThemes);
+  // Re-populate au changement de type (tech vs entretien → listes différentes)
+  g('techIssueTypes')?.querySelectorAll('.ti-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // _tiCurrentType est mis à jour par le handler existant — on laisse
+      // un tick avant de repopuler.
+      setTimeout(_populateThemes, 0);
+    });
+  });
 
   // ── Récurrence : toggle + live preview ──────────────────────
   const recurCb     = g('techIssueRecurring');
