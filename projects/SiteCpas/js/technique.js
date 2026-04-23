@@ -735,6 +735,19 @@
         listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
           btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
         });
+        listEl.querySelectorAll('.req-view-series').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            REQUESTS._openSeriesView?.(btn.dataset.reqId);
+          });
+        });
+        listEl.querySelectorAll('.req-stop-series').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée. Les occurrences existantes sont conservées.')) return;
+            try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
+          });
+        });
       }
     },
   };
