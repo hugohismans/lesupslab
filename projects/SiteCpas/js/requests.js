@@ -322,10 +322,10 @@ const REQUESTS = {
       const dt = new Date(r.createdAt).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       const status = { open: '🟡', in_progress: '🔵', postponed: '⏸', done: '✅' }[r.status] || '?';
       const isTpl = r.recurrence?.templateId === r.id;
-      return `<tr>
-        <td>${dt}</td>
-        <td>${status} ${r.status}</td>
-        <td>${isTpl ? '<b>Template</b>' : 'Occurrence'}</td>
+      return `<tr style="border-bottom:1px solid #e2e8f0">
+        <td style="padding:.4rem .6rem;color:#1e293b">${dt}</td>
+        <td style="padding:.4rem .6rem;color:#1e293b">${status} ${r.status}</td>
+        <td style="padding:.4rem .6rem;color:#1e293b">${isTpl ? '<b>Template</b>' : 'Occurrence'}</td>
       </tr>`;
     }).join('');
     const tpl = DB.getRequests()[templateId];
@@ -333,15 +333,24 @@ const REQUESTS = {
     const nextAt = rec.nextAt && (!rec.until || rec.nextAt <= rec.until)
       ? new Date(rec.nextAt).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' })
       : 'série terminée';
+    // Force un thème clair sur cette modal (la classe parent req-comment-box
+    // a un fond sombre destiné au textarea de commentaire — pas adapté ici).
+    box.style.background = '#fff';
+    box.style.border = '1px solid #e2e8f0';
+    box.style.color = '#1e293b';
     box.innerHTML = `
-      <div class="req-comment-box-inner" style="max-width:560px">
+      <div class="req-comment-box-inner" style="max-width:560px;color:#1e293b">
         <h3 style="margin:0 0 .4rem;font-size:1rem;color:#1a3a5c">📜 Série récurrente</h3>
         <p style="font-size:.85rem;color:#64748b;margin:0 0 .6rem">
-          ${series.length} occurrence(s) — prochaine : <b>${nextAt}</b>
+          ${series.length} occurrence(s) — prochaine : <b style="color:#1a3a5c">${nextAt}</b>
         </p>
-        <div style="max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px">
-          <table style="width:100%;border-collapse:collapse;font-size:.83rem">
-            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0"><th style="text-align:left;padding:.4rem .6rem">Date</th><th style="text-align:left;padding:.4rem .6rem">Statut</th><th style="text-align:left;padding:.4rem .6rem">Type</th></tr></thead>
+        <div style="max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff">
+          <table style="width:100%;border-collapse:collapse;font-size:.83rem;background:#fff">
+            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+              <th style="text-align:left;padding:.4rem .6rem;color:#1a3a5c">Date</th>
+              <th style="text-align:left;padding:.4rem .6rem;color:#1a3a5c">Statut</th>
+              <th style="text-align:left;padding:.4rem .6rem;color:#1a3a5c">Type</th>
+            </tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -350,7 +359,14 @@ const REQUESTS = {
         </div>
       </div>`;
     box.classList.remove('hidden');
-    document.getElementById('reqSeriesClose').onclick = () => box.classList.add('hidden');
+    document.getElementById('reqSeriesClose').onclick = () => {
+      box.classList.add('hidden');
+      // Restaurer le style par défaut pour ne pas contaminer les autres usages
+      // de req-comment-box (comment/theme picker).
+      box.style.background = '';
+      box.style.border = '';
+      box.style.color = '';
+    };
   },
 
   // Niveau d'urgence effectif (rétrocompat : urgent=true → niveau 5 si level absent)
