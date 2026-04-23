@@ -1123,6 +1123,9 @@ const MODAL = {
     // ── Thèmes d'intervention technique ────────────────────────────
     if (isAdmin) this._renderTechThemes();
 
+    // ── Ouvriers techniques sans compte ────────────────────────────
+    if (isAdmin) this._renderTechnicians();
+
     // ── Thèmes de requête entretien/nettoyage ──────────────────────
     if (isAdmin) this._renderCleaningThemes();
 
@@ -1340,6 +1343,49 @@ const MODAL = {
         addBtn.disabled = false;
         showToast('Agent ajouté ✓');
         this._renderCleaners();
+      });
+    }
+  },
+
+  // ─── Ouvriers techniques sans compte (admin) ─────────────────────
+  _renderTechnicians() {
+    const container = g('stTechniciansList');
+    if (!container) return;
+    const list = DB.getTechnicians();
+    if (!list.length) {
+      container.innerHTML = '<p class="st-empty">Aucun ouvrier. Ajoutez-en un ci-dessous (badge + nom).</p>';
+    } else {
+      container.innerHTML = list.map(t => `
+        <div class="st-item" data-id="${t.id}">
+          <span class="st-name"><strong>${escapeHtml(t.badge || '—')}</strong> — ${escapeHtml(t.name || '')}</span>
+          <button class="st-del tech-worker-del" data-id="${t.id}" data-name="${escapeHtml(t.name)}" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+    container.querySelectorAll('.tech-worker-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer l'ouvrier technique "${name}" ?\nLes requêtes déjà assignées gardent le badge ; l'ouvrier disparaît de la liste de sélection.`)) return;
+        await DB.removeTechnician(id);
+        showToast('Ouvrier retiré ✓');
+        this._renderTechnicians();
+      }));
+    });
+    const addBtn = g('stTechnicianAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const bIn = g('stTechnicianBadgeInput');
+        const nIn = g('stTechnicianNameInput');
+        const badge = (bIn?.value || '').trim();
+        const name  = (nIn?.value || '').trim();
+        if (!badge || !name) { alert('Badge et nom requis.'); return; }
+        addBtn.disabled = true;
+        await DB.addTechnician(badge, name);
+        if (bIn) bIn.value = '';
+        if (nIn) nIn.value = '';
+        addBtn.disabled = false;
+        showToast('Ouvrier ajouté ✓');
+        this._renderTechnicians();
       });
     }
   },
@@ -2995,7 +3041,10 @@ function openTechIssueModal() {
   // Réinitialiser les champs
   if (g('techIssueDesc'))   g('techIssueDesc').value  = '';
   if (g('techIssueLocal'))  g('techIssueLocal').value = '';
-  if (g('techIssueUrgent')) g('techIssueUrgent').checked = false;
+  // Reset urgency level à 3 (moyen par défaut)
+  g('techIssueUrgencyLevels')?.querySelectorAll('.ti-urg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === '3');
+  });
   if (g('techIssueTheme'))  g('techIssueTheme').value = '';
   if (g('techIssueRecurring')) {
     g('techIssueRecurring').checked = false;
@@ -3214,10 +3263,20 @@ function _initTechIssueModal() {
   });
   [recurInt, recurUnit, recurUntil].forEach(el => el?.addEventListener('input', _updateRecurPreview));
 
+  // Sélection urgencyLevel : boutons 1-5, un seul actif à la fois
+  g('techIssueUrgencyLevels')?.querySelectorAll('.ti-urg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      g('techIssueUrgencyLevels').querySelectorAll('.ti-urg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
   g('techIssueSendBtn')?.addEventListener('click', async () => {
     const desc    = g('techIssueDesc')?.value.trim();
     const local   = g('techIssueLocal')?.value.trim() || null;
-    const urgent  = g('techIssueUrgent')?.checked || false;
+    const activeLvl = g('techIssueUrgencyLevels')?.querySelector('.ti-urg-btn.active');
+    const urgencyLevel = parseInt(activeLvl?.dataset.level) || 3;
+    const urgent = urgencyLevel >= 5; // compat code existant qui lit .urgent
     const themeId = g('techIssueTheme')?.value || null;
     if (!desc) { g('techIssueDesc')?.focus(); return; }
 
@@ -3259,6 +3318,7 @@ function _initTechIssueModal() {
       description:   desc,
       local,
       urgent,
+      urgencyLevel,
       themeId,
       recurrence,
       fromAgentKey:  myKey,

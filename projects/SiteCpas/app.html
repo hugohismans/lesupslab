@@ -1321,6 +1321,18 @@
             </div>
           </div>
 
+          <!-- Ouvriers techniques sans compte -->
+          <h3 class="st-title" style="margin-top:1.25rem">🔧 Ouvriers techniques sans compte</h3>
+          <div class="st-admin-section" id="stTechniciansSection">
+            <p class="st-perm-intro">Liste des ouvriers techniques (sans compte SiteCpas) auxquels on peut assigner les requêtes de type <b>Technique</b> et <b>Autre</b>. Identifiés par un badge + nom.</p>
+            <div id="stTechniciansList" class="st-list"></div>
+            <div class="st-add" style="flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stTechnicianBadgeInput" placeholder="Badge (ex: T001)" style="flex:0 0 140px">
+              <input type="text" id="stTechnicianNameInput"  placeholder="Nom de l'ouvrier..." style="flex:1;min-width:180px">
+              <button class="btn-primary" id="stTechnicianAdd">+ Ajouter</button>
+            </div>
+          </div>
+
           <!-- Thèmes de requête entretien/nettoyage -->
           <h3 class="st-title" style="margin-top:1.25rem">🧹 Thèmes de requête entretien</h3>
           <div class="st-admin-section" id="stCleaningThemesSection">
@@ -1755,11 +1767,17 @@
         <div id="techIssueNoTech" class="hidden" style="color:#f59e0b;font-size:.83rem;margin-top:.35rem">Aucun poste configuré — la notification sera envoyée aux administrateurs.</div>
       </div>
 
-      <!-- Urgence -->
-      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
-        <input type="checkbox" id="techIssueUrgent" style="width:1.1rem;height:1.1rem;accent-color:#ef4444">
-        <span style="font-size:.88rem;color:#e2e8f0">🚨 Marquer comme <strong>urgent</strong></span>
-      </label>
+      <!-- Urgence 1-5 -->
+      <div>
+        <label style="display:block;font-size:.78rem;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Niveau d'urgence</label>
+        <div id="techIssueUrgencyLevels" class="ti-urgency-row">
+          <button type="button" class="ti-urg-btn ti-urg-1" data-level="1" title="1 — Faible">1</button>
+          <button type="button" class="ti-urg-btn ti-urg-2" data-level="2" title="2 — Modéré">2</button>
+          <button type="button" class="ti-urg-btn ti-urg-3 active" data-level="3" title="3 — Moyen (défaut)">3</button>
+          <button type="button" class="ti-urg-btn ti-urg-4" data-level="4" title="4 — Élevé">4</button>
+          <button type="button" class="ti-urg-btn ti-urg-5" data-level="5" title="5 — Critique">5</button>
+        </div>
+      </div>
 
       <!-- Récurrence -->
       <div style="border-top:1px solid #1e293b;padding-top:.75rem">

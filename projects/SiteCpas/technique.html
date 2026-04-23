@@ -221,6 +221,15 @@
 <!-- Dashboard -->
 <main class="tq-body" id="tqBody" style="display:none">
 
+  <!-- Onglets -->
+  <div class="tq-tabs" role="tablist">
+    <button class="tq-tab tq-tab-active" data-tab="dashboard" role="tab">📊 Dashboard</button>
+    <button class="tq-tab" data-tab="requests" role="tab">📋 Toutes les requêtes</button>
+  </div>
+
+  <!-- Pane Dashboard -->
+  <section class="tq-pane" id="tqPaneDashboard">
+
   <!-- Toolbar : recherche + filtres globaux -->
   <div class="tq-toolbar">
     <div class="tq-search-wrap">
@@ -249,6 +258,35 @@
     <div class="tq-loading">Calcul des statistiques…</div>
   </div>
 
+  </section>
+
+  <!-- Pane Requêtes plein écran -->
+  <section class="tq-pane" id="tqPaneRequests" style="display:none">
+    <div class="tq-req-toolbar">
+      <div class="tq-req-tabs" id="tqReqTabs" role="tablist">
+        <button class="req-tab active" data-status="open">Ouvertes</button>
+        <button class="req-tab" data-status="in_progress">En cours</button>
+        <button class="req-tab" data-status="postponed">Reportées</button>
+        <button class="req-tab" data-status="done">Terminées</button>
+      </div>
+      <div class="tq-req-filters">
+        <div class="tq-filter-group" id="tqReqTypeFilter">
+          <button class="tq-filter-btn active" data-req-type="all">Tous types</button>
+          <button class="tq-filter-btn" data-req-type="technique">🔧 Technique</button>
+          <button class="tq-filter-btn" data-req-type="entretien">🧹 Entretien</button>
+          <button class="tq-filter-btn" data-req-type="autre">📋 Autre</button>
+        </div>
+        <div class="tq-filter-group" id="tqReqUrgencyFilter">
+          <button class="tq-filter-btn active" data-urg="all">Toutes urgences</button>
+          <button class="tq-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
+        </div>
+      </div>
+    </div>
+    <div class="tq-req-list" id="tqReqList">
+      <div class="tq-loading">Chargement des requêtes…</div>
+    </div>
+  </section>
+
 </main>
 
 <!-- Firebase SDK -->
@@ -263,6 +301,9 @@
 <script src="js/worker-client.js"></script>
 <script src="js/db.js"></script>
 <script src="js/session.js"></script>
+
+<!-- Module Requests (pour réutiliser _renderCard / _handleAction) -->
+<script src="js/requests.js"></script>
 
 <!-- Logique page technique -->
 <script src="js/technique.js"></script>

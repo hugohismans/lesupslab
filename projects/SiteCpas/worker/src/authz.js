@@ -87,6 +87,12 @@ const SCOPED_RULES = [
   { pattern: 'appConfig/cleaningTypes/:id',
     ops: ['set', 'update', 'remove'],        check: (p, op, a) => isAdmin(a) },
 
+  // ── Ouvriers techniques sans compte (admin only) ──
+  { pattern: 'appConfig/technicians',
+    ops: ['push'],                           check: (p, op, a) => isAdmin(a) },
+  { pattern: 'appConfig/technicians/:id',
+    ops: ['set', 'update', 'remove'],        check: (p, op, a) => isAdmin(a) },
+
   // Paramètres perso de l'agent — lui ou l'admin
   { pattern: 'appConfig/agentColors/:agentKey',
     ops: ['set', 'remove'],

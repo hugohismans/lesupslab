@@ -32,6 +32,10 @@
     _search: '',
     _allRequests: {},  // snapshot reçu de DB
     _allThemes:   [],  // snapshot thèmes
+    _tab: 'dashboard',     // 'dashboard' | 'requests'
+    _reqStatusFilter: 'open',
+    _reqTypeFilter:   'all',
+    _reqUrgFilter:    'all',
 
     init() {
       // Initialiser Firebase database + DB._db avant d'attaquer les listeners
@@ -51,7 +55,10 @@
       });
       DB.onRequestChange(reqs => {
         this._allRequests = reqs;
-        if (_guardDone && bodyEl.style.display !== 'none') this.render();
+        if (_guardDone && bodyEl.style.display !== 'none') {
+          if (this._tab === 'requests') this._renderRequestsPane();
+          else this.render();
+        }
       });
     },
 
@@ -75,6 +82,8 @@
       orgNameEl.textContent  = ORG_ID || '—';
       this._refreshThemes();
       this._bindFilters();
+      this._bindTabs();
+      this._bindRequestsPaneFilters();
       // Lancer le scheduler aussi depuis ici (throttle 5min garantit pas de doublon avec app.html)
       DB.runRecurringRequestsScheduler?.().catch(e => console.warn('[recurring scheduler]', e));
       this.render();
@@ -614,6 +623,119 @@
       a.download = `requetes_techniques_${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
+    },
+
+    // ─── Onglets Dashboard / Requêtes ─────────────────────────────────
+    _bindTabs() {
+      document.querySelectorAll('.tq-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tq-tab').forEach(b => b.classList.remove('tq-tab-active'));
+          btn.classList.add('tq-tab-active');
+          this._tab = btn.dataset.tab;
+          document.getElementById('tqPaneDashboard').style.display = (this._tab === 'dashboard') ? '' : 'none';
+          document.getElementById('tqPaneRequests').style.display  = (this._tab === 'requests')  ? '' : 'none';
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+    },
+
+    _bindRequestsPaneFilters() {
+      document.querySelectorAll('#tqReqTabs .req-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tqReqTabs .req-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqStatusFilter = btn.dataset.status;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      document.querySelectorAll('#tqReqTypeFilter .tq-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tqReqTypeFilter .tq-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqTypeFilter = btn.dataset.reqType;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      document.querySelectorAll('#tqReqUrgencyFilter .tq-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tqReqUrgencyFilter .tq-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqUrgFilter = btn.dataset.urg;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+    },
+
+    _renderRequestsPane() {
+      const listEl = document.getElementById('tqReqList');
+      if (!listEl) return;
+      const reqs = this._allRequests || {};
+      const isAdmin = DB.hasPermission?.('editSettings');
+      const agents  = DB.getAgentsWithKeys?.() || [];
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const STATUS_LABELS = {
+        open:        '🟡 Ouverte',
+        in_progress: '🔵 En cours',
+        postponed:   '⏸ Reportée',
+        done:        '✅ Terminée',
+      };
+
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        // Tri : urgence desc en priorité, puis createdAt desc
+        .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
+
+      if (!entries.length) {
+        listEl.innerHTML = '<div class="tq-loading">Aucune requête ne correspond aux filtres.</div>';
+        return;
+      }
+
+      // On délègue le rendu carte à REQUESTS._renderCard si disponible
+      // (même module qui sert sur app.html, donc rendu identique).
+      listEl.innerHTML = entries.map(([id, r]) =>
+        (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+          ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
+          : ''
+      ).join('');
+
+      // Brancher les handlers d'action (claim/done/postponed/open/delete/assign worker)
+      // en déléguant à REQUESTS._handleAction (nécessite un état minimal).
+      if (typeof REQUESTS !== 'undefined') {
+        // Assurer que REQUESTS connaît l'agent courant (il s'init sur requests
+        // listener, mais sans init complet on l'alimente ici).
+        if (!REQUESTS._agentKey) REQUESTS._agentKey = sessionStorage.getItem('cpas_current_agent_key');
+        if (!REQUESTS._agentName) {
+          REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+        }
+        listEl.querySelectorAll('[data-req-action]').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { reqAction: action, reqId: id } = btn.dataset;
+            await REQUESTS._handleAction?.(action, id, null, agents);
+          });
+        });
+        listEl.querySelectorAll('.req-assign-worker-select').forEach(sel => {
+          sel.addEventListener('change', async (e) => {
+            e.stopPropagation();
+            const id = sel.dataset.reqId;
+            try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
+          });
+        });
+        listEl.querySelectorAll('.req-comment-toggle').forEach(btn => {
+          btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+        });
+        listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
+          btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+        });
+      }
     },
   };
 

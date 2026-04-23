@@ -311,6 +311,8 @@ const DB = {
         cleaners:        d.cleaners        || {},   // { [cleanerId]: { badge, name, order } }
         cleaningTypes:   d.cleaningTypes   || {},   // { [typeId]: { label, order } }
         cleaningThemes:  d.cleaningThemes  || {},   // thèmes de requête "Entretien / Nettoyage"
+        // Ouvriers techniques sans compte (pour assignation des requêtes technique/autre)
+        technicians:     d.technicians     || {},   // { [technicianId]: { badge, name, order } }
       };
 
       // Charger les lieux triés par order
@@ -1843,13 +1845,20 @@ const DB = {
   onRequestChange(fn) { this._requestCbs.push(fn); },
   getRequests()       { return this._requests; },
 
-  async createRequest({ type, description, local, urgent, fromAgentKey, fromAgentName, themeId, recurrence }) {
+  async createRequest({ type, description, local, urgent, urgencyLevel, fromAgentKey, fromAgentName, themeId, recurrence }) {
     const id = `req_${Date.now()}`;
+    // urgencyLevel 1-5. Si non fourni mais urgent=true → 5 (rétrocompat).
+    // Si urgent=false et level non fourni → 3 par défaut (moyen).
+    let level = parseInt(urgencyLevel);
+    if (!level || level < 1 || level > 5) {
+      level = urgent ? 5 : 3;
+    }
     const payload = {
       type:         type || 'technique',
       description,
       local:        local || null,
-      urgent:       urgent ? true : null,
+      urgent:       level >= 5 ? true : null,       // rétrocompat (autres pages qui lisent .urgent)
+      urgencyLevel: level,
       fromAgentKey: fromAgentKey || null,
       fromAgentName: fromAgentName || null,
       themeId:      themeId || null,
@@ -1857,6 +1866,10 @@ const DB = {
       assignedTo:   null,
       assignedToName: null,
       assignedAt:   null,
+      workerId:     null,
+      workerBadge:  null,
+      workerName:   null,
+      reopenAt:     null,
       createdAt:    Date.now(),
     };
     // Récurrence : la première occurrence est aussi le "template".
@@ -1905,8 +1918,66 @@ const DB = {
     });
   },
 
+  // Assignation à un ouvrier sans compte (technicien ou cleaner selon type).
+  // Si workerId est null/'', on désassigne.
+  async assignRequestWorker(requestId, workerId) {
+    const req = this._requests?.[requestId];
+    const type = req?.type || 'technique';
+    if (!workerId) {
+      await this._ref(`requests/${requestId}`).update({
+        workerId:    null,
+        workerBadge: null,
+        workerName:  null,
+        workerAssignedAt: null,
+      });
+      return;
+    }
+    const worker = this.getWorkerById(type, workerId);
+    await this._ref(`requests/${requestId}`).update({
+      status:     'in_progress',
+      workerId,
+      workerBadge: worker?.badge || null,
+      workerName:  worker?.name  || null,
+      workerAssignedAt: Date.now(),
+    });
+  },
+
   async setRequestStatus(requestId, status) {
     await this._ref(`requests/${requestId}/status`).set(status);
+  },
+
+  // Niveau d'urgence (1-5 ; 5 = max). null = non défini.
+  async setRequestUrgencyLevel(requestId, level) {
+    const l = Math.max(1, Math.min(5, parseInt(level) || 0)) || null;
+    await this._ref(`requests/${requestId}/urgencyLevel`).set(l);
+  },
+
+  // Date de réouverture automatique pour une requête reportée.
+  // reopenAt = timestamp (Date.now()-like) ou null pour effacer.
+  async postponeRequest(requestId, reopenAt = null) {
+    const updates = { status: 'postponed' };
+    updates.reopenAt = reopenAt || null;
+    await this._ref(`requests/${requestId}`).update(updates);
+  },
+
+  // Parcourt les requêtes reportées et réouvre celles dont reopenAt est
+  // passé. Appelé par le scheduler côté client (throttle via localStorage).
+  // Retourne le nombre de requêtes réouvertes.
+  async reopenOverdueRequests() {
+    const now = Date.now();
+    const reqs = this._requests || {};
+    const toReopen = [];
+    for (const [id, r] of Object.entries(reqs)) {
+      if (!r || r.status !== 'postponed') continue;
+      const t = Number(r.reopenAt) || 0;
+      if (t > 0 && t <= now) toReopen.push(id);
+    }
+    for (const id of toReopen) {
+      try {
+        await this._ref(`requests/${id}`).update({ status: 'open', reopenAt: null });
+      } catch (e) { console.warn('[reopenOverdue] failed', id, e?.message || e); }
+    }
+    return toReopen.length;
   },
 
   async addRequestComment(requestId, text) {
@@ -2028,7 +2099,8 @@ const DB = {
     if (Object.keys(updates).length) await this._update(updates);
   },
 
-  // Scheduler : génère les occurrences dues pour toutes les séries.
+  // Scheduler : génère les occurrences dues pour toutes les séries
+  // ET rouvre les requêtes reportées dont la date de réouverture est passée.
   // Appelé au démarrage de l'app (protégé par throttle localStorage 5min).
   async runRecurringRequestsScheduler() {
     const THROTTLE_KEY = 'cpas_rec_sched_last';
@@ -2038,6 +2110,10 @@ const DB = {
       if (now - last < 5 * 60 * 1000) return; // déjà tourné il y a < 5 min
       localStorage.setItem(THROTTLE_KEY, String(now));
     } catch (_) {}
+
+    // Auto-réouverture des requêtes reportées à échéance passée.
+    try { await this.reopenOverdueRequests(); }
+    catch (e) { console.warn('[reopenOverdue scheduler]', e?.message || e); }
 
     // Regroupe par templateId : on ne traite que le template (1ère occurrence) de chaque série.
     const templates = Object.entries(this._requests || {})
@@ -2165,6 +2241,39 @@ const DB = {
   },
   async removeCleaner(id) {
     await this._ref(`appConfig/cleaners/${id}`).remove();
+  },
+
+  // Ouvriers techniques sans compte (badge + nom) — assignation des
+  // requêtes technique/autre. Pattern identique à getCleaners.
+  getTechnicians() {
+    const raw = this._config.technicians || {};
+    return Object.entries(raw)
+      .map(([id, t]) => ({ id, badge: t.badge || '', name: t.name || '', order: t.order ?? 999 }))
+      .sort((a, b) => (a.order - b.order) || a.badge.localeCompare(b.badge, 'fr'));
+  },
+  async addTechnician(badge, name) {
+    const order = Object.values(this._config.technicians || {})
+      .reduce((m, t) => Math.max(m, t.order ?? -1), -1) + 1;
+    const ref = await this._ref('appConfig/technicians').push({ badge, name, order });
+    return ref.key;
+  },
+  async updateTechnician(id, fields) {
+    await this._ref(`appConfig/technicians/${id}`).update(fields);
+  },
+  async removeTechnician(id) {
+    await this._ref(`appConfig/technicians/${id}`).remove();
+  },
+
+  // Wrapper : retourne la liste d'ouvriers à afficher pour une requête
+  // selon son type. technique/autre → technicians, entretien → cleaners.
+  getWorkersForRequestType(type) {
+    if (type === 'entretien') return this.getCleaners();
+    return this.getTechnicians();
+  },
+  // Retrouve un ouvrier par id depuis la bonne liste.
+  getWorkerById(type, id) {
+    const list = this.getWorkersForRequestType(type);
+    return list.find(w => w.id === id) || null;
   },
 
   // Types de nettoyage (nettoyage frigo, global, salle de bain, ...)

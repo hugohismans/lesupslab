@@ -219,13 +219,24 @@ const REQUESTS = {
       });
     });
 
-    // Assign select
-    this._panel.querySelectorAll('.req-assign-select').forEach(sel => {
+    // Assign select (ouvrier sans compte : technicien ou cleaner selon type)
+    this._panel.querySelectorAll('.req-assign-worker-select').forEach(sel => {
       sel.addEventListener('change', async (e) => {
         e.stopPropagation();
         const id = sel.dataset.reqId;
-        if (sel.value) await DB.assignRequest(id, sel.value);
-        sel.value = '';
+        const workerId = sel.value || null;
+        try {
+          await DB.assignRequestWorker(id, workerId);
+          if (workerId) {
+            const type = sel.dataset.reqType || 'technique';
+            const worker = DB.getWorkerById(type, workerId);
+            const label = worker ? `${worker.badge} — ${worker.name}` : workerId;
+            showToast(`👷 Assigné à ${label}`);
+          }
+        } catch (err) {
+          console.warn('[requests] assign worker failed', err);
+          showToast('Erreur lors de l\'assignation', 'error');
+        }
       });
     });
 
@@ -342,15 +353,31 @@ const REQUESTS = {
     document.getElementById('reqSeriesClose').onclick = () => box.classList.add('hidden');
   },
 
+  // Niveau d'urgence effectif (rétrocompat : urgent=true → niveau 5 si level absent)
+  _urgencyLevel(r) {
+    const l = parseInt(r?.urgencyLevel);
+    if (l >= 1 && l <= 5) return l;
+    return r?.urgent ? 5 : 3;
+  },
+
   _renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS) {
     const icon    = TYPE_ICONS[r.type] || '📋';
     const d       = new Date(r.createdAt);
     const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' });
     const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
-    const urgBadge = r.urgent ? `<span class="req-badge-urgent">🚨 Urgent</span>` : '';
+    const uLevel  = this._urgencyLevel(r);
+    const urgBadge = `<span class="req-urg-badge req-urg-${uLevel}" title="Niveau d'urgence : ${uLevel}/5">⚡ ${uLevel}/5</span>`;
     const localTxt = r.local ? `<span class="req-local">📍 ${escapeHtml(r.local)}</span>` : '';
-    const assignedTxt = r.assignedTo
-      ? `<span class="req-assigned">👷 ${escapeHtml(r.assignedToName || r.assignedTo)}</span>` : '';
+    // Assignation : ouvrier sans compte prioritaire sur assignedTo legacy.
+    let assignedTxt = '';
+    if (r.workerId && (r.workerBadge || r.workerName)) {
+      assignedTxt = `<span class="req-assigned">👷 ${escapeHtml(r.workerBadge || '')}${r.workerName ? ' · ' + escapeHtml(r.workerName) : ''}</span>`;
+    } else if (r.assignedTo) {
+      assignedTxt = `<span class="req-assigned">👷 ${escapeHtml(r.assignedToName || r.assignedTo)}</span>`;
+    }
+    // Indicateur "reportée jusqu'au…"
+    const reopenTxt = (r.status === 'postponed' && r.reopenAt)
+      ? `<span class="req-reopen">⏰ Rouvre le ${new Date(r.reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit', year:'numeric' })}</span>` : '';
 
     // Badge thème (liste dépend du type de requête)
     const themeLabel = DB.getThemeLabelForRequestType?.(r.type, r.themeId)
@@ -380,11 +407,14 @@ const REQUESTS = {
     if (r.status === 'open') {
       actions += `<button class="req-btn req-btn-claim" data-req-action="claim" data-req-id="${id}">🙋 Je prends</button>`;
       if (isAdmin) {
-        const options = agents.map(a =>
-          `<option value="${a.key}">${escapeHtml(a.name)}</option>`
+        // Assignation à un ouvrier sans compte (liste selon type de requête)
+        const workers = DB.getWorkersForRequestType?.(r.type) || [];
+        const currentWid = r.workerId || '';
+        const workerOptions = workers.map(w =>
+          `<option value="${w.id}"${w.id === currentWid ? ' selected' : ''}>${escapeHtml(w.badge)} — ${escapeHtml(w.name)}</option>`
         ).join('');
-        actions += `<select class="req-assign-select" data-req-id="${id}">
-          <option value="">Assigner à…</option>${options}
+        actions += `<select class="req-assign-worker-select" data-req-id="${id}" data-req-type="${escapeHtml(r.type)}">
+          <option value="">Assigner à un ouvrier…</option>${workerOptions}
         </select>`;
       }
     } else if (r.status === 'in_progress') {
@@ -430,7 +460,7 @@ const REQUESTS = {
       : '';
 
     return `
-      <div class="req-card req-status-${r.status}${r.urgent ? ' req-urgent' : ''}">
+      <div class="req-card req-status-${r.status} req-urg-card-${uLevel}${uLevel >= 5 ? ' req-urgent' : ''}">
         <div class="req-card-hd">
           <span class="req-type-icon">${icon}</span>
           <span class="req-from">${escapeHtml(r.fromAgentName || '?')}</span>
@@ -441,7 +471,7 @@ const REQUESTS = {
         </div>
         <div class="req-card-body">
           <p class="req-desc">${escapeHtml(r.description)}</p>
-          <div class="req-meta">${themeBadge}${localTxt}${assignedTxt}</div>
+          <div class="req-meta">${themeBadge}${localTxt}${assignedTxt}${reopenTxt}</div>
         </div>
         ${comments ? `<div class="req-comments">${comments}</div>` : ''}
         <div class="req-actions">${actions}</div>
@@ -470,11 +500,18 @@ const REQUESTS = {
       await _notifyRequester(`✅ ${tech} a résolu votre demande : « ${desc} »`);
 
     } else if (action === 'postponed') {
-      await DB.setRequestStatus(id, 'postponed');
-      await _notifyRequester(`⏸ ${tech} a reporté votre demande : « ${desc} »`, 'warn');
+      // Dialog : proposer une date de réouverture optionnelle. Si vide →
+      // report sans échéance (comportement legacy).
+      const reopenAt = await this._askReopenDate();
+      if (reopenAt === 'cancel') return;
+      await DB.postponeRequest(id, reopenAt);
+      const suffix = reopenAt
+        ? `, réouverture prévue le ${new Date(reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit', year:'numeric' })}`
+        : '';
+      await _notifyRequester(`⏸ ${tech} a reporté votre demande : « ${desc} »${suffix}`, 'warn');
 
     } else if (action === 'open') {
-      await DB.setRequestStatus(id, 'open');
+      await DB._ref(`requests/${id}`).update({ status: 'open', reopenAt: null });
       await _notifyRequester(`🔄 ${tech} a rouvert votre demande : « ${desc} »`);
 
     } else if (action === 'assign' && agentKey) {
@@ -485,6 +522,51 @@ const REQUESTS = {
     } else if (action === 'delete') {
       if (confirm('Supprimer cette intervention ?')) await DB.deleteRequest(id);
     }
+  },
+
+  // Dialog "Reporter" : demande une date optionnelle de réouverture.
+  // Retourne le timestamp choisi, null (pas de date), ou 'cancel' si annulé.
+  _askReopenDate() {
+    return new Promise(resolve => {
+      let box = document.getElementById('reqReopenBox');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'reqReopenBox';
+        box.className = 'req-comment-box';
+        document.body.appendChild(box);
+      }
+      // Date par défaut : demain
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dIso = tomorrow.toISOString().slice(0, 10);
+      box.innerHTML = `
+        <div class="req-comment-box-inner">
+          <h3 style="margin:0 0 .4rem;font-size:1rem;color:#1a3a5c">⏸ Reporter cette requête</h3>
+          <p style="font-size:.82rem;color:#64748b;margin:0 0 .7rem">Choisis une date de réouverture automatique (optionnel).</p>
+          <input type="date" id="reqReopenInput" value="${dIso}" min="${new Date().toISOString().slice(0, 10)}"
+                 style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.5rem .65rem;font-size:.9rem;font-family:inherit">
+          <div class="req-comment-box-actions" style="justify-content:space-between;margin-top:.75rem">
+            <button class="btn-secondary" id="reqReopenClear">Sans date</button>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn-secondary" id="reqReopenCancel">Annuler</button>
+              <button class="btn-primary" id="reqReopenOk">Reporter</button>
+            </div>
+          </div>
+        </div>`;
+      box.classList.remove('hidden');
+
+      const close = (val) => { box.classList.add('hidden'); resolve(val); };
+      document.getElementById('reqReopenCancel').onclick = () => close('cancel');
+      document.getElementById('reqReopenClear').onclick  = () => close(null);
+      document.getElementById('reqReopenOk').onclick = () => {
+        const v = document.getElementById('reqReopenInput')?.value;
+        if (!v) { close(null); return; }
+        // Ouverture à 00:00 locale du jour choisi
+        const d = new Date(v);
+        d.setHours(0, 0, 0, 0);
+        close(d.getTime());
+      };
+    });
   },
 
   _openCommentBox(reqId) {
