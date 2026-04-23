@@ -159,7 +159,7 @@
     @media print {
       @page { size: landscape; margin: 1cm; }
       body { background: #fff !important; color: #000 !important; }
-      .ent-hd, .ent-tabs, .ent-bilan-toolbar, .ent-legend, .ent-toast,
+      .ent-hd, .ent-tabs, .ent-bilan-toolbar, .ent-bilan-opts, .ent-legend, .ent-toast,
       #entPaneRegister { display: none !important; }
       .ent-bilan-wrap { box-shadow: none !important; padding: 0 !important; border: none !important; overflow: visible !important; }
       .ent-body { padding: 0 !important; max-width: none !important; }
@@ -221,7 +221,32 @@
       color: #1e293b; letter-spacing: .02em; padding: 0 .15rem;
       line-height: 1;
     }
+    .ent-day-cell .ent-cell-name {
+      display: block; font-size: .55rem; color: #334155;
+      line-height: 1.1; margin-top: 1px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 90px;
+    }
+    .ent-day-cell .ent-cell-type {
+      display: block; font-size: .52rem; color: #475569;
+      font-style: italic; line-height: 1.1; margin-top: 1px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: 90px;
+    }
     .ent-day-cell[title] { cursor: help; }
+
+    .ent-bilan-opts {
+      display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+      padding: .5rem .75rem; margin-bottom: .75rem;
+      background: #f1f5f9; border-radius: 8px;
+      font-size: .82rem;
+    }
+    .ent-opts-label { font-weight: 700; color: #1a3a5c; }
+    .ent-opts-check {
+      display: inline-flex; align-items: center; gap: .35rem;
+      color: #475569; cursor: pointer; user-select: none;
+    }
+    .ent-opts-check input { accent-color: #15803d; cursor: pointer; }
 
     .ent-legend {
       display: flex; gap: .8rem; flex-wrap: wrap; padding: .5rem 0 0 0;
@@ -327,6 +352,14 @@
         <button type="button" class="ent-btn-sec" id="entBtnPrint" title="Imprimer le tableau (ou sauvegarder en PDF via la boîte d'impression)">🖨 Imprimer</button>
         <button type="button" class="ent-btn-sec" id="entBtnExport" title="Télécharger un CSV détaillé (compatible Excel)">⬇ Export CSV</button>
       </div>
+    </div>
+
+    <!-- Options d'affichage -->
+    <div class="ent-bilan-opts">
+      <span class="ent-opts-label">Afficher dans les cases :</span>
+      <label class="ent-opts-check"><input type="checkbox" id="entOptBadge" checked> Badge</label>
+      <label class="ent-opts-check"><input type="checkbox" id="entOptName"> Nom</label>
+      <label class="ent-opts-check"><input type="checkbox" id="entOptType"> Type</label>
     </div>
 
     <!-- Titre visible uniquement à l'impression -->

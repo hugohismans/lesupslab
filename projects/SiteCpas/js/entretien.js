@@ -41,6 +41,11 @@
   const btnPrint   = document.getElementById('entBtnPrint');
   const btnExport  = document.getElementById('entBtnExport');
   const printTitle = document.getElementById('entPrintTitle');
+  const optBadge   = document.getElementById('entOptBadge');
+  const optName    = document.getElementById('entOptName');
+  const optType    = document.getElementById('entOptType');
+
+  const OPTS_KEY = 'cpas_entretien_bilan_opts';
 
   const MONTH_NAMES_FR = ['janvier','février','mars','avril','mai','juin',
                           'juillet','août','septembre','octobre','novembre','décembre'];
@@ -291,10 +296,39 @@
 
     // ── Bilan mensuel ───────────────────────────────────────────
     _bindBilan() {
+      // Charger les préférences d'affichage depuis localStorage (défaut : badge only)
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(OPTS_KEY) || 'null'); } catch {}
+      const opts = saved || { badge: true, name: false, type: false };
+      if (optBadge) optBadge.checked = !!opts.badge;
+      if (optName)  optName.checked  = !!opts.name;
+      if (optType)  optType.checked  = !!opts.type;
+
+      const saveOpts = () => {
+        try {
+          localStorage.setItem(OPTS_KEY, JSON.stringify({
+            badge: !!optBadge?.checked,
+            name:  !!optName?.checked,
+            type:  !!optType?.checked,
+          }));
+        } catch {}
+      };
+
       bilanMonth.addEventListener('change', () => this._renderBilan());
       bilanLieu.addEventListener('change',  () => this._renderBilan());
+      [optBadge, optName, optType].forEach(cb => {
+        cb?.addEventListener('change', () => { saveOpts(); this._renderBilan(); });
+      });
       btnPrint?.addEventListener('click', () => this._printBilan());
       btnExport?.addEventListener('click', () => this._exportCsv());
+    },
+
+    _getBilanOpts() {
+      return {
+        badge: !!optBadge?.checked,
+        name:  !!optName?.checked,
+        type:  !!optType?.checked,
+      };
     },
 
     // Impression via window.print() avec CSS @media print. L'utilisateur
@@ -401,8 +435,10 @@
         idx[lid][log.date].push(log);
       });
 
-      const typesById = Object.fromEntries(DB.getCleaningTypes().map(t => [t.id, t.label]));
-      const todayIso = isoDate(new Date());
+      const typesById    = Object.fromEntries(DB.getCleaningTypes().map(t => [t.id, t.label]));
+      const cleanersById = Object.fromEntries(DB.getCleaners().map(c => [c.id, c.name]));
+      const todayIso     = isoDate(new Date());
+      const opts         = this._getBilanOpts();
 
       let html = '<table class="ent-month-table"><thead><tr><th class="ent-local-col">Local</th>';
       for (let d = 1; d <= daysInMonth; d++) {
@@ -431,14 +467,30 @@
           if (conflict) statusCls = 'ent-status-conflict';
           else if (anyDeep) statusCls = 'ent-status-deep';
           else statusCls = 'ent-status-ok';
-          // Contenu cellule : badges cleaners uniques concatenés
-          const badgesText = [...new Set(logs.map(l => l.cleanerBadge).filter(Boolean))].join(' ');
+          // Contenu cellule selon les toggles Badge / Nom / Type
+          const uniqBadges = [...new Set(logs.map(l => l.cleanerBadge).filter(Boolean))];
+          const uniqNames  = [...new Set(logs.map(l => cleanersById[l.cleanerId] || '').filter(Boolean))];
+          const uniqTypes  = [...new Set(logs.map(l => typesById[l.typeId] || '').filter(Boolean))];
+          let cellInner = '';
+          if (opts.badge && uniqBadges.length) {
+            cellInner += `<span class="ent-cell-badge">${escapeHtml(uniqBadges.join(' '))}</span>`;
+          }
+          if (opts.name && uniqNames.length) {
+            cellInner += `<span class="ent-cell-name">${escapeHtml(uniqNames.join(', '))}</span>`;
+          }
+          if (opts.type && uniqTypes.length) {
+            cellInner += `<span class="ent-cell-type">${escapeHtml(uniqTypes.join(', '))}</span>`;
+          }
+          // Si toutes options off mais logs existent, afficher un point pour
+          // signaler la couleur de fond sans être vide.
+          if (!cellInner) cellInner = '<span class="ent-cell-badge">•</span>';
           const tooltip = logs.map(l => {
-            const t = new Date(l.ts || 0);
+            const t  = new Date(l.ts || 0);
             const hm = `${pad(t.getHours())}:${pad(t.getMinutes())}`;
-            return `${l.cleanerBadge || '?'} — ${typesById[l.typeId] || '?'} — ${hm}${l.approfondi ? ' (approfondi)' : ''}`;
+            const name = cleanersById[l.cleanerId] || '';
+            return `${l.cleanerBadge || '?'}${name ? ' ' + name : ''} — ${typesById[l.typeId] || '?'} — ${hm}${l.approfondi ? ' (approfondi)' : ''}`;
           }).join('\n');
-          html += `<td class="ent-day-cell ${statusCls}" title="${escapeHtml(tooltip)}"><span class="ent-cell-badge">${escapeHtml(badgesText)}</span></td>`;
+          html += `<td class="ent-day-cell ${statusCls}" title="${escapeHtml(tooltip)}">${cellInner}</td>`;
         }
         html += '</tr>';
       }
