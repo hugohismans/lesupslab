@@ -1108,6 +1108,11 @@ const HOME = {
     const screen = document.getElementById('homeScreen');
     if (!screen || screen.classList.contains('hidden')) return; // pas visible
 
+    // Nettoyer la barre de filtres desk (héritée de la vue Jour si on
+    // arrive depuis là — _renderWeek/_renderMonth le font déjà de leur côté).
+    const fb = document.getElementById('deskFilterBar');
+    if (fb) { fb.innerHTML = ''; fb.classList.add('hidden'); }
+
     const agentKey  = sessionStorage.getItem('cpas_current_agent_key');
     const agents    = DB.getAgentsWithKeys();
     const agentObj  = agents.find(a => a.key === agentKey);
