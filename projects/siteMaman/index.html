@@ -4,28 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- ══ SEO — Titre & Description ══ -->
-  <title>Véronique Roland — Hypnose Ericksonienne, Coaching &amp; PNL à Quaregnon (Hainaut)</title>
-  <meta name="description" content="Véronique Roland, maitre praticienne en hypnose ericksonienne, PNL et coach en développement personnel à Quaregnon (Hainaut, Belgique). Séances en cabinet ou à distance. Premier entretien offert.">
-  <meta name="keywords" content="hypnose ericksonienne Quaregnon, hypnose Hainaut, PNL Hainaut, coach développement personnel Belgique, massage bien-être Quaregnon, hypnothérapeute Mons, arrêt tabac hypnose Hainaut, Véronique Roland">
+  <!-- ══ SEO,Titre & Description ══ -->
+  <title>Véronique Roland, Hypnose Ericksonienne, Coaching &amp; PNL à Quaregnon (Hainaut)</title>
+  <meta name="description" content="Véronique Roland, maitre praticienne en hypnose ericksonienne, PNL et coach en développement personnel à Quaregnon (Hainaut, Belgique). Séances en présentiel ou à distance. Premier entretien offert.">
+  <meta name="keywords" content="hypnose ericksonienne Quaregnon, hypnose Hainaut, PNL Hainaut, coach développement personnel Belgique, hypnothérapeute Mons, arrêt tabac hypnose Hainaut, Véronique Roland">
   <meta name="author" content="Véronique Roland">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://hugohismans.github.io/lesupslab/projects/siteMaman/">
 
   <!-- ══ Open Graph (partage réseaux sociaux & WhatsApp) ══ -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Véronique Roland — Hypnose Ericksonienne, Coaching &amp; PNL à Quaregnon">
+  <meta property="og:title" content="Véronique Roland, Hypnose Ericksonienne, Coaching &amp; PNL à Quaregnon">
   <meta property="og:description" content="Maitre praticienne en hypnose ericksonienne et PNL, coach en développement personnel à Quaregnon (Hainaut, Belgique). Premier entretien offert.">
   <meta property="og:image" content="photo.jpg">
   <meta property="og:locale" content="fr_BE">
 
-  <!-- ══ Données structurées — Google (JSON-LD) ══ -->
+  <!-- ══ Données structurées, Google (JSON-LD) ══ -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "name": "Véronique Roland — Hypnose, Coaching & PNL",
-    "description": "Maitre praticienne en hypnose ericksonienne et PNL, coach en développement personnel et praticienne en massage bien-être à Quaregnon.",
+    "name": "Véronique Roland, Hypnose, Coaching & PNL",
+    "description": "Maitre praticienne en hypnose ericksonienne et PNL, coach en développement personnel à Quaregnon.",
     "image": "photo.jpg",
     "address": {
       "@type": "PostalAddress",
@@ -40,9 +40,8 @@
       "name": "Services",
       "itemListElement": [
         { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Hypnose Ericksonienne" } },
-        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "PNL — Programmation Neuro-Linguistique" } },
-        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Coaching en développement personnel" } },
-        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Massage bien-être" } }
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "PNL,Programmation Neuro-Linguistique" } },
+        { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Coaching en développement personnel" } }
       ]
     }
   }
@@ -68,6 +67,23 @@
       color: var(--text);
       background: #fff;
       line-height: 1.7;
+    }
+
+    /* ── Justification globale des textes ── */
+    p, li, blockquote, .faq-answer-inner {
+      text-align: justify;
+      hyphens: auto;
+    }
+    /* Exceptions : éléments qui doivent rester centrés ou alignés différemment */
+    .hero-text p,
+    .services-intro,
+    .temoignages-note,
+    .tarifs-note,
+    .f-name, .f-copy, footer p,
+    .stat-label,
+    .tarif-line,
+    .cheminement-quote {
+      text-align: inherit;
     }
 
     /* ── Navigation ── */
@@ -280,6 +296,8 @@
       font-size: 1.05rem;
       margin-bottom: 1.2rem;
       line-height: 1.85;
+      text-align: justify;
+      hyphens: auto;
     }
     .values { display: flex; flex-direction: column; gap: 1.1rem; }
     .value-card {
@@ -313,8 +331,10 @@
     }
     .services-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2rem;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2.5rem;
+      max-width: 820px;
+      margin: 0 auto;
     }
     .service-card {
       border-radius: 20px;
@@ -336,7 +356,6 @@
       font-size: 5rem;
     }
     .card-img.coaching { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .card-img.massage  { background: linear-gradient(135deg, #84fab0, #4cb8c4); }
     .card-img.hypnose  { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
     .card-body { padding: 1.8rem; }
     .card-body h3 {
@@ -398,7 +417,6 @@
       position: relative;
     }
     .modal-head.coaching { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .modal-head.massage  { background: linear-gradient(135deg, #84fab0, #4cb8c4); }
     .modal-head.hypnose  { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
     .modal-close-btn {
       position: absolute;
@@ -733,7 +751,7 @@
       transform: translateY(0);
     }
 
-    /* Hero entrance — séquentiel au chargement */
+    /* Hero entrance, séquentiel au chargement */
     @keyframes fadeSlideUp {
       from { opacity: 0; transform: translateY(22px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -820,6 +838,8 @@
       font-size: 1.02rem;
       line-height: 1.85;
       margin-bottom: 1rem;
+      text-align: justify;
+      hyphens: auto;
     }
 
     /* ── Outils ── */
@@ -982,7 +1002,7 @@
   <div class="hero-inner inner">
     <div class="photo-wrap">
       <div class="photo-circle">
-        <img src="photo.jpg" alt="Véronique Roland — Hypnose Ericksonienne et PNL à Quaregnon, Hainaut">
+        <img src="photo.jpg" alt="Véronique Roland, Hypnose Ericksonienne et PNL à Quaregnon, Hainaut">
       </div>
     </div>
     <div class="hero-text">
@@ -991,11 +1011,9 @@
         <span>Maitre praticienne en PNL et en Hypnose Ericksonienne</span>
         <span class="dot">✦</span>
         <span>Coaching</span>
-        <span class="dot">✦</span>
-        <span>Massage</span>
       </div>
       <p>
-        Accompagner chaque personne sur le chemin de son épanouissement,
+        J'accompagne chaque personne sur le chemin de son épanouissement,
         avec bienveillance, écoute et des outils puissants, adaptés à chacun.
       </p>
       <div class="hero-btns">
@@ -1038,13 +1056,14 @@
         <span class="tag">À propos</span>
         <h2 class="section-title">Une approche humaine et bienveillante</h2>
         <p>
-          Bienvenue ! Je suis Véronique Roland, maitre praticienne en PNL et en hypnose ericksonienne,
-          et coach certifiée en développement personnel.
+          Bienvenue ! Je suis Véronique Roland, maitre praticienne en PNL et en hypnose ericksonienne.
+          Je m'appuie également sur de nombreux outils de développement personnel, acquis au fil
+          de ma pratique. Cette diversité me permet de vous proposer un accompagnement sur mesure.
         </p>
         <p>
           Assistante sociale de formation, j'ai ensuite obtenu un master en sciences
           politiques, ce qui m'a ouvert les portes d'un poste de direction au sein
-          d'un CPAS — une fonction que j'occupe depuis plus de 25 ans. Ce parcours
+          d'un CPAS,une fonction que j'occupe depuis plus de 25 ans. Ce parcours
           m'a forgé une expérience profonde du social et de la gestion de l'humain
           au sens large.
         </p>
@@ -1069,21 +1088,21 @@
           <div class="value-icon">✨</div>
           <div>
             <h4>Accompagnement Personnalisé</h4>
-            <p>Des séances adaptées à votre rythme et à vos besoins, pour des résultats durables.</p>
+            <p>Des séances adaptées à votre rythme et à vos besoins.</p>
           </div>
         </div>
         <div class="value-card">
           <div class="value-icon">🎯</div>
           <div>
-            <h4>Outils Éprouvés</h4>
-            <p>Hypnose, PNL, coaching — des méthodes reconnues au service de votre transformation.</p>
+            <h4>Outils</h4>
+            <p>Hypnose, PNL, coaching, des méthodes reconnues au service de votre transformation.</p>
           </div>
         </div>
         <div class="value-card">
           <div class="value-icon">🌱</div>
           <div>
-            <h4>Évolution Durable</h4>
-            <p>Non pas une solution rapide, mais un vrai changement en profondeur, qui dure.</p>
+            <h4>Un Changement qui S'Ancre</h4>
+            <p>Un vrai changement en profondeur, au rythme qui vous convient.</p>
           </div>
         </div>
       </div>
@@ -1130,34 +1149,34 @@
       <div>
         <span class="tag">Mon cheminement</span>
         <blockquote class="cheminement-quote">
-          "Je ne vous guide pas depuis la rive — je marche avec vous, parce que j'ai moi-même fait ce chemin."
+          "Je ne vous guide pas depuis la rive, je marche avec vous, parce que j'ai moi-même fait ce chemin."
         </blockquote>
       </div>
       <div class="cheminement-text">
         <p>
-          Mon intérêt pour le développement personnel n'est pas né d'un livre ou d'une formation.
-          Il est né d'une nécessité. Après des années à accompagner les autres — au CPAS, comme
-          enseignante, comme formatrice — j'ai réalisé que je m'oubliais moi-même.
+          Mon cheminement personnel a commencé en 2010. Après un parcours thérapeutique plutôt
+          classique, j'ai découvert, lors d'un séminaire en développement personnel, de nouveaux
+          outils qui ont profondément changé ma manière de me comprendre. Depuis, cette démarche
+          ne s'est jamais arrêtée, elle m'accompagne encore aujourd'hui. Et c'est parce que je
+          sais à quel point ces outils peuvent être puissants que j'ai envie, désormais, de les
+          partager.
         </p>
         <p>
-          C'est en cherchant des outils pour mieux gérer mes propres émotions, mes propres
-          schémas répétitifs, que j'ai découvert l'hypnose et la PNL. Progressivement, j'ai
-          appris à mieux me connaître, à libérer des croyances qui me limitaient depuis l'enfance,
-          à retrouver un équilibre entre qui j'étais et qui je voulais devenir.
+          Parmi ces approches, l'hypnose et la PNL ont pris une place particulière. Elles m'ont
+          permis de mieux gérer mes émotions, de dépasser mes schémas répétitifs, de libérer des
+          croyances qui me limitaient depuis l'enfance, et de retrouver un équilibre entre qui
+          j'étais et qui je voulais devenir.
         </p>
         <p>
           Ce cheminement ne s'arrête pas. Aujourd'hui encore, je continue à me former sans cesse.
-          Je suis actuellement des formations en approche psycho-corporelle — d'abord pour
+          Je suis actuellement des formations en approche psycho-corporelle, d'abord pour
           poursuivre mon propre chemin personnel, et ensuite pour enrichir encore davantage
           l'accompagnement que je propose à ceux qui me font confiance.
         </p>
         <p>
           Ce cheminement personnel est ce qui donne sens à mon accompagnement aujourd'hui.
-          Je sais ce que ça demande de courage. Et c'est précisément pour ça que je suis là —
+          Je sais ce que ça demande de courage. Et c'est précisément pour ça que je suis là,
           pour vous montrer que c'est possible, et cheminer à vos côtés.
-        </p>
-        <p style="font-style:italic; color:rgba(255,255,255,0.6); font-size:0.9rem;">
-          ✦ Ce texte est un exemple — Véronique le réécrira avec ses propres mots.
         </p>
       </div>
     </div>
@@ -1179,15 +1198,6 @@
         <div class="card-body">
           <h3>Coaching en Développement Personnel</h3>
           <p>Définissez vos objectifs, dépassez vos limites et construisez la vie que vous désirez vraiment.</p>
-          <span class="card-link">En savoir plus</span>
-        </div>
-      </div>
-
-      <div class="service-card" onclick="openModal('massage')" role="button" tabindex="0" aria-label="En savoir plus sur le massage">
-        <div class="card-img massage">💆</div>
-        <div class="card-body">
-          <h3>Massage &amp; Bien-être</h3>
-          <p>Relâchez les tensions, retrouvez la sérénité et prenez soin de votre corps et de votre esprit.</p>
           <span class="card-link">En savoir plus</span>
         </div>
       </div>
@@ -1261,13 +1271,13 @@
       <div class="temoignage-card">
         <div class="temoignage-stars">★★★★★</div>
         <blockquote>
-          J'avais essayé d'arrêter de fumer plusieurs fois, sans succès. Après deux séances d'hypnose avec Véronique, je n'ai plus jamais ressenti l'envie. C'est comme si ce besoin avait tout simplement disparu. Je recommande les yeux fermés.
+          Grâce à l'accompagnement en hypnose, j'ai très vite ressenti une nette diminution de mon envie de sucre. Les séances m'ont aussi aidé à renforcer ma confiance en moi, avec des effets concrets dans mon quotidien. J'ai apprécié la douceur, la clarté et l'efficacité de l'approche de Véronique.
         </blockquote>
         <div class="temoignage-author">
-          <div class="author-avatar">ML</div>
+          <div class="author-avatar">K</div>
           <div>
-            <div class="author-name">Marie-Laure D.</div>
-            <div class="author-service">Hypnose — arrêt du tabac</div>
+            <div class="author-name">Kathy</div>
+            <div class="author-service">Hypnose</div>
           </div>
         </div>
       </div>
@@ -1275,13 +1285,13 @@
       <div class="temoignage-card">
         <div class="temoignage-stars">★★★★★</div>
         <blockquote>
-          J'étais dans une période de doute professionnel, je ne savais plus où j'allais. Le coaching avec Véronique m'a aidé à y voir clair, à retrouver confiance en moi et à oser prendre des décisions que j'avais peur d'assumer. Un accompagnement bienveillant et vraiment efficace.
+          J'ai commencé ce coaching dans une période de profond mal-être, où je me sentais perdue et très triste. Grâce à l'accompagnement de Véronique, j'ai peu à peu retrouvé de l'apaisement et une connexion à moi-même. J'ai appris à prendre du recul, à accueillir mes émotions avec plus de douceur et à me sentir plus sereine intérieurement. Aujourd'hui, je me sens plus alignée et confiante. Je suis profondément reconnaissante pour cette transformation.
         </blockquote>
         <div class="temoignage-author">
-          <div class="author-avatar">TF</div>
+          <div class="author-avatar">M</div>
           <div>
-            <div class="author-name">Thomas F.</div>
-            <div class="author-service">Coaching en développement personnel</div>
+            <div class="author-name">Maria</div>
+            <div class="author-service">Hypnose &amp; PNL</div>
           </div>
         </div>
       </div>
@@ -1289,13 +1299,13 @@
       <div class="temoignage-card">
         <div class="temoignage-stars">★★★★★</div>
         <blockquote>
-          Je souffrais d'une peur panique des transports en commun depuis des années. Grâce à la PNL et à l'hypnose, j'ai pu reprendre le train sereinement en quelques séances. Véronique est à l'écoute, douce, et très professionnelle. Merci du fond du cœur.
+          J'ai eu l'opportunité de vivre une séance d'hypnose avec une praticienne d'une grande qualité humaine et professionnelle. L'objectif était clair pour moi : arrêter de me ronger les ongles, une habitude ancrée depuis près de 40 ans. Dès la séance, je me suis sentie en totale confiance, écoutée et accompagnée avec beaucoup de bienveillance. Le résultat est là : je ne me ronge plus les ongles. Au-delà de l'efficacité, je retiens une rencontre avec une personne attentive et profondément investie dans le bien-être de ses patients. Je recommande cette expérience les yeux fermés à toute personne souhaitant se libérer d'un blocage ou d'une habitude ancrée. Un immense merci pour cet accompagnement précieux.
         </blockquote>
         <div class="temoignage-author">
-          <div class="author-avatar">SC</div>
+          <div class="author-avatar">S</div>
           <div>
-            <div class="author-name">Sophie C.</div>
-            <div class="author-service">Hypnose &amp; PNL — phobie</div>
+            <div class="author-name">Stéphanie</div>
+            <div class="author-service">Hypnose</div>
           </div>
         </div>
       </div>
@@ -1303,47 +1313,18 @@
       <div class="temoignage-card">
         <div class="temoignage-stars">★★★★★</div>
         <blockquote>
-          Les séances de massage sont un vrai moment hors du temps. Véronique prend le soin de comprendre ce dont on a besoin avant de commencer. Je repars à chaque fois complètement détendue, légère. C'est devenu un rendez-vous indispensable pour moi.
+          C'est en toute confiance que je me tourne vers Véronique lorsque je souhaite travailler sur un objectif ou lorsque je traverse une période difficile. Son accompagnement m'apporte à chaque fois du soutien, de la clarté et m'aide à avancer plus sereinement.
         </blockquote>
         <div class="temoignage-author">
-          <div class="author-avatar">NB</div>
+          <div class="author-avatar">A</div>
           <div>
-            <div class="author-name">Nathalie B.</div>
-            <div class="author-service">Massage &amp; Bien-être</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="temoignage-card">
-        <div class="temoignage-stars">★★★★★</div>
-        <blockquote>
-          Je suis venu pour gérer mon stress au travail. Ce que j'ai vécu avec Véronique est allé bien plus loin — j'ai compris des schémas que je répétais depuis l'enfance. Un travail en profondeur, fait avec une grande douceur et un vrai respect de mon rythme.
-        </blockquote>
-        <div class="temoignage-author">
-          <div class="author-avatar">PA</div>
-          <div>
-            <div class="author-name">Pierre A.</div>
-            <div class="author-service">Coaching &amp; PNL</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="temoignage-card">
-        <div class="temoignage-stars">★★★★★</div>
-        <blockquote>
-          Véronique a ce don de mettre immédiatement à l'aise. J'avais des a priori sur l'hypnose, j'avais peur de "perdre le contrôle". Elle a pris le temps d'expliquer, de rassurer. La séance s'est passée naturellement et j'ai vraiment ressenti un changement dès le lendemain.
-        </blockquote>
-        <div class="temoignage-author">
-          <div class="author-avatar">EL</div>
-          <div>
-            <div class="author-name">Élise L.</div>
-            <div class="author-service">Hypnose — gestion du stress</div>
+            <div class="author-name">Audrey</div>
+            <div class="author-service">Coaching, PNL &amp; Hypnose</div>
           </div>
         </div>
       </div>
 
     </div>
-    <p class="temoignages-note">✦ Ces témoignages sont des exemples — à remplacer par de vrais retours de clients.</p>
   </div>
 </section>
 
@@ -1364,7 +1345,7 @@
         <div class="faq-answer">
           <div class="faq-answer-inner">
             Non, absolument pas. L'hypnose ericksonienne est une technique douce et naturelle. Vous restez pleinement conscient(e) et en contrôle tout au long de la séance. On ne peut pas vous faire faire quelque chose contre votre volonté. C'est un état de concentration profonde, similaire à ce que vous vivez lorsque vous êtes absorbé(e) dans un livre ou un film.<br><br>
-            <strong>Exemple :</strong> lors d'une séance pour gérer le stress, une cliente m'a dit après : <em>"J'étais parfaitement consciente de tout ce que vous disiez, mais mon corps était complètement détendu — comme jamais je ne l'avais ressenti."</em>
+            <strong>Exemple :</strong> lors d'une séance pour gérer le stress, une cliente m'a dit après : <em>"J'étais parfaitement consciente de tout ce que vous disiez, mais mon corps était complètement détendu, comme jamais je ne l'avais ressenti."</em>
           </div>
         </div>
       </div>
@@ -1388,40 +1369,6 @@
 
       <div class="faq-item">
         <button class="faq-question" onclick="toggleFaq(this)">
-          Les séances sont-elles remboursées par la mutuelle ?
-          <span class="faq-icon">+</span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            En Belgique, certaines mutuelles remboursent partiellement les séances dans le cadre de leur intervention "médecines douces" ou "bien-être". Je vous encourage à vérifier auprès de votre mutuelle. Je peux vous fournir une attestation de séance sur demande.<br><br>
-            <strong>Exemples de mutuelles qui remboursent (partiellement) :</strong><br>
-            • Mutualité Socialiste (FSMB) — intervention bien-être<br>
-            • Mutualité Chrétienne — certains forfaits prévention<br>
-            • Mutualité Libre — à vérifier selon votre contrat<br><br>
-            <em>Pensez à demander avant votre première séance pour connaître les conditions exactes de votre mutuelle.</em>
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
-          Les séances se font-elles en présentiel ou à distance ?
-          <span class="faq-icon">+</span>
-        </button>
-        <div class="faq-answer">
-          <div class="faq-answer-inner">
-            Les deux sont possibles ! Je reçois en cabinet à Quaregnon (Hainaut) et propose également des séances à distance via Zoom ou Teams, avec la même qualité d'accompagnement.<br><br>
-            <strong>Exemples de situations où la distance fonctionne très bien :</strong><br>
-            • Vous habitez loin ou avez du mal à vous déplacer<br>
-            • Vous préférez être dans votre propre environnement pour l'hypnose<br>
-            • Vous avez un emploi du temps chargé et préférez une séance depuis chez vous<br><br>
-            <em>Beaucoup de personnes sont surprises par l'efficacité des séances en ligne — l'essentiel se passe dans l'échange et la connexion, pas dans le lieu.</em>
-          </div>
-        </div>
-      </div>
-
-      <div class="faq-item">
-        <button class="faq-question" onclick="toggleFaq(this)">
           Comment se déroule le premier entretien ?
           <span class="faq-icon">+</span>
         </button>
@@ -1429,9 +1376,9 @@
           <div class="faq-answer-inner">
             Le premier entretien est offert et sans engagement. Il dure environ 30 minutes et permet de faire connaissance, de comprendre votre situation et vos attentes.<br><br>
             <strong>Concrètement, on aborde :</strong><br>
-            • Ce qui vous amène — votre situation, ce que vous ressentez<br>
+            • Ce qui vous amène, votre situation, ce que vous ressentez<br>
             • Ce que vous souhaitez changer ou atteindre<br>
-            • Quel outil serait le plus adapté pour vous (hypnose, PNL, coaching, massage…)<br>
+            • Quel outil serait le plus adapté pour vous (hypnose, PNL, coaching…)<br>
             • Les modalités pratiques (fréquence, présentiel ou distance, tarifs)<br><br>
             <em>Il n'y a aucune obligation de suite. C'est avant tout un moment d'échange bienveillant pour voir si le courant passe.</em>
           </div>
@@ -1445,7 +1392,7 @@
         </button>
         <div class="faq-answer">
           <div class="faq-answer-inner">
-            La PNL (Programmation Neuro-Linguistique) est un ensemble de techniques qui permettent de comprendre comment nous pensons, ressentons et communiquons — et surtout, comment modifier ces schémas pour aller mieux. C'est un outil concret et rapide, très complémentaire à l'hypnose.<br><br>
+            La PNL (Programmation Neuro-Linguistique) est un ensemble de techniques qui permettent de comprendre comment nous pensons, ressentons et communiquons, et surtout, comment modifier ces schémas pour aller mieux. C'est un outil concret et rapide, très complémentaire à l'hypnose.<br><br>
             <strong>Exemples concrets d'utilisation :</strong><br>
             • <em>Une personne tétanisée à l'idée de prendre la parole en public</em> → on travaille la représentation mentale de la situation pour la rendre neutre, voire positive.<br>
             • <em>Quelqu'un qui répète toujours les mêmes erreurs en relation</em> → on identifie le schéma inconscient et on le recadre.<br>
@@ -1472,7 +1419,7 @@
         </p>
         <div class="contact-item">
           <div class="contact-icon">📍</div>
-          <span>Quaregnon — Hainaut (Belgique)</span>
+          <span>Quaregnon, Hainaut (Belgique)</span>
         </div>
         <div class="contact-item">
           <div class="contact-icon">📧</div>
@@ -1484,21 +1431,13 @@
         </div>
         <div class="contact-item">
           <div class="contact-icon">☕</div>
-          <span>Premier échange offert — sans engagement</span>
+          <span>Premier échange offert, sans engagement</span>
         </div>
       </div>
 
       <div class="form-card">
-        <!--
-          POUR ACTIVER L'ENVOI PAR MAIL :
-          1. Créez un compte gratuit sur https://formspree.io
-          2. Créez un nouveau formulaire (email : hugo.hismans@gmail.com)
-          3. Copiez votre Form ID et remplacez "VOTRE_ID" ci-dessous
-          4. Exemple : action="https://formspree.io/f/xabc1234"
-        -->
-        <form id="contactForm" action="https://formspree.io/f/mreoarkp" method="POST">
-          <input type="hidden" name="_replyto" value="hugo.hismans@gmail.com">
-          <input type="hidden" name="_subject" value="Nouveau message — Site Véronique Roland">
+        <form id="contactForm" action="https://formspree.io/f/xlgazwzg" method="POST">
+          <input type="hidden" name="_subject" value="Nouveau message, Site Véronique Roland">
 
           <div class="form-row">
             <div class="form-group">
@@ -1526,7 +1465,6 @@
             <select id="sujet" name="sujet">
               <option value="">-- Choisissez un thème --</option>
               <option value="Coaching en développement personnel">Coaching en développement personnel</option>
-              <option value="Massage & Bien-être">Massage &amp; Bien-être</option>
               <option value="Hypnose & PNL">Hypnose &amp; PNL</option>
               <option value="Autre">Autre / Je ne sais pas encore</option>
             </select>
@@ -1556,8 +1494,8 @@
 <!-- ══ Footer ══ -->
 <footer>
   <p class="f-name">Véronique Roland</p>
-  <p>Maitre Praticienne en Hypnose Ericksonienne · Maitre Praticienne en PNL · Coach en Développement Personnel · Massage</p>
-  <p class="f-copy">© 2025 Véronique Roland — Tous droits réservés</p>
+  <p>Maitre Praticienne en Hypnose Ericksonienne · Maitre Praticienne en PNL · Coach en Développement Personnel</p>
+  <p class="f-copy">© 2025 Véronique Roland, Tous droits réservés</p>
 </footer>
 
 <!-- ══ Modal ══ -->
@@ -1584,7 +1522,7 @@
       title: 'Coaching en Développement Personnel',
       body: `
         <p>Le coaching en développement personnel est un accompagnement structuré et bienveillant qui vous aide à clarifier vos objectifs, à identifier vos ressources internes et à mettre en place des actions concrètes pour avancer.</p>
-        <p>Ensemble, nous travaillons sur :</p>
+        <p>Voici quelques exemples de ce que nous pouvons explorer ensemble :</p>
         <ul>
           <li>La définition de vos objectifs personnels et professionnels</li>
           <li>Le renforcement de la confiance et de l'estime de soi</li>
@@ -1593,37 +1531,13 @@
           <li>L'amélioration de vos relations et de votre communication</li>
           <li>La prise de décision et la gestion des transitions de vie</li>
         </ul>
-        <p>Les séances se déroulent en face-à-face ou à distance. Un programme est élaboré sur mesure lors de notre premier entretien.</p>
+        <p>Cette liste n'est pas exhaustive. Lors de notre premier entretien, nous définissons ensemble, en fonction de vos besoins, un accompagnement sur mesure. Les séances se déroulent en face-à-face ou à distance.</p>
         <div class="tarifs-block">
           <h4>💶 Tarifs</h4>
-          <div class="tarif-line"><span>Séance individuelle (1h)</span><span class="tarif-price">70 €</span></div>
-          <div class="tarif-line"><span>Forfait 5 séances</span><span class="tarif-price">320 €</span></div>
-          <div class="tarif-line"><span>Forfait 10 séances</span><span class="tarif-price">600 €</span></div>
-          <p class="tarifs-note">Premier entretien découverte offert — sans engagement.</p>
-        </div>
-      `
-    },
-    massage: {
-      emoji: '💆', cls: 'massage',
-      title: 'Massage & Bien-être',
-      body: `
-        <p>Le massage est une pratique ancestrale qui agit à la fois sur le corps et sur l'esprit. Bien plus qu'un simple moment de détente, c'est un véritable soin qui vous reconnecte à vous-même.</p>
-        <p>Les bienfaits :</p>
-        <ul>
-          <li>Relâchement des tensions musculaires et articulaires</li>
-          <li>Réduction du stress et de l'anxiété</li>
-          <li>Amélioration de la circulation sanguine et lymphatique</li>
-          <li>Stimulation du système immunitaire</li>
-          <li>Amélioration de la qualité du sommeil</li>
-          <li>Reconnexion au corps et sensation de bien-être durable</li>
-        </ul>
-        <p>Les séances sont entièrement personnalisées selon vos besoins et les zones à travailler en priorité. Un moment de parenthèse bienveillante pour votre corps et votre esprit.</p>
-        <div class="tarifs-block">
-          <h4>💶 Tarifs</h4>
-          <div class="tarif-line"><span>Massage relaxation (1h)</span><span class="tarif-price">60 €</span></div>
-          <div class="tarif-line"><span>Massage relaxation (1h30)</span><span class="tarif-price">60 €</span></div>
-          <div class="tarif-line"><span>Forfait 5 massages</span><span class="tarif-price">250 €</span></div>
-          <p class="tarifs-note">Séance sur rendez-vous, à domicile ou en cabinet.</p>
+          <p class="tarifs-note" style="margin-top:0;">Premier entretien découverte <strong>gratuit</strong>, d'une durée de 30 minutes, en présentiel ou à distance.</p>
+          <div class="tarif-line"><span>Séance individuelle (1h)</span><span class="tarif-price">60 €</span></div>
+          <div class="tarif-line"><span>Séance individuelle (2h)</span><span class="tarif-price">90 €</span></div>
+          <p class="tarifs-note">L'argent ne doit pas être un obstacle à votre accompagnement. N'hésitez pas à me contacter, nous en parlerons ensemble.</p>
         </div>
       `
     },
@@ -1631,25 +1545,27 @@
       emoji: '🌀', cls: 'hypnose',
       title: 'Hypnose & PNL',
       body: `
-        <p><strong>L'hypnose ericksonienne</strong> est une forme douce et naturelle d'hypnose thérapeutique, développée par Milton H. Erickson. Elle induit un état de conscience modifiée — similaire à la rêverie — qui permet d'accéder aux ressources de l'inconscient pour créer des changements profonds et durables.</p>
+        <p><strong>L'hypnose ericksonienne</strong> est une forme douce et naturelle d'hypnose thérapeutique, développée par Milton H. Erickson. Elle induit un état de conscience modifiée, similaire à la rêverie, qui permet d'accéder aux ressources de l'inconscient pour créer des changements profonds et durables.</p>
         <p><strong>La PNL</strong> (Programmation Neuro-Linguistique) est un ensemble de techniques puissantes qui permettent de comprendre et de modifier nos schémas de pensée, d'émotion et de comportement.</p>
-        <p>Ces approches peuvent vous aider pour :</p>
+        <p>Voici quelques exemples de ce que ces approches peuvent vous aider à traverser :</p>
         <ul>
           <li>Arrêter de fumer, gérer son poids</li>
           <li>Surmonter les phobies et les peurs</li>
           <li>Traverser un deuil ou un traumatisme</li>
           <li>Améliorer les performances (sport, examens, prise de parole)</li>
           <li>Soulager les douleurs chroniques</li>
+          <li>Les troubles liés à la sexualité</li>
           <li>Renforcer la confiance en soi</li>
           <li>Retrouver un sommeil de qualité</li>
         </ul>
-        <p>Contrairement aux idées reçues, vous restez pleinement conscient(e) et en contrôle pendant toute la séance. L'hypnose est une collaboration bienveillante, pas de la magie — c'est vous qui faites le travail.</p>
+        <p>Cette liste n'est pas exhaustive. Lors de notre premier entretien, gratuit et sans engagement, nous définissons ensemble, en fonction de vos besoins, un accompagnement sur mesure.</p>
+        <p>Contrairement aux idées reçues, vous restez pleinement conscient(e) et en contrôle pendant toute la séance. L'hypnose est une collaboration bienveillante, pas de la magie, c'est vous qui faites le travail.</p>
         <div class="tarifs-block">
           <h4>💶 Tarifs</h4>
-          <div class="tarif-line"><span>Séance hypnose / PNL (1h15)</span><span class="tarif-price">80 €</span></div>
-          <div class="tarif-line"><span>Séance arrêt du tabac (2h)</span><span class="tarif-price">150 €</span></div>
-          <div class="tarif-line"><span>Forfait 5 séances</span><span class="tarif-price">370 €</span></div>
-          <p class="tarifs-note">Premier entretien découverte offert — sans engagement.</p>
+          <p class="tarifs-note" style="margin-top:0;">Premier entretien découverte <strong>gratuit</strong>, d'une durée de 30 minutes, en présentiel ou à distance.</p>
+          <div class="tarif-line"><span>Séance individuelle (1h)</span><span class="tarif-price">60 €</span></div>
+          <div class="tarif-line"><span>Séance individuelle (2h)</span><span class="tarif-price">90 €</span></div>
+          <p class="tarifs-note">L'argent ne doit pas être un obstacle à votre accompagnement. N'hésitez pas à me contacter, nous en parlerons ensemble.</p>
         </div>
       `
     }
