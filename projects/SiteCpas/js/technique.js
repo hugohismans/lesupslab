@@ -853,6 +853,12 @@
             try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
           });
         });
+        listEl.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            REQUESTS._openUrgencyPicker?.(btn.dataset.reqId);
+          });
+        });
       }
     },
   };

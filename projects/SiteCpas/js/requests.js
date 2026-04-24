@@ -273,6 +273,67 @@ const REQUESTS = {
         this._openSeriesView(btn.dataset.reqId);
       });
     });
+
+    // Changer l'urgence
+    this._panel.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._openUrgencyPicker(btn.dataset.reqId);
+      });
+    });
+  },
+
+  _openUrgencyPicker(reqId) {
+    const req = DB.getRequests()[reqId];
+    if (!req) return;
+    const current = this._urgencyLevel(req);
+    let box = document.getElementById('reqUrgBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'reqUrgBox';
+      box.className = 'req-comment-box';
+      document.body.appendChild(box);
+    }
+    const btnFor = (lvl, label) =>
+      `<button type="button" class="ti-urg-btn ti-urg-${lvl}${lvl === current ? ' active' : ''}" data-level="${lvl}" title="${escapeHtml(label)}">${lvl}</button>`;
+    box.style.background = '#fff';
+    box.style.border = '1px solid #e2e8f0';
+    box.style.color = '#1e293b';
+    box.innerHTML = `
+      <div class="req-comment-box-inner" style="max-width:380px;color:#1e293b">
+        <h3 style="margin:0 0 .4rem;font-size:1rem;color:#1a3a5c">⚡ Niveau d'urgence</h3>
+        <p style="font-size:.8rem;color:#64748b;margin:0 0 .7rem">Niveau actuel : <b>${current}/5</b>. Choisis le nouveau niveau.</p>
+        <div class="ti-urgency-row" id="reqUrgRow">
+          ${btnFor(1, '1 — Faible')}
+          ${btnFor(2, '2 — Modéré')}
+          ${btnFor(3, '3 — Moyen')}
+          ${btnFor(4, '4 — Élevé')}
+          ${btnFor(5, '5 — Critique')}
+        </div>
+        <div class="req-comment-box-actions" style="margin-top:.75rem">
+          <button class="btn-secondary" id="reqUrgCancel">Annuler</button>
+        </div>
+      </div>`;
+    box.classList.remove('hidden');
+
+    const cleanup = () => {
+      box.classList.add('hidden');
+      box.style.background = '';
+      box.style.border = '';
+      box.style.color = '';
+    };
+    document.getElementById('reqUrgCancel').onclick = cleanup;
+    box.querySelectorAll('.ti-urg-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const lvl = parseInt(btn.dataset.level);
+        if (!lvl || lvl === current) { cleanup(); return; }
+        try {
+          await DB.setRequestUrgencyLevel(reqId, lvl);
+          showToast(`⚡ Urgence mise à ${lvl}/5`);
+        } catch (e) { console.warn('[requests] set urgency failed', e); }
+        cleanup();
+      });
+    });
   },
 
   _openThemePicker(reqId) {
@@ -420,22 +481,28 @@ const REQUESTS = {
 
     // Boutons selon statut
     let actions = '';
+    // Assignation ouvrier (admin) : disponible sur open ET in_progress pour
+    // permettre une réassignation en cas d'erreur.
+    const canAssign = isAdmin && (r.status === 'open' || r.status === 'in_progress');
+    const workerSelect = canAssign ? (() => {
+      const workers = DB.getWorkersForRequestType?.(r.type) || [];
+      const currentWid = r.workerId || '';
+      const workerOptions = workers.map(w =>
+        `<option value="${w.id}"${w.id === currentWid ? ' selected' : ''}>${escapeHtml(w.badge)} — ${escapeHtml(w.name)}</option>`
+      ).join('');
+      const label = r.status === 'in_progress' ? 'Réassigner à…' : 'Assigner à un ouvrier…';
+      return `<select class="req-assign-worker-select" data-req-id="${id}" data-req-type="${escapeHtml(r.type)}">
+        <option value="">${label}</option>${workerOptions}
+      </select>`;
+    })() : '';
+
     if (r.status === 'open') {
       actions += `<button class="req-btn req-btn-claim" data-req-action="claim" data-req-id="${id}">🙋 Je prends</button>`;
-      if (isAdmin) {
-        // Assignation à un ouvrier sans compte (liste selon type de requête)
-        const workers = DB.getWorkersForRequestType?.(r.type) || [];
-        const currentWid = r.workerId || '';
-        const workerOptions = workers.map(w =>
-          `<option value="${w.id}"${w.id === currentWid ? ' selected' : ''}>${escapeHtml(w.badge)} — ${escapeHtml(w.name)}</option>`
-        ).join('');
-        actions += `<select class="req-assign-worker-select" data-req-id="${id}" data-req-type="${escapeHtml(r.type)}">
-          <option value="">Assigner à un ouvrier…</option>${workerOptions}
-        </select>`;
-      }
+      actions += workerSelect;
     } else if (r.status === 'in_progress') {
       actions += `<button class="req-btn req-btn-done" data-req-action="done" data-req-id="${id}">✓ Terminée</button>`;
       actions += `<button class="req-btn req-btn-postpone" data-req-action="postponed" data-req-id="${id}">⏸ Reporter</button>`;
+      actions += workerSelect;
     } else if (r.status === 'postponed') {
       actions += `<button class="req-btn req-btn-reopen" data-req-action="open" data-req-id="${id}">🔄 Rouvrir</button>`;
     }
@@ -449,6 +516,10 @@ const REQUESTS = {
     const canManageReq = isAdmin || DB.hasPermission('manageTechRequests');
     if (canManageReq) {
       actions += `<button class="req-tag-btn req-btn req-btn-tag" data-req-id="${id}">🏷️ Catégoriser</button>`;
+      // Redéfinir le niveau d'urgence (visible sauf sur les requêtes terminées)
+      if (r.status !== 'done') {
+        actions += `<button class="req-urg-edit-btn req-btn req-btn-urg-edit" data-req-id="${id}" title="Changer le niveau d'urgence">⚡ Urgence</button>`;
+      }
     }
 
     // Actions série (template uniquement)
