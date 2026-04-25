@@ -2146,6 +2146,7 @@ const DB = {
             description:   tpl.description,
             local:         tpl.local || null,
             urgent:        tpl.urgent || null,
+            urgencyLevel:  tpl.urgencyLevel || (tpl.urgent ? 5 : 3),
             fromAgentKey:  tpl.fromAgentKey || null,
             fromAgentName: tpl.fromAgentName || null,
             themeId:       tpl.themeId || null,
@@ -2153,6 +2154,9 @@ const DB = {
             assignedTo:    null,
             assignedToName: null,
             assignedAt:    null,
+            workerId:      tpl.workerId || null,
+            workerBadge:   tpl.workerBadge || null,
+            workerName:    tpl.workerName || null,
             createdAt:     cursor,
             recurrence:    { templateId: tplId }, // occurrence-enfant, pas un template
           });
