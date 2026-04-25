@@ -64,30 +64,58 @@
   }
 
   const ENTRETIEN = {
-    _tab: 'register',
+    _tab: 'dashboard',
     _guardDone: false,
     _logs: {},                 // Snapshot complet de entretien/logs (id -> log)
+
+    // ── Dashboard / Requêtes (calqué sur TECH) ─────────────────────
+    _allRequests: {},          // snapshot DB.listenRequests
+    _period: 30,               // 7 | 30 | 90 | 365 | 'all'
+    _status: 'all',            // 'all' | 'open' | 'in_progress' | 'done'
+    _search: '',
+    _suggestHighlight: -1,
+    _reqStatusFilter: 'open',
+    _reqUrgFilter:    'all',
 
     init() {
       DB.init();
       DB.initConfig();
       DB.listenCleaningLogs();
+      DB.listenRequests();
 
       DB.onConfigChange(() => {
         if (!this._guardDone) { this._guard(); this._guardDone = true; }
         this._refreshSelects();
-        if (this._tab === 'bilan') this._renderBilan();
+        if (this._tab === 'dashboard') this._renderDashboard();
+        else if (this._tab === 'bilan') this._renderBilan();
       });
       DB.onCleaningLogsChange(logs => {
         this._logs = logs || {};
         if (this._tab === 'bilan') this._renderBilan();
         if (this._tab === 'annul') this._renderAnnul();
       });
+      let _schedulerRan = false;
+      DB.onRequestChange(reqs => {
+        this._allRequests = reqs || {};
+        // Scheduler récurrences : 1ère exécution UNIQUEMENT après le 1er
+        // snapshot de _requests, sinon il tourne à vide et bloque le
+        // throttle 5min. (Bug observé : occurrences quotidiennes jamais
+        // générées sur entretien si l'agent n'ouvre pas app.html.)
+        if (!_schedulerRan) {
+          _schedulerRan = true;
+          DB.runRecurringRequestsScheduler?.().catch(e => console.warn('[recurring scheduler]', e));
+        }
+        if (!this._guardDone) return;
+        if (this._tab === 'dashboard') this._renderDashboard();
+        else if (this._tab === 'requests') this._renderRequestsPane();
+      });
 
       this._bindTabs();
       this._bindRegister();
       this._bindBilan();
       this._bindAnnul();
+      this._bindDashboard();
+      this._bindRequestsPaneFilters();
     },
 
     _guard() {
@@ -105,20 +133,37 @@
 
       // Défaut bilan = mois courant
       bilanMonth.value = monthKey(new Date());
+
+      // Initialiser NOTIF (cloche entête) — l'agent a déjà un agentKey
+      if (typeof NOTIF !== 'undefined' && NOTIF.init) {
+        try { NOTIF.init(); } catch (e) { console.warn('[ENTRETIEN] NOTIF init failed', e); }
+      }
+      // Le scheduler récurrent est lancé depuis le 1er onRequestChange
+      // (cf. init), pas ici — sinon il peut tourner à vide.
     },
 
     // ── Tabs ─────────────────────────────────────────────────────
     _bindTabs() {
+      const PANES = {
+        dashboard: 'entPaneDashboard',
+        requests:  'entPaneRequests',
+        register:  'entPaneRegister',
+        bilan:     'entPaneBilan',
+        annul:     'entPaneAnnul',
+      };
       document.querySelectorAll('.ent-tab').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('.ent-tab').forEach(b => b.classList.remove('ent-tab-active'));
           btn.classList.add('ent-tab-active');
           this._tab = btn.dataset.tab;
-          document.getElementById('entPaneRegister').style.display = (this._tab === 'register') ? '' : 'none';
-          document.getElementById('entPaneBilan').style.display    = (this._tab === 'bilan')    ? '' : 'none';
-          document.getElementById('entPaneAnnul').style.display    = (this._tab === 'annul')    ? '' : 'none';
-          if (this._tab === 'bilan') this._renderBilan();
-          if (this._tab === 'annul') this._renderAnnul();
+          for (const [tab, id] of Object.entries(PANES)) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = (this._tab === tab) ? '' : 'none';
+          }
+          if (this._tab === 'dashboard') this._renderDashboard();
+          if (this._tab === 'requests')  this._renderRequestsPane();
+          if (this._tab === 'bilan')     this._renderBilan();
+          if (this._tab === 'annul')     this._renderAnnul();
         });
       });
     },
@@ -346,7 +391,29 @@
       }
       // Injecter le titre visible uniquement à l'impression
       if (printTitle) printTitle.textContent = this._bilanTitle();
+      this._installPrintMode('bilan', '@page { size: landscape; margin: 1cm; }');
       setTimeout(() => window.print(), 50);
+    },
+
+    // Active un mode d'impression dédié : ajoute la classe `ent-printing-<mode>`
+    // sur <body> + injecte une feuille @page temporaire, puis nettoie après
+    // afterprint. Garantit qu'un mode n'écrase pas l'autre.
+    _installPrintMode(mode, pageRule) {
+      const cls = `ent-printing-${mode}`;
+      document.body.classList.add(cls);
+      let style = null;
+      if (pageRule) {
+        style = document.createElement('style');
+        style.id = `ent-print-${mode}-page`;
+        style.textContent = `@media print { ${pageRule} }`;
+        document.head.appendChild(style);
+      }
+      const cleanup = () => {
+        document.body.classList.remove(cls);
+        if (style && style.parentNode) style.parentNode.removeChild(style);
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
     },
 
     _bilanTitle() {
@@ -579,6 +646,659 @@
         showToast('Erreur : ' + (e?.message || e), true);
         btn.disabled = false;
       }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // Dashboard (calqué sur TECH, scopé type=entretien)
+    // ═══════════════════════════════════════════════════════════════
+    _bindDashboard() {
+      document.getElementById('entPeriodFilter')?.querySelectorAll('.ent-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#entPeriodFilter .ent-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._period = btn.dataset.period === 'all' ? 'all' : parseInt(btn.dataset.period, 10);
+          this._renderDashboard();
+        });
+      });
+      document.getElementById('entStatusFilter')?.querySelectorAll('.ent-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#entStatusFilter .ent-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._status = btn.dataset.status;
+          this._renderDashboard();
+        });
+      });
+      const searchEl = document.getElementById('entSearch');
+      let searchT;
+      searchEl?.addEventListener('input', () => {
+        clearTimeout(searchT);
+        searchT = setTimeout(() => {
+          this._search = searchEl.value.trim().toLowerCase();
+          this._renderDashboard();
+        }, 250);
+        this._renderSuggestions(searchEl.value);
+      });
+      searchEl?.addEventListener('focus',   () => this._renderSuggestions(searchEl.value));
+      searchEl?.addEventListener('keydown', e => this._handleSearchKeydown(e));
+      searchEl?.addEventListener('blur',    () => {
+        setTimeout(() => document.getElementById('entSuggest')?.classList.add('hidden'), 150);
+      });
+      document.getElementById('entExportBtn')?.addEventListener('click', () => this._exportDashboardCSV());
+    },
+
+    _renderSuggestions(query) {
+      const box = document.getElementById('entSuggest');
+      if (!box) return;
+      const q = (query || '').toLowerCase().trim();
+      this._suggestHighlight = -1;
+
+      const reqs = Object.values(this._allRequests || {}).filter(r => r.type === 'entretien');
+      const countBy = (getter) => {
+        const m = {};
+        reqs.forEach(r => { const v = getter(r); if (v) m[v] = (m[v] || 0) + 1; });
+        return m;
+      };
+      const locaux = countBy(r => r.local);
+      const themes = countBy(r => r.themeId ? (DB.getThemeLabelForRequestType?.('entretien', r.themeId) || DB.getTechThemeLabel?.(r.themeId) || null) : null);
+      const agents = {};
+      reqs.forEach(r => {
+        if (r.fromAgentName)  agents[r.fromAgentName]  = (agents[r.fromAgentName]  || 0) + 1;
+        if (r.assignedToName) agents[r.assignedToName] = (agents[r.assignedToName] || 0) + 1;
+      });
+      const keywords = [
+        { label: 'urgent',         matcher: r => r.urgent || (r.urgencyLevel >= 4), icon: '🚨' },
+        { label: 'récurrente',     matcher: r => r.recurrence,                     icon: '↻' },
+        { label: 'non catégorisé', matcher: r => !r.themeId,                       icon: '🏷️' },
+      ];
+      const match = (label) => !q || label.toLowerCase().includes(q);
+
+      const groups = [];
+      const mkGroup = (title, entries, icon) => {
+        if (!entries.length) return;
+        groups.push({ title, entries: entries.slice(0, 8).map(([label, count]) => ({ label, count, icon })) });
+      };
+
+      // Lieux : agréger les requêtes selon leurs locaux
+      const lieuxObj = DB.getLieux?.() || {};
+      const lieuCounts = [];
+      Object.values(lieuxObj).forEach(lieu => {
+        if (!lieu.name) return;
+        const labels = (lieu.localIds || []).map(id => (DB.getLocalLabel(id) || '').toLowerCase());
+        const count = reqs.filter(r => {
+          if (!r.local) return false;
+          const rl = r.local.toLowerCase();
+          return labels.some(l => rl === l || rl.includes(l));
+        }).length;
+        if (count > 0 || match(lieu.name)) lieuCounts.push([lieu.name, count]);
+      });
+
+      mkGroup('Lieux',  lieuCounts.filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]), '🏢');
+      mkGroup('Locaux', Object.entries(locaux).filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]), '📍');
+      mkGroup('Thèmes', Object.entries(themes).filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]), '🏷️');
+      mkGroup('Agents', Object.entries(agents).filter(([l]) => match(l)).sort((a, b) => b[1] - a[1]), '👤');
+
+      const keywordItems = keywords
+        .filter(k => match(k.label))
+        .map(k => ({ label: k.label, icon: k.icon, count: reqs.filter(k.matcher).length }))
+        .filter(k => k.count > 0);
+      if (keywordItems.length) groups.push({ title: 'Filtres rapides', entries: keywordItems });
+
+      if (!groups.length) {
+        box.innerHTML = `<div class="ent-suggest-empty">Tape un local, un thème, un agent ou un mot-clé…</div>`;
+      } else {
+        box.innerHTML = groups.map(g => `
+          <div class="ent-suggest-group">${g.title}</div>
+          ${g.entries.map(e => `
+            <div class="ent-suggest-item" data-val="${e.label.replace(/"/g, '&quot;')}">
+              <span class="ent-suggest-ico">${e.icon}</span>
+              <span>${escapeHtml(e.label)}</span>
+              <span class="ent-suggest-count">${e.count}</span>
+            </div>`).join('')}
+        `).join('');
+      }
+      box.classList.remove('hidden');
+      box.querySelectorAll('.ent-suggest-item').forEach(it => {
+        it.addEventListener('mousedown', ev => { ev.preventDefault(); this._applySuggestion(it.dataset.val); });
+      });
+    },
+
+    _applySuggestion(value) {
+      const input = document.getElementById('entSearch');
+      if (input) input.value = value;
+      this._search = value.toLowerCase();
+      document.getElementById('entSuggest')?.classList.add('hidden');
+      this._renderDashboard();
+    },
+
+    _handleSearchKeydown(e) {
+      const box = document.getElementById('entSuggest');
+      const items = box?.querySelectorAll('.ent-suggest-item');
+      if (!items?.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        this._suggestHighlight = Math.min(this._suggestHighlight + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle('active', i === this._suggestHighlight));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this._suggestHighlight = Math.max(this._suggestHighlight - 1, 0);
+        items.forEach((el, i) => el.classList.toggle('active', i === this._suggestHighlight));
+      } else if (e.key === 'Enter' && this._suggestHighlight >= 0) {
+        e.preventDefault();
+        this._applySuggestion(items[this._suggestHighlight].dataset.val);
+      } else if (e.key === 'Escape') {
+        box?.classList.add('hidden');
+      }
+    },
+
+    // Filtre de base, scopé type=entretien.
+    _filteredReqs() {
+      const now = Date.now();
+      const periodMs = this._period === 'all' ? Infinity : this._period * 24 * 3600 * 1000;
+      const cutoff = this._period === 'all' ? 0 : now - periodMs;
+      const q = this._search;
+      const reqs = this._allRequests || {};
+
+      const lieuLocalLabels = [];
+      if (q) {
+        const lieux = DB.getLieux?.() || {};
+        Object.values(lieux).forEach(lieu => {
+          if (lieu.name && lieu.name.toLowerCase().includes(q)) {
+            (lieu.localIds || []).forEach(id => {
+              const lbl = DB.getLocalLabel(id);
+              if (lbl) lieuLocalLabels.push(lbl.toLowerCase());
+            });
+          }
+        });
+      }
+
+      return Object.entries(reqs)
+        .map(([id, r]) => ({ id, ...r }))
+        .filter(r => r.type === 'entretien')        // 🔒 scope entretien
+        .filter(r => {
+          if (r.createdAt < cutoff) return false;
+          if (this._status !== 'all' && r.status !== this._status) return false;
+          if (!q) return true;
+          const themeLbl = DB.getThemeLabelForRequestType?.('entretien', r.themeId)
+                        || DB.getTechThemeLabel?.(r.themeId) || '';
+          const hay = [
+            r.description || '',
+            r.local || '',
+            r.fromAgentName || '',
+            r.assignedToName || '',
+            themeLbl,
+          ].join(' ').toLowerCase();
+          if (hay.includes(q)) return true;
+          if (lieuLocalLabels.length && r.local) {
+            const rLocal = r.local.toLowerCase();
+            if (lieuLocalLabels.some(l => rLocal === l || rLocal.includes(l))) return true;
+          }
+          return false;
+        })
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    },
+
+    _renderDashboard() {
+      const grid = document.getElementById('entGrid');
+      if (!grid) return;
+      const reqs = this._filteredReqs();
+      const total           = reqs.length;
+      const openCount       = reqs.filter(r => r.status === 'open').length;
+      const inProgressCount = reqs.filter(r => r.status === 'in_progress').length;
+      const doneCount       = reqs.filter(r => r.status === 'done').length;
+      const postponedCount  = reqs.filter(r => r.status === 'postponed').length;
+
+      const resolutions = reqs.filter(r => r.status === 'done').map(r => {
+        const comments = r.comments ? Object.values(r.comments) : [];
+        const lastTs = comments.length ? Math.max(...comments.map(c => c.createdAt || 0)) : 0;
+        return lastTs > r.createdAt ? lastTs - r.createdAt : 0;
+      }).filter(ms => ms > 0);
+      const avgMs = resolutions.length ? resolutions.reduce((a, b) => a + b, 0) / resolutions.length : 0;
+      const avgResolution = avgMs > 0 ? this._fmtDuration(avgMs) : '—';
+
+      const themeLabel = id =>
+        DB.getThemeLabelForRequestType?.('entretien', id) || DB.getTechThemeLabel?.(id) || '—';
+      const themeCounts = {};
+      reqs.forEach(r => { const k = r.themeId || '__none__'; themeCounts[k] = (themeCounts[k] || 0) + 1; });
+      const topThemeEntry = Object.entries(themeCounts).sort((a, b) => b[1] - a[1])[0];
+      const topThemeLabel = topThemeEntry ? themeLabel(topThemeEntry[0] === '__none__' ? null : topThemeEntry[0]) : '—';
+
+      const localCounts = {};
+      reqs.forEach(r => { if (r.local) localCounts[r.local] = (localCounts[r.local] || 0) + 1; });
+      const topLocals = Object.entries(localCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      const agentCounts = {};
+      reqs.forEach(r => { if (r.assignedToName) agentCounts[r.assignedToName] = (agentCounts[r.assignedToName] || 0) + 1; });
+      const topAgents = Object.entries(agentCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      const now = Date.now();
+      const activeSeries = reqs.filter(r =>
+        r.recurrence && r.recurrence.templateId === r.id &&
+        (!r.recurrence.until || r.recurrence.until > now)
+      );
+      const lateCutoff = now - 7 * 24 * 3600 * 1000;
+      const lateReqs = reqs.filter(r =>
+        (r.status === 'open' || r.status === 'in_progress') && r.createdAt < lateCutoff
+      ).sort((a, b) => a.createdAt - b.createdAt);
+      const uncategorized = reqs.filter(r => !r.themeId).length;
+
+      const dayBuckets = this._buildDayBuckets(reqs);
+
+      const kpi = (icon, value, label, color) => `
+        <div class="ent-widget">
+          <div class="ent-widget-title">${icon} ${label}</div>
+          <div class="ent-kpi-value"${color ? ` style="color:${color}"` : ''}>${value}</div>
+          <div class="ent-kpi-label">${label}</div>
+        </div>`;
+      const hBars = (entries, maxLabel = 24, clickable = false) => {
+        if (!entries.length) return '<p class="ent-placeholder">Aucune donnée.</p>';
+        const max = entries[0][1] || 1;
+        return `<div class="ent-hbars">${entries.map(([label, count]) => {
+          const pct = (count / max) * 100;
+          const lbl = label.length > maxLabel ? label.slice(0, maxLabel - 1) + '…' : label;
+          const click = clickable ? ` data-hbar-click="${escapeHtml(label)}" style="cursor:pointer"` : '';
+          return `<div class="ent-hbar-row"${click}>
+            <span class="ent-hbar-label" title="${escapeHtml(label)}">${escapeHtml(lbl)}</span>
+            <div class="ent-hbar-track"><div class="ent-hbar-fill" style="width:${pct}%"></div></div>
+            <span class="ent-hbar-count">${count}</span>
+          </div>`;
+        }).join('')}</div>`;
+      };
+      const vBars = buckets => {
+        const max = Math.max(1, ...buckets.map(b => b.count));
+        return `<div class="ent-vbars">${buckets.map(b => {
+          const h = (b.count / max) * 100;
+          return `<div class="ent-vbar-col" title="${b.label} : ${b.count} requête(s)">
+            <div class="ent-vbar-track"><div class="ent-vbar-fill" style="height:${h}%"></div></div>
+            <div class="ent-vbar-label">${b.shortLabel}</div>
+          </div>`;
+        }).join('')}</div>`;
+      };
+      const statusStack = () => {
+        if (!total) return '<p class="ent-placeholder">Aucune donnée.</p>';
+        const segments = [
+          { key: 'open',        label: 'Ouvertes',  count: openCount,       color: '#fbbf24' },
+          { key: 'in_progress', label: 'En cours',  count: inProgressCount, color: '#3b82f6' },
+          { key: 'postponed',   label: 'Reportées', count: postponedCount,  color: '#94a3b8' },
+          { key: 'done',        label: 'Terminées', count: doneCount,       color: '#10b981' },
+        ];
+        const bar = `<div class="ent-status-bar">${segments.filter(s => s.count > 0).map(s => {
+          const pct = (s.count / total) * 100;
+          return `<div class="ent-status-seg" style="flex:${s.count};background:${s.color}" title="${s.label} : ${s.count} (${pct.toFixed(0)}%)"></div>`;
+        }).join('')}</div>`;
+        const legend = `<div class="ent-status-legend">${segments.map(s => `
+          <span class="ent-status-item"><span class="ent-status-dot" style="background:${s.color}"></span>${s.label} <b>${s.count}</b></span>
+        `).join('')}</div>`;
+        return bar + legend;
+      };
+      const timelineRows = reqs.slice(0, 15).map(r => {
+        const dt = new Date(r.createdAt).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const theme = themeLabel(r.themeId);
+        const statusIcon = { open: '🟡', in_progress: '🔵', postponed: '⏸', done: '✅' }[r.status] || '?';
+        return `<tr>
+          <td class="ent-tl-date">${dt}</td>
+          <td>${statusIcon}</td>
+          <td class="ent-tl-theme">${escapeHtml(theme)}</td>
+          <td class="ent-tl-local">${escapeHtml(r.local || '—')}</td>
+          <td class="ent-tl-desc" title="${escapeHtml(r.description || '')}">${escapeHtml((r.description || '').slice(0, 80))}</td>
+        </tr>`;
+      }).join('');
+
+      const unitLabels = { days: 'jour(s)', weeks: 'sem.', months: 'mois' };
+      const activeRecHtml = activeSeries.length
+        ? activeSeries.map(t => {
+            const rec = t.recurrence;
+            const nextDate = rec.nextAt && (!rec.until || rec.nextAt <= rec.until)
+              ? new Date(rec.nextAt).toLocaleDateString('fr-BE', { day: '2-digit', month: 'short', year: 'numeric' })
+              : 'terminée';
+            return `<div class="ent-rec-row">
+              <div class="ent-rec-desc" title="${escapeHtml(t.description || '')}">${escapeHtml((t.description || '').slice(0, 60))}</div>
+              <div class="ent-rec-meta">
+                <span class="ent-rec-freq">↻ tous les ${rec.interval} ${unitLabels[rec.unit] || rec.unit}</span>
+                <span>🏷️ ${escapeHtml(themeLabel(t.themeId))}</span>
+                ${t.local ? `<span>📍 ${escapeHtml(t.local)}</span>` : ''}
+                <span class="ent-rec-next">Prochaine : <b>${nextDate}</b></span>
+              </div>
+            </div>`;
+          }).join('')
+        : '<p class="ent-placeholder">Aucune série récurrente active.</p>';
+
+      const lateHtml = lateReqs.length
+        ? `<div class="ent-late-list">${lateReqs.slice(0, 10).map(r => {
+            const days = Math.floor((now - r.createdAt) / (24 * 3600 * 1000));
+            return `<div class="ent-late-row">
+              <span class="ent-late-days">${days}j</span>
+              <span class="ent-late-theme">${escapeHtml(themeLabel(r.themeId))}</span>
+              <span class="ent-late-local">${escapeHtml(r.local || '—')}</span>
+              <span class="ent-late-desc" title="${escapeHtml(r.description || '')}">${escapeHtml((r.description || '').slice(0, 50))}</span>
+            </div>`;
+          }).join('')}</div>${lateReqs.length > 10 ? `<p class="ent-widget-sub">… et ${lateReqs.length - 10} de plus</p>` : ''}`
+        : '<p class="ent-placeholder">Aucune requête en retard 🎉</p>';
+
+      grid.innerHTML = `
+        ${kpi('🎫', total, 'Total requêtes')}
+        ${kpi('🟠', openCount, 'Ouvertes', '#f59e0b')}
+        ${kpi('⏱️', `<span style="font-size:1.5rem">${avgResolution}</span>`, 'Résolution moy.', '#0ea5e9')}
+        ${kpi('🔥', `<span style="font-size:1rem;line-height:1.2;display:inline-block;margin-top:.3rem">${escapeHtml(topThemeLabel)}</span>`, 'Top thème')}
+
+        <div class="ent-widget w-large">
+          <div class="ent-widget-title">📈 Requêtes créées (période)</div>
+          ${vBars(dayBuckets)}
+        </div>
+
+        <div class="ent-widget w-medium">
+          <div class="ent-widget-title">🏷️ Répartition par thème</div>
+          ${hBars(Object.entries(themeCounts).sort((a, b) => b[1] - a[1]).map(([k, c]) => [
+            k === '__none__' ? 'Non catégorisé' : themeLabel(k),
+            c,
+          ]))}
+        </div>
+
+        <div class="ent-widget w-medium">
+          <div class="ent-widget-title">📍 Top 10 locaux</div>
+          ${hBars(topLocals, 28, true)}
+        </div>
+
+        <div class="ent-widget w-medium">
+          <div class="ent-widget-title">👷 Charge par agent (assignations)</div>
+          ${hBars(topAgents, 28)}
+        </div>
+
+        <div class="ent-widget w-medium">
+          <div class="ent-widget-title">🥧 Répartition par statut</div>
+          ${statusStack()}
+        </div>
+
+        <div class="ent-widget w-medium">
+          <div class="ent-widget-title">⚠️ Requêtes en retard <span class="ent-widget-sub">(> 7 jours ouvertes)</span></div>
+          ${lateHtml}
+        </div>
+
+        <div class="ent-widget w-medium">
+          <div class="ent-widget-title">↻ Séries récurrentes actives</div>
+          ${activeRecHtml}
+        </div>
+
+        ${uncategorized > 0 ? `
+        <div class="ent-widget w-large" style="background:#fffbeb;border:1.5px solid #fde68a">
+          <div class="ent-widget-title">🏷️ Requêtes non catégorisées</div>
+          <p style="font-size:.88rem;color:#92400e">
+            <b>${uncategorized}</b> requête(s) dans la période n'ont pas de thème.
+            Elles sont exclues des stats "par thème" ci-dessus.
+          </p>
+        </div>` : ''}
+
+        <div class="ent-widget w-large">
+          <div class="ent-widget-title">📜 Timeline récente <span class="ent-widget-sub">(15 dernières)</span></div>
+          ${total === 0
+            ? '<p class="ent-placeholder">Aucune requête pour cette période / filtre.</p>'
+            : `<div class="ent-tl-wrap">
+                <table class="ent-timeline">
+                  <thead><tr><th>Date</th><th></th><th>Thème</th><th>Local</th><th>Description</th></tr></thead>
+                  <tbody>${timelineRows}</tbody>
+                </table>
+              </div>`
+          }
+        </div>
+      `;
+
+      grid.querySelectorAll('[data-hbar-click]').forEach(row => {
+        row.addEventListener('click', () => {
+          const val = row.dataset.hbarClick;
+          const searchEl = document.getElementById('entSearch');
+          if (searchEl) { searchEl.value = val; this._search = val.toLowerCase(); this._renderDashboard(); }
+        });
+      });
+    },
+
+    _fmtDuration(ms) {
+      const hours = ms / (1000 * 3600);
+      if (hours < 1)  return `${Math.round(ms / 60000)} min`;
+      if (hours < 24) return `${hours.toFixed(1)} h`;
+      const days = hours / 24;
+      return `${days.toFixed(1)} j`;
+    },
+
+    _buildDayBuckets(reqs) {
+      const now = Date.now();
+      const days = this._period === 'all' ? 30 : Math.min(this._period, 90);
+      const buckets = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(now - i * 24 * 3600 * 1000);
+        const key = d.toISOString().slice(0, 10);
+        const short = d.toLocaleDateString('fr-BE', { day: '2-digit' });
+        buckets.push({ key, label: d.toLocaleDateString('fr-BE'), shortLabel: short, count: 0 });
+      }
+      reqs.forEach(r => {
+        const k = new Date(r.createdAt).toISOString().slice(0, 10);
+        const b = buckets.find(x => x.key === k);
+        if (b) b.count++;
+      });
+      return buckets;
+    },
+
+    _exportDashboardCSV() {
+      const reqs = this._filteredReqs();
+      if (!reqs.length) { alert('Aucune requête à exporter avec ces filtres.'); return; }
+      const themeLabel = id =>
+        DB.getThemeLabelForRequestType?.('entretien', id) || DB.getTechThemeLabel?.(id) || '';
+      const rows = [['id', 'createdAt', 'theme', 'status', 'local', 'description', 'agent_requester', 'agent_assigned', 'urgent', 'recurrence']];
+      reqs.forEach(r => {
+        const rec = r.recurrence;
+        const recStr = rec ? (rec.templateId === r.id ? `template ${rec.interval}/${rec.unit}` : 'occurrence') : '';
+        rows.push([
+          r.id,
+          new Date(r.createdAt).toISOString(),
+          themeLabel(r.themeId),
+          r.status || '',
+          r.local || '',
+          (r.description || '').replace(/\n/g, ' '),
+          r.fromAgentName || '',
+          r.assignedToName || '',
+          r.urgent ? 'oui' : '',
+          recStr,
+        ]);
+      });
+      const csv = '﻿' + rows.map(row => row.map(cell => {
+        const s = String(cell);
+        return /[",;\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      }).join(';')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `requetes_entretien_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // Pane Requêtes plein écran (réutilise REQUESTS._renderCard)
+    // ═══════════════════════════════════════════════════════════════
+    _bindRequestsPaneFilters() {
+      document.querySelectorAll('#entReqTabs .req-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#entReqTabs .req-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqStatusFilter = btn.dataset.status;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      document.querySelectorAll('#entReqUrgencyFilter .ent-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#entReqUrgencyFilter .ent-filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqUrgFilter = btn.dataset.urg;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      document.getElementById('entReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
+    },
+
+    _renderRequestsPane() {
+      const listEl = document.getElementById('entReqList');
+      if (!listEl) return;
+      const reqs = this._allRequests || {};
+      const isAdmin = DB.hasPermission?.('editSettings');
+      const agents  = DB.getAgentsWithKeys?.() || [];
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const STATUS_LABELS = {
+        open:        '🟡 Ouverte',
+        in_progress: '🔵 En cours',
+        postponed:   '⏸ Reportée',
+        done:        '✅ Terminée',
+      };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.type === 'entretien')           // 🔒 scope entretien
+        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
+
+      if (!entries.length) {
+        listEl.innerHTML = '<div class="ent-loading">Aucune requête ne correspond aux filtres.</div>';
+        return;
+      }
+
+      listEl.innerHTML = entries.map(([id, r]) =>
+        (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+          ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
+          : ''
+      ).join('');
+
+      if (typeof REQUESTS !== 'undefined') {
+        if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+        if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+
+        listEl.querySelectorAll('[data-req-action]').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { reqAction: action, reqId: id } = btn.dataset;
+            await REQUESTS._handleAction?.(action, id, null, agents);
+          });
+        });
+        listEl.querySelectorAll('.req-assign-worker-select').forEach(sel => {
+          sel.addEventListener('change', async (e) => {
+            e.stopPropagation();
+            const id = sel.dataset.reqId;
+            try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
+          });
+        });
+        listEl.querySelectorAll('.req-comment-toggle').forEach(btn => {
+          btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+        });
+        listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
+          btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+        });
+        listEl.querySelectorAll('.req-view-series').forEach(btn => {
+          btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+        });
+        listEl.querySelectorAll('.req-stop-series').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
+            try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
+          });
+        });
+        listEl.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+        });
+      }
+    },
+
+    _printRequestsList() {
+      const area = document.getElementById('entRqPrintArea');
+      if (!area) return;
+      const reqs = this._allRequests || {};
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.type === 'entretien')
+        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
+
+      if (!entries.length) { alert('Aucune requête à imprimer avec les filtres actuels.'); return; }
+
+      const groups = new Map();
+      const UNASSIGNED_KEY = '__unassigned__';
+      for (const [id, r] of entries) {
+        let key = UNASSIGNED_KEY, label = 'Non assignée', badge = '';
+        if (r.workerId) {
+          key = `w:${r.workerId}`; label = r.workerName || 'Agent'; badge = r.workerBadge || '';
+        } else if (r.assignedTo) {
+          key = `a:${r.assignedTo}`; label = r.assignedToName || r.assignedTo;
+        }
+        if (!groups.has(key)) groups.set(key, { label, badge, list: [] });
+        groups.get(key).list.push({ id, r });
+      }
+      groups.forEach(g => g.list.sort((x, y) => (urg(y.r) - urg(x.r)) || (y.r.createdAt - x.r.createdAt)));
+      const groupEntries = Array.from(groups.entries()).sort(([ka, va], [kb, vb]) => {
+        if (ka === UNASSIGNED_KEY) return 1;
+        if (kb === UNASSIGNED_KEY) return -1;
+        return va.label.localeCompare(vb.label, 'fr');
+      });
+
+      const statusLabels = {
+        open: 'Requêtes ouvertes', in_progress: 'Requêtes en cours',
+        postponed: 'Requêtes reportées', done: 'Requêtes terminées',
+      };
+      const statusTitle = statusLabels[this._reqStatusFilter] || 'Requêtes';
+      const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+      let html = `<div class="ent-print-rq-title">${esc(statusTitle)} entretien</div>`;
+      html += `<div class="ent-print-rq-sub">Imprimé le ${esc(dateStr)} · ${entries.length} requête(s) au total</div>`;
+
+      for (const [, g] of groupEntries) {
+        html += `<div class="ent-print-rq-worker-block">
+          <div class="ent-print-rq-worker-hd">
+            ${g.badge ? `<span class="ent-print-rq-worker-badge">${esc(g.badge)}</span>` : ''}
+            <span>${esc(g.label)}</span>
+            <span class="ent-print-rq-worker-count">${g.list.length} requête${g.list.length > 1 ? 's' : ''}</span>
+          </div>`;
+        for (const { r } of g.list) {
+          const u = urg(r);
+          const icon = TYPE_ICONS[r.type] || '📋';
+          const themeLbl = DB.getThemeLabelForRequestType?.(r.type, r.themeId) || DB.getTechThemeLabel?.(r.themeId) || '';
+          const themeTxt = r.themeId ? ` · ${themeLbl}` : '';
+          const localTxt = r.local ? ` · 📍 ${esc(r.local)}` : '';
+          const reopenTxt = (r.status === 'postponed' && r.reopenAt)
+            ? ` · ⏰ rouvre ${new Date(r.reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit' })}` : '';
+          const from = r.fromAgentName ? `<small>— par ${esc(r.fromAgentName)}</small>` : '';
+          const commentsHtml = r.comments ? Object.entries(r.comments)
+            .sort(([, a], [, b]) => (a.createdAt || 0) - (b.createdAt || 0))
+            .map(([, c]) => {
+              const cd = c.createdAt ? new Date(c.createdAt) : null;
+              const ct = cd ? cd.toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit' }) + ' ' +
+                              cd.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) : '';
+              return `<div class="ent-print-rq-comment">
+                <span class="ent-print-rq-comment-author">${esc(c.agentName || '?')}</span>
+                ${ct ? `<span class="ent-print-rq-comment-time">${esc(ct)}</span>` : ''}
+                <span class="ent-print-rq-comment-text">${esc(c.text || '')}</span>
+              </div>`;
+            }).join('') : '';
+          html += `<div class="ent-print-rq-row">
+            <span class="ent-print-rq-urg ent-print-rq-urg-${u}">${u}</span>
+            <span class="ent-print-rq-type">${icon} ${esc(r.type || 'autre')}</span>
+            <span class="ent-print-rq-desc">${esc(r.description || '')} ${from}</span>
+            <span class="ent-print-rq-meta">${esc(themeTxt)}${esc(localTxt)}${esc(reopenTxt)}</span>
+          </div>`;
+          if (commentsHtml) html += `<div class="ent-print-rq-comments">${commentsHtml}</div>`;
+        }
+        html += `</div>`;
+      }
+
+      area.innerHTML = html;
+      this._installPrintMode('rq', '@page { size: portrait; margin: 1cm; }');
+      setTimeout(() => window.print(), 50);
     },
   };
 

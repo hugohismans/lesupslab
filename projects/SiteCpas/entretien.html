@@ -157,31 +157,69 @@
     .ent-print-title { display: none; }
 
     @media print {
-      @page { size: landscape; margin: 1cm; }
       body { background: #fff !important; color: #000 !important; }
-      /* Override de la règle globale de style.css (ticket print) qui cache
-         tous les enfants de body sauf #ticketPrintArea. Spécificité 0,2,1
-         > règle globale 0,1,2 pour garantir la victoire. */
-      body > #entBody.ent-body,
-      body > #entPrintTitle.ent-print-title { display: block !important; }
-      .ent-hd, .ent-tabs, .ent-bilan-toolbar, .ent-bilan-opts, .ent-legend, .ent-toast,
-      #entPaneRegister { display: none !important; }
-      .ent-bilan-wrap { box-shadow: none !important; padding: 0 !important; border: none !important; overflow: visible !important; }
-      #entBody.ent-body { padding: 0 !important; max-width: none !important; }
-      .ent-print-title {
+
+      /* ── Mode 1 : impression Bilan ────────────────────────────
+         body.ent-printing-bilan : on montre le main + le titre, on
+         cache header / tabs / toolbar / autres panes. */
+      body.ent-printing-bilan > #entBody.ent-body,
+      body.ent-printing-bilan > #entPrintTitle.ent-print-title { display: block !important; }
+      body.ent-printing-bilan .ent-hd,
+      body.ent-printing-bilan .ent-tabs,
+      body.ent-printing-bilan .ent-bilan-toolbar,
+      body.ent-printing-bilan .ent-bilan-opts,
+      body.ent-printing-bilan .ent-legend,
+      body.ent-printing-bilan .ent-toast,
+      body.ent-printing-bilan #entPaneDashboard,
+      body.ent-printing-bilan #entPaneRequests,
+      body.ent-printing-bilan #entPaneRegister,
+      body.ent-printing-bilan #entPaneAnnul { display: none !important; }
+      body.ent-printing-bilan .ent-bilan-wrap {
+        box-shadow: none !important; padding: 0 !important;
+        border: none !important; overflow: visible !important;
+      }
+      body.ent-printing-bilan #entBody.ent-body { padding: 0 !important; max-width: none !important; }
+      body.ent-printing-bilan .ent-print-title {
         display: block !important; margin-bottom: .75rem;
         font-size: 1.1rem; font-weight: 800; color: #1e293b;
         border-bottom: 2px solid #1e293b; padding-bottom: .25rem;
       }
-      .ent-month-table { font-size: .68rem; min-width: 0 !important; }
-      .ent-month-table th, .ent-month-table td { padding: .2rem .25rem; }
-      .ent-month-table td.ent-local-col { position: static !important; }
-      .ent-month-table thead th { position: static !important; }
-      /* Forcer l'impression des couleurs de fond des cellules */
-      .ent-status-ok, .ent-status-deep, .ent-status-conflict, .ent-day-today, .ent-day-weekend {
+      body.ent-printing-bilan .ent-month-table { font-size: .68rem; min-width: 0 !important; }
+      body.ent-printing-bilan .ent-month-table th,
+      body.ent-printing-bilan .ent-month-table td { padding: .2rem .25rem; }
+      body.ent-printing-bilan .ent-month-table td.ent-local-col { position: static !important; }
+      body.ent-printing-bilan .ent-month-table thead th { position: static !important; }
+      body.ent-printing-bilan .ent-status-ok,
+      body.ent-printing-bilan .ent-status-deep,
+      body.ent-printing-bilan .ent-status-conflict,
+      body.ent-printing-bilan .ent-day-today,
+      body.ent-printing-bilan .ent-day-weekend {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         color-adjust: exact !important;
+      }
+      body.ent-printing-bilan { /* page bilan */ }
+    }
+
+    /* Page portrait pour l'impression des requêtes */
+    @media print {
+      /* ── Mode 2 : impression Requêtes ─────────────────────────
+         body.ent-printing-rq : on cache le main + on montre uniquement
+         #entRqPrintArea. */
+      body.ent-printing-rq > #entRqPrintArea.ent-print-area { display: block !important; }
+      body.ent-printing-rq > #entBody.ent-body,
+      body.ent-printing-rq > .ent-hd,
+      body.ent-printing-rq > .notif-panel,
+      body.ent-printing-rq > .ent-toast,
+      body.ent-printing-rq > #entPrintTitle.ent-print-title { display: none !important; }
+      body.ent-printing-rq #entRqPrintArea.ent-print-area .ent-print-rq-urg-1,
+      body.ent-printing-rq #entRqPrintArea.ent-print-area .ent-print-rq-urg-2,
+      body.ent-printing-rq #entRqPrintArea.ent-print-area .ent-print-rq-urg-3,
+      body.ent-printing-rq #entRqPrintArea.ent-print-area .ent-print-rq-urg-4,
+      body.ent-printing-rq #entRqPrintArea.ent-print-area .ent-print-rq-urg-5,
+      body.ent-printing-rq #entRqPrintArea.ent-print-area .ent-print-rq-worker-hd {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
     }
 
@@ -316,6 +354,206 @@
       border: 1px solid #e5e7eb;
     }
     .ent-legend-chip .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.1); display: inline-block; }
+
+    /* ───────────────────────────────────────────────────────────
+       Dashboard + Requêtes (calqué sur technique.html, theme vert)
+       ─────────────────────────────────────────────────────────── */
+    .ent-toolbar {
+      background: #fff; border-radius: 14px; padding: 1rem 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .ent-search-wrap { flex: 1 1 300px; position: relative; }
+    .ent-search {
+      width: 100%; padding: .6rem .9rem .6rem 2.2rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: .9rem;
+      outline: none; transition: border-color .12s; font-family: inherit;
+    }
+    .ent-search:focus { border-color: #15803d; }
+    .ent-search-icon {
+      position: absolute; top: 50%; left: .75rem; transform: translateY(-50%);
+      color: #94a3b8; pointer-events: none;
+    }
+    .ent-suggest {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.1); max-height: 360px; overflow-y: auto;
+      z-index: 50;
+    }
+    .ent-suggest-group { padding: .35rem .6rem; font-size: .68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #f1f5f9; background: #f8fafc; }
+    .ent-suggest-item {
+      padding: .5rem .8rem; font-size: .88rem; color: #1e293b; cursor: pointer;
+      display: flex; align-items: center; gap: .5rem; transition: background .1s;
+    }
+    .ent-suggest-item:hover, .ent-suggest-item.active { background: #dcfce7; color: #166534; }
+    .ent-suggest-ico   { font-size: 1rem; width: 1.2rem; text-align: center; }
+    .ent-suggest-count { margin-left: auto; font-size: .75rem; color: #94a3b8; font-weight: 700; }
+    .ent-suggest-empty { padding: .8rem; color: #94a3b8; font-size: .85rem; font-style: italic; text-align: center; }
+
+    .ent-filter-group { display: flex; gap: .35rem; flex-wrap: wrap; }
+    .ent-filter-btn {
+      padding: .4rem .8rem; background: #f1f5f9; border: 1.5px solid transparent;
+      border-radius: 7px; font-size: .83rem; font-weight: 700; color: #475569;
+      cursor: pointer; transition: all .12s; font-family: inherit;
+    }
+    .ent-filter-btn:hover { background: #e2e8f0; }
+    .ent-filter-btn.active { background: #dcfce7; border-color: #15803d; color: #166534; }
+
+    .ent-export-btn {
+      padding: .5rem 1rem; background: #1e3a5f; color: #fff; border: none;
+      border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer;
+      transition: opacity .12s; font-family: inherit;
+    }
+    .ent-export-btn:hover { opacity: .88; }
+
+    .ent-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    @media (max-width: 1200px) { .ent-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px)  { .ent-grid { grid-template-columns: 1fr; } }
+
+    .ent-widget {
+      background: #fff; border-radius: 14px; padding: 1.1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      display: flex; flex-direction: column; gap: .6rem;
+    }
+    .ent-widget.w-medium { grid-column: span 2; }
+    .ent-widget.w-large  { grid-column: span 4; }
+    @media (max-width: 1200px) { .ent-widget.w-large { grid-column: span 2; } }
+    @media (max-width: 640px)  { .ent-widget.w-medium, .ent-widget.w-large { grid-column: span 1; } }
+    .ent-widget-title { font-size: .85rem; font-weight: 800; color: #064e3b; display: flex; align-items: center; gap: .4rem; }
+    .ent-widget-sub   { font-size: .75rem; color: #64748b; }
+    .ent-kpi-value    { font-size: 2rem; font-weight: 900; color: #166534; line-height: 1; }
+    .ent-kpi-label    { font-size: .72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+    .ent-placeholder  { color: #94a3b8; font-size: .8rem; font-style: italic; border: 1.5px dashed #e2e8f0; border-radius: 8px; padding: 1rem; text-align: center; }
+
+    .ent-hbars { display: flex; flex-direction: column; gap: .3rem; }
+    .ent-hbar-row {
+      display: grid; grid-template-columns: minmax(80px, 1fr) 2fr auto;
+      align-items: center; gap: .5rem; font-size: .78rem;
+    }
+    .ent-hbar-row[data-hbar-click]:hover { background: #dcfce7; border-radius: 4px; }
+    .ent-hbar-label { color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ent-hbar-track { background: #f1f5f9; border-radius: 4px; height: 14px; overflow: hidden; }
+    .ent-hbar-fill  { background: linear-gradient(90deg, #22c55e, #15803d); height: 100%; border-radius: 4px; transition: width .3s; }
+    .ent-hbar-count { font-weight: 800; color: #166534; font-size: .82rem; min-width: 30px; text-align: right; }
+
+    .ent-vbars { display: flex; gap: 2px; align-items: flex-end; height: 150px; padding: .25rem 0; }
+    .ent-vbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 12px; }
+    .ent-vbar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+    .ent-vbar-fill  { width: 100%; background: linear-gradient(180deg, #22c55e, #15803d); border-radius: 2px 2px 0 0; min-height: 2px; transition: height .3s; }
+    .ent-vbar-label { font-size: .62rem; color: #94a3b8; margin-top: .2rem; }
+
+    .ent-status-bar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; margin-bottom: .5rem; }
+    .ent-status-seg { height: 100%; }
+    .ent-status-legend { display: flex; flex-wrap: wrap; gap: .6rem; font-size: .78rem; color: #64748b; }
+    .ent-status-item   { display: inline-flex; align-items: center; gap: .3rem; }
+    .ent-status-dot    { width: 10px; height: 10px; border-radius: 50%; }
+
+    .ent-tl-wrap  { max-height: 380px; overflow-y: auto; }
+    .ent-timeline { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .ent-timeline th { text-align: left; padding: .4rem .5rem; color: #64748b; background: #f8fafc; border-bottom: 1px solid #e2e8f0; font-weight: 700; position: sticky; top: 0; }
+    .ent-timeline td { padding: .35rem .5rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    .ent-tl-date  { white-space: nowrap; color: #94a3b8; }
+    .ent-tl-theme { color: #166534; font-weight: 600; }
+    .ent-tl-local { color: #1a3a5c; font-weight: 600; }
+    .ent-tl-desc  { color: #475569; }
+
+    .ent-rec-row {
+      padding: .5rem .6rem; border-left: 3px solid #15803d;
+      background: #f0fdf4; border-radius: 0 6px 6px 0; margin-bottom: .4rem;
+    }
+    .ent-rec-desc { font-size: .85rem; font-weight: 700; color: #1e293b; margin-bottom: .2rem; }
+    .ent-rec-meta { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .72rem; color: #64748b; }
+    .ent-rec-freq { color: #166534; font-weight: 700; }
+    .ent-rec-next { color: #065f46; font-weight: 600; }
+
+    .ent-late-list { display: flex; flex-direction: column; gap: .3rem; }
+    .ent-late-row {
+      display: grid; grid-template-columns: 50px 1fr 1fr 2fr;
+      gap: .5rem; padding: .35rem .5rem; font-size: .78rem;
+      background: #fef2f2; border-radius: 5px; align-items: center;
+    }
+    .ent-late-days  { font-weight: 900; color: #dc2626; font-size: .9rem; text-align: center; }
+    .ent-late-theme { color: #b45309; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ent-late-local { color: #1a3a5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ent-late-desc  { color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Pane Requêtes ────────────────────────────────────────── */
+    .ent-req-toolbar {
+      background: #fff; border-radius: 14px; padding: 1rem 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+      display: flex; flex-direction: column; gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    .ent-req-tabs    { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .ent-req-filters { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    .ent-req-list    { display: flex; flex-direction: column; gap: .5rem; }
+    .ent-req-list .req-card {
+      background: #fff; color: #1e293b;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 4px rgba(0,0,0,.04);
+      padding: .75rem 1rem; border-radius: 12px;
+    }
+
+    /* ── Header notif bell ──────────────────────────────────── */
+    .ent-notif-wrap { position: relative; }
+    .ent-notif-bell {
+      background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.35);
+      color: #fff; border-radius: 8px; padding: .35rem .65rem; font-size: 1rem;
+      cursor: pointer; transition: background .15s; position: relative;
+    }
+    .ent-notif-bell:hover { background: rgba(255,255,255,.3); }
+
+    /* ── Print area requêtes (cachée à l'écran) ─────────────── */
+    .ent-print-area { display: none; }
+    .ent-print-rq-title {
+      font-size: 1.2rem; font-weight: 900; color: #064e3b;
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 2px solid #064e3b; padding-bottom: .3rem;
+      margin-bottom: 1rem;
+    }
+    .ent-print-rq-sub { font-size: .8rem; color: #475569; margin-bottom: 1rem; }
+    .ent-print-rq-worker-block { margin-bottom: 1.1rem; page-break-inside: avoid; }
+    .ent-print-rq-worker-hd {
+      background: #dcfce7; border-left: 4px solid #15803d;
+      padding: .35rem .7rem; margin-bottom: .4rem;
+      font-size: .95rem; font-weight: 800; color: #064e3b;
+      display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+    }
+    .ent-print-rq-worker-badge { font-size: .8rem; background: #15803d; color: #fff; padding: .1rem .4rem; border-radius: 4px; }
+    .ent-print-rq-worker-count { margin-left: auto; font-size: .78rem; color: #15803d; font-weight: 700; }
+    .ent-print-rq-row {
+      display: grid; grid-template-columns: 36px 60px 1fr auto;
+      gap: .5rem; align-items: baseline;
+      padding: .3rem .6rem; border-bottom: 1px dashed #cbd5e1;
+      font-size: .85rem; color: #1e293b;
+    }
+    .ent-print-rq-urg {
+      text-align: center; font-weight: 900; color: #fff;
+      border-radius: 4px; padding: .1rem .2rem; font-size: .78rem;
+    }
+    .ent-print-rq-urg-1 { background: #22c55e; }
+    .ent-print-rq-urg-2 { background: #84cc16; color: #1a1a1a; }
+    .ent-print-rq-urg-3 { background: #eab308; color: #1a1a1a; }
+    .ent-print-rq-urg-4 { background: #f97316; }
+    .ent-print-rq-urg-5 { background: #ef4444; }
+    .ent-print-rq-type { font-size: .75rem; color: #64748b; text-transform: uppercase; letter-spacing: .02em; }
+    .ent-print-rq-desc { color: #1e293b; font-weight: 600; }
+    .ent-print-rq-desc small { font-weight: 500; color: #475569; margin-left: .3rem; }
+    .ent-print-rq-meta { font-size: .72rem; color: #64748b; white-space: nowrap; }
+    .ent-print-rq-comments {
+      margin: 0 0 .25rem 36px;
+      padding: .15rem 0 .25rem .6rem;
+      border-left: 2px solid #cbd5e1;
+      display: flex; flex-direction: column; gap: .1rem;
+    }
+    .ent-print-rq-comment {
+      font-size: .72rem; color: #334155;
+      display: flex; flex-wrap: wrap; gap: .35rem; align-items: baseline;
+    }
+    .ent-print-rq-comment-author { font-weight: 700; color: #1e293b; }
+    .ent-print-rq-comment-time   { color: #64748b; font-size: .68rem; }
+    .ent-print-rq-comment-text   { color: #1e293b; flex: 1; min-width: 0; }
   </style>
 </head>
 
@@ -328,9 +566,17 @@
     <div class="ent-hd-sub" id="entOrgName">—</div>
   </div>
   <div class="ent-hd-spacer"></div>
+  <div class="ent-notif-wrap">
+    <button class="ent-notif-bell" id="notifBell" title="Notifications">🔔
+      <span class="notif-badge hidden" id="notifBadge"></span>
+    </button>
+  </div>
   <span class="ent-agent-badge" id="entAgentBadge">—</span>
   <a href="app.html" class="ent-back" id="entBackBtn">← Retour à l'app</a>
 </div>
+
+<!-- Panel notifications -->
+<div class="notif-panel hidden" id="notifPanel"></div>
 
 <!-- Loading -->
 <div class="ent-loading" id="entLoading">Chargement de l'espace entretien…</div>
@@ -351,13 +597,65 @@
 
   <!-- Onglets -->
   <div class="ent-tabs" role="tablist">
-    <button class="ent-tab ent-tab-active" data-tab="register" role="tab">📝 Enregistrer un nettoyage</button>
-    <button class="ent-tab" data-tab="bilan" role="tab">📊 Bilan mensuel</button>
+    <button class="ent-tab ent-tab-active" data-tab="dashboard" role="tab">📊 Dashboard</button>
+    <button class="ent-tab" data-tab="requests" role="tab">📋 Toutes les requêtes</button>
+    <button class="ent-tab" data-tab="register" role="tab">📝 Enregistrer un nettoyage</button>
+    <button class="ent-tab" data-tab="bilan" role="tab">🗓 Bilan mensuel</button>
     <button class="ent-tab" data-tab="annul" role="tab">↩ Annuler une saisie</button>
   </div>
 
+  <!-- ──── Onglet Dashboard ──── -->
+  <section class="ent-pane" id="entPaneDashboard">
+    <div class="ent-toolbar">
+      <div class="ent-search-wrap">
+        <span class="ent-search-icon">🔍</span>
+        <input type="text" id="entSearch" class="ent-search" placeholder="Rechercher : local, description, agent, thème…" autocomplete="off">
+        <div id="entSuggest" class="ent-suggest hidden"></div>
+      </div>
+      <div class="ent-filter-group" id="entPeriodFilter">
+        <button class="ent-filter-btn" data-period="7">7 jours</button>
+        <button class="ent-filter-btn active" data-period="30">30 jours</button>
+        <button class="ent-filter-btn" data-period="90">90 jours</button>
+        <button class="ent-filter-btn" data-period="365">12 mois</button>
+        <button class="ent-filter-btn" data-period="all">Tout</button>
+      </div>
+      <div class="ent-filter-group" id="entStatusFilter">
+        <button class="ent-filter-btn active" data-status="all">Tous statuts</button>
+        <button class="ent-filter-btn" data-status="open">Ouvertes</button>
+        <button class="ent-filter-btn" data-status="in_progress">En cours</button>
+        <button class="ent-filter-btn" data-status="done">Terminées</button>
+      </div>
+      <button class="ent-export-btn" id="entExportBtn">⬇ Export CSV</button>
+    </div>
+    <div class="ent-grid" id="entGrid">
+      <div class="ent-loading">Calcul des statistiques…</div>
+    </div>
+  </section>
+
+  <!-- ──── Onglet Requêtes ──── -->
+  <section class="ent-pane" id="entPaneRequests" style="display:none">
+    <div class="ent-req-toolbar">
+      <div class="ent-req-tabs" id="entReqTabs" role="tablist">
+        <button class="req-tab active" data-status="open">Ouvertes</button>
+        <button class="req-tab" data-status="in_progress">En cours</button>
+        <button class="req-tab" data-status="postponed">Reportées</button>
+        <button class="req-tab" data-status="done">Terminées</button>
+      </div>
+      <div class="ent-req-filters">
+        <div class="ent-filter-group" id="entReqUrgencyFilter">
+          <button class="ent-filter-btn active" data-urg="all">Toutes urgences</button>
+          <button class="ent-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
+        </div>
+        <button class="ent-export-btn" id="entReqPrintBtn" title="Imprimer la liste filtrée, groupée par agent assigné">🖨 Imprimer</button>
+      </div>
+    </div>
+    <div class="ent-req-list" id="entReqList">
+      <div class="ent-loading">Chargement des requêtes…</div>
+    </div>
+  </section>
+
   <!-- ──── Onglet Enregistrer ──── -->
-  <section class="ent-pane" id="entPaneRegister">
+  <section class="ent-pane" id="entPaneRegister" style="display:none">
     <div class="ent-form">
       <div class="ent-form-row">
         <div>
@@ -459,18 +757,26 @@
 
 <div class="ent-toast" id="entToast"></div>
 
+<!-- Container dédié à l'impression des requêtes (caché à l'écran) -->
+<div id="entRqPrintArea" class="ent-print-area"></div>
+
 <!-- Firebase SDK -->
+<script src="js/fb-bootstrap.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-<!-- App scripts (minimal pour cette page) -->
+<!-- App scripts -->
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/audit.js"></script>
 <script src="js/worker-client.js"></script>
 <script src="js/db.js"></script>
 <script src="js/session.js"></script>
+
+<!-- Modules partagés : notifications + cards de requêtes -->
+<script src="js/notif.js"></script>
+<script src="js/requests.js"></script>
 
 <!-- Logique page entretien -->
 <script src="js/entretien.js"></script>
