@@ -3147,20 +3147,28 @@ function _initTechIssueModal() {
   let _localHighlight = -1;
 
   function _getLocalOptions() {
-    // Construit une liste d'entrées { value, internal, pub } pour chaque local
+    // Construit une liste d'entrées { value, internal, pub, lieu } pour chaque local
     const allLieux = DB.getLieux?.() || {};
     const seen = new Set();
     const entries = [];
-    Object.values(allLieux).forEach(lieu => {
+    Object.entries(allLieux).forEach(([, lieu]) => {
       (lieu.localIds || []).forEach(id => {
         if (seen.has(id)) return;
         seen.add(id);
         const internal = DB.getLocalLabel(id);
         const pub      = DB.getPublicLocalLabel(id);
-        if (internal) entries.push({ value: internal, internal, pub: pub !== internal ? pub : null });
+        if (internal) entries.push({
+          value: internal,
+          internal,
+          pub: pub !== internal ? pub : null,
+          lieu: lieu.name || '',
+        });
       });
     });
-    return entries.sort((a, b) => a.internal.localeCompare(b.internal));
+    return entries.sort((a, b) =>
+      (a.lieu || '').localeCompare(b.lieu || '', 'fr') ||
+      a.internal.localeCompare(b.internal, 'fr')
+    );
   }
 
   function _renderSuggestions(query) {
@@ -3168,15 +3176,19 @@ function _initTechIssueModal() {
     const q = query.toLowerCase().trim();
     const opts = _getLocalOptions();
     const matches = q
-      ? opts.filter(e => e.internal.toLowerCase().includes(q) || (e.pub && e.pub.toLowerCase().includes(q)))
+      ? opts.filter(e =>
+          e.internal.toLowerCase().includes(q) ||
+          (e.pub && e.pub.toLowerCase().includes(q)) ||
+          (e.lieu && e.lieu.toLowerCase().includes(q)))
       : opts;
     _localHighlight = -1;
     if (!matches.length) {
       localSuggest.innerHTML = `<div class="ti-local-suggest-empty">Aucun résultat</div>`;
     } else {
       localSuggest.innerHTML = matches.map(e => {
-        const pubHtml = e.pub ? ` <span style="color:#64748b;font-size:.8em">— ${e.pub}</span>` : '';
-        return `<div class="ti-local-suggest-item" data-val="${e.value.replace(/"/g,'&quot;')}">${escapeHtml(e.internal)}${pubHtml}</div>`;
+        const lieuHtml = e.lieu ? `<span class="ti-local-suggest-lieu">${escapeHtml(e.lieu)}</span> · ` : '';
+        const pubHtml  = e.pub  ? ` <span class="ti-local-suggest-pub">— ${escapeHtml(e.pub)}</span>` : '';
+        return `<div class="ti-local-suggest-item" data-val="${e.value.replace(/"/g,'&quot;')}">${lieuHtml}<span class="ti-local-suggest-name">${escapeHtml(e.internal)}</span>${pubHtml}</div>`;
       }).join('');
       localSuggest.querySelectorAll('.ti-local-suggest-item').forEach(item => {
         item.addEventListener('mousedown', e => {

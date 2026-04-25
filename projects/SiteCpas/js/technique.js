@@ -53,8 +53,16 @@
         this._guard();
         _guardDone = true;
       });
+      let _schedulerRan = false;
       DB.onRequestChange(reqs => {
         this._allRequests = reqs;
+        // Scheduler récurrences : 1ère exécution UNIQUEMENT après le 1er
+        // snapshot de _requests, sinon il tourne à vide et bloque le
+        // throttle 5min sans rien générer.
+        if (!_schedulerRan) {
+          _schedulerRan = true;
+          DB.runRecurringRequestsScheduler?.().catch(e => console.warn('[recurring scheduler]', e));
+        }
         if (_guardDone && bodyEl.style.display !== 'none') {
           if (this._tab === 'requests') this._renderRequestsPane();
           else this.render();
@@ -84,8 +92,8 @@
       this._bindFilters();
       this._bindTabs();
       this._bindRequestsPaneFilters();
-      // Lancer le scheduler aussi depuis ici (throttle 5min garantit pas de doublon avec app.html)
-      DB.runRecurringRequestsScheduler?.().catch(e => console.warn('[recurring scheduler]', e));
+      // Le scheduler récurrent est lancé depuis le 1er onRequestChange
+      // (cf. init), pas ici — sinon il peut tourner à vide.
       this.render();
     },
 
@@ -728,12 +736,25 @@
           const reopenTxt = (r.status === 'postponed' && r.reopenAt)
             ? ` · ⏰ rouvre ${new Date(r.reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit' })}` : '';
           const from = r.fromAgentName ? `<small>— par ${esc(r.fromAgentName)}</small>` : '';
+          const commentsHtml = r.comments ? Object.entries(r.comments)
+            .sort(([, a], [, b]) => (a.createdAt || 0) - (b.createdAt || 0))
+            .map(([, c]) => {
+              const cd = c.createdAt ? new Date(c.createdAt) : null;
+              const ct = cd ? cd.toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit' }) + ' ' +
+                              cd.toLocaleTimeString('fr-BE', { hour:'2-digit', minute:'2-digit' }) : '';
+              return `<div class="tq-print-comment">
+                <span class="tq-print-comment-author">${esc(c.agentName || '?')}</span>
+                ${ct ? `<span class="tq-print-comment-time">${esc(ct)}</span>` : ''}
+                <span class="tq-print-comment-text">${esc(c.text || '')}</span>
+              </div>`;
+            }).join('') : '';
           html += `<div class="tq-print-req">
             <span class="tq-print-req-urg tq-print-req-urg-${u}">${u}</span>
             <span class="tq-print-req-type">${icon} ${esc(r.type || 'autre')}</span>
             <span class="tq-print-req-desc">${esc(r.description || '')} ${from}</span>
             <span class="tq-print-req-meta">${esc(themeTxt)}${esc(localTxt)}${esc(reopenTxt)}</span>
           </div>`;
+          if (commentsHtml) html += `<div class="tq-print-comments">${commentsHtml}</div>`;
         }
         html += `</div>`;
       }
