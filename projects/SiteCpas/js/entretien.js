@@ -172,6 +172,10 @@
     _prevStockReady:   false,  // au 1er event, on initialise sans alerter
     _alertCooldownMs:  4 * 3600 * 1000, // 4h anti-spam pour le même item
 
+    // ── Tournée du jour : état en mémoire (refresh page = reset) ──
+    _tour: { phase: 'setup', lieuId: '', cleanerId: '', typeId: '',
+             approfondi: false, localIds: [], current: 0, results: {} },
+
     init() {
       DB.init();
       DB.initConfig();
@@ -182,8 +186,10 @@
       DB.onConfigChange(() => {
         if (!this._guardDone) { this._guard(); this._guardDone = true; }
         this._refreshSelects();
+        this._refreshTourSelects();
         if (this._tab === 'dashboard') this._renderDashboard();
         else if (this._tab === 'bilan') this._renderBilan();
+        else if (this._tab === 'tour' && this._tour.phase === 'setup') this._renderTour();
       });
       DB.onCleaningLogsChange(logs => {
         this._logs = logs || {};
@@ -219,6 +225,7 @@
       this._bindAnnul();
       this._bindDashboard();
       this._bindRequestsPaneFilters();
+      this._bindTour();
     },
 
     _guard() {
@@ -251,6 +258,7 @@
         dashboard:   'entPaneDashboard',
         requests:    'entPaneRequests',
         register:    'entPaneRegister',
+        tour:        'entPaneTour',
         bilan:       'entPaneBilan',
         annul:       'entPaneAnnul',
         stock:       'entPaneStock',
@@ -271,6 +279,7 @@
           if (this._tab === 'annul')       this._renderAnnul();
           if (this._tab === 'stock')       this._renderStock();
           if (this._tab === 'stockManage') this._renderStockManage();
+          if (this._tab === 'tour')        this._renderTour();
         });
       });
     },
@@ -1686,6 +1695,236 @@
       } catch (e) {
         console.warn('[ENTRETIEN] low-stock alert failed', e);
       }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // Tournée du jour — guidage step-by-step local par local
+    // ═══════════════════════════════════════════════════════════════
+    _bindTour() {
+      const lieuSel    = document.getElementById('entTourLieu');
+      const cleanerSel = document.getElementById('entTourCleaner');
+      const typeSel    = document.getElementById('entTourType');
+      const startBtn   = document.getElementById('entTourStartBtn');
+      const updateStart = () => {
+        if (!startBtn) return;
+        startBtn.disabled = !(lieuSel?.value && cleanerSel?.value && typeSel?.value);
+      };
+      [lieuSel, cleanerSel, typeSel].forEach(s => s?.addEventListener('change', updateStart));
+      startBtn?.addEventListener('click', () => this._tourStart());
+    },
+
+    _refreshTourSelects() {
+      const lieuSel    = document.getElementById('entTourLieu');
+      const cleanerSel = document.getElementById('entTourCleaner');
+      const typeSel    = document.getElementById('entTourType');
+      if (!lieuSel) return;
+
+      const lieux = DB.getLieux();
+      const cur1  = lieuSel.value;
+      lieuSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        Object.entries(lieux).map(([id, l]) => `<option value="${escapeHtml(id)}">${escapeHtml(l.name || id)}</option>`).join('');
+      if (cur1 && lieux[cur1]) lieuSel.value = cur1;
+
+      const cleaners = DB.getCleaners();
+      const cur2 = cleanerSel.value;
+      cleanerSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        cleaners.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.badge)} — ${escapeHtml(c.name)}</option>`).join('');
+      if (cur2 && cleaners.find(c => c.id === cur2)) cleanerSel.value = cur2;
+
+      const types = DB.getCleaningTypes();
+      const cur3 = typeSel.value;
+      typeSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        types.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.label)}</option>`).join('');
+      if (cur3 && types.find(t => t.id === cur3)) typeSel.value = cur3;
+
+      // Activer/désactiver le bouton démarrer
+      const startBtn = document.getElementById('entTourStartBtn');
+      if (startBtn) startBtn.disabled = !(lieuSel.value && cleanerSel.value && typeSel.value);
+    },
+
+    _renderTour() {
+      // Affiche la section correspondant à la phase courante
+      const setup   = document.getElementById('entTourSetup');
+      const step    = document.getElementById('entTourStep');
+      const summary = document.getElementById('entTourSummary');
+      if (!setup || !step || !summary) return;
+      const ph = this._tour.phase;
+      setup.style.display   = ph === 'setup'   ? '' : 'none';
+      step.style.display    = ph === 'step'    ? '' : 'none';
+      summary.style.display = ph === 'summary' ? '' : 'none';
+      if (ph === 'setup')   this._refreshTourSelects();
+      if (ph === 'step')    this._renderTourStep();
+      if (ph === 'summary') this._renderTourSummary();
+    },
+
+    _tourStart() {
+      const lieuId    = document.getElementById('entTourLieu')?.value;
+      const cleanerId = document.getElementById('entTourCleaner')?.value;
+      const typeId    = document.getElementById('entTourType')?.value;
+      if (!lieuId || !cleanerId || !typeId) return;
+      const lieu = DB.getLieux()[lieuId];
+      const localIds = (lieu?.localIds || []).map(Number).sort((a, b) => a - b);
+      if (!localIds.length) {
+        showToast('Ce lieu n\'a aucun local configuré', true);
+        return;
+      }
+      this._tour = {
+        phase:      'step',
+        lieuId, cleanerId, typeId,
+        approfondi: false,
+        localIds,
+        current:    0,
+        results:    {}, // localId -> { action: 'done'|'skipped', logId?: string, approfondi?: boolean }
+      };
+      this._renderTour();
+    },
+
+    _renderTourStep() {
+      const step = document.getElementById('entTourStep');
+      if (!step) return;
+      const t = this._tour;
+      // Si on a fini → écran récap
+      if (t.current >= t.localIds.length) {
+        t.phase = 'summary';
+        this._renderTour();
+        return;
+      }
+      const localId = t.localIds[t.current];
+      const total   = t.localIds.length;
+      const pct     = ((t.current) / total) * 100;
+      const lieu    = DB.getLieux()[t.lieuId];
+      const lieuName  = lieu?.name || '';
+      const localLbl  = DB.getLocalLabel(localId) || `Local ${localId}`;
+
+      // Historique : dernier nettoyage de ce local (toutes types confondus)
+      const lastLog = Object.values(this._logs || {})
+        .filter(l => Number(l.localId) === Number(localId))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+      let historyHtml = '<em>Jamais nettoyé enregistré.</em>';
+      if (lastLog) {
+        const days = Math.floor((Date.now() - (lastLog.ts || 0)) / (24 * 3600 * 1000));
+        const cleaners = DB.getCleaners();
+        const cleanerName = cleaners.find(c => c.id === lastLog.cleanerId)?.name || lastLog.cleanerBadge || '?';
+        const ago = days === 0 ? 'aujourd\'hui' : days === 1 ? 'hier' : `il y a ${days} jours`;
+        historyHtml = `Dernier nettoyage : <b>${ago}</b> par ${escapeHtml(cleanerName)}`;
+      }
+
+      step.innerHTML = `
+        <div class="ent-tour-progress"><div class="ent-tour-progress-fill" style="width:${pct}%"></div></div>
+        <div class="ent-tour-counter">Local ${t.current + 1} / ${total}</div>
+        <div class="ent-tour-local-name">${escapeHtml(localLbl)}</div>
+        <div class="ent-tour-local-lieu">📍 ${escapeHtml(lieuName)}</div>
+        <div class="ent-tour-history">${historyHtml}</div>
+        <div>
+          <label class="ent-tour-deep-toggle">
+            <input type="checkbox" id="entTourDeepCb" ${t.approfondi ? 'checked' : ''}>
+            🔥 Nettoyage approfondi
+          </label>
+        </div>
+        <div class="ent-tour-actions">
+          <button type="button" class="ent-tour-btn ent-tour-btn-back" id="entTourBackBtn" ${t.current === 0 ? 'disabled' : ''}>← Retour</button>
+          <button type="button" class="ent-tour-btn ent-tour-btn-skip" id="entTourSkipBtn">Skip</button>
+          <button type="button" class="ent-tour-btn ent-tour-btn-done" id="entTourDoneBtn">✓ Fait</button>
+        </div>
+      `;
+
+      document.getElementById('entTourDeepCb')?.addEventListener('change', (e) => {
+        this._tour.approfondi = !!e.target.checked;
+      });
+      document.getElementById('entTourBackBtn')?.addEventListener('click', () => this._tourBack());
+      document.getElementById('entTourSkipBtn')?.addEventListener('click', () => this._tourSkip());
+      document.getElementById('entTourDoneBtn')?.addEventListener('click', () => this._tourDone());
+    },
+
+    async _tourDone() {
+      const t = this._tour;
+      const localId = t.localIds[t.current];
+      const cleaner = DB.getCleaners().find(c => c.id === t.cleanerId);
+      const cleanerBadge = cleaner?.badge || null;
+      const date = isoDate(new Date());
+      const doneBtn = document.getElementById('entTourDoneBtn');
+      if (doneBtn) doneBtn.disabled = true;
+      try {
+        const logId = await DB.addCleaningLog({
+          date,
+          lieuId:    t.lieuId,
+          localId,
+          cleanerId: t.cleanerId,
+          cleanerBadge,
+          typeId:    t.typeId,
+          approfondi: !!t.approfondi,
+        });
+        t.results[localId] = { action: 'done', logId, approfondi: !!t.approfondi };
+        t.current++;
+        this._renderTour();
+      } catch (e) {
+        console.warn('[ENTRETIEN] tour done failed', e);
+        showToast('Erreur enregistrement : ' + (e?.message || e), true);
+        if (doneBtn) doneBtn.disabled = false;
+      }
+    },
+
+    _tourSkip() {
+      const t = this._tour;
+      const localId = t.localIds[t.current];
+      t.results[localId] = { action: 'skipped' };
+      t.current++;
+      this._renderTour();
+    },
+
+    async _tourBack() {
+      const t = this._tour;
+      if (t.current === 0) return;
+      // Si on revient sur un "fait" → on supprime le log enregistré
+      const prevLocalId = t.localIds[t.current - 1];
+      const prev = t.results[prevLocalId];
+      if (prev && prev.action === 'done' && prev.logId) {
+        try { await DB.removeCleaningLog(prev.logId); }
+        catch (e) { console.warn('[ENTRETIEN] tour back: remove log failed', e); }
+      }
+      delete t.results[prevLocalId];
+      t.current--;
+      this._renderTour();
+    },
+
+    _renderTourSummary() {
+      const sum = document.getElementById('entTourSummary');
+      if (!sum) return;
+      const t = this._tour;
+      const done    = Object.values(t.results).filter(r => r.action === 'done').length;
+      const skipped = Object.values(t.results).filter(r => r.action === 'skipped').length;
+      const total   = t.localIds.length;
+      const lieu    = DB.getLieux()[t.lieuId];
+      const cleaner = DB.getCleaners().find(c => c.id === t.cleanerId);
+      const type    = DB.getCleaningTypes().find(ty => ty.id === t.typeId);
+
+      sum.innerHTML = `
+        <div class="ent-tour-summary-title">🎉 Tournée terminée</div>
+        <div style="color:#475569;font-size:.92rem">${escapeHtml(lieu?.name || '')} · ${escapeHtml(cleaner?.name || '')} · ${escapeHtml(type?.label || '')}</div>
+        <div class="ent-tour-summary-stats">
+          <div class="ent-tour-summary-stat">
+            <div class="ent-tour-summary-stat-num">${done}</div>
+            <div class="ent-tour-summary-stat-label">✓ Fait</div>
+          </div>
+          <div class="ent-tour-summary-stat skipped">
+            <div class="ent-tour-summary-stat-num">${skipped}</div>
+            <div class="ent-tour-summary-stat-label">⊘ Skipped</div>
+          </div>
+          <div class="ent-tour-summary-stat" style="background:#f1f5f9;border-color:#cbd5e1">
+            <div class="ent-tour-summary-stat-num" style="color:#1e293b">${total}</div>
+            <div class="ent-tour-summary-stat-label">Total</div>
+          </div>
+        </div>
+        <button type="button" class="ent-tour-reset" id="entTourResetBtn">🏠 Nouvelle tournée</button>
+      `;
+
+      document.getElementById('entTourResetBtn')?.addEventListener('click', () => this._tourReset());
+    },
+
+    _tourReset() {
+      this._tour = { phase: 'setup', lieuId: '', cleanerId: '', typeId: '',
+                     approfondi: false, localIds: [], current: 0, results: {} };
+      this._renderTour();
     },
   };
 

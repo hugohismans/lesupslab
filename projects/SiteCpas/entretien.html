@@ -710,6 +710,107 @@
       display: flex; align-items: center; justify-content: center;
     }
     .ent-emoji-opt:hover { background: #dcfce7; transform: scale(1.15); }
+
+    /* ── Tournée du jour ──────────────────────────────────────── */
+    .ent-tour-wrap {
+      background: #fff; border-radius: 14px; padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .ent-tour-setup {
+      display: flex; flex-direction: column; gap: 1rem; max-width: 520px; margin: 0 auto;
+    }
+    .ent-tour-setup-title {
+      font-size: 1.1rem; font-weight: 800; color: #064e3b;
+      text-align: center; margin-bottom: .5rem;
+    }
+    .ent-tour-setup-sub {
+      font-size: .88rem; color: #64748b; text-align: center; margin-bottom: 1rem;
+    }
+    .ent-tour-start {
+      padding: .9rem 1.5rem; background: #15803d; color: #fff;
+      border: none; border-radius: 10px; font-size: 1rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+      margin-top: .5rem;
+    }
+    .ent-tour-start:hover:not(:disabled)  { background: #166534; }
+    .ent-tour-start:disabled              { background: #94a3b8; cursor: not-allowed; }
+
+    .ent-tour-step      { text-align: center; padding: 1.5rem 1rem; }
+    .ent-tour-progress  {
+      max-width: 600px; margin: 0 auto 1.25rem;
+      height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;
+    }
+    .ent-tour-progress-fill {
+      height: 100%; background: linear-gradient(90deg, #22c55e, #15803d);
+      transition: width .3s ease;
+    }
+    .ent-tour-counter {
+      font-size: .85rem; color: #64748b; margin-bottom: .5rem;
+      letter-spacing: .03em; text-transform: uppercase; font-weight: 700;
+    }
+    .ent-tour-local-name {
+      font-size: 2.2rem; font-weight: 900; color: #1e293b;
+      margin: 1rem 0 .5rem; line-height: 1.1;
+    }
+    .ent-tour-local-lieu {
+      font-size: .92rem; color: #475569; margin-bottom: .8rem;
+    }
+    .ent-tour-history {
+      font-size: .85rem; color: #64748b; margin-bottom: 1.5rem;
+      padding: .55rem .9rem; background: #f8fafc; border-radius: 8px;
+      display: inline-block;
+    }
+    .ent-tour-deep-toggle {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .9rem; color: #b45309; cursor: pointer;
+      margin-bottom: 1.5rem; user-select: none;
+    }
+    .ent-tour-deep-toggle input { accent-color: #d97706; cursor: pointer; }
+    .ent-tour-actions {
+      display: grid; grid-template-columns: auto 1fr 1fr; gap: .6rem;
+      max-width: 600px; margin: 0 auto;
+    }
+    .ent-tour-btn {
+      padding: 1rem .75rem; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 800; cursor: pointer;
+      font-family: inherit; transition: background .12s, transform .08s;
+    }
+    .ent-tour-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .ent-tour-btn:disabled             { background: #94a3b8 !important; cursor: not-allowed; color: #fff; }
+    .ent-tour-btn-back { background: #e5e7eb; color: #1e293b; }
+    .ent-tour-btn-back:hover:not(:disabled) { background: #d1d5db; }
+    .ent-tour-btn-skip { background: #fef3c7; color: #b45309; }
+    .ent-tour-btn-skip:hover:not(:disabled) { background: #fde68a; }
+    .ent-tour-btn-done { background: #15803d; color: #fff; }
+    .ent-tour-btn-done:hover:not(:disabled) { background: #166534; }
+    @media (max-width: 480px) {
+      .ent-tour-actions { grid-template-columns: 1fr 1fr; }
+      .ent-tour-btn-back { grid-column: span 2; }
+    }
+
+    .ent-tour-summary { text-align: center; padding: 2rem 1rem; }
+    .ent-tour-summary-title {
+      font-size: 1.4rem; font-weight: 900; color: #064e3b; margin-bottom: 1rem;
+    }
+    .ent-tour-summary-stats {
+      display: flex; gap: 1.25rem; justify-content: center;
+      flex-wrap: wrap; margin: 1.5rem 0;
+    }
+    .ent-tour-summary-stat {
+      background: #f0fdf4; border: 1.5px solid #15803d; border-radius: 12px;
+      padding: 1rem 1.25rem; min-width: 120px;
+    }
+    .ent-tour-summary-stat-num   { font-size: 2rem; font-weight: 900; color: #166534; line-height: 1; }
+    .ent-tour-summary-stat-label { font-size: .8rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; margin-top: .35rem; }
+    .ent-tour-summary-stat.skipped { background: #fffbeb; border-color: #f59e0b; }
+    .ent-tour-summary-stat.skipped .ent-tour-summary-stat-num { color: #b45309; }
+    .ent-tour-reset {
+      padding: .7rem 1.4rem; background: #15803d; color: #fff;
+      border: none; border-radius: 10px; font-size: .95rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+      margin-top: 1rem;
+    }
+    .ent-tour-reset:hover { background: #166534; }
   </style>
 </head>
 
@@ -756,6 +857,7 @@
     <button class="ent-tab ent-tab-active" data-tab="dashboard" role="tab">📊 Dashboard</button>
     <button class="ent-tab" data-tab="requests" role="tab">📋 Toutes les requêtes</button>
     <button class="ent-tab" data-tab="register" role="tab">📝 Enregistrer un nettoyage</button>
+    <button class="ent-tab" data-tab="tour" role="tab">🚶 Tournée du jour</button>
     <button class="ent-tab" data-tab="bilan" role="tab">🗓 Bilan mensuel</button>
     <button class="ent-tab" data-tab="annul" role="tab">↩ Annuler une saisie</button>
     <button class="ent-tab" data-tab="stock" role="tab">📦 Stock</button>
@@ -847,6 +949,36 @@
       </div>
 
       <button type="button" class="ent-save-btn" id="entBtnSave" disabled>💾 Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- ──── Onglet Tournée du jour ──── -->
+  <section class="ent-pane" id="entPaneTour" style="display:none">
+    <div class="ent-tour-wrap">
+      <!-- Setup -->
+      <div id="entTourSetup" class="ent-tour-setup">
+        <div class="ent-tour-setup-title">🚶 Tournée du jour</div>
+        <div class="ent-tour-setup-sub">Sélectionne un lieu, un agent d'entretien et un type, puis l'app te guide local par local.</div>
+        <div>
+          <label class="ent-field-label" for="entTourLieu">Lieu</label>
+          <select id="entTourLieu" class="ent-select"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div>
+          <label class="ent-field-label" for="entTourCleaner">Agent d'entretien</label>
+          <select id="entTourCleaner" class="ent-select"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div>
+          <label class="ent-field-label" for="entTourType">Type de nettoyage</label>
+          <select id="entTourType" class="ent-select"><option value="">— Sélectionner —</option></select>
+        </div>
+        <button type="button" id="entTourStartBtn" class="ent-tour-start" disabled>▶ Démarrer la tournée</button>
+      </div>
+
+      <!-- Step (vue locale active) -->
+      <div id="entTourStep" class="ent-tour-step" style="display:none"></div>
+
+      <!-- Récap final -->
+      <div id="entTourSummary" class="ent-tour-summary" style="display:none"></div>
     </div>
   </section>
 
