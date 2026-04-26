@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arte Mondo — Guitare sans solfège & chant, par Vincent Smekens</title>
   <meta name="description" content="Arte Mondo : apprenez la guitare d'accompagnement et le chant sans solfège, à tout âge, par une méthode originale fondée sur le plaisir et le lâcher-prise. Cours en Brabant Wallon, par Vincent Smekens." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎸</text></svg>" />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="apple-touch-icon" href="logo.png" />
+  <meta property="og:title" content="Arte Mondo — Guitare sans solfège & chant, par Vincent Smekens" />
+  <meta property="og:description" content="Apprendre la guitare d'accompagnement et le chant sans solfège, à tout âge, par une méthode originale fondée sur le plaisir et le lâcher-prise." />
+  <meta property="og:image" content="logo.png" />
+  <meta property="og:type" content="website" />
   <style>
     /* ── Reset & tokens ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,8 +113,21 @@
       text-decoration: none;
       letter-spacing: 0.04em;
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      gap: 0.7rem;
       line-height: 1.1;
+    }
+
+    .nav-brand-logo {
+      height: 50px;
+      width: 50px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .nav-brand-text {
+      display: flex;
+      flex-direction: column;
     }
 
     .nav-brand strong {
@@ -202,46 +220,24 @@
       color: var(--light);
     }
 
-    /* ── Photo placeholders ── */
-    .photo-placeholder {
-      background: linear-gradient(135deg, var(--sand), var(--sand-dark));
-      border: 2px dashed var(--wood);
-      border-radius: var(--radius-lg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 2rem;
-      color: var(--bark);
-      font-style: italic;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .photo-placeholder::before {
-      content: "📷";
-      position: absolute;
-      top: 1rem;
-      left: 1rem;
-      font-size: 1.5rem;
-      font-style: normal;
-    }
-
-    .photo-placeholder .ph-label {
-      max-width: 32ch;
-      font-size: 0.92rem;
-      line-height: 1.5;
-      color: var(--bark);
-    }
-
-    .photo-placeholder .ph-label strong {
+    /* ── Photos ── */
+    .hero-photo,
+    .methode-photo,
+    .about-photo,
+    .formule-photo {
+      width: 100%;
+      object-fit: cover;
       display: block;
-      font-style: normal;
-      color: var(--wood-dark);
-      font-size: 0.78rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 0.5rem;
+      background: var(--sand);
+    }
+
+    .temoignage-photo {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: block;
     }
 
     /* ── HERO ── */
@@ -394,8 +390,6 @@
     .formule-card .formule-photo {
       aspect-ratio: 16 / 10;
       border-radius: 0;
-      border: none;
-      border-bottom: 2px dashed var(--wood);
     }
 
     .formule-body {
@@ -495,22 +489,6 @@
       gap: 0.8rem;
       padding-top: 0.8rem;
       border-top: 1px solid var(--sand);
-    }
-
-    .temoignage-photo {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      padding: 0.4rem;
-    }
-
-    .temoignage-photo .ph-label {
-      font-size: 0.6rem;
-    }
-
-    .temoignage-photo::before {
-      display: none;
     }
 
     .temoignage-author-info {
@@ -617,16 +595,7 @@
     .about-photo {
       aspect-ratio: 3 / 4;
       border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, #5b3f28, #3a2818);
-      border-color: var(--wood);
-    }
-
-    .about-photo .ph-label {
-      color: var(--cream);
-    }
-
-    .about-photo .ph-label strong {
-      color: var(--wood);
+      box-shadow: var(--shadow-lg);
     }
 
     .about-text p {
@@ -794,6 +763,16 @@
       text-align: center;
     }
 
+    .footer-logo {
+      width: 90px;
+      height: 90px;
+      object-fit: contain;
+      margin: 0 auto 1.2rem;
+      display: block;
+      opacity: 0.95;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.25));
+    }
+
     footer p { margin-bottom: 0.4rem; }
 
     footer a {
@@ -841,9 +820,12 @@
 
   <!-- ════════════ NAV ════════════ -->
   <nav>
-    <a href="#hero" class="nav-brand">
-      <strong>Arte Mondo</strong>
-      <span class="nav-brand-sub">par Vincent Smekens</span>
+    <a href="#hero" class="nav-brand" aria-label="Arte Mondo — accueil">
+      <img src="logo.png" alt="" class="nav-brand-logo" />
+      <span class="nav-brand-text">
+        <strong>Arte Mondo</strong>
+        <span class="nav-brand-sub">par Vincent Smekens</span>
+      </span>
     </a>
     <button class="nav-toggle" aria-label="Menu" id="navToggle">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -874,12 +856,7 @@
           <a href="#methode" class="btn btn-ghost">Découvrir la méthode</a>
         </div>
       </div>
-      <div class="photo-placeholder hero-photo">
-        <div class="ph-label">
-          <strong>Photo principale (hero)</strong>
-          Vincent en cours, guitare en mains, expression chaleureuse, lumière naturelle. Format portrait, idéalement avec un élève en arrière-plan flou.
-        </div>
-      </div>
+      <img class="hero-photo" src="photos/hero-vincent.jpg" alt="Vincent Smekens et Martin en cours de guitare acoustique, complicité musicale." />
     </div>
   </section>
 
@@ -893,12 +870,7 @@
       </p>
 
       <div class="methode-grid">
-        <div class="photo-placeholder methode-photo">
-          <div class="ph-label">
-            <strong>Photo "main sur le manche"</strong>
-            Gros plan sur des doigts qui font un accord, ou un schéma "itinéraire" coloré. Mettre en avant le côté tactile et concret de la méthode.
-          </div>
-        </div>
+        <img class="methode-photo" src="photos/methode-cours.jpg" alt="Trois adultes autour d'une table, guitares en main, en pleine séance d'apprentissage." />
         <div class="pillars">
           <div class="pillar">
             <h3>Sans solfège, à tout âge</h3>
@@ -977,12 +949,7 @@
       <div class="formules-grid">
 
         <article class="formule-card">
-          <div class="photo-placeholder formule-photo">
-            <div class="ph-label">
-              <strong>Photo cours individuel</strong>
-              Vincent et un élève en plan large, ambiance détendue, deux guitares.
-            </div>
-          </div>
+          <img class="formule-photo" src="photos/formule-cours.jpg" alt="Vincent et un élève adolescent en cours individuel, ambiance détendue." />
           <div class="formule-body">
             <h3>Cours réguliers</h3>
             <p>Individuel, en duo (parent-enfant) ou semi-collectif. À Genval, ou dans un lieu partenaire en Brabant Wallon.</p>
@@ -996,12 +963,7 @@
         </article>
 
         <article class="formule-card">
-          <div class="photo-placeholder formule-photo">
-            <div class="ph-label">
-              <strong>Photo cabane yourte de Lasnes</strong>
-              Vue extérieure ou intérieure de la cabane yourte de Lasnes — un lieu fabuleux à 1 km de Genval. Ambiance bois, nature, convivialité.
-            </div>
-          </div>
+          <img class="formule-photo" src="photos/formule-yourte.jpg" alt="Cours collectif dans un intérieur chaleureux, Vincent guitare en main." />
           <div class="formule-body">
             <h3>Yourte de Lasnes — collectifs & "chantons comme des casseroles"</h3>
             <p>Dans une cabane yourte fabuleuse à Lasnes, des cours collectifs et des animations chant-guitare en mode "chantons comme des casseroles" : on chante, on s'amuse, on lâche prise ensemble.</p>
@@ -1015,12 +977,7 @@
         </article>
 
         <article class="formule-card">
-          <div class="photo-placeholder formule-photo">
-            <div class="ph-label">
-              <strong>Photo animation collective</strong>
-              Animation en maison de repos, école ou entreprise. Groupe autour de Vincent qui joue, sourires, instant partagé.
-            </div>
-          </div>
+          <img class="formule-photo" src="photos/formule-animation.jpg" alt="Vincent en animation musicale auprès d'une dame âgée, devant un sapin de Noël." />
           <div class="formule-body">
             <h3>Animations & packages</h3>
             <p>Animations guitare-chant dans les maisons de repos, cliniques, écoles, ou packages "team building" pour entreprises et associations.</p>
@@ -1034,12 +991,7 @@
         </article>
 
         <article class="formule-card">
-          <div class="photo-placeholder formule-photo">
-            <div class="ph-label">
-              <strong>Photo stage enfants</strong>
-              Groupe d'enfants en cercle, guitares et instruments, ambiance estivale ou colorée. Stage des congés scolaires.
-            </div>
-          </div>
+          <img class="formule-photo" src="photos/formule-stage-enfants.jpg" alt="Groupe d'enfants en représentation, guitares en main, ambiance scolaire festive." />
           <div class="formule-body">
             <h3>Stages enfants</h3>
             <p>Pendant les congés scolaires, des stages d'une semaine pour découvrir la guitare et le chant en groupe. Initiation, jeu, expression.</p>
@@ -1053,12 +1005,7 @@
         </article>
 
         <article class="formule-card">
-          <div class="photo-placeholder formule-photo">
-            <div class="ph-label">
-              <strong>Photo gîte / nature</strong>
-              Vue sur un grand gîte en pleine nature, Belgique ou France. Lumière chaleureuse, contexte propice à la déconnexion.
-            </div>
-          </div>
+          <img class="formule-photo" src="photos/formule-stage-vacances.jpg" alt="Groupe en pleine nature, guitares en cercle, ambiance gîte." />
           <div class="formule-body">
             <h3>Stages vacances artistiques</h3>
             <p>Une semaine d'immersion dans un grand gîte, en pleine nature en Belgique ou en France. Guitare, chant, expression artistique et déconnexion.</p>
@@ -1088,9 +1035,7 @@
             [Témoignage à recueillir auprès d'un élève adulte. Idéalement quelqu'un qui a découvert la guitare tardivement et qui peut témoigner du plaisir immédiat et de l'absence de pression.]
           </blockquote>
           <div class="temoignage-author">
-            <div class="photo-placeholder temoignage-photo">
-              <div class="ph-label">Portrait</div>
-            </div>
+            <img class="temoignage-photo" src="photos/temoignage-adulte.jpg" alt="" />
             <div class="temoignage-author-info">
               <strong>Prénom Nom</strong>
               <span>Élève adulte, depuis 2 ans</span>
@@ -1103,9 +1048,7 @@
             [Témoignage école / scolaire. Citation d'un instituteur ou d'une direction sur l'apport de la méthode auprès d'enfants de primaire.]
           </blockquote>
           <div class="temoignage-author">
-            <div class="photo-placeholder temoignage-photo">
-              <div class="ph-label">Portrait</div>
-            </div>
+            <img class="temoignage-photo" src="photos/temoignage-enfant.jpg" alt="" />
             <div class="temoignage-author-info">
               <strong>Prénom Nom</strong>
               <span>Instituteur·trice, École X</span>
@@ -1118,9 +1061,7 @@
             [Témoignage Ligue Braille ou public spécifique. Mettre en avant l'adaptabilité de la méthode et l'humanité de l'approche.]
           </blockquote>
           <div class="temoignage-author">
-            <div class="photo-placeholder temoignage-photo">
-              <div class="ph-label">Portrait</div>
-            </div>
+            <img class="temoignage-photo" src="photos/temoignage-braille.jpg" alt="" />
             <div class="temoignage-author-info">
               <strong>Prénom Nom</strong>
               <span>Ligue Braille</span>
@@ -1174,12 +1115,7 @@
   <!-- ════════════ À PROPOS ════════════ -->
   <section id="about" class="about">
     <div class="container about-grid">
-      <div class="photo-placeholder about-photo">
-        <div class="ph-label">
-          <strong>Portrait de Vincent</strong>
-          Photo posée ou en situation, guitare en mains. Format portrait, lumière chaude. Objectif : créer le lien humain.
-        </div>
-      </div>
+      <img class="about-photo" src="photos/about-vincent.jpg" alt="Portrait de Vincent Smekens, guitare acoustique en main." />
       <div class="about-text">
         <span class="eyebrow">Qui suis-je ?</span>
         <h2>Vincent Smekens</h2>
@@ -1311,6 +1247,7 @@
       </div>
 
       <div class="footer-bottom">
+        <img src="logo.png" alt="Arte Mondo" class="footer-logo" />
         <p><strong>Arte Mondo</strong> — Guitare sans solfège & chant, par Vincent Smekens</p>
         <p>Brabant Wallon, Belgique · <a href="tel:+32497488880">+32 497 48 88 80</a> · <a href="mailto:contact@arte-mondo.be">contact@arte-mondo.be</a></p>
         <p style="margin-top: 1rem; opacity: 0.55; font-size: 0.78rem;">© 2026 Arte Mondo · Vincent Smekens. Tous droits réservés.</p>
