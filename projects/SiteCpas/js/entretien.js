@@ -1345,8 +1345,8 @@
           </div>
           <div class="ent-stock-qty">${qty}</div>
           <div class="ent-stock-card-actions">
-            <button type="button" class="ent-stock-dec" data-id="${escapeHtml(it.id)}" data-by="1" ${qty <= 0 ? 'disabled' : ''}>−1</button>
-            <button type="button" class="ent-stock-dec ent-stock-dec-5" data-id="${escapeHtml(it.id)}" data-by="5" ${qty <= 0 ? 'disabled' : ''}>−5</button>
+            <button type="button" class="ent-stock-dec" data-id="${escapeHtml(it.id)}" data-by="1">−1</button>
+            <button type="button" class="ent-stock-dec ent-stock-dec-5" data-id="${escapeHtml(it.id)}" data-by="5">−5</button>
           </div>
         </div>`;
       }).join('');
@@ -1360,17 +1360,22 @@
       const id = btn.dataset.id;
       const by = parseInt(btn.dataset.by, 10) || 1;
       if (!id) return;
+      const item = DB.getStockItems().find(it => it.id === id);
+      const name = item?.name || 'Article';
+      const current = parseInt(item?.quantity, 10) || 0;
+      if (current <= 0) {
+        showToast(`${name} : stock vide, réapprovisionne via 🛠 Gérer stock`, true);
+        return;
+      }
       btn.disabled = true;
       try {
         const next = await DB.decrementStockItem(id, by);
-        const item = DB.getStockItems().find(it => it.id === id);
-        const name = item?.name || 'Article';
-        showToast(`✓ ${escapeHtml(name)} : ${next}`);
+        showToast(`✓ ${name} : ${next}`);
       } catch (e) {
         console.warn('[ENTRETIEN] decrement failed', e);
         showToast('Erreur : ' + (e?.message || e), true);
-        btn.disabled = false;
       }
+      btn.disabled = false;
     },
 
     _renderStockManage() {
@@ -1479,7 +1484,7 @@
         document.getElementById('entStockNewEmoji').value = '';
         document.getElementById('entStockNewName').value  = '';
         document.getElementById('entStockNewUnit').value  = '';
-        document.getElementById('entStockNewQty').value   = '0';
+        document.getElementById('entStockNewQty').value   = '';
         document.getElementById('entStockNewName')?.focus();
       } catch (e) {
         console.warn('[ENTRETIEN] add stock failed', e);
