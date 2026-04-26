@@ -82,6 +82,7 @@
       DB.initConfig();
       DB.listenCleaningLogs();
       DB.listenRequests();
+      DB.listenStockItems();
 
       DB.onConfigChange(() => {
         if (!this._guardDone) { this._guard(); this._guardDone = true; }
@@ -93,6 +94,10 @@
         this._logs = logs || {};
         if (this._tab === 'bilan') this._renderBilan();
         if (this._tab === 'annul') this._renderAnnul();
+      });
+      DB.onStockItemsChange(() => {
+        if (this._tab === 'stock')       this._renderStock();
+        if (this._tab === 'stockManage') this._renderStockManage();
       });
       let _schedulerRan = false;
       DB.onRequestChange(reqs => {
@@ -145,11 +150,13 @@
     // ── Tabs ─────────────────────────────────────────────────────
     _bindTabs() {
       const PANES = {
-        dashboard: 'entPaneDashboard',
-        requests:  'entPaneRequests',
-        register:  'entPaneRegister',
-        bilan:     'entPaneBilan',
-        annul:     'entPaneAnnul',
+        dashboard:   'entPaneDashboard',
+        requests:    'entPaneRequests',
+        register:    'entPaneRegister',
+        bilan:       'entPaneBilan',
+        annul:       'entPaneAnnul',
+        stock:       'entPaneStock',
+        stockManage: 'entPaneStockManage',
       };
       document.querySelectorAll('.ent-tab').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -160,10 +167,12 @@
             const el = document.getElementById(id);
             if (el) el.style.display = (this._tab === tab) ? '' : 'none';
           }
-          if (this._tab === 'dashboard') this._renderDashboard();
-          if (this._tab === 'requests')  this._renderRequestsPane();
-          if (this._tab === 'bilan')     this._renderBilan();
-          if (this._tab === 'annul')     this._renderAnnul();
+          if (this._tab === 'dashboard')   this._renderDashboard();
+          if (this._tab === 'requests')    this._renderRequestsPane();
+          if (this._tab === 'bilan')       this._renderBilan();
+          if (this._tab === 'annul')       this._renderAnnul();
+          if (this._tab === 'stock')       this._renderStock();
+          if (this._tab === 'stockManage') this._renderStockManage();
         });
       });
     },
@@ -1309,6 +1318,173 @@
       area.innerHTML = html;
       this._installPrintMode('rq', '@page { size: portrait; margin: 1cm; }');
       setTimeout(() => window.print(), 50);
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // Stock consommables — décrément 1 clic + gestion (set absolu/CRUD)
+    // ═══════════════════════════════════════════════════════════════
+    _renderStock() {
+      const grid = document.getElementById('entStockGrid');
+      if (!grid) return;
+      const items = DB.getStockItems();
+      if (!items.length) {
+        grid.innerHTML = '<div class="ent-empty-hint">Aucun article configuré. Va dans 🛠 Gérer stock pour en ajouter.</div>';
+        return;
+      }
+      const LOW_THRESHOLD = 5;
+      grid.innerHTML = items.map(it => {
+        const qty   = parseInt(it.quantity, 10) || 0;
+        const cls   = qty === 0 ? ' ent-stock-card-zero' : (qty <= LOW_THRESHOLD ? ' ent-stock-card-low' : '');
+        const emoji = it.emoji || '📦';
+        const unit  = it.unit ? `<span class="ent-stock-unit">${escapeHtml(it.unit)}</span>` : '';
+        return `<div class="ent-stock-card${cls}" data-id="${escapeHtml(it.id)}">
+          <div class="ent-stock-card-hd">
+            <span class="ent-stock-emoji">${escapeHtml(emoji)}</span>
+            <span class="ent-stock-name">${escapeHtml(it.name || 'Article')}</span>
+            ${unit}
+          </div>
+          <div class="ent-stock-qty">${qty}</div>
+          <div class="ent-stock-card-actions">
+            <button type="button" class="ent-stock-dec" data-id="${escapeHtml(it.id)}" data-by="1" ${qty <= 0 ? 'disabled' : ''}>−1</button>
+            <button type="button" class="ent-stock-dec ent-stock-dec-5" data-id="${escapeHtml(it.id)}" data-by="5" ${qty <= 0 ? 'disabled' : ''}>−5</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      grid.querySelectorAll('.ent-stock-dec').forEach(btn => {
+        btn.addEventListener('click', () => this._decrementStock(btn));
+      });
+    },
+
+    async _decrementStock(btn) {
+      const id = btn.dataset.id;
+      const by = parseInt(btn.dataset.by, 10) || 1;
+      if (!id) return;
+      btn.disabled = true;
+      try {
+        const next = await DB.decrementStockItem(id, by);
+        const item = DB.getStockItems().find(it => it.id === id);
+        const name = item?.name || 'Article';
+        showToast(`✓ ${escapeHtml(name)} : ${next}`);
+      } catch (e) {
+        console.warn('[ENTRETIEN] decrement failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+        btn.disabled = false;
+      }
+    },
+
+    _renderStockManage() {
+      const list = document.getElementById('entStockManageList');
+      if (!list) return;
+      const items = DB.getStockItems();
+      if (!items.length) {
+        list.innerHTML = '<div class="ent-empty-hint">Aucun article configuré. Utilise le formulaire ci-dessous pour en ajouter.</div>';
+      } else {
+        list.innerHTML = items.map(it => {
+          const emoji = it.emoji || '📦';
+          const unit  = it.unit  || '';
+          const qty   = parseInt(it.quantity, 10) || 0;
+          return `<div class="ent-stock-manage-row" data-id="${escapeHtml(it.id)}">
+            <input type="text"   class="ent-stock-input ent-stock-input-emoji" data-field="emoji"    value="${escapeHtml(emoji)}" maxlength="2">
+            <input type="text"   class="ent-stock-input ent-stock-input-name"  data-field="name"     value="${escapeHtml(it.name || '')}" placeholder="Nom">
+            <input type="text"   class="ent-stock-input ent-stock-input-unit"  data-field="unit"     value="${escapeHtml(unit)}" placeholder="Unité">
+            <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="quantity" value="${qty}" min="0">
+            <button type="button" class="ent-stock-save" data-id="${escapeHtml(it.id)}">✓</button>
+            <button type="button" class="ent-stock-del"  data-id="${escapeHtml(it.id)}" title="Supprimer">🗑</button>
+          </div>`;
+        }).join('');
+      }
+
+      list.querySelectorAll('.ent-stock-save').forEach(btn => {
+        btn.addEventListener('click', () => this._saveStockRow(btn));
+      });
+      list.querySelectorAll('.ent-stock-del').forEach(btn => {
+        btn.addEventListener('click', () => this._removeStockRow(btn));
+      });
+      list.querySelectorAll('.ent-stock-input').forEach(input => {
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            const id = input.closest('.ent-stock-manage-row')?.dataset.id;
+            list.querySelector(`.ent-stock-save[data-id="${id}"]`)?.click();
+          }
+        });
+      });
+
+      // Bouton "Ajouter" (bound une seule fois)
+      const addBtn = document.getElementById('entStockAddBtn');
+      if (addBtn && !addBtn._bound) {
+        addBtn._bound = true;
+        addBtn.addEventListener('click', () => this._addStockItem());
+        // Submit on Enter dans le formulaire d'ajout
+        ['entStockNewEmoji', 'entStockNewName', 'entStockNewUnit', 'entStockNewQty'].forEach(id => {
+          document.getElementById(id)?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') addBtn.click();
+          });
+        });
+      }
+    },
+
+    async _saveStockRow(btn) {
+      const row = btn.closest('.ent-stock-manage-row');
+      const id  = row?.dataset.id;
+      if (!id) return;
+      const get = (field) => row.querySelector(`[data-field="${field}"]`)?.value;
+      btn.disabled = true;
+      try {
+        await DB.updateStockItem(id, {
+          emoji: get('emoji'),
+          name:  get('name'),
+          unit:  get('unit'),
+        });
+        await DB.setStockQuantity(id, get('quantity'));
+        showToast('✓ Article mis à jour');
+      } catch (e) {
+        console.warn('[ENTRETIEN] update stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+      }
+      btn.disabled = false;
+    },
+
+    async _removeStockRow(btn) {
+      const id = btn.dataset.id;
+      if (!id) return;
+      const item = DB.getStockItems().find(it => it.id === id);
+      const name = item?.name || 'cet article';
+      if (!confirm(`Supprimer "${name}" du stock ?`)) return;
+      btn.disabled = true;
+      try {
+        await DB.removeStockItem(id);
+        showToast('✓ Supprimé');
+      } catch (e) {
+        console.warn('[ENTRETIEN] remove stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+        btn.disabled = false;
+      }
+    },
+
+    async _addStockItem() {
+      const emoji = document.getElementById('entStockNewEmoji')?.value || '📦';
+      const name  = document.getElementById('entStockNewName')?.value.trim();
+      const unit  = document.getElementById('entStockNewUnit')?.value.trim();
+      const qty   = parseInt(document.getElementById('entStockNewQty')?.value, 10) || 0;
+      if (!name) {
+        showToast('Donne un nom à l\'article', true);
+        document.getElementById('entStockNewName')?.focus();
+        return;
+      }
+      try {
+        await DB.addStockItem({ name, emoji, unit, quantity: qty });
+        showToast(`✓ ${name} ajouté`);
+        // Reset le formulaire
+        document.getElementById('entStockNewEmoji').value = '';
+        document.getElementById('entStockNewName').value  = '';
+        document.getElementById('entStockNewUnit').value  = '';
+        document.getElementById('entStockNewQty').value   = '0';
+        document.getElementById('entStockNewName')?.focus();
+      } catch (e) {
+        console.warn('[ENTRETIEN] add stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+      }
     },
   };
 
