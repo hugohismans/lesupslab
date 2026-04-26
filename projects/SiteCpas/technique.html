@@ -328,15 +328,9 @@
 
   </section>
 
-  <!-- Pane Requêtes plein écran -->
+  <!-- Pane Requêtes plein écran (Kanban drag-and-drop) -->
   <section class="tq-pane" id="tqPaneRequests" style="display:none">
     <div class="tq-req-toolbar">
-      <div class="tq-req-tabs" id="tqReqTabs" role="tablist">
-        <button class="req-tab active" data-status="open">Ouvertes</button>
-        <button class="req-tab" data-status="in_progress">En cours</button>
-        <button class="req-tab" data-status="postponed">Reportées</button>
-        <button class="req-tab" data-status="done">Terminées</button>
-      </div>
       <div class="tq-req-filters">
         <div class="tq-filter-group" id="tqReqTypeFilter">
           <button class="tq-filter-btn active" data-req-type="all">Tous types</button>
@@ -348,10 +342,10 @@
           <button class="tq-filter-btn active" data-urg="all">Toutes urgences</button>
           <button class="tq-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
         </div>
-        <button class="tq-export-btn" id="tqReqPrintBtn" title="Imprimer la liste filtrée, groupée par ouvrier assigné">🖨 Imprimer</button>
+        <button class="tq-export-btn" id="tqReqPrintBtn" title="Imprimer toutes les requêtes ouvertes/en cours, groupées par ouvrier">🖨 Imprimer</button>
       </div>
     </div>
-    <div class="tq-req-list" id="tqReqList">
+    <div class="req-kanban" id="tqKanban">
       <div class="tq-loading">Chargement des requêtes…</div>
     </div>
   </section>

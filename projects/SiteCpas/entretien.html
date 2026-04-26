@@ -892,24 +892,18 @@
     </div>
   </section>
 
-  <!-- ──── Onglet Requêtes ──── -->
+  <!-- ──── Onglet Requêtes (Kanban drag-and-drop) ──── -->
   <section class="ent-pane" id="entPaneRequests" style="display:none">
     <div class="ent-req-toolbar">
-      <div class="ent-req-tabs" id="entReqTabs" role="tablist">
-        <button class="req-tab active" data-status="open">Ouvertes</button>
-        <button class="req-tab" data-status="in_progress">En cours</button>
-        <button class="req-tab" data-status="postponed">Reportées</button>
-        <button class="req-tab" data-status="done">Terminées</button>
-      </div>
       <div class="ent-req-filters">
         <div class="ent-filter-group" id="entReqUrgencyFilter">
           <button class="ent-filter-btn active" data-urg="all">Toutes urgences</button>
           <button class="ent-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
         </div>
-        <button class="ent-export-btn" id="entReqPrintBtn" title="Imprimer la liste filtrée, groupée par agent assigné">🖨 Imprimer</button>
+        <button class="ent-export-btn" id="entReqPrintBtn" title="Imprimer toutes les requêtes ouvertes/en cours, groupées par agent">🖨 Imprimer</button>
       </div>
     </div>
-    <div class="ent-req-list" id="entReqList">
+    <div class="req-kanban" id="entKanban">
       <div class="ent-loading">Chargement des requêtes…</div>
     </div>
   </section>

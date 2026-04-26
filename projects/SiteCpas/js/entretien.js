@@ -1237,14 +1237,7 @@
     // Pane Requêtes plein écran (réutilise REQUESTS._renderCard)
     // ═══════════════════════════════════════════════════════════════
     _bindRequestsPaneFilters() {
-      document.querySelectorAll('#entReqTabs .req-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('#entReqTabs .req-tab').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          this._reqStatusFilter = btn.dataset.status;
-          if (this._tab === 'requests') this._renderRequestsPane();
-        });
-      });
+      // Plus de filtre statut : kanban affiche les 4 colonnes simultanément.
       document.querySelectorAll('#entReqUrgencyFilter .ent-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#entReqUrgencyFilter .ent-filter-btn').forEach(b => b.classList.remove('active'));
@@ -1257,8 +1250,8 @@
     },
 
     _renderRequestsPane() {
-      const listEl = document.getElementById('entReqList');
-      if (!listEl) return;
+      const wrap = document.getElementById('entKanban');
+      if (!wrap) return;
       const reqs = this._allRequests || {};
       const isAdmin = DB.hasPermission?.('editSettings');
       const agents  = DB.getAgentsWithKeys?.() || [];
@@ -1276,61 +1269,126 @@
       };
       const _now = Date.now();
       const entries = Object.entries(reqs)
-        .filter(([, r]) => r.createdAt <= _now)              // exclut templates programmés
+        .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.type === 'entretien')           // 🔒 scope entretien
-        .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
         .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
 
-      if (!entries.length) {
-        listEl.innerHTML = '<div class="ent-loading">Aucune requête ne correspond aux filtres.</div>';
-        return;
-      }
+      const STATUSES = [
+        { key: 'open',        label: '🟡 Ouvertes' },
+        { key: 'in_progress', label: '🔵 En cours' },
+        { key: 'postponed',   label: '⏸ Reportées' },
+        { key: 'done',        label: '✅ Terminées' },
+      ];
+      const byStatus = { open: [], in_progress: [], postponed: [], done: [] };
+      entries.forEach(([id, r]) => {
+        if (byStatus[r.status]) byStatus[r.status].push([id, r]);
+      });
 
-      listEl.innerHTML = entries.map(([id, r]) =>
-        (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
-          ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
-          : ''
-      ).join('');
+      const renderCol = (status, label) => {
+        const list = byStatus[status] || [];
+        const cardsHtml = list.length
+          ? list.map(([id, r]) =>
+              (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+                ? `<div draggable="true" data-req-drag-id="${id}" data-req-drag-status="${r.status}">${REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)}</div>`
+                : ''
+            ).join('')
+          : '<div class="req-kanban-empty">— vide —</div>';
+        return `<div class="req-kanban-col" data-status="${status}">
+          <div class="req-kanban-col-hd">
+            <span>${label}</span>
+            <span class="req-kanban-col-count">${list.length}</span>
+          </div>
+          <div class="req-kanban-cards">${cardsHtml}</div>
+        </div>`;
+      };
 
-      if (typeof REQUESTS !== 'undefined') {
-        if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
-        if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+      wrap.innerHTML = STATUSES.map(s => renderCol(s.key, s.label)).join('');
+      this._bindKanbanInteractions(wrap, agents);
+    },
 
-        listEl.querySelectorAll('[data-req-action]').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { reqAction: action, reqId: id } = btn.dataset;
-            await REQUESTS._handleAction?.(action, id, null, agents);
-          });
+    // Drag-and-drop + bindings boutons (réutilise REQUESTS._handleAction)
+    _bindKanbanInteractions(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+
+      wrap.querySelectorAll('[data-req-action]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const { reqAction: action, reqId: id } = btn.dataset;
+          await REQUESTS._handleAction?.(action, id, null, agents);
         });
-        listEl.querySelectorAll('.req-assign-worker-select').forEach(sel => {
-          sel.addEventListener('change', async (e) => {
-            e.stopPropagation();
-            const id = sel.dataset.reqId;
-            try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
-          });
+      });
+      wrap.querySelectorAll('.req-assign-worker-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          e.stopPropagation();
+          const id = sel.dataset.reqId;
+          try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-comment-toggle').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-comment-toggle').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-tag-btn').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-view-series').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+      });
+      wrap.querySelectorAll('.req-stop-series').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
+          try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+      });
+
+      // Drag-and-drop entre colonnes
+      const STATUS_TO_ACTION = {
+        open: 'open', in_progress: 'claim',
+        postponed: 'postponed', done: 'done',
+      };
+      wrap.querySelectorAll('[data-req-drag-id]').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            id:   card.dataset.reqDragId,
+            from: card.dataset.reqDragStatus,
+          }));
+          e.dataTransfer.effectAllowed = 'move';
+          card.classList.add('dragging');
         });
-        listEl.querySelectorAll('.req-view-series').forEach(btn => {
-          btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      });
+      wrap.querySelectorAll('.req-kanban-col').forEach(col => {
+        col.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          col.classList.add('drag-over');
+          e.dataTransfer.dropEffect = 'move';
         });
-        listEl.querySelectorAll('.req-stop-series').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
-            try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
-          });
+        col.addEventListener('dragleave', (e) => {
+          if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
         });
-        listEl.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+        col.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          col.classList.remove('drag-over');
+          let payload;
+          try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+          if (!payload || !payload.id) return;
+          const targetStatus = col.dataset.status;
+          if (payload.from === targetStatus) return;
+          const action = STATUS_TO_ACTION[targetStatus];
+          if (!action) return;
+          try {
+            await REQUESTS._handleAction?.(action, payload.id, null, agents);
+          } catch (err) {
+            console.warn('[ENTRETIEN] kanban drop failed', err);
+          }
         });
-      }
+      });
     },
 
     _printRequestsList() {
@@ -1349,7 +1407,7 @@
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.type === 'entretien')
-        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => r.status === 'open' || r.status === 'in_progress')
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
 
       if (!entries.length) { alert('Aucune requête à imprimer avec les filtres actuels.'); return; }
@@ -1373,11 +1431,7 @@
         return va.label.localeCompare(vb.label, 'fr');
       });
 
-      const statusLabels = {
-        open: 'Requêtes ouvertes', in_progress: 'Requêtes en cours',
-        postponed: 'Requêtes reportées', done: 'Requêtes terminées',
-      };
-      const statusTitle = statusLabels[this._reqStatusFilter] || 'Requêtes';
+      const statusTitle = 'Requêtes actives (ouvertes + en cours)';
       const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
       let html = `<div class="ent-print-rq-title">${esc(statusTitle)} entretien</div>`;

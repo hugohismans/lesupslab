@@ -666,11 +666,13 @@
       };
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-      // Appliquer les mêmes filtres que le pane actuel.
+      // Appliquer les mêmes filtres que le pane actuel + statut "actif"
+      // (open + in_progress) — c'est ce qui intéresse une équipe terrain
+      // pour la liste du matin.
       const _now = Date.now();
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
-        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => r.status === 'open' || r.status === 'in_progress')
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
 
@@ -711,14 +713,8 @@
         return va.label.localeCompare(vb.label, 'fr');
       });
 
-      // Titre selon filtre statut
-      const statusLabels = {
-        open: 'Requêtes ouvertes',
-        in_progress: 'Requêtes en cours',
-        postponed: 'Requêtes reportées',
-        done: 'Requêtes terminées',
-      };
-      const statusTitle = statusLabels[this._reqStatusFilter] || 'Requêtes';
+      // Titre figé : print = liste de travail (ouvertes + en cours)
+      const statusTitle = 'Requêtes actives (ouvertes + en cours)';
       const typeLabels = { technique: 'techniques', entretien: 'entretien', autre: 'autres', all: '(tous types)' };
       const typeTitle = typeLabels[this._reqTypeFilter] || '';
       const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -772,14 +768,7 @@
     },
 
     _bindRequestsPaneFilters() {
-      document.querySelectorAll('#tqReqTabs .req-tab').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('#tqReqTabs .req-tab').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          this._reqStatusFilter = btn.dataset.status;
-          if (this._tab === 'requests') this._renderRequestsPane();
-        });
-      });
+      // Plus de filtre statut : le kanban affiche les 4 colonnes simultanément.
       document.querySelectorAll('#tqReqTypeFilter .tq-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#tqReqTypeFilter .tq-filter-btn').forEach(b => b.classList.remove('active'));
@@ -800,8 +789,8 @@
     },
 
     _renderRequestsPane() {
-      const listEl = document.getElementById('tqReqList');
-      if (!listEl) return;
+      const wrap = document.getElementById('tqKanban');
+      if (!wrap) return;
       const reqs = this._allRequests || {};
       const isAdmin = DB.hasPermission?.('editSettings');
       const agents  = DB.getAgentsWithKeys?.() || [];
@@ -812,7 +801,6 @@
         postponed:   '⏸ Reportée',
         done:        '✅ Terminée',
       };
-
       const urg = (r) => {
         const l = parseInt(r?.urgencyLevel);
         if (l >= 1 && l <= 5) return l;
@@ -820,76 +808,133 @@
       };
 
       const _now = Date.now();
+      // Filtres globaux : type + urgence + dates futures (templates programmés)
       const entries = Object.entries(reqs)
-        .filter(([, r]) => r.createdAt <= _now)         // masque les templates programmés (startDate future)
-        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
-        // Tri : urgence desc en priorité, puis createdAt desc
         .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
 
-      if (!entries.length) {
-        listEl.innerHTML = '<div class="tq-loading">Aucune requête ne correspond aux filtres.</div>';
-        return;
-      }
+      const STATUSES = [
+        { key: 'open',        label: '🟡 Ouvertes' },
+        { key: 'in_progress', label: '🔵 En cours' },
+        { key: 'postponed',   label: '⏸ Reportées' },
+        { key: 'done',        label: '✅ Terminées' },
+      ];
+      const byStatus = { open: [], in_progress: [], postponed: [], done: [] };
+      entries.forEach(([id, r]) => {
+        if (byStatus[r.status]) byStatus[r.status].push([id, r]);
+      });
 
-      // On délègue le rendu carte à REQUESTS._renderCard si disponible
-      // (même module qui sert sur app.html, donc rendu identique).
-      listEl.innerHTML = entries.map(([id, r]) =>
-        (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
-          ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
-          : ''
-      ).join('');
+      const renderCol = (status, label) => {
+        const list = byStatus[status] || [];
+        const cardsHtml = list.length
+          ? list.map(([id, r]) =>
+              (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+                ? `<div draggable="true" data-req-drag-id="${id}" data-req-drag-status="${r.status}">${REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)}</div>`
+                : ''
+            ).join('')
+          : '<div class="req-kanban-empty">— vide —</div>';
+        return `<div class="req-kanban-col" data-status="${status}">
+          <div class="req-kanban-col-hd">
+            <span>${label}</span>
+            <span class="req-kanban-col-count">${list.length}</span>
+          </div>
+          <div class="req-kanban-cards">${cardsHtml}</div>
+        </div>`;
+      };
 
-      // Brancher les handlers d'action (claim/done/postponed/open/delete/assign worker)
-      // en déléguant à REQUESTS._handleAction (nécessite un état minimal).
-      if (typeof REQUESTS !== 'undefined') {
-        // Assurer que REQUESTS connaît l'agent courant (il s'init sur requests
-        // listener, mais sans init complet on l'alimente ici).
-        if (!REQUESTS._agentKey) REQUESTS._agentKey = sessionStorage.getItem('cpas_current_agent_key');
-        if (!REQUESTS._agentName) {
-          REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
-        }
-        listEl.querySelectorAll('[data-req-action]').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { reqAction: action, reqId: id } = btn.dataset;
-            await REQUESTS._handleAction?.(action, id, null, agents);
-          });
+      wrap.innerHTML = STATUSES.map(s => renderCol(s.key, s.label)).join('');
+      this._bindKanbanInteractions(wrap, agents);
+    },
+
+    // Branche les handlers boutons (claim/done/etc.) et drag-and-drop sur les
+    // colonnes du kanban. Réutilise REQUESTS._handleAction pour les transitions.
+    _bindKanbanInteractions(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      // Assurer que REQUESTS connaît l'agent courant
+      if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+
+      // Boutons d'action existants (mêmes handlers qu'avant)
+      wrap.querySelectorAll('[data-req-action]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const { reqAction: action, reqId: id } = btn.dataset;
+          await REQUESTS._handleAction?.(action, id, null, agents);
         });
-        listEl.querySelectorAll('.req-assign-worker-select').forEach(sel => {
-          sel.addEventListener('change', async (e) => {
-            e.stopPropagation();
-            const id = sel.dataset.reqId;
-            try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
-          });
+      });
+      wrap.querySelectorAll('.req-assign-worker-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          e.stopPropagation();
+          const id = sel.dataset.reqId;
+          try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-comment-toggle').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-comment-toggle').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-tag-btn').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-view-series').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+      });
+      wrap.querySelectorAll('.req-stop-series').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
+          try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+      });
+
+      // ── Drag-and-drop ─────────────────────────────────────────
+      const STATUS_TO_ACTION = {
+        open: 'open', in_progress: 'claim',
+        postponed: 'postponed', done: 'done',
+      };
+      wrap.querySelectorAll('[data-req-drag-id]').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: card.dataset.reqDragId,
+            from: card.dataset.reqDragStatus,
+          }));
+          e.dataTransfer.effectAllowed = 'move';
+          card.classList.add('dragging');
         });
-        listEl.querySelectorAll('.req-view-series').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            REQUESTS._openSeriesView?.(btn.dataset.reqId);
-          });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      });
+      wrap.querySelectorAll('.req-kanban-col').forEach(col => {
+        col.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          col.classList.add('drag-over');
+          e.dataTransfer.dropEffect = 'move';
         });
-        listEl.querySelectorAll('.req-stop-series').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée. Les occurrences existantes sont conservées.')) return;
-            try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
-          });
+        col.addEventListener('dragleave', (e) => {
+          // dragleave fire aussi quand on entre dans un enfant — on ignore si le
+          // related target reste dans la colonne.
+          if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
         });
-        listEl.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            REQUESTS._openUrgencyPicker?.(btn.dataset.reqId);
-          });
+        col.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          col.classList.remove('drag-over');
+          let payload;
+          try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+          if (!payload || !payload.id) return;
+          const targetStatus = col.dataset.status;
+          if (payload.from === targetStatus) return; // pas de changement
+          const action = STATUS_TO_ACTION[targetStatus];
+          if (!action) return;
+          try {
+            await REQUESTS._handleAction?.(action, payload.id, null, agents);
+          } catch (err) {
+            console.warn('[TECH] kanban drop failed', err);
+          }
         });
-      }
+      });
     },
   };
 
