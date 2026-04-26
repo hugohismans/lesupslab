@@ -668,6 +668,33 @@
       cursor: pointer; font-family: inherit; transition: background .12s;
     }
     .ent-stock-add-btn:hover { background: #166534; }
+
+    /* ── Emoji picker ──────────────────────────────────────────── */
+    .ent-emoji-trigger {
+      width: 100%; padding: .35rem .25rem;
+      background: #fff; border: 1.5px solid #d1d5db; border-radius: 6px;
+      font-size: 1.25rem; line-height: 1; text-align: center;
+      cursor: pointer; transition: border-color .12s, background .12s;
+      font-family: inherit;
+    }
+    .ent-emoji-trigger:hover { border-color: #15803d; background: #f0fdf4; }
+    .ent-emoji-trigger.active { border-color: #15803d; background: #dcfce7; }
+    .ent-emoji-popover {
+      position: fixed; z-index: 250;
+      background: #fff; border: 1.5px solid #15803d; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: .5rem;
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: .25rem;
+      max-width: 280px;
+    }
+    .ent-emoji-popover.hidden { display: none; }
+    .ent-emoji-opt {
+      width: 38px; height: 38px; border: none;
+      background: #f9fafb; border-radius: 6px;
+      font-size: 1.3rem; line-height: 1; cursor: pointer;
+      transition: background .1s, transform .1s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ent-emoji-opt:hover { background: #dcfce7; transform: scale(1.15); }
   </style>
 </head>
 
@@ -899,7 +926,7 @@
       <div class="ent-stock-add">
         <div class="ent-stock-add-title">➕ Ajouter un article</div>
         <div class="ent-stock-add-row">
-          <input type="text" id="entStockNewEmoji"  class="ent-stock-input ent-stock-input-emoji" placeholder="📦" maxlength="2">
+          <button type="button" id="entStockNewEmoji" class="ent-emoji-trigger" data-value="📦" title="Choisir un emoji">📦</button>
           <input type="text" id="entStockNewName"   class="ent-stock-input ent-stock-input-name"  placeholder="Nom (ex: Papier toilette)">
           <input type="text" id="entStockNewUnit"   class="ent-stock-input ent-stock-input-unit"  placeholder="Unité (rouleau, sac…)">
           <input type="number" id="entStockNewQty"  class="ent-stock-input ent-stock-input-qty"   placeholder="Quantité (ex: 24)" min="0">
@@ -912,6 +939,9 @@
 </main>
 
 <div class="ent-toast" id="entToast"></div>
+
+<!-- Emoji picker partagé (positionné au clic sur un .ent-emoji-trigger) -->
+<div id="entEmojiPopover" class="ent-emoji-popover hidden" role="dialog"></div>
 
 <!-- Container dédié à l'impression des requêtes (caché à l'écran) -->
 <div id="entRqPrintArea" class="ent-print-area"></div>

@@ -63,6 +63,96 @@
     setTimeout(() => toastEl.classList.remove('show'), 2400);
   }
 
+  // ── Emoji picker partagé (pour le stock entretien) ─────────────
+  // Liste curatée pour consommables/entretien d'une maison de repos.
+  const STOCK_EMOJIS = [
+    '🧻','🗑','🧴','🧤','🧽','🧼',
+    '🪣','🧹','🪥','🪠','🚽','🚰',
+    '🧷','🩹','😷','🥽','🩺','💊',
+    '🌡','✨','💧','🧺','🛏','🍽',
+    '📦','🛒','☕','🥤','🍵','🧊',
+    '💡','🔋','🧯','🪛','⚡','📋',
+  ];
+  const EMOJI_PICKER = {
+    _popover:  null,
+    _trigger:  null,
+    _onPick:   null,
+    _bound:    false,
+    init() {
+      if (this._bound) return;
+      this._popover = document.getElementById('entEmojiPopover');
+      if (!this._popover) return;
+      // Construire la grille une seule fois
+      this._popover.innerHTML = STOCK_EMOJIS.map(e =>
+        `<button type="button" class="ent-emoji-opt" data-emoji="${e}" title="${e}">${e}</button>`
+      ).join('');
+      this._popover.querySelectorAll('.ent-emoji-opt').forEach(btn => {
+        btn.addEventListener('mousedown', ev => {
+          ev.preventDefault();
+          this._pick(btn.dataset.emoji);
+        });
+      });
+      // Fermer si on clique en dehors
+      document.addEventListener('mousedown', (ev) => {
+        if (this._popover.classList.contains('hidden')) return;
+        if (this._popover.contains(ev.target)) return;
+        if (this._trigger && this._trigger.contains(ev.target)) return;
+        this.close();
+      });
+      // Échap pour fermer
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') this.close();
+      });
+      this._bound = true;
+    },
+    open(triggerEl, onPick) {
+      this.init();
+      if (!this._popover) return;
+      this._trigger = triggerEl;
+      this._onPick  = onPick;
+      // Position : sous le trigger, alignée à gauche, recadrée si bord d'écran
+      const r = triggerEl.getBoundingClientRect();
+      this._popover.classList.remove('hidden');
+      const pw = this._popover.offsetWidth;
+      const ph = this._popover.offsetHeight;
+      let left = r.left;
+      let top  = r.bottom + 4;
+      if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+      if (left < 8) left = 8;
+      if (top  + ph > window.innerHeight - 8) top  = r.top - ph - 4; // au-dessus si manque de place
+      this._popover.style.left = `${left}px`;
+      this._popover.style.top  = `${top}px`;
+      triggerEl.classList.add('active');
+    },
+    close() {
+      if (!this._popover) return;
+      this._popover.classList.add('hidden');
+      if (this._trigger) this._trigger.classList.remove('active');
+      this._trigger = null;
+      this._onPick  = null;
+    },
+    _pick(emoji) {
+      if (this._onPick) this._onPick(emoji);
+      this.close();
+    },
+  };
+  // Délégation globale : tout bouton .ent-emoji-trigger ouvre/ferme le
+  // picker et met à jour son propre data-value + textContent à la sélection.
+  document.addEventListener('click', (ev) => {
+    const trig = ev.target.closest('.ent-emoji-trigger');
+    if (!trig) return;
+    ev.preventDefault();
+    // Toggle : si déjà ouvert sur ce même trigger → fermer
+    if (EMOJI_PICKER._trigger === trig && EMOJI_PICKER._popover && !EMOJI_PICKER._popover.classList.contains('hidden')) {
+      EMOJI_PICKER.close();
+      return;
+    }
+    EMOJI_PICKER.open(trig, (emoji) => {
+      trig.dataset.value  = emoji;
+      trig.textContent    = emoji;
+    });
+  });
+
   const ENTRETIEN = {
     _tab: 'dashboard',
     _guardDone: false,
@@ -1390,7 +1480,7 @@
           const unit  = it.unit  || '';
           const qty   = parseInt(it.quantity, 10) || 0;
           return `<div class="ent-stock-manage-row" data-id="${escapeHtml(it.id)}">
-            <input type="text"   class="ent-stock-input ent-stock-input-emoji" data-field="emoji"    value="${escapeHtml(emoji)}" maxlength="2">
+            <button type="button" class="ent-emoji-trigger" data-field="emoji" data-value="${escapeHtml(emoji)}" title="Choisir un emoji">${escapeHtml(emoji)}</button>
             <input type="text"   class="ent-stock-input ent-stock-input-name"  data-field="name"     value="${escapeHtml(it.name || '')}" placeholder="Nom">
             <input type="text"   class="ent-stock-input ent-stock-input-unit"  data-field="unit"     value="${escapeHtml(unit)}" placeholder="Unité">
             <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="quantity" value="${qty}" min="0">
@@ -1433,15 +1523,20 @@
       const row = btn.closest('.ent-stock-manage-row');
       const id  = row?.dataset.id;
       if (!id) return;
-      const get = (field) => row.querySelector(`[data-field="${field}"]`)?.value;
+      // Pour le picker emoji on lit dataset.value (button), sinon .value (input).
+      const getField = (field) => {
+        const el = row.querySelector(`[data-field="${field}"]`);
+        if (!el) return '';
+        return field === 'emoji' ? (el.dataset.value || el.textContent) : el.value;
+      };
       btn.disabled = true;
       try {
         await DB.updateStockItem(id, {
-          emoji: get('emoji'),
-          name:  get('name'),
-          unit:  get('unit'),
+          emoji: getField('emoji'),
+          name:  getField('name'),
+          unit:  getField('unit'),
         });
-        await DB.setStockQuantity(id, get('quantity'));
+        await DB.setStockQuantity(id, getField('quantity'));
         showToast('✓ Article mis à jour');
       } catch (e) {
         console.warn('[ENTRETIEN] update stock failed', e);
@@ -1468,7 +1563,8 @@
     },
 
     async _addStockItem() {
-      const emoji = document.getElementById('entStockNewEmoji')?.value || '📦';
+      const emojiBtn = document.getElementById('entStockNewEmoji');
+      const emoji   = emojiBtn?.dataset.value || emojiBtn?.textContent || '📦';
       const name  = document.getElementById('entStockNewName')?.value.trim();
       const unit  = document.getElementById('entStockNewUnit')?.value.trim();
       const qty   = parseInt(document.getElementById('entStockNewQty')?.value, 10) || 0;
@@ -1480,8 +1576,8 @@
       try {
         await DB.addStockItem({ name, emoji, unit, quantity: qty });
         showToast(`✓ ${name} ajouté`);
-        // Reset le formulaire
-        document.getElementById('entStockNewEmoji').value = '';
+        // Reset le formulaire (emoji revient à 📦 par défaut)
+        if (emojiBtn) { emojiBtn.dataset.value = '📦'; emojiBtn.textContent = '📦'; }
         document.getElementById('entStockNewName').value  = '';
         document.getElementById('entStockNewUnit').value  = '';
         document.getElementById('entStockNewQty').value   = '';
