@@ -307,6 +307,12 @@ const DB = {
         localDesks:  d.localDesks  || {},   // { [localId]: { [deskId]: true } }
         deskLabels:  d.deskLabels  || {},   // { [deskId]: "Desk A" }
         techThemes:  d.techThemes  || {},   // { [themeId]: { label, order } }
+        // Management entretien
+        cleaners:        d.cleaners        || {},   // { [cleanerId]: { badge, name, order } }
+        cleaningTypes:   d.cleaningTypes   || {},   // { [typeId]: { label, order } }
+        cleaningThemes:  d.cleaningThemes  || {},   // thèmes de requête "Entretien / Nettoyage"
+        // Ouvriers techniques sans compte (pour assignation des requêtes technique/autre)
+        technicians:     d.technicians     || {},   // { [technicianId]: { badge, name, order } }
       };
 
       // Charger les lieux triés par order
@@ -1839,13 +1845,28 @@ const DB = {
   onRequestChange(fn) { this._requestCbs.push(fn); },
   getRequests()       { return this._requests; },
 
-  async createRequest({ type, description, local, urgent, fromAgentKey, fromAgentName, themeId, recurrence }) {
-    const id = `req_${Date.now()}`;
+  async createRequest({ type, description, local, urgent, urgencyLevel, fromAgentKey, fromAgentName, themeId, recurrence }) {
+    const now = Date.now();
+    const id  = `req_${now}`;
+    // urgencyLevel 1-5. Si non fourni mais urgent=true → 5 (rétrocompat).
+    // Si urgent=false et level non fourni → 3 par défaut (moyen).
+    let level = parseInt(urgencyLevel);
+    if (!level || level < 1 || level > 5) {
+      level = urgent ? 5 : 3;
+    }
+    // Récurrente avec startDate dans le futur ? La 1ère occurrence
+    // (= template) sera datée à startDate, donc invisible des listes
+    // courantes jusqu'à cette date (filtre createdAt > now).
+    const startDate = (recurrence && recurrence.startDate && recurrence.startDate > now)
+      ? recurrence.startDate
+      : null;
+    const createdAt = startDate || now;
     const payload = {
       type:         type || 'technique',
       description,
       local:        local || null,
-      urgent:       urgent ? true : null,
+      urgent:       level >= 5 ? true : null,       // rétrocompat (autres pages qui lisent .urgent)
+      urgencyLevel: level,
       fromAgentKey: fromAgentKey || null,
       fromAgentName: fromAgentName || null,
       themeId:      themeId || null,
@@ -1853,7 +1874,11 @@ const DB = {
       assignedTo:   null,
       assignedToName: null,
       assignedAt:   null,
-      createdAt:    Date.now(),
+      workerId:     null,
+      workerBadge:  null,
+      workerName:   null,
+      reopenAt:     null,
+      createdAt,
     };
     // Récurrence : la première occurrence est aussi le "template".
     // templateId = id de la première occurrence. Toutes les occurrences suivantes
@@ -1862,21 +1887,27 @@ const DB = {
       payload.recurrence = {
         unit:       recurrence.unit,       // 'days' | 'weeks' | 'months'
         interval:   recurrence.interval,   // entier > 0
+        startDate:  startDate || null,     // null si démarre aujourd'hui
         until:      recurrence.until || null,
         templateId: id,                    // cette première occurrence est le template
-        nextAt:     this._computeNextAt(Date.now(), recurrence.unit, recurrence.interval),
+        nextAt:     this._computeNextAt(createdAt, recurrence.unit, recurrence.interval),
       };
     }
     await this._ref(`requests/${id}`).set(payload);
     return id;
   },
 
-  // Calcule le prochain timestamp selon unit + interval.
+  // Calcule le prochain timestamp selon unit + interval, ramené à 00h00
+  // local du jour cible. Sémantique "calendaire" : "tous les jours" =
+  // "une fois par jour calendaire", indépendamment de l'heure de création.
+  // Ex: créée à 23h00 → prochaine occurrence dès le début du jour suivant,
+  // pas 24h plus tard.
   _computeNextAt(fromMs, unit, interval) {
     const d = new Date(fromMs);
     if (unit === 'days')   d.setDate(d.getDate() + interval);
     if (unit === 'weeks')  d.setDate(d.getDate() + interval * 7);
     if (unit === 'months') d.setMonth(d.getMonth() + interval);
+    d.setHours(0, 0, 0, 0);
     return d.getTime();
   },
 
@@ -1901,8 +1932,66 @@ const DB = {
     });
   },
 
+  // Assignation à un ouvrier sans compte (technicien ou cleaner selon type).
+  // Si workerId est null/'', on désassigne.
+  async assignRequestWorker(requestId, workerId) {
+    const req = this._requests?.[requestId];
+    const type = req?.type || 'technique';
+    if (!workerId) {
+      await this._ref(`requests/${requestId}`).update({
+        workerId:    null,
+        workerBadge: null,
+        workerName:  null,
+        workerAssignedAt: null,
+      });
+      return;
+    }
+    const worker = this.getWorkerById(type, workerId);
+    await this._ref(`requests/${requestId}`).update({
+      status:     'in_progress',
+      workerId,
+      workerBadge: worker?.badge || null,
+      workerName:  worker?.name  || null,
+      workerAssignedAt: Date.now(),
+    });
+  },
+
   async setRequestStatus(requestId, status) {
     await this._ref(`requests/${requestId}/status`).set(status);
+  },
+
+  // Niveau d'urgence (1-5 ; 5 = max). null = non défini.
+  async setRequestUrgencyLevel(requestId, level) {
+    const l = Math.max(1, Math.min(5, parseInt(level) || 0)) || null;
+    await this._ref(`requests/${requestId}/urgencyLevel`).set(l);
+  },
+
+  // Date de réouverture automatique pour une requête reportée.
+  // reopenAt = timestamp (Date.now()-like) ou null pour effacer.
+  async postponeRequest(requestId, reopenAt = null) {
+    const updates = { status: 'postponed' };
+    updates.reopenAt = reopenAt || null;
+    await this._ref(`requests/${requestId}`).update(updates);
+  },
+
+  // Parcourt les requêtes reportées et réouvre celles dont reopenAt est
+  // passé. Appelé par le scheduler côté client (throttle via localStorage).
+  // Retourne le nombre de requêtes réouvertes.
+  async reopenOverdueRequests() {
+    const now = Date.now();
+    const reqs = this._requests || {};
+    const toReopen = [];
+    for (const [id, r] of Object.entries(reqs)) {
+      if (!r || r.status !== 'postponed') continue;
+      const t = Number(r.reopenAt) || 0;
+      if (t > 0 && t <= now) toReopen.push(id);
+    }
+    for (const id of toReopen) {
+      try {
+        await this._ref(`requests/${id}`).update({ status: 'open', reopenAt: null });
+      } catch (e) { console.warn('[reopenOverdue] failed', id, e?.message || e); }
+    }
+    return toReopen.length;
   },
 
   async addRequestComment(requestId, text) {
@@ -1948,6 +2037,47 @@ const DB = {
     // Les requêtes gardent leur themeId mais celui-ci pointe vers rien → affiché "Thème supprimé".
     // On ne cascade pas pour préserver l'historique.
   },
+
+  // ── Thèmes pour les requêtes d'entretien/nettoyage ────────────────
+  // Liste séparée des techThemes — propre à l'entretien ménager (poubelles,
+  // vitres, bureaux, sanitaires…). Utilisée dans le formulaire TechIssue
+  // quand l'utilisateur choisit le type "Entretien / Nettoyage".
+  getCleaningThemes() {
+    const themes = this._config.cleaningThemes || {};
+    return Object.entries(themes)
+      .map(([id, t]) => ({ id, label: t.label || '', order: t.order ?? 999 }))
+      .sort((a, b) => a.order - b.order);
+  },
+  getCleaningThemeLabel(themeId) {
+    if (!themeId) return 'Non catégorisé';
+    return this._config.cleaningThemes?.[themeId]?.label || 'Thème supprimé';
+  },
+  async addCleaningTheme(label) {
+    const existing = this.getCleaningThemes();
+    const maxOrder = existing.reduce((m, t) => Math.max(m, t.order ?? 0), -1);
+    const ref = await this._ref('appConfig/cleaningThemes').push({
+      label: label.trim() || 'Thème',
+      order: maxOrder + 1,
+    });
+    return ref.key;
+  },
+  async setCleaningThemeLabel(themeId, label) {
+    await this._ref(`appConfig/cleaningThemes/${themeId}/label`).set(label.trim() || 'Thème');
+  },
+  async removeCleaningTheme(themeId) {
+    await this._ref(`appConfig/cleaningThemes/${themeId}`).remove();
+  },
+
+  // Wrapper générique : retourne la bonne liste selon le type de requête.
+  // type = 'technique' | 'entretien' | 'autre'.
+  getThemesForRequestType(type) {
+    if (type === 'entretien') return this.getCleaningThemes();
+    return this.getTechThemes();
+  },
+  getThemeLabelForRequestType(type, themeId) {
+    if (type === 'entretien') return this.getCleaningThemeLabel(themeId);
+    return this.getTechThemeLabel(themeId);
+  },
   async setRequestTheme(requestId, themeId) {
     await this._ref(`requests/${requestId}/themeId`).set(themeId || null);
   },
@@ -1983,7 +2113,8 @@ const DB = {
     if (Object.keys(updates).length) await this._update(updates);
   },
 
-  // Scheduler : génère les occurrences dues pour toutes les séries.
+  // Scheduler : génère les occurrences dues pour toutes les séries
+  // ET rouvre les requêtes reportées dont la date de réouverture est passée.
   // Appelé au démarrage de l'app (protégé par throttle localStorage 5min).
   async runRecurringRequestsScheduler() {
     const THROTTLE_KEY = 'cpas_rec_sched_last';
@@ -1993,6 +2124,10 @@ const DB = {
       if (now - last < 5 * 60 * 1000) return; // déjà tourné il y a < 5 min
       localStorage.setItem(THROTTLE_KEY, String(now));
     } catch (_) {}
+
+    // Auto-réouverture des requêtes reportées à échéance passée.
+    try { await this.reopenOverdueRequests(); }
+    catch (e) { console.warn('[reopenOverdue scheduler]', e?.message || e); }
 
     // Regroupe par templateId : on ne traite que le template (1ère occurrence) de chaque série.
     const templates = Object.entries(this._requests || {})
@@ -2004,12 +2139,21 @@ const DB = {
     for (const [tplId, tpl] of templates) {
       const rec = tpl.recurrence;
       if (!rec) continue;
+      // Normalise un éventuel `nextAt` legacy (créé avant la sémantique
+      // calendaire) à 00h00 du jour cible. Sans ça, une série créée à
+      // 23h00 attendait 24h pour générer la 1ère occurrence.
+      let nextAt = rec.nextAt;
+      if (nextAt) {
+        const d = new Date(nextAt);
+        d.setHours(0, 0, 0, 0);
+        nextAt = d.getTime();
+      }
       // Série terminée
-      if (rec.until && rec.nextAt && rec.nextAt > rec.until) continue;
+      if (rec.until && nextAt && nextAt > rec.until) continue;
       // Pas encore due
-      if (!rec.nextAt || rec.nextAt > now) continue;
+      if (!nextAt || nextAt > now) continue;
 
-      let cursor = rec.nextAt;
+      let cursor = nextAt;
       while (cursor <= now && createdCount < MAX_PER_RUN) {
         if (rec.until && cursor > rec.until) break;
         // Anti-duplicata : vérifier qu'il n'existe pas déjà une occurrence pour ce jour
@@ -2025,6 +2169,7 @@ const DB = {
             description:   tpl.description,
             local:         tpl.local || null,
             urgent:        tpl.urgent || null,
+            urgencyLevel:  tpl.urgencyLevel || (tpl.urgent ? 5 : 3),
             fromAgentKey:  tpl.fromAgentKey || null,
             fromAgentName: tpl.fromAgentName || null,
             themeId:       tpl.themeId || null,
@@ -2032,6 +2177,9 @@ const DB = {
             assignedTo:    null,
             assignedToName: null,
             assignedAt:    null,
+            workerId:      tpl.workerId || null,
+            workerBadge:   tpl.workerBadge || null,
+            workerName:    tpl.workerName || null,
             createdAt:     cursor,
             recurrence:    { templateId: tplId }, // occurrence-enfant, pas un template
           });
@@ -2098,6 +2246,120 @@ const DB = {
   async removeAgentByKey(key) {
     await this._ref(`appConfig/agents/${key}`).remove();
   },
+
+  // ── Management entretien (Phase "entretien") ─────────────────────
+  // Agents sans compte (badge + nom) configurés par l'admin dans
+  // Paramètres > Entretien. Utilisés côté entretien.html pour
+  // attribuer un nettoyage à une personne physique.
+  getCleaners() {
+    const raw = this._config.cleaners || {};
+    return Object.entries(raw)
+      .map(([id, c]) => ({ id, badge: c.badge || '', name: c.name || '', order: c.order ?? 999 }))
+      .sort((a, b) => (a.order - b.order) || a.badge.localeCompare(b.badge, 'fr'));
+  },
+  async addCleaner(badge, name) {
+    const order = Object.values(this._config.cleaners || {})
+      .reduce((m, c) => Math.max(m, c.order ?? -1), -1) + 1;
+    const ref = await this._ref('appConfig/cleaners').push({ badge, name, order });
+    return ref.key;
+  },
+  async updateCleaner(id, fields) {
+    await this._ref(`appConfig/cleaners/${id}`).update(fields);
+  },
+  async removeCleaner(id) {
+    await this._ref(`appConfig/cleaners/${id}`).remove();
+  },
+
+  // Ouvriers techniques sans compte (badge + nom) — assignation des
+  // requêtes technique/autre. Pattern identique à getCleaners.
+  getTechnicians() {
+    const raw = this._config.technicians || {};
+    return Object.entries(raw)
+      .map(([id, t]) => ({ id, badge: t.badge || '', name: t.name || '', order: t.order ?? 999 }))
+      .sort((a, b) => (a.order - b.order) || a.badge.localeCompare(b.badge, 'fr'));
+  },
+  async addTechnician(badge, name) {
+    const order = Object.values(this._config.technicians || {})
+      .reduce((m, t) => Math.max(m, t.order ?? -1), -1) + 1;
+    const ref = await this._ref('appConfig/technicians').push({ badge, name, order });
+    return ref.key;
+  },
+  async updateTechnician(id, fields) {
+    await this._ref(`appConfig/technicians/${id}`).update(fields);
+  },
+  async removeTechnician(id) {
+    await this._ref(`appConfig/technicians/${id}`).remove();
+  },
+
+  // Wrapper : retourne la liste d'ouvriers à afficher pour une requête
+  // selon son type. technique/autre → technicians, entretien → cleaners.
+  getWorkersForRequestType(type) {
+    if (type === 'entretien') return this.getCleaners();
+    return this.getTechnicians();
+  },
+  // Retrouve un ouvrier par id depuis la bonne liste.
+  getWorkerById(type, id) {
+    const list = this.getWorkersForRequestType(type);
+    return list.find(w => w.id === id) || null;
+  },
+
+  // Types de nettoyage (nettoyage frigo, global, salle de bain, ...)
+  // configurables par l'admin.
+  getCleaningTypes() {
+    const raw = this._config.cleaningTypes || {};
+    return Object.entries(raw)
+      .map(([id, t]) => ({ id, label: t.label || '', order: t.order ?? 999 }))
+      .sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label, 'fr'));
+  },
+  async addCleaningType(label) {
+    const order = Object.values(this._config.cleaningTypes || {})
+      .reduce((m, t) => Math.max(m, t.order ?? -1), -1) + 1;
+    const ref = await this._ref('appConfig/cleaningTypes').push({ label, order });
+    return ref.key;
+  },
+  async updateCleaningType(id, fields) {
+    await this._ref(`appConfig/cleaningTypes/${id}`).update(fields);
+  },
+  async removeCleaningType(id) {
+    await this._ref(`appConfig/cleaningTypes/${id}`).remove();
+  },
+
+  // Logs de nettoyage : append-only (push) côté client, rangés par
+  // autoId. Le filtrage par mois/lieu se fait côté lecture.
+  async addCleaningLog({ date, lieuId, localId, cleanerId, cleanerBadge, typeId, approfondi }) {
+    const byAgentKey = (typeof sessionStorage !== 'undefined')
+      ? sessionStorage.getItem('cpas_current_agent_key')
+      : null;
+    const payload = {
+      ts:           Date.now(),
+      date,
+      lieuId:       lieuId != null ? String(lieuId) : null,
+      localId:      localId != null ? Number(localId) : null,
+      cleanerId:    cleanerId || null,
+      cleanerBadge: cleanerBadge || null,
+      typeId:       typeId || null,
+      approfondi:   !!approfondi,
+      byAgentKey:   byAgentKey || null,
+    };
+    const ref = await this._ref('entretien/logs').push(payload);
+    return ref.key;
+  },
+
+  _cleaningLogs: {},
+  _cleaningLogsCbs: [],
+  listenCleaningLogs() {
+    this._ref('entretien/logs').on('value', snap => {
+      this._cleaningLogs = snap.val() || {};
+      this._cleaningLogsCbs.forEach(fn => fn(this._cleaningLogs));
+    });
+  },
+  onCleaningLogsChange(fn) { this._cleaningLogsCbs.push(fn); },
+  getCleaningLogs() { return this._cleaningLogs; },
+
+  async removeCleaningLog(id) {
+    await this._ref(`entretien/logs/${id}`).remove();
+  },
+
   async addService(name) {
     await this._ref('appConfig/services').push(name);
   },
@@ -2279,6 +2541,7 @@ const DB = {
     { key: 'canAnnounceArrival',   label: 'Prévenir les collègues à l\'arrivée (modal mascotte)' },
     { key: 'viewTechAnalytics',    label: 'Accès à l\'espace Responsable technique (stats requêtes) 🔧' },
     { key: 'manageTechRequests',   label: 'Gérer les requêtes techniques (assigner, changer le statut, commenter)' },
+    { key: 'manageCleaning',       label: 'Accès à l\'espace Entretien (enregistrer le nettoyage + bilan mensuel) 🧹' },
   ],
 
   // Rôles par défaut utilisés si aucun rôle n'est défini dans Firebase
@@ -2291,7 +2554,8 @@ const DB = {
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:true,
                managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true, panicDemo:true,
-               viewTechAnalytics:true, manageTechRequests:true },
+               viewTechAnalytics:true, manageTechRequests:true,
+               manageCleaning:true },
     },
     '__direction__': {
       // Vue complète + analytics, pas de gestion opérationnelle directe
@@ -2354,13 +2618,14 @@ const DB = {
                viewTechAnalytics:true, manageTechRequests:true },
     },
     '__entretien__': {
-      // Agent d'entretien : accès minimal, juste voir la présence et les messages
+      // Agent d'entretien : accès minimal + gestion du nettoyage des locaux
       name: 'Entretien', color: '#15803d', isBuiltin: true,
       perms: { createReservation:false, editReservation:false, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
                sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
-               viewTechAnalytics:false, manageTechRequests:true },
+               viewTechAnalytics:false, manageTechRequests:true,
+               manageCleaning:true },
     },
     '__juriste__': {
       // Juriste : gère ses RDV, consulte l'équipe, pas de gestion file

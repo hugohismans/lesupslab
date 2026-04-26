@@ -2519,6 +2519,11 @@ select.field-input { cursor: pointer; }
 .modal-body {
   padding: 1.25rem 1.5rem; flex: 1; overflow-y: auto;
 }
+.modal-body .form-label {
+  display: block; margin-bottom: .35rem;
+  font-size: .8rem; font-weight: 700; letter-spacing: .03em;
+  text-transform: uppercase; color: #cbd5e1;
+}
 
 /* ── Bouton Diffusion (header) ───────────────────────────────── */
 .btn-broadcast {
@@ -2550,6 +2555,14 @@ select.field-input { cursor: pointer; }
 }
 .ti-local-suggest-item:hover,
 .ti-local-suggest-item.active { background: #334155; color: #f1f5f9; }
+.ti-local-suggest-lieu {
+  display: inline-block; font-size: .72rem; font-weight: 700;
+  color: #93c5fd; background: rgba(59,130,246,.12);
+  padding: .05rem .4rem; border-radius: 4px; margin-right: .15rem;
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.ti-local-suggest-name { font-weight: 600; }
+.ti-local-suggest-pub  { color: #64748b; font-size: .8em; }
 .ti-local-suggest-empty {
   padding: .55rem .85rem; font-size: .83rem; color: #64748b; font-style: italic;
 }
@@ -2580,6 +2593,113 @@ select.field-input { cursor: pointer; }
   transition: all .15s;
 }
 .btn-tech-space:hover { background: #78350f; color: #fde68a; }
+/* Bouton Management Entretien (même style, teinte verte) */
+.btn-maintenance-space {
+  display: inline-flex; align-items: center;
+  padding: .38rem .85rem; border-radius: 8px;
+  border: 1.5px solid #15803d; background: #052e1a; color: #86efac;
+  font-size: .85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.btn-maintenance-space:hover { background: #064e3b; color: #bbf7d0; }
+
+/* ── Sélecteur niveau d'urgence 1-5 (création requête) ───────── */
+.ti-urgency-row {
+  display: flex; gap: .4rem; flex-wrap: wrap;
+}
+.ti-urg-btn {
+  flex: 1; min-width: 48px;
+  padding: .5rem .3rem; border: 2px solid transparent;
+  border-radius: 8px; cursor: pointer; font-family: inherit;
+  font-weight: 900; font-size: .95rem;
+  color: #fff; transition: all .12s;
+  opacity: .55;
+}
+.ti-urg-btn:hover { opacity: .85; }
+.ti-urg-btn.active { opacity: 1; transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.ti-urg-1 { background: #22c55e; }
+.ti-urg-2 { background: #84cc16; }
+.ti-urg-3 { background: #eab308; color: #1a1a1a; }
+.ti-urg-4 { background: #f97316; }
+.ti-urg-5 { background: #ef4444; }
+.ti-urg-btn.active.ti-urg-3 { color: #1a1a1a; }
+
+/* ── Badge urgence sur les cartes request ────────────────────── */
+.req-urg-badge {
+  display: inline-flex; align-items: center; gap: .2rem;
+  padding: .12rem .45rem; border-radius: 4px;
+  font-size: .7rem; font-weight: 800; color: #fff;
+  letter-spacing: .02em;
+}
+.req-urg-1 { background: #22c55e; }
+.req-urg-2 { background: #84cc16; color: #1a1a1a; }
+.req-urg-3 { background: #eab308; color: #1a1a1a; }
+.req-urg-4 { background: #f97316; }
+.req-urg-5 { background: #ef4444; }
+
+/* Bordure gauche de la carte selon urgence */
+.req-card.req-urg-card-1 { border-left: 4px solid #22c55e; }
+.req-card.req-urg-card-2 { border-left: 4px solid #84cc16; }
+.req-card.req-urg-card-3 { border-left: 4px solid #eab308; }
+.req-card.req-urg-card-4 { border-left: 4px solid #f97316; }
+.req-card.req-urg-card-5 { border-left: 4px solid #ef4444; }
+
+/* Indicateur "reportée jusqu'au" */
+.req-reopen {
+  display: inline-flex; align-items: center; gap: .2rem;
+  padding: .1rem .45rem; border-radius: 4px;
+  background: #e0e7ff; color: #3730a3;
+  font-size: .72rem; font-weight: 700;
+}
+
+/* Sélect d'assignation à un ouvrier (remplace le select agent) */
+.req-assign-worker-select {
+  padding: .28rem .5rem;
+  border: 1.5px solid #cbd5e1; border-radius: 6px;
+  background: #fff; color: #1e293b;
+  font-size: .82rem; font-family: inherit;
+}
+
+/* ── Onglets page technique (Dashboard / Requêtes) ───────────── */
+.tq-tabs {
+  display: flex; gap: .4rem; margin-bottom: 1rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+.tq-tab {
+  padding: .55rem 1rem; background: none; border: none;
+  border-bottom: 3px solid transparent; font-size: .92rem;
+  font-weight: 700; color: #64748b; cursor: pointer;
+  transition: color .12s, border-color .12s;
+  font-family: inherit; margin-bottom: -2px;
+}
+.tq-tab:hover { color: #f59e0b; }
+.tq-tab-active { color: #f59e0b; border-bottom-color: #f59e0b; }
+
+.tq-pane { display: block; }
+
+/* Pane Requêtes plein écran */
+.tq-req-toolbar {
+  background: #fff; border-radius: 14px; padding: 1rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.04);
+  display: flex; flex-direction: column; gap: .75rem;
+  margin-bottom: 1rem;
+}
+.tq-req-tabs {
+  display: flex; gap: .4rem; flex-wrap: wrap;
+}
+.tq-req-filters {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+}
+.tq-req-list {
+  display: flex; flex-direction: column; gap: .5rem;
+}
+.tq-req-list .req-card {
+  /* Adapter le style carte pour plein écran (fond blanc au lieu de sombre) */
+  background: #fff; color: #1e293b;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  padding: .75rem 1rem; border-radius: 12px;
+}
 .req-badge {
   position: absolute; top: -5px; right: -5px;
   background: #ef4444; color: #fff; border-radius: 999px;

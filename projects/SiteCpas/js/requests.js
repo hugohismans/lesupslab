@@ -4,12 +4,12 @@
 
 const REQUESTS = {
   _panel:       null,
-  _badge:       null,
   _panelOpen:   false,
   _agentKey:    null,
   _agentName:   null,
   _agentRole:   null,
-  _filter:      'open', // 'open' | 'in_progress' | 'postponed' | 'done'
+  _filter:      'open',       // 'open' | 'in_progress' | 'postponed' | 'done'
+  _typeFilter:  'technique',  // 'technique' | 'entretien' — contexte du panneau ouvert
 
   // Rôles qui voient le panneau interventions
   _TECH_ROLES: new Set(['__technicien__', '__entretien__', '__admin__', '__chef_service__', '__direction__', '__responsable_technique__']),
@@ -17,7 +17,6 @@ const REQUESTS = {
   init() {
     this._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
     this._panel     = document.getElementById('interventionsPanel');
-    this._badge     = document.getElementById('interventionsBadge');
 
     // Résolution immédiate du rôle (config déjà chargée à ce stade)
     const _resolveRole = () => {
@@ -44,17 +43,22 @@ const REQUESTS = {
       }
     });
 
-    // Bouton header
-    document.getElementById('btnInterventions')?.addEventListener('click', (e) => {
+    // Boutons header séparés (technique / entretien)
+    document.getElementById('btnInterventionsTech')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.togglePanel();
+      this.togglePanel('technique');
+    });
+    document.getElementById('btnInterventionsCleaning')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.togglePanel('entretien');
     });
 
     // Fermer en cliquant ailleurs
     document.addEventListener('click', (e) => {
       if (this._panelOpen &&
           this._panel && !this._panel.contains(e.target) &&
-          !document.getElementById('btnInterventions')?.contains(e.target)) {
+          !document.getElementById('btnInterventionsTech')?.contains(e.target) &&
+          !document.getElementById('btnInterventionsCleaning')?.contains(e.target)) {
         this._closePanel();
       }
     });
@@ -64,37 +68,58 @@ const REQUESTS = {
     return this._TECH_ROLES.has(this._agentRole);
   },
 
-  // Types de requêtes visibles selon le rôle
-  _visibleTypes() {
-    if (!this._agentRole) return new Set(); // rôle inconnu → rien
-    if (this._agentRole === '__technicien__') return new Set(['technique']);
-    if (this._agentRole === '__entretien__')  return new Set(['entretien']);
-    return null; // admin/direction/chef → voit tout (null = pas de filtre)
+  // Retourne true si ce rôle peut voir ce type de requête.
+  // technicien → seulement technique, entretien → seulement entretien,
+  // admin/direction/chef/responsable → les deux.
+  _canSeeType(type) {
+    if (!this._agentRole) return false;
+    if (this._agentRole === '__technicien__') return type === 'technique';
+    if (this._agentRole === '__entretien__')  return type === 'entretien';
+    return true;
   },
 
   _filterByRole(req) {
-    const types = this._visibleTypes();
-    return !types || types.has(req.type);
+    // Un requête de type "autre" est visible par tous les rôles tech.
+    if (req.type === 'autre') return this._canSee();
+    return this._canSeeType(req.type);
   },
 
   _updateHeaderBtn() {
-    const btn = document.getElementById('btnInterventions');
-    if (!btn) return;
     const featureOn = DB._config.features?.['enableInterventions'] !== false;
-    btn.style.display = (featureOn && this._canSee()) ? '' : 'none';
+    const btnTech     = document.getElementById('btnInterventionsTech');
+    const btnCleaning = document.getElementById('btnInterventionsCleaning');
+    if (btnTech)     btnTech.style.display     = (featureOn && this._canSeeType('technique')) ? '' : 'none';
+    if (btnCleaning) btnCleaning.style.display = (featureOn && this._canSeeType('entretien')) ? '' : 'none';
   },
 
   _updateBadge() {
-    if (!this._badge) return;
-    const reqs = DB.getRequests();
-    const open = Object.values(reqs).filter(r => r.status === 'open' && this._filterByRole(r)).length;
-    this._badge.textContent = open > 9 ? '9+' : (open || '');
-    this._badge.classList.toggle('hidden', !open);
+    const now = Date.now();
+    const reqs = Object.values(DB.getRequests());
+    const countForType = (type) =>
+      reqs.filter(r => r.status === 'open' && r.createdAt <= now &&
+        (r.type === type || (type === 'technique' && r.type === 'autre' && this._canSeeType('technique')))
+      ).length;
+
+    const setBadge = (id, n) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = n > 9 ? '9+' : (n || '');
+      el.classList.toggle('hidden', !n);
+    };
+    setBadge('interventionsBadgeTech',     countForType('technique'));
+    setBadge('interventionsBadgeCleaning', countForType('entretien'));
   },
 
-  togglePanel() {
-    if (this._panelOpen) this._closePanel();
-    else this._openPanel();
+  // Ouvre le panneau pour un type donné ('technique' | 'entretien').
+  // Si le panneau est déjà ouvert sur le même type → fermeture.
+  // Si ouvert sur l'autre type → on bascule au nouveau type sans fermer.
+  togglePanel(type = 'technique') {
+    if (this._panelOpen && this._typeFilter === type) {
+      this._closePanel();
+      return;
+    }
+    this._typeFilter = type;
+    this._openPanel();
   },
 
   _openPanel() {
@@ -124,14 +149,25 @@ const REQUESTS = {
       done:        '✅ Terminée',
     };
 
-    // Compter par statut (filtré par rôle)
+    // Filtre par type courant (bouton cliqué) : les requêtes "autre"
+    // suivent le panneau technique par défaut (hérité du legacy).
+    const typeFilterFn = (r) => {
+      if (this._typeFilter === 'entretien') return r.type === 'entretien';
+      // 'technique' — inclut 'autre' pour ne pas perdre les requêtes legacy
+      return r.type === 'technique' || r.type === 'autre';
+    };
+
+    // Compter par statut (filtré par rôle, type courant, et exclu les requêtes
+    // futures = templates récurrents avec startDate > now).
+    const now = Date.now();
+    const isVisible = r => r.createdAt <= now;
     const counts = { open: 0, in_progress: 0, postponed: 0, done: 0 };
     Object.values(reqs).forEach(r => {
-      if (counts[r.status] !== undefined && this._filterByRole(r)) counts[r.status]++;
+      if (counts[r.status] !== undefined && isVisible(r) && this._filterByRole(r) && typeFilterFn(r)) counts[r.status]++;
     });
 
     const filtered = Object.entries(reqs)
-      .filter(([, r]) => r.status === this._filter && this._filterByRole(r))
+      .filter(([, r]) => r.status === this._filter && isVisible(r) && this._filterByRole(r) && typeFilterFn(r))
       .sort(([, a], [, b]) => b.createdAt - a.createdAt);
 
     const tabBtn = (status, label) => {
@@ -142,9 +178,13 @@ const REQUESTS = {
       </button>`;
     };
 
+    const panelTitle = this._typeFilter === 'entretien'
+      ? '🧹 Interventions entretien'
+      : '🔧 Interventions techniques';
+
     this._panel.innerHTML = `
       <div class="req-panel-hd">
-        <span>🛠️ Interventions</span>
+        <span>${panelTitle}</span>
         <button class="req-close-btn" id="reqCloseBtn">✕</button>
       </div>
       <div class="req-tabs">
@@ -183,13 +223,24 @@ const REQUESTS = {
       });
     });
 
-    // Assign select
-    this._panel.querySelectorAll('.req-assign-select').forEach(sel => {
+    // Assign select (ouvrier sans compte : technicien ou cleaner selon type)
+    this._panel.querySelectorAll('.req-assign-worker-select').forEach(sel => {
       sel.addEventListener('change', async (e) => {
         e.stopPropagation();
         const id = sel.dataset.reqId;
-        if (sel.value) await DB.assignRequest(id, sel.value);
-        sel.value = '';
+        const workerId = sel.value || null;
+        try {
+          await DB.assignRequestWorker(id, workerId);
+          if (workerId) {
+            const type = sel.dataset.reqType || 'technique';
+            const worker = DB.getWorkerById(type, workerId);
+            const label = worker ? `${worker.badge} — ${worker.name}` : workerId;
+            showToast(`👷 Assigné à ${label}`);
+          }
+        } catch (err) {
+          console.warn('[requests] assign worker failed', err);
+          showToast('Erreur lors de l\'assignation', 'error');
+        }
       });
     });
 
@@ -226,12 +277,73 @@ const REQUESTS = {
         this._openSeriesView(btn.dataset.reqId);
       });
     });
+
+    // Changer l'urgence
+    this._panel.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._openUrgencyPicker(btn.dataset.reqId);
+      });
+    });
+  },
+
+  _openUrgencyPicker(reqId) {
+    const req = DB.getRequests()[reqId];
+    if (!req) return;
+    const current = this._urgencyLevel(req);
+    let box = document.getElementById('reqUrgBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'reqUrgBox';
+      box.className = 'req-comment-box';
+      document.body.appendChild(box);
+    }
+    const btnFor = (lvl, label) =>
+      `<button type="button" class="ti-urg-btn ti-urg-${lvl}${lvl === current ? ' active' : ''}" data-level="${lvl}" title="${escapeHtml(label)}">${lvl}</button>`;
+    box.style.background = '#fff';
+    box.style.border = '1px solid #e2e8f0';
+    box.style.color = '#1e293b';
+    box.innerHTML = `
+      <div class="req-comment-box-inner" style="max-width:380px;color:#1e293b">
+        <h3 style="margin:0 0 .4rem;font-size:1rem;color:#1a3a5c">⚡ Niveau d'urgence</h3>
+        <p style="font-size:.8rem;color:#64748b;margin:0 0 .7rem">Niveau actuel : <b>${current}/5</b>. Choisis le nouveau niveau.</p>
+        <div class="ti-urgency-row" id="reqUrgRow">
+          ${btnFor(1, '1 — Faible')}
+          ${btnFor(2, '2 — Modéré')}
+          ${btnFor(3, '3 — Moyen')}
+          ${btnFor(4, '4 — Élevé')}
+          ${btnFor(5, '5 — Critique')}
+        </div>
+        <div class="req-comment-box-actions" style="margin-top:.75rem">
+          <button class="btn-secondary" id="reqUrgCancel">Annuler</button>
+        </div>
+      </div>`;
+    box.classList.remove('hidden');
+
+    const cleanup = () => {
+      box.classList.add('hidden');
+      box.style.background = '';
+      box.style.border = '';
+      box.style.color = '';
+    };
+    document.getElementById('reqUrgCancel').onclick = cleanup;
+    box.querySelectorAll('.ti-urg-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const lvl = parseInt(btn.dataset.level);
+        if (!lvl || lvl === current) { cleanup(); return; }
+        try {
+          await DB.setRequestUrgencyLevel(reqId, lvl);
+          showToast(`⚡ Urgence mise à ${lvl}/5`);
+        } catch (e) { console.warn('[requests] set urgency failed', e); }
+        cleanup();
+      });
+    });
   },
 
   _openThemePicker(reqId) {
     const req = DB.getRequests()[reqId];
     if (!req) return;
-    const themes = DB.getTechThemes();
+    const themes = DB.getThemesForRequestType?.(req.type) || DB.getTechThemes();
     let box = document.getElementById('reqThemePickerBox');
     if (!box) {
       box = document.createElement('div');
@@ -275,10 +387,10 @@ const REQUESTS = {
       const dt = new Date(r.createdAt).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       const status = { open: '🟡', in_progress: '🔵', postponed: '⏸', done: '✅' }[r.status] || '?';
       const isTpl = r.recurrence?.templateId === r.id;
-      return `<tr>
-        <td>${dt}</td>
-        <td>${status} ${r.status}</td>
-        <td>${isTpl ? '<b>Template</b>' : 'Occurrence'}</td>
+      return `<tr style="border-bottom:1px solid #e2e8f0">
+        <td style="padding:.4rem .6rem;color:#1e293b">${dt}</td>
+        <td style="padding:.4rem .6rem;color:#1e293b">${status} ${r.status}</td>
+        <td style="padding:.4rem .6rem;color:#1e293b">${isTpl ? '<b>Template</b>' : 'Occurrence'}</td>
       </tr>`;
     }).join('');
     const tpl = DB.getRequests()[templateId];
@@ -286,15 +398,24 @@ const REQUESTS = {
     const nextAt = rec.nextAt && (!rec.until || rec.nextAt <= rec.until)
       ? new Date(rec.nextAt).toLocaleString('fr-BE', { day: '2-digit', month: '2-digit', year: 'numeric' })
       : 'série terminée';
+    // Force un thème clair sur cette modal (la classe parent req-comment-box
+    // a un fond sombre destiné au textarea de commentaire — pas adapté ici).
+    box.style.background = '#fff';
+    box.style.border = '1px solid #e2e8f0';
+    box.style.color = '#1e293b';
     box.innerHTML = `
-      <div class="req-comment-box-inner" style="max-width:560px">
+      <div class="req-comment-box-inner" style="max-width:560px;color:#1e293b">
         <h3 style="margin:0 0 .4rem;font-size:1rem;color:#1a3a5c">📜 Série récurrente</h3>
         <p style="font-size:.85rem;color:#64748b;margin:0 0 .6rem">
-          ${series.length} occurrence(s) — prochaine : <b>${nextAt}</b>
+          ${series.length} occurrence(s) — prochaine : <b style="color:#1a3a5c">${nextAt}</b>
         </p>
-        <div style="max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px">
-          <table style="width:100%;border-collapse:collapse;font-size:.83rem">
-            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0"><th style="text-align:left;padding:.4rem .6rem">Date</th><th style="text-align:left;padding:.4rem .6rem">Statut</th><th style="text-align:left;padding:.4rem .6rem">Type</th></tr></thead>
+        <div style="max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff">
+          <table style="width:100%;border-collapse:collapse;font-size:.83rem;background:#fff">
+            <thead><tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+              <th style="text-align:left;padding:.4rem .6rem;color:#1a3a5c">Date</th>
+              <th style="text-align:left;padding:.4rem .6rem;color:#1a3a5c">Statut</th>
+              <th style="text-align:left;padding:.4rem .6rem;color:#1a3a5c">Type</th>
+            </tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
@@ -303,7 +424,21 @@ const REQUESTS = {
         </div>
       </div>`;
     box.classList.remove('hidden');
-    document.getElementById('reqSeriesClose').onclick = () => box.classList.add('hidden');
+    document.getElementById('reqSeriesClose').onclick = () => {
+      box.classList.add('hidden');
+      // Restaurer le style par défaut pour ne pas contaminer les autres usages
+      // de req-comment-box (comment/theme picker).
+      box.style.background = '';
+      box.style.border = '';
+      box.style.color = '';
+    };
+  },
+
+  // Niveau d'urgence effectif (rétrocompat : urgent=true → niveau 5 si level absent)
+  _urgencyLevel(r) {
+    const l = parseInt(r?.urgencyLevel);
+    if (l >= 1 && l <= 5) return l;
+    return r?.urgent ? 5 : 3;
   },
 
   _renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS) {
@@ -311,13 +446,24 @@ const REQUESTS = {
     const d       = new Date(r.createdAt);
     const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' });
     const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
-    const urgBadge = r.urgent ? `<span class="req-badge-urgent">🚨 Urgent</span>` : '';
+    const uLevel  = this._urgencyLevel(r);
+    const urgBadge = `<span class="req-urg-badge req-urg-${uLevel}" title="Niveau d'urgence : ${uLevel}/5">⚡ ${uLevel}/5</span>`;
     const localTxt = r.local ? `<span class="req-local">📍 ${escapeHtml(r.local)}</span>` : '';
-    const assignedTxt = r.assignedTo
-      ? `<span class="req-assigned">👷 ${escapeHtml(r.assignedToName || r.assignedTo)}</span>` : '';
+    // Assignation : ouvrier sans compte prioritaire sur assignedTo legacy.
+    let assignedTxt = '';
+    if (r.workerId && (r.workerBadge || r.workerName)) {
+      assignedTxt = `<span class="req-assigned">👷 ${escapeHtml(r.workerBadge || '')}${r.workerName ? ' · ' + escapeHtml(r.workerName) : ''}</span>`;
+    } else if (r.assignedTo) {
+      assignedTxt = `<span class="req-assigned">👷 ${escapeHtml(r.assignedToName || r.assignedTo)}</span>`;
+    }
+    // Indicateur "reportée jusqu'au…"
+    const reopenTxt = (r.status === 'postponed' && r.reopenAt)
+      ? `<span class="req-reopen">⏰ Rouvre le ${new Date(r.reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit', year:'numeric' })}</span>` : '';
 
-    // Badge thème
-    const themeLabel = DB.getTechThemeLabel?.(r.themeId) || 'Non catégorisé';
+    // Badge thème (liste dépend du type de requête)
+    const themeLabel = DB.getThemeLabelForRequestType?.(r.type, r.themeId)
+      || DB.getTechThemeLabel?.(r.themeId)
+      || 'Non catégorisé';
     const themeBadge = r.themeId
       ? `<span class="req-theme-badge">🏷️ ${escapeHtml(themeLabel)}</span>`
       : `<span class="req-theme-badge req-theme-none">🏷️ Non catégorisé</span>`;
@@ -330,7 +476,11 @@ const REQUESTS = {
     if (isTemplate) {
       const unitLabels = { days: 'jour(s)', weeks: 'semaine(s)', months: 'mois' };
       const label = `tous les ${rec.interval} ${unitLabels[rec.unit] || rec.unit}`;
-      recurBadge = `<span class="req-recur-badge" title="Template récurrent — ${escapeHtml(label)}">↻ Série ${escapeHtml(label)}</span>`;
+      const future = r.createdAt > Date.now();
+      const startTxt = future
+        ? ` — démarre ${new Date(r.createdAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'long', year:'numeric' })}`
+        : '';
+      recurBadge = `<span class="req-recur-badge" title="Template récurrent — ${escapeHtml(label)}${escapeHtml(startTxt)}">↻ Série ${escapeHtml(label)}${escapeHtml(startTxt)}</span>`;
     } else if (isOccurrence) {
       recurBadge = `<span class="req-recur-badge req-recur-occ" title="Occurrence d'une série récurrente">↻ Occurrence</span>`;
     }
@@ -339,19 +489,28 @@ const REQUESTS = {
 
     // Boutons selon statut
     let actions = '';
+    // Assignation ouvrier (admin) : disponible sur open ET in_progress pour
+    // permettre une réassignation en cas d'erreur.
+    const canAssign = isAdmin && (r.status === 'open' || r.status === 'in_progress');
+    const workerSelect = canAssign ? (() => {
+      const workers = DB.getWorkersForRequestType?.(r.type) || [];
+      const currentWid = r.workerId || '';
+      const workerOptions = workers.map(w =>
+        `<option value="${w.id}"${w.id === currentWid ? ' selected' : ''}>${escapeHtml(w.badge)} — ${escapeHtml(w.name)}</option>`
+      ).join('');
+      const label = r.status === 'in_progress' ? 'Réassigner à…' : 'Assigner à un ouvrier…';
+      return `<select class="req-assign-worker-select" data-req-id="${id}" data-req-type="${escapeHtml(r.type)}">
+        <option value="">${label}</option>${workerOptions}
+      </select>`;
+    })() : '';
+
     if (r.status === 'open') {
       actions += `<button class="req-btn req-btn-claim" data-req-action="claim" data-req-id="${id}">🙋 Je prends</button>`;
-      if (isAdmin) {
-        const options = agents.map(a =>
-          `<option value="${a.key}">${escapeHtml(a.name)}</option>`
-        ).join('');
-        actions += `<select class="req-assign-select" data-req-id="${id}">
-          <option value="">Assigner à…</option>${options}
-        </select>`;
-      }
+      actions += workerSelect;
     } else if (r.status === 'in_progress') {
       actions += `<button class="req-btn req-btn-done" data-req-action="done" data-req-id="${id}">✓ Terminée</button>`;
       actions += `<button class="req-btn req-btn-postpone" data-req-action="postponed" data-req-id="${id}">⏸ Reporter</button>`;
+      actions += workerSelect;
     } else if (r.status === 'postponed') {
       actions += `<button class="req-btn req-btn-reopen" data-req-action="open" data-req-id="${id}">🔄 Rouvrir</button>`;
     }
@@ -365,6 +524,10 @@ const REQUESTS = {
     const canManageReq = isAdmin || DB.hasPermission('manageTechRequests');
     if (canManageReq) {
       actions += `<button class="req-tag-btn req-btn req-btn-tag" data-req-id="${id}">🏷️ Catégoriser</button>`;
+      // Redéfinir le niveau d'urgence (visible sauf sur les requêtes terminées)
+      if (r.status !== 'done') {
+        actions += `<button class="req-urg-edit-btn req-btn req-btn-urg-edit" data-req-id="${id}" title="Changer le niveau d'urgence">⚡ Urgence</button>`;
+      }
     }
 
     // Actions série (template uniquement)
@@ -392,7 +555,7 @@ const REQUESTS = {
       : '';
 
     return `
-      <div class="req-card req-status-${r.status}${r.urgent ? ' req-urgent' : ''}">
+      <div class="req-card req-status-${r.status} req-urg-card-${uLevel}${uLevel >= 5 ? ' req-urgent' : ''}">
         <div class="req-card-hd">
           <span class="req-type-icon">${icon}</span>
           <span class="req-from">${escapeHtml(r.fromAgentName || '?')}</span>
@@ -403,7 +566,7 @@ const REQUESTS = {
         </div>
         <div class="req-card-body">
           <p class="req-desc">${escapeHtml(r.description)}</p>
-          <div class="req-meta">${themeBadge}${localTxt}${assignedTxt}</div>
+          <div class="req-meta">${themeBadge}${localTxt}${assignedTxt}${reopenTxt}</div>
         </div>
         ${comments ? `<div class="req-comments">${comments}</div>` : ''}
         <div class="req-actions">${actions}</div>
@@ -432,11 +595,18 @@ const REQUESTS = {
       await _notifyRequester(`✅ ${tech} a résolu votre demande : « ${desc} »`);
 
     } else if (action === 'postponed') {
-      await DB.setRequestStatus(id, 'postponed');
-      await _notifyRequester(`⏸ ${tech} a reporté votre demande : « ${desc} »`, 'warn');
+      // Dialog : proposer une date de réouverture optionnelle. Si vide →
+      // report sans échéance (comportement legacy).
+      const reopenAt = await this._askReopenDate();
+      if (reopenAt === 'cancel') return;
+      await DB.postponeRequest(id, reopenAt);
+      const suffix = reopenAt
+        ? `, réouverture prévue le ${new Date(reopenAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'2-digit', year:'numeric' })}`
+        : '';
+      await _notifyRequester(`⏸ ${tech} a reporté votre demande : « ${desc} »${suffix}`, 'warn');
 
     } else if (action === 'open') {
-      await DB.setRequestStatus(id, 'open');
+      await DB._ref(`requests/${id}`).update({ status: 'open', reopenAt: null });
       await _notifyRequester(`🔄 ${tech} a rouvert votre demande : « ${desc} »`);
 
     } else if (action === 'assign' && agentKey) {
@@ -447,6 +617,51 @@ const REQUESTS = {
     } else if (action === 'delete') {
       if (confirm('Supprimer cette intervention ?')) await DB.deleteRequest(id);
     }
+  },
+
+  // Dialog "Reporter" : demande une date optionnelle de réouverture.
+  // Retourne le timestamp choisi, null (pas de date), ou 'cancel' si annulé.
+  _askReopenDate() {
+    return new Promise(resolve => {
+      let box = document.getElementById('reqReopenBox');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'reqReopenBox';
+        box.className = 'req-comment-box';
+        document.body.appendChild(box);
+      }
+      // Date par défaut : demain
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dIso = tomorrow.toISOString().slice(0, 10);
+      box.innerHTML = `
+        <div class="req-comment-box-inner">
+          <h3 style="margin:0 0 .4rem;font-size:1rem;color:#1a3a5c">⏸ Reporter cette requête</h3>
+          <p style="font-size:.82rem;color:#64748b;margin:0 0 .7rem">Choisis une date de réouverture automatique (optionnel).</p>
+          <input type="date" id="reqReopenInput" value="${dIso}" min="${new Date().toISOString().slice(0, 10)}"
+                 style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.5rem .65rem;font-size:.9rem;font-family:inherit">
+          <div class="req-comment-box-actions" style="justify-content:space-between;margin-top:.75rem">
+            <button class="btn-secondary" id="reqReopenClear">Sans date</button>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn-secondary" id="reqReopenCancel">Annuler</button>
+              <button class="btn-primary" id="reqReopenOk">Reporter</button>
+            </div>
+          </div>
+        </div>`;
+      box.classList.remove('hidden');
+
+      const close = (val) => { box.classList.add('hidden'); resolve(val); };
+      document.getElementById('reqReopenCancel').onclick = () => close('cancel');
+      document.getElementById('reqReopenClear').onclick  = () => close(null);
+      document.getElementById('reqReopenOk').onclick = () => {
+        const v = document.getElementById('reqReopenInput')?.value;
+        if (!v) { close(null); return; }
+        // Ouverture à 00:00 locale du jour choisi
+        const d = new Date(v);
+        d.setHours(0, 0, 0, 0);
+        close(d.getTime());
+      };
+    });
   },
 
   _openCommentBox(reqId) {

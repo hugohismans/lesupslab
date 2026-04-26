@@ -1116,8 +1116,18 @@ const MODAL = {
     // ── Rôles & Permissions ────────────────────────────────────────
     if (isAdmin) this._renderPermRoles();
 
+    // ── Entretien : agents sans compte + types de nettoyage ───────
+    if (isAdmin) this._renderCleaners();
+    if (isAdmin) this._renderCleaningTypes();
+
     // ── Thèmes d'intervention technique ────────────────────────────
     if (isAdmin) this._renderTechThemes();
+
+    // ── Ouvriers techniques sans compte ────────────────────────────
+    if (isAdmin) this._renderTechnicians();
+
+    // ── Thèmes de requête entretien/nettoyage ──────────────────────
+    if (isAdmin) this._renderCleaningThemes();
 
     // ── Réinitialisation des mots de passe ─────────────────────────
     const pwdList = g('stAgentPasswordList');
@@ -1292,6 +1302,134 @@ const MODAL = {
     }
   },
 
+  // ─── Entretien : agents sans compte (admin) ───────────────────────
+  _renderCleaners() {
+    const container = g('stCleanersList');
+    if (!container) return;
+    const cleaners = DB.getCleaners();
+    if (!cleaners.length) {
+      container.innerHTML = '<p class="st-empty">Aucun agent. Ajoutez-en un ci-dessous (badge + nom).</p>';
+    } else {
+      container.innerHTML = cleaners.map(c => `
+        <div class="st-item" data-id="${c.id}">
+          <span class="st-name"><strong>${escapeHtml(c.badge || '—')}</strong> — ${escapeHtml(c.name || '')}</span>
+          <button class="st-del cleaner-del" data-id="${c.id}" data-name="${escapeHtml(c.name)}" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+    // Supprimer
+    container.querySelectorAll('.cleaner-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer l'agent d'entretien "${name}" ?\nLes logs passés conservent son badge, il disparaît juste de la liste de sélection.`)) return;
+        await DB.removeCleaner(id);
+        showToast('Agent retiré ✓');
+        this._renderCleaners();
+      }));
+    });
+    // Ajouter
+    const addBtn = g('stCleanerAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const bIn = g('stCleanerBadgeInput');
+        const nIn = g('stCleanerNameInput');
+        const badge = (bIn?.value || '').trim();
+        const name  = (nIn?.value || '').trim();
+        if (!badge || !name) { alert('Badge et nom requis.'); return; }
+        addBtn.disabled = true;
+        await DB.addCleaner(badge, name);
+        if (bIn) bIn.value = '';
+        if (nIn) nIn.value = '';
+        addBtn.disabled = false;
+        showToast('Agent ajouté ✓');
+        this._renderCleaners();
+      });
+    }
+  },
+
+  // ─── Ouvriers techniques sans compte (admin) ─────────────────────
+  _renderTechnicians() {
+    const container = g('stTechniciansList');
+    if (!container) return;
+    const list = DB.getTechnicians();
+    if (!list.length) {
+      container.innerHTML = '<p class="st-empty">Aucun ouvrier. Ajoutez-en un ci-dessous (badge + nom).</p>';
+    } else {
+      container.innerHTML = list.map(t => `
+        <div class="st-item" data-id="${t.id}">
+          <span class="st-name"><strong>${escapeHtml(t.badge || '—')}</strong> — ${escapeHtml(t.name || '')}</span>
+          <button class="st-del tech-worker-del" data-id="${t.id}" data-name="${escapeHtml(t.name)}" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+    container.querySelectorAll('.tech-worker-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer l'ouvrier technique "${name}" ?\nLes requêtes déjà assignées gardent le badge ; l'ouvrier disparaît de la liste de sélection.`)) return;
+        await DB.removeTechnician(id);
+        showToast('Ouvrier retiré ✓');
+        this._renderTechnicians();
+      }));
+    });
+    const addBtn = g('stTechnicianAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const bIn = g('stTechnicianBadgeInput');
+        const nIn = g('stTechnicianNameInput');
+        const badge = (bIn?.value || '').trim();
+        const name  = (nIn?.value || '').trim();
+        if (!badge || !name) { alert('Badge et nom requis.'); return; }
+        addBtn.disabled = true;
+        await DB.addTechnician(badge, name);
+        if (bIn) bIn.value = '';
+        if (nIn) nIn.value = '';
+        addBtn.disabled = false;
+        showToast('Ouvrier ajouté ✓');
+        this._renderTechnicians();
+      });
+    }
+  },
+
+  // ─── Entretien : types de nettoyage (admin) ───────────────────────
+  _renderCleaningTypes() {
+    const container = g('stCleaningTypesList');
+    if (!container) return;
+    const types = DB.getCleaningTypes();
+    if (!types.length) {
+      container.innerHTML = '<p class="st-empty">Aucun type de nettoyage. Ajoutez-en un ci-dessous.</p>';
+    } else {
+      container.innerHTML = types.map(t => `
+        <div class="st-item" data-id="${t.id}">
+          <span class="st-name">${escapeHtml(t.label || '—')}</span>
+          <button class="st-del cleaning-type-del" data-id="${t.id}" data-label="${escapeHtml(t.label)}" title="Supprimer">✕</button>
+        </div>
+      `).join('');
+    }
+    container.querySelectorAll('.cleaning-type-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, label = btn.dataset.label;
+        if (!confirm(`Supprimer le type "${label}" ?\nLes logs passés conservent le type, il disparaît juste de la liste de sélection.`)) return;
+        await DB.removeCleaningType(id);
+        showToast('Type retiré ✓');
+        this._renderCleaningTypes();
+      }));
+    });
+    const addBtn = g('stCleaningTypeAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const input = g('stCleaningTypeInput');
+        const label = (input?.value || '').trim();
+        if (!label) return;
+        addBtn.disabled = true;
+        await DB.addCleaningType(label);
+        if (input) input.value = '';
+        addBtn.disabled = false;
+        showToast('Type ajouté ✓');
+        this._renderCleaningTypes();
+      });
+    }
+  },
+
   // ─── Thèmes d'intervention technique (admin) ──────────────────────
   _renderTechThemes() {
     const container = g('stTechThemesList');
@@ -1345,6 +1483,63 @@ const MODAL = {
         addBtn.disabled = false;
         showToast('Thème ajouté ✓');
         this._renderTechThemes();
+      });
+    }
+  },
+
+  // ─── Thèmes de requête entretien/nettoyage (admin) ───────────────
+  _renderCleaningThemes() {
+    const container = g('stCleaningThemesList');
+    if (!container) return;
+    const themes = DB.getCleaningThemes();
+    if (!themes.length) {
+      container.innerHTML = '<p class="st-empty">Aucun thème entretien. Ajoutez-en un ci-dessous (ex: Poubelles, Vitres, Sanitaires, Sols…).</p>';
+    } else {
+      container.innerHTML = themes.map(t => `
+        <div class="tech-theme-row" data-id="${t.id}">
+          <input type="text" class="cleaning-theme-name" value="${escapeHtml(t.label)}" data-orig="${escapeHtml(t.label)}">
+          <button class="btn-sm cleaning-theme-save" data-id="${t.id}">Renommer</button>
+          <button class="btn-sm btn-danger cleaning-theme-del" data-id="${t.id}" data-name="${escapeHtml(t.label)}">Supprimer</button>
+        </div>
+      `).join('');
+    }
+    // Renommer
+    container.querySelectorAll('.cleaning-theme-save').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const row   = btn.closest('.tech-theme-row');
+        const id    = btn.dataset.id;
+        const input = row.querySelector('.cleaning-theme-name');
+        const newLabel = (input?.value || '').trim();
+        const origLabel = input?.dataset.orig || '';
+        if (!newLabel || newLabel === origLabel) return;
+        await DB.setCleaningThemeLabel(id, newLabel);
+        showToast('Thème renommé ✓');
+        this._renderCleaningThemes();
+      }));
+    });
+    // Supprimer
+    container.querySelectorAll('.cleaning-theme-del').forEach(btn => {
+      btn.addEventListener('click', () => this._requireAdmin(async () => {
+        const id = btn.dataset.id, name = btn.dataset.name;
+        if (!confirm(`Supprimer le thème "${name}" ?\nLes requêtes qui l'utilisaient passeront en "Thème supprimé".`)) return;
+        await DB.removeCleaningTheme(id);
+        showToast('Thème supprimé ✓');
+        this._renderCleaningThemes();
+      }));
+    });
+    // Ajouter
+    const addBtn = g('stCleaningThemeAdd');
+    if (addBtn) {
+      addBtn.onclick = () => this._requireAdmin(async () => {
+        const input = g('stCleaningThemeInput');
+        const label = (input?.value || '').trim();
+        if (!label) return;
+        addBtn.disabled = true;
+        await DB.addCleaningTheme(label);
+        if (input) input.value = '';
+        addBtn.disabled = false;
+        showToast('Thème ajouté ✓');
+        this._renderCleaningThemes();
       });
     }
   },
@@ -2846,7 +3041,10 @@ function openTechIssueModal() {
   // Réinitialiser les champs
   if (g('techIssueDesc'))   g('techIssueDesc').value  = '';
   if (g('techIssueLocal'))  g('techIssueLocal').value = '';
-  if (g('techIssueUrgent')) g('techIssueUrgent').checked = false;
+  // Reset urgency level à 3 (moyen par défaut)
+  g('techIssueUrgencyLevels')?.querySelectorAll('.ti-urg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.level === '3');
+  });
   if (g('techIssueTheme'))  g('techIssueTheme').value = '';
   if (g('techIssueRecurring')) {
     g('techIssueRecurring').checked = false;
@@ -2854,6 +3052,7 @@ function openTechIssueModal() {
   }
   if (g('techIssueRecurInterval')) g('techIssueRecurInterval').value = '1';
   if (g('techIssueRecurUnit'))     g('techIssueRecurUnit').value = 'months';
+  if (g('techIssueRecurStart'))    g('techIssueRecurStart').value = '';
   if (g('techIssueRecurUntil'))    g('techIssueRecurUntil').value = '';
   if (g('techIssueRecurPreview'))  g('techIssueRecurPreview').textContent = '';
 
@@ -2949,20 +3148,28 @@ function _initTechIssueModal() {
   let _localHighlight = -1;
 
   function _getLocalOptions() {
-    // Construit une liste d'entrées { value, internal, pub } pour chaque local
+    // Construit une liste d'entrées { value, internal, pub, lieu } pour chaque local
     const allLieux = DB.getLieux?.() || {};
     const seen = new Set();
     const entries = [];
-    Object.values(allLieux).forEach(lieu => {
+    Object.entries(allLieux).forEach(([, lieu]) => {
       (lieu.localIds || []).forEach(id => {
         if (seen.has(id)) return;
         seen.add(id);
         const internal = DB.getLocalLabel(id);
         const pub      = DB.getPublicLocalLabel(id);
-        if (internal) entries.push({ value: internal, internal, pub: pub !== internal ? pub : null });
+        if (internal) entries.push({
+          value: internal,
+          internal,
+          pub: pub !== internal ? pub : null,
+          lieu: lieu.name || '',
+        });
       });
     });
-    return entries.sort((a, b) => a.internal.localeCompare(b.internal));
+    return entries.sort((a, b) =>
+      (a.lieu || '').localeCompare(b.lieu || '', 'fr') ||
+      a.internal.localeCompare(b.internal, 'fr')
+    );
   }
 
   function _renderSuggestions(query) {
@@ -2970,15 +3177,19 @@ function _initTechIssueModal() {
     const q = query.toLowerCase().trim();
     const opts = _getLocalOptions();
     const matches = q
-      ? opts.filter(e => e.internal.toLowerCase().includes(q) || (e.pub && e.pub.toLowerCase().includes(q)))
+      ? opts.filter(e =>
+          e.internal.toLowerCase().includes(q) ||
+          (e.pub && e.pub.toLowerCase().includes(q)) ||
+          (e.lieu && e.lieu.toLowerCase().includes(q)))
       : opts;
     _localHighlight = -1;
     if (!matches.length) {
       localSuggest.innerHTML = `<div class="ti-local-suggest-empty">Aucun résultat</div>`;
     } else {
       localSuggest.innerHTML = matches.map(e => {
-        const pubHtml = e.pub ? ` <span style="color:#64748b;font-size:.8em">— ${e.pub}</span>` : '';
-        return `<div class="ti-local-suggest-item" data-val="${e.value.replace(/"/g,'&quot;')}">${escapeHtml(e.internal)}${pubHtml}</div>`;
+        const lieuHtml = e.lieu ? `<span class="ti-local-suggest-lieu">${escapeHtml(e.lieu)}</span> · ` : '';
+        const pubHtml  = e.pub  ? ` <span class="ti-local-suggest-pub">— ${escapeHtml(e.pub)}</span>` : '';
+        return `<div class="ti-local-suggest-item" data-val="${e.value.replace(/"/g,'&quot;')}">${lieuHtml}<span class="ti-local-suggest-name">${escapeHtml(e.internal)}</span>${pubHtml}</div>`;
       }).join('');
       localSuggest.querySelectorAll('.ti-local-suggest-item').forEach(item => {
         item.addEventListener('mousedown', e => {
@@ -3016,23 +3227,36 @@ function _initTechIssueModal() {
     setTimeout(() => localSuggest?.classList.add('hidden'), 150);
   });
 
-  // ── Populate select thème ────────────────────────────────────
+  // ── Populate select thème (dépend du type de requête) ──────────
   const themeSel = g('techIssueTheme');
   function _populateThemes() {
     if (!themeSel) return;
-    const themes = DB.getTechThemes();
+    // La liste de thèmes dépend du type courant : technique → techThemes,
+    // entretien → cleaningThemes. Préserve la sélection si possible.
+    const currentVal = themeSel.value;
+    const themes = DB.getThemesForRequestType?.(_tiCurrentType) || DB.getTechThemes();
     themeSel.innerHTML = '<option value="">— Non précisé —</option>' +
       themes.map(t => `<option value="${t.id}">${escapeHtml(t.label)}</option>`).join('');
+    if (currentVal && themes.find(t => t.id === currentVal)) themeSel.value = currentVal;
   }
   _populateThemes();
   // Re-populate à chaque ouverture (au cas où l'admin a modifié entre-temps)
   DB.onConfigChange?.(_populateThemes);
+  // Re-populate au changement de type (tech vs entretien → listes différentes)
+  g('techIssueTypes')?.querySelectorAll('.ti-type-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // _tiCurrentType est mis à jour par le handler existant — on laisse
+      // un tick avant de repopuler.
+      setTimeout(_populateThemes, 0);
+    });
+  });
 
   // ── Récurrence : toggle + live preview ──────────────────────
   const recurCb     = g('techIssueRecurring');
   const recurFields = g('techIssueRecurFields');
   const recurInt    = g('techIssueRecurInterval');
   const recurUnit   = g('techIssueRecurUnit');
+  const recurStart  = g('techIssueRecurStart');
   const recurUntil  = g('techIssueRecurUntil');
   const recurPrev   = g('techIssueRecurPreview');
   function _updateRecurPreview() {
@@ -3042,21 +3266,31 @@ function _initTechIssueModal() {
     const unitMap = { days: 'jour', weeks: 'semaine', months: 'mois' };
     const unit = recurUnit?.value || 'months';
     const unitLabel = unitMap[unit] + (n > 1 && unit !== 'months' ? 's' : '');
-    const untilStr  = recurUntil?.value
-      ? ` jusqu'au ${new Date(recurUntil.value).toLocaleDateString('fr-BE', { day: '2-digit', month: 'long', year: 'numeric' })}`
-      : ' (sans date de fin)';
-    recurPrev.textContent = `Cette requête se régénérera tous les ${n} ${unitLabel}${untilStr}.`;
+    const fmtDate = (s) => new Date(s).toLocaleDateString('fr-BE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const startStr  = recurStart?.value ? `À partir du ${fmtDate(recurStart.value)}, ` : '';
+    const untilStr  = recurUntil?.value ? ` jusqu'au ${fmtDate(recurUntil.value)}` : ' (sans date de fin)';
+    recurPrev.textContent = `${startStr}cette requête se régénérera tous les ${n} ${unitLabel}${untilStr}.`;
   }
   recurCb?.addEventListener('change', () => {
     recurFields?.classList.toggle('hidden', !recurCb.checked);
     _updateRecurPreview();
   });
-  [recurInt, recurUnit, recurUntil].forEach(el => el?.addEventListener('input', _updateRecurPreview));
+  [recurInt, recurUnit, recurStart, recurUntil].forEach(el => el?.addEventListener('input', _updateRecurPreview));
+
+  // Sélection urgencyLevel : boutons 1-5, un seul actif à la fois
+  g('techIssueUrgencyLevels')?.querySelectorAll('.ti-urg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      g('techIssueUrgencyLevels').querySelectorAll('.ti-urg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
 
   g('techIssueSendBtn')?.addEventListener('click', async () => {
     const desc    = g('techIssueDesc')?.value.trim();
     const local   = g('techIssueLocal')?.value.trim() || null;
-    const urgent  = g('techIssueUrgent')?.checked || false;
+    const activeLvl = g('techIssueUrgencyLevels')?.querySelector('.ti-urg-btn.active');
+    const urgencyLevel = parseInt(activeLvl?.dataset.level) || 3;
+    const urgent = urgencyLevel >= 5; // compat code existant qui lit .urgent
     const themeId = g('techIssueTheme')?.value || null;
     if (!desc) { g('techIssueDesc')?.focus(); return; }
 
@@ -3084,10 +3318,20 @@ function _initTechIssueModal() {
     if (recurCb?.checked) {
       const interval = Math.max(1, parseInt(recurInt?.value, 10) || 1);
       const unit     = recurUnit?.value || 'months';
+      const startStr = recurStart?.value || null;
       const untilStr = recurUntil?.value || null;
+      // startDate (optionnelle) : 00h00 local du jour choisi.
+      // Si laissée vide ou dans le passé, démarre aujourd'hui.
+      let startDate = null;
+      if (startStr) {
+        const sd = new Date(startStr);
+        sd.setHours(0, 0, 0, 0);
+        if (sd.getTime() > Date.now()) startDate = sd.getTime();
+      }
       recurrence = {
         interval,
         unit,
+        startDate,
         until: untilStr ? new Date(untilStr).getTime() : null,
       };
     }
@@ -3098,6 +3342,7 @@ function _initTechIssueModal() {
       description:   desc,
       local,
       urgent,
+      urgencyLevel,
       themeId,
       recurrence,
       fromAgentKey:  myKey,

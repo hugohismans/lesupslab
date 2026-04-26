@@ -78,11 +78,17 @@
     <button class="btn-broadcast" id="btnBroadcast" title="Diffuser un message à des agents" style="display:none">📢 Diffuser</button>
     <button class="btn-tech-issue" id="btnTechIssue" title="Envoyer une requête (technique, entretien…)">📤 Requête</button>
     <div class="req-bell-wrap" style="position:relative;display:inline-flex">
-      <button class="btn-interventions" id="btnInterventions" title="Interventions en cours" style="display:none">🛠️ Interventions
-        <span class="req-badge hidden" id="interventionsBadge"></span>
+      <button class="btn-interventions" id="btnInterventionsTech" title="Interventions techniques en cours" style="display:none">🔧 Interventions tech
+        <span class="req-badge hidden" id="interventionsBadgeTech"></span>
+      </button>
+    </div>
+    <div class="req-bell-wrap" style="position:relative;display:inline-flex">
+      <button class="btn-interventions" id="btnInterventionsCleaning" title="Interventions entretien en cours" style="display:none">🧹 Interventions entretien
+        <span class="req-badge hidden" id="interventionsBadgeCleaning"></span>
       </button>
     </div>
     <a class="btn-tech-space" id="btnTechSpace" href="technique.html" title="Espace Responsable technique — statistiques et suivi" style="display:none;text-decoration:none">🛠️ Espace technique</a>
+    <a class="btn-maintenance-space" id="btnMaintenanceSpace" href="entretien.html" title="Management entretien — enregistrer le nettoyage et consulter le bilan" style="display:none;text-decoration:none">🧹 Entretien</a>
     <button class="btn-calendar-export" id="btnCalendarExport" title="Exporter mon agenda (.ics)" style="display:none">📅 Agenda</button>
     <a class="btn-rdv" href="rdv.html" title="Disponibilité pour rendez-vous">📅 RDV</a>
     <a class="btn-live" id="btnPublic" href="vuepublic.html" target="_blank" title="Vue publique">🖥 Public</a>
@@ -956,6 +962,7 @@
           <a class="st-sidenav-link" data-target="stSectLocalisation">📍 Localisation</a>
           <div class="st-sidenav-sep">Sécurité & Système</div>
           <a class="st-sidenav-link" data-target="stSectPermissions">🔐 Rôles & Droits</a>
+          <a class="st-sidenav-link" data-target="stSectEntretien">🧹 Entretien</a>
           <a class="st-sidenav-link" data-target="stSectTechThemes">🏷️ Thèmes techniques</a>
           <a class="st-sidenav-link" data-target="stSectAbsences">📅 Absences</a>
           <a class="st-sidenav-link" data-target="stSectNotifs">🔔 Notifications</a>
@@ -1280,6 +1287,28 @@
             </div>
           </div>
 
+          <!-- Entretien : agents sans compte + types de nettoyage -->
+          <div class="st-section-anchor" id="stSectEntretien"></div>
+          <h3 class="st-title" style="margin-top:1.25rem">🧹 Entretien</h3>
+          <div class="st-admin-section">
+            <p class="st-perm-intro">Configure la liste des agents d'entretien (sans compte) et les types de nettoyage. Ces listes sont utilisées sur la page <b>Management Entretien</b> (🧹 Entretien dans le header) par les agents ayant le rôle Entretien.</p>
+
+            <h4 style="margin-top:1rem;margin-bottom:.35rem;font-size:.88rem;color:#1a3a5c">👷 Agents d'entretien sans compte</h4>
+            <div id="stCleanersList" class="st-list"></div>
+            <div class="st-add" style="flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stCleanerBadgeInput" placeholder="Badge (ex: C001)" style="flex:0 0 140px">
+              <input type="text" id="stCleanerNameInput"  placeholder="Nom de l'agent..." style="flex:1;min-width:180px">
+              <button class="btn-primary" id="stCleanerAdd">+ Ajouter</button>
+            </div>
+
+            <h4 style="margin-top:1.25rem;margin-bottom:.35rem;font-size:.88rem;color:#1a3a5c">🧼 Types de nettoyage</h4>
+            <div id="stCleaningTypesList" class="st-list"></div>
+            <div class="st-add" style="flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stCleaningTypeInput" placeholder="Nouveau type (ex: Nettoyage frigo, Global, Salle de bain, ...)" style="flex:1;min-width:200px">
+              <button class="btn-primary" id="stCleaningTypeAdd">+ Ajouter</button>
+            </div>
+          </div>
+
           <!-- Thèmes d'intervention technique -->
           <div class="st-section-anchor" id="stSectTechThemes"></div>
           <h3 class="st-title" style="margin-top:1.25rem">🏷️ Thèmes d'intervention technique</h3>
@@ -1289,6 +1318,29 @@
             <div class="st-add" style="margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
               <input type="text" id="stTechThemeInput" placeholder="Nouveau thème..." style="flex:1;min-width:180px">
               <button class="btn-primary" id="stTechThemeAdd">+ Ajouter</button>
+            </div>
+          </div>
+
+          <!-- Ouvriers techniques sans compte -->
+          <h3 class="st-title" style="margin-top:1.25rem">🔧 Ouvriers techniques sans compte</h3>
+          <div class="st-admin-section" id="stTechniciansSection">
+            <p class="st-perm-intro">Liste des ouvriers techniques (sans compte SiteCpas) auxquels on peut assigner les requêtes de type <b>Technique</b> et <b>Autre</b>. Identifiés par un badge + nom.</p>
+            <div id="stTechniciansList" class="st-list"></div>
+            <div class="st-add" style="flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stTechnicianBadgeInput" placeholder="Badge (ex: T001)" style="flex:0 0 140px">
+              <input type="text" id="stTechnicianNameInput"  placeholder="Nom de l'ouvrier..." style="flex:1;min-width:180px">
+              <button class="btn-primary" id="stTechnicianAdd">+ Ajouter</button>
+            </div>
+          </div>
+
+          <!-- Thèmes de requête entretien/nettoyage -->
+          <h3 class="st-title" style="margin-top:1.25rem">🧹 Thèmes de requête entretien</h3>
+          <div class="st-admin-section" id="stCleaningThemesSection">
+            <p class="st-perm-intro">Catégories propres aux requêtes d'entretien/nettoyage (poubelles, vitres, sanitaires, sols…). Liste distincte des thèmes techniques — utilisée dans le formulaire de nouvelle requête quand le type "Entretien / Nettoyage" est choisi.</p>
+            <div id="stCleaningThemesList" class="tech-themes-list"></div>
+            <div class="st-add" style="margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
+              <input type="text" id="stCleaningThemeInput" placeholder="Nouveau thème (ex: Poubelles, Vitres, Sanitaires, Sols…)" style="flex:1;min-width:220px">
+              <button class="btn-primary" id="stCleaningThemeAdd">+ Ajouter</button>
             </div>
           </div>
 
@@ -1703,8 +1755,8 @@
 
       <!-- Lieu -->
       <div style="position:relative">
-        <label class="form-label">Bureau / Lieu (optionnel)</label>
-        <input id="techIssueLocal" type="text" autocomplete="off" placeholder="Recherche un bureau…" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.55rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit;box-sizing:border-box">
+        <label class="form-label">Local concerné (optionnel)</label>
+        <input id="techIssueLocal" type="text" autocomplete="off" placeholder="Rechercher un local…" style="width:100%;border:1.5px solid #334155;border-radius:8px;padding:.55rem .75rem;background:#0f172a;color:#e2e8f0;font-size:.9rem;font-family:inherit;box-sizing:border-box">
         <div id="techIssueLocalSuggest" class="ti-local-suggest hidden"></div>
       </div>
 
@@ -1715,11 +1767,17 @@
         <div id="techIssueNoTech" class="hidden" style="color:#f59e0b;font-size:.83rem;margin-top:.35rem">Aucun poste configuré — la notification sera envoyée aux administrateurs.</div>
       </div>
 
-      <!-- Urgence -->
-      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;user-select:none">
-        <input type="checkbox" id="techIssueUrgent" style="width:1.1rem;height:1.1rem;accent-color:#ef4444">
-        <span style="font-size:.88rem;color:#e2e8f0">🚨 Marquer comme <strong>urgent</strong></span>
-      </label>
+      <!-- Urgence 1-5 -->
+      <div>
+        <label style="display:block;font-size:.78rem;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Niveau d'urgence</label>
+        <div id="techIssueUrgencyLevels" class="ti-urgency-row">
+          <button type="button" class="ti-urg-btn ti-urg-1" data-level="1" title="1 — Faible">1</button>
+          <button type="button" class="ti-urg-btn ti-urg-2" data-level="2" title="2 — Modéré">2</button>
+          <button type="button" class="ti-urg-btn ti-urg-3 active" data-level="3" title="3 — Moyen (défaut)">3</button>
+          <button type="button" class="ti-urg-btn ti-urg-4" data-level="4" title="4 — Élevé">4</button>
+          <button type="button" class="ti-urg-btn ti-urg-5" data-level="5" title="5 — Critique">5</button>
+        </div>
+      </div>
 
       <!-- Récurrence -->
       <div style="border-top:1px solid #1e293b;padding-top:.75rem">
@@ -1736,6 +1794,11 @@
               <option value="weeks">semaine(s)</option>
               <option value="months" selected>mois</option>
             </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <span style="font-size:.85rem;color:#94a3b8">À partir du</span>
+            <input type="date" id="techIssueRecurStart" style="border:1.5px solid #334155;border-radius:6px;padding:.35rem .55rem;background:#1e293b;color:#e2e8f0;font-size:.9rem;font-family:inherit">
+            <span style="font-size:.8rem;color:#64748b">(optionnel — laisse vide pour démarrer aujourd'hui)</span>
           </div>
           <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
             <span style="font-size:.85rem;color:#94a3b8">Jusqu'au</span>
@@ -1991,7 +2054,8 @@
   <button class="mob-drawer-btn" data-target="btnAnalytics">📊 Stats</button>
   <button class="mob-drawer-btn" data-target="btnBroadcast">📢 Diffuser</button>
   <button class="mob-drawer-btn" data-target="btnTechIssue">📤 Requête</button>
-  <button class="mob-drawer-btn" data-target="btnInterventions">🛠️ Interventions</button>
+  <button class="mob-drawer-btn" data-target="btnInterventionsTech">🔧 Interventions tech</button>
+  <button class="mob-drawer-btn" data-target="btnInterventionsCleaning">🧹 Interventions entretien</button>
   <button class="mob-drawer-btn" data-target="btnTechSpace">🔧 Espace technique</button>
 
   <div class="mob-drawer-section">Paramètres</div>
