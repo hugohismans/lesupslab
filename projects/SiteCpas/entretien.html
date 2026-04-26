@@ -589,20 +589,26 @@
     .ent-stock-card-low  .ent-stock-qty { color: #b45309; }
     .ent-stock-card-zero .ent-stock-qty { color: #991b1b; }
     .ent-stock-card-actions {
-      display: flex; gap: .35rem; justify-content: center;
+      display: grid; grid-template-columns: 1fr 1fr; gap: .35rem;
     }
-    .ent-stock-dec {
-      flex: 1; padding: .55rem .35rem;
-      background: #15803d; color: #fff; border: none; border-radius: 8px;
+    .ent-stock-adj {
+      padding: .5rem .35rem;
+      color: #fff; border: none; border-radius: 8px;
       font-size: .9rem; font-weight: 800; cursor: pointer;
-      transition: background .12s; font-family: inherit;
+      transition: background .12s, transform .08s; font-family: inherit;
     }
-    .ent-stock-dec:hover:not(:disabled)  { background: #166534; }
-    .ent-stock-dec:disabled              { background: #94a3b8; cursor: not-allowed; }
-    .ent-stock-dec.ent-stock-dec-5 {
-      background: #1e293b;
-    }
-    .ent-stock-dec.ent-stock-dec-5:hover:not(:disabled) { background: #0f172a; }
+    .ent-stock-adj:hover:not(:disabled)  { transform: translateY(-1px); }
+    .ent-stock-adj:disabled              { background: #94a3b8 !important; cursor: not-allowed; }
+    /* Décrément : -1 vert, -5 vert foncé */
+    .ent-stock-dec    { background: #ef4444; }
+    .ent-stock-dec:hover:not(:disabled)    { background: #dc2626; }
+    .ent-stock-dec-5  { background: #991b1b; }
+    .ent-stock-dec-5:hover:not(:disabled)  { background: #7f1d1d; }
+    /* Incrément : +1 vert, +5 vert foncé (réception/réapprovisionnement) */
+    .ent-stock-inc    { background: #22c55e; }
+    .ent-stock-inc:hover:not(:disabled)    { background: #16a34a; }
+    .ent-stock-inc-5  { background: #15803d; }
+    .ent-stock-inc-5:hover:not(:disabled)  { background: #166534; }
 
     /* Liste de gestion (set absolu / renommer / supprimer) */
     .ent-stock-manage-list {

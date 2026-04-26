@@ -1435,34 +1435,39 @@
           </div>
           <div class="ent-stock-qty">${qty}</div>
           <div class="ent-stock-card-actions">
-            <button type="button" class="ent-stock-dec" data-id="${escapeHtml(it.id)}" data-by="1">−1</button>
-            <button type="button" class="ent-stock-dec ent-stock-dec-5" data-id="${escapeHtml(it.id)}" data-by="5">−5</button>
+            <button type="button" class="ent-stock-adj ent-stock-dec"   data-id="${escapeHtml(it.id)}" data-delta="-1">−1</button>
+            <button type="button" class="ent-stock-adj ent-stock-inc"   data-id="${escapeHtml(it.id)}" data-delta="1">+1</button>
+            <button type="button" class="ent-stock-adj ent-stock-dec-5" data-id="${escapeHtml(it.id)}" data-delta="-5">−5</button>
+            <button type="button" class="ent-stock-adj ent-stock-inc-5" data-id="${escapeHtml(it.id)}" data-delta="5">+5</button>
           </div>
         </div>`;
       }).join('');
 
-      grid.querySelectorAll('.ent-stock-dec').forEach(btn => {
-        btn.addEventListener('click', () => this._decrementStock(btn));
+      grid.querySelectorAll('.ent-stock-adj').forEach(btn => {
+        btn.addEventListener('click', () => this._adjustStock(btn));
       });
     },
 
-    async _decrementStock(btn) {
+    async _adjustStock(btn) {
       const id = btn.dataset.id;
-      const by = parseInt(btn.dataset.by, 10) || 1;
-      if (!id) return;
+      const delta = parseInt(btn.dataset.delta, 10) || 0;
+      if (!id || !delta) return;
       const item = DB.getStockItems().find(it => it.id === id);
       const name = item?.name || 'Article';
       const current = parseInt(item?.quantity, 10) || 0;
-      if (current <= 0) {
+      // Décrément sur stock vide : feedback explicite
+      if (delta < 0 && current <= 0) {
         showToast(`${name} : stock vide, réapprovisionne via 🛠 Gérer stock`, true);
         return;
       }
       btn.disabled = true;
       try {
-        const next = await DB.decrementStockItem(id, by);
+        const next = delta < 0
+          ? await DB.decrementStockItem(id, -delta)
+          : await DB.incrementStockItem(id, delta);
         showToast(`✓ ${name} : ${next}`);
       } catch (e) {
-        console.warn('[ENTRETIEN] decrement failed', e);
+        console.warn('[ENTRETIEN] adjust stock failed', e);
         showToast('Erreur : ' + (e?.message || e), true);
       }
       btn.disabled = false;

@@ -2419,6 +2419,13 @@ const DB = {
     await this._ref(`entretien/stock/items/${id}/quantity`).set(next);
     return next;
   },
+  async incrementStockItem(id, by = 1) {
+    const item = (this._stockItems || {})[id];
+    const current = item ? parseInt(item.quantity, 10) || 0 : 0;
+    const next = current + Math.max(1, parseInt(by, 10) || 1);
+    await this._ref(`entretien/stock/items/${id}/quantity`).set(next);
+    return next;
+  },
 
   async addService(name) {
     await this._ref('appConfig/services').push(name);
