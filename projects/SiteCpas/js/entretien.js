@@ -167,6 +167,11 @@
     _reqStatusFilter: 'open',
     _reqUrgFilter:    'all',
 
+    // ── Stock : détection de franchissement de seuil ──────────────
+    _prevStock:        {},     // état précédent pour comparer
+    _prevStockReady:   false,  // au 1er event, on initialise sans alerter
+    _alertCooldownMs:  4 * 3600 * 1000, // 4h anti-spam pour le même item
+
     init() {
       DB.init();
       DB.initConfig();
@@ -185,7 +190,10 @@
         if (this._tab === 'bilan') this._renderBilan();
         if (this._tab === 'annul') this._renderAnnul();
       });
-      DB.onStockItemsChange(() => {
+      DB.onStockItemsChange((items) => {
+        // Détection de franchissement de seuil pour notifier les agents
+        // entretien/admin. _prevStock garde l'état précédent en mémoire.
+        this._detectLowStockTransitions(items);
         if (this._tab === 'stock')       this._renderStock();
         if (this._tab === 'stockManage') this._renderStockManage();
       });
@@ -1421,16 +1429,23 @@
         grid.innerHTML = '<div class="ent-empty-hint">Aucun article configuré. Va dans 🛠 Gérer stock pour en ajouter.</div>';
         return;
       }
-      const LOW_THRESHOLD = 5;
       grid.innerHTML = items.map(it => {
-        const qty   = parseInt(it.quantity, 10) || 0;
-        const cls   = qty === 0 ? ' ent-stock-card-zero' : (qty <= LOW_THRESHOLD ? ' ent-stock-card-low' : '');
+        const qty       = parseInt(it.quantity,  10) || 0;
+        const threshold = parseInt(it.threshold, 10) || 0;
+        // Couleur d'état :
+        // - rouge si qty = 0 (toujours)
+        // - orange si threshold > 0 ET qty ≤ threshold
+        // - normal sinon
+        let cls = '';
+        if (qty === 0) cls = ' ent-stock-card-zero';
+        else if (threshold > 0 && qty <= threshold) cls = ' ent-stock-card-low';
+        const bell  = (threshold > 0 && qty <= threshold) ? ' <span class="ent-stock-bell" title="Stock bas">🔔</span>' : '';
         const emoji = it.emoji || '📦';
         const unit  = it.unit ? `<span class="ent-stock-unit">${escapeHtml(it.unit)}</span>` : '';
         return `<div class="ent-stock-card${cls}" data-id="${escapeHtml(it.id)}">
           <div class="ent-stock-card-hd">
             <span class="ent-stock-emoji">${escapeHtml(emoji)}</span>
-            <span class="ent-stock-name">${escapeHtml(it.name || 'Article')}</span>
+            <span class="ent-stock-name">${escapeHtml(it.name || 'Article')}${bell}</span>
             ${unit}
           </div>
           <div class="ent-stock-qty">${qty}</div>
@@ -1484,11 +1499,13 @@
           const emoji = it.emoji || '📦';
           const unit  = it.unit  || '';
           const qty   = parseInt(it.quantity, 10) || 0;
+          const threshold = parseInt(it.threshold, 10) || 0;
           return `<div class="ent-stock-manage-row" data-id="${escapeHtml(it.id)}">
             <button type="button" class="ent-emoji-trigger" data-field="emoji" data-value="${escapeHtml(emoji)}" title="Choisir un emoji">${escapeHtml(emoji)}</button>
-            <input type="text"   class="ent-stock-input ent-stock-input-name"  data-field="name"     value="${escapeHtml(it.name || '')}" placeholder="Nom">
-            <input type="text"   class="ent-stock-input ent-stock-input-unit"  data-field="unit"     value="${escapeHtml(unit)}" placeholder="Unité">
-            <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="quantity" value="${qty}" min="0">
+            <input type="text"   class="ent-stock-input ent-stock-input-name"  data-field="name"      value="${escapeHtml(it.name || '')}" placeholder="Nom">
+            <input type="text"   class="ent-stock-input ent-stock-input-unit"  data-field="unit"      value="${escapeHtml(unit)}" placeholder="Unité">
+            <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="quantity"  value="${qty}" min="0">
+            <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="threshold" value="${threshold}" min="0" placeholder="Alerte ≤" title="Seuil d'alerte (0 = pas d'alerte)">
             <button type="button" class="ent-stock-save" data-id="${escapeHtml(it.id)}">✓</button>
             <button type="button" class="ent-stock-del"  data-id="${escapeHtml(it.id)}" title="Supprimer">🗑</button>
           </div>`;
@@ -1516,7 +1533,7 @@
         addBtn._bound = true;
         addBtn.addEventListener('click', () => this._addStockItem());
         // Submit on Enter dans le formulaire d'ajout
-        ['entStockNewEmoji', 'entStockNewName', 'entStockNewUnit', 'entStockNewQty'].forEach(id => {
+        ['entStockNewEmoji', 'entStockNewName', 'entStockNewUnit', 'entStockNewQty', 'entStockNewThreshold'].forEach(id => {
           document.getElementById(id)?.addEventListener('keydown', e => {
             if (e.key === 'Enter') addBtn.click();
           });
@@ -1537,9 +1554,10 @@
       btn.disabled = true;
       try {
         await DB.updateStockItem(id, {
-          emoji: getField('emoji'),
-          name:  getField('name'),
-          unit:  getField('unit'),
+          emoji:     getField('emoji'),
+          name:      getField('name'),
+          unit:      getField('unit'),
+          threshold: getField('threshold'),
         });
         await DB.setStockQuantity(id, getField('quantity'));
         showToast('✓ Article mis à jour');
@@ -1568,28 +1586,105 @@
     },
 
     async _addStockItem() {
-      const emojiBtn = document.getElementById('entStockNewEmoji');
-      const emoji   = emojiBtn?.dataset.value || emojiBtn?.textContent || '📦';
-      const name  = document.getElementById('entStockNewName')?.value.trim();
-      const unit  = document.getElementById('entStockNewUnit')?.value.trim();
-      const qty   = parseInt(document.getElementById('entStockNewQty')?.value, 10) || 0;
+      const emojiBtn  = document.getElementById('entStockNewEmoji');
+      const emoji     = emojiBtn?.dataset.value || emojiBtn?.textContent || '📦';
+      const name      = document.getElementById('entStockNewName')?.value.trim();
+      const unit      = document.getElementById('entStockNewUnit')?.value.trim();
+      const qty       = parseInt(document.getElementById('entStockNewQty')?.value, 10) || 0;
+      const threshold = parseInt(document.getElementById('entStockNewThreshold')?.value, 10) || 0;
       if (!name) {
         showToast('Donne un nom à l\'article', true);
         document.getElementById('entStockNewName')?.focus();
         return;
       }
       try {
-        await DB.addStockItem({ name, emoji, unit, quantity: qty });
+        await DB.addStockItem({ name, emoji, unit, quantity: qty, threshold });
         showToast(`✓ ${name} ajouté`);
         // Reset le formulaire (emoji revient à 📦 par défaut)
         if (emojiBtn) { emojiBtn.dataset.value = '📦'; emojiBtn.textContent = '📦'; }
-        document.getElementById('entStockNewName').value  = '';
-        document.getElementById('entStockNewUnit').value  = '';
-        document.getElementById('entStockNewQty').value   = '';
+        document.getElementById('entStockNewName').value      = '';
+        document.getElementById('entStockNewUnit').value      = '';
+        document.getElementById('entStockNewQty').value       = '';
+        document.getElementById('entStockNewThreshold').value = '';
         document.getElementById('entStockNewName')?.focus();
       } catch (e) {
         console.warn('[ENTRETIEN] add stock failed', e);
         showToast('Erreur : ' + (e?.message || e), true);
+      }
+    },
+
+    // ── Détection franchissement de seuil + notif aux agents ─────
+    // Appelé sur chaque update de entretien/stock/items. Compare l'état
+    // précédent (_prevStock) à l'état nouveau et déclenche l'alerte
+    // uniquement si on FRANCHIT le seuil (pas à chaque tick sous le seuil).
+    _detectLowStockTransitions(items) {
+      const newMap = items || {};
+      // Au 1er event après le boot, on init _prevStock sans alerter
+      // (évite de notifier pour tous les items déjà sous le seuil).
+      if (!this._prevStockReady) {
+        this._prevStockReady = true;
+        this._prevStock = {};
+        Object.entries(newMap).forEach(([id, it]) => { this._prevStock[id] = { ...it }; });
+        return;
+      }
+      Object.entries(newMap).forEach(([id, it]) => {
+        const prev      = this._prevStock[id];
+        const threshold = parseInt(it.threshold, 10) || 0;
+        const newQty    = parseInt(it.quantity,  10) || 0;
+        if (threshold <= 0) {
+          this._prevStock[id] = { ...it };
+          return; // alerte désactivée pour cet item
+        }
+        const prevQty       = prev ? (parseInt(prev.quantity,  10) || 0) : Infinity;
+        const prevThreshold = prev ? (parseInt(prev.threshold, 10) || 0) : 0;
+        // Franchissement = (qty - threshold) passe de >0 à ≤0,
+        // OU le seuil a augmenté et nous met d'un coup sous le seuil
+        const wasAbove = prevQty  > prevThreshold || prevThreshold === 0;
+        const nowBelow = newQty  <= threshold;
+        if (wasAbove && nowBelow) {
+          this._maybeAlertLowStock(id, { ...it });
+        }
+        this._prevStock[id] = { ...it };
+      });
+    },
+
+    async _maybeAlertLowStock(itemId, item) {
+      try {
+        // CAS-like : on lit lastAlerts/{itemId} et on n'envoie que si
+        // > cooldown depuis la dernière notif. Évite que tous les agents
+        // connectés envoient en même temps.
+        const ref = DB._ref(`entretien/stock/lastAlerts/${itemId}`);
+        const snap = await ref.once('value');
+        const last = snap.val();
+        const now  = Date.now();
+        if (last && last.ts && (now - last.ts) < this._alertCooldownMs) return;
+
+        // Réserver le slot avant d'envoyer (réduit la collision)
+        const myKey = sessionStorage.getItem('cpas_current_agent_key');
+        await ref.set({ ts: now, by: myKey || null });
+
+        // Envoyer la notif aux destinataires
+        const name      = item.name      || 'Article';
+        const qty       = parseInt(item.quantity,  10) || 0;
+        const threshold = parseInt(item.threshold, 10) || 0;
+        const unit      = item.unit ? ' ' + item.unit : '';
+        const message   = qty === 0
+          ? `🔔 Stock épuisé : ${name}`
+          : `🔔 Stock bas : ${name} → ${qty}${unit} (seuil ${threshold})`;
+
+        const targets = DB.getAgentsWithKeys()
+          .filter(a => {
+            const role = DB.getAgentPermRole?.(a.key);
+            return role === '__entretien__' || role === '__admin__';
+          });
+        for (const a of targets) {
+          await DB.sendNotif(message, qty === 0 ? 'alert' : 'warn', a.key, {
+            stockItemId: itemId,
+            stockName:   name,
+          });
+        }
+      } catch (e) {
+        console.warn('[ENTRETIEN] low-stock alert failed', e);
       }
     },
   };

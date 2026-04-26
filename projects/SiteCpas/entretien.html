@@ -581,6 +581,15 @@
     }
     .ent-stock-emoji { font-size: 1.7rem; line-height: 1; }
     .ent-stock-name  { font-weight: 700; color: #1e293b; font-size: .98rem; }
+    .ent-stock-bell  {
+      display: inline-block; margin-left: .25rem; font-size: .85rem;
+      animation: ent-bell-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes ent-bell-pulse {
+      0%, 100% { transform: rotate(0); }
+      25%      { transform: rotate(-15deg); }
+      75%      { transform: rotate(15deg); }
+    }
     .ent-stock-unit  { font-size: .78rem; color: #64748b; margin-left: auto; }
     .ent-stock-qty   {
       font-size: 2.2rem; font-weight: 900; color: #166534;
@@ -617,7 +626,7 @@
     }
     .ent-stock-manage-row {
       display: grid;
-      grid-template-columns: 50px minmax(140px, 1fr) minmax(110px, 150px) 90px 90px 50px;
+      grid-template-columns: 50px minmax(120px, 1fr) minmax(90px, 130px) 80px 90px 90px 50px;
       gap: .5rem; align-items: center;
       padding: .55rem .7rem;
       background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
@@ -661,7 +670,7 @@
     }
     .ent-stock-add-row {
       display: grid;
-      grid-template-columns: 50px minmax(140px, 1fr) minmax(110px, 150px) 90px auto;
+      grid-template-columns: 50px minmax(120px, 1fr) minmax(90px, 130px) 80px 90px auto;
       gap: .5rem; align-items: center;
     }
     @media (max-width: 720px) {
@@ -936,6 +945,7 @@
           <input type="text" id="entStockNewName"   class="ent-stock-input ent-stock-input-name"  placeholder="Nom (ex: Papier toilette)">
           <input type="text" id="entStockNewUnit"   class="ent-stock-input ent-stock-input-unit"  placeholder="Unité (rouleau, sac…)">
           <input type="number" id="entStockNewQty"  class="ent-stock-input ent-stock-input-qty"   placeholder="Quantité (ex: 24)" min="0">
+          <input type="number" id="entStockNewThreshold" class="ent-stock-input ent-stock-input-qty" placeholder="Alerte ≤" min="0" title="Seuil d'alerte (0 = pas d'alerte)">
           <button type="button" id="entStockAddBtn" class="ent-stock-add-btn">Ajouter</button>
         </div>
       </div>
