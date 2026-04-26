@@ -1888,12 +1888,17 @@ const DB = {
     return id;
   },
 
-  // Calcule le prochain timestamp selon unit + interval.
+  // Calcule le prochain timestamp selon unit + interval, ramené à 00h00
+  // local du jour cible. Sémantique "calendaire" : "tous les jours" =
+  // "une fois par jour calendaire", indépendamment de l'heure de création.
+  // Ex: créée à 23h00 → prochaine occurrence dès le début du jour suivant,
+  // pas 24h plus tard.
   _computeNextAt(fromMs, unit, interval) {
     const d = new Date(fromMs);
     if (unit === 'days')   d.setDate(d.getDate() + interval);
     if (unit === 'weeks')  d.setDate(d.getDate() + interval * 7);
     if (unit === 'months') d.setMonth(d.getMonth() + interval);
+    d.setHours(0, 0, 0, 0);
     return d.getTime();
   },
 
@@ -2125,12 +2130,21 @@ const DB = {
     for (const [tplId, tpl] of templates) {
       const rec = tpl.recurrence;
       if (!rec) continue;
+      // Normalise un éventuel `nextAt` legacy (créé avant la sémantique
+      // calendaire) à 00h00 du jour cible. Sans ça, une série créée à
+      // 23h00 attendait 24h pour générer la 1ère occurrence.
+      let nextAt = rec.nextAt;
+      if (nextAt) {
+        const d = new Date(nextAt);
+        d.setHours(0, 0, 0, 0);
+        nextAt = d.getTime();
+      }
       // Série terminée
-      if (rec.until && rec.nextAt && rec.nextAt > rec.until) continue;
+      if (rec.until && nextAt && nextAt > rec.until) continue;
       // Pas encore due
-      if (!rec.nextAt || rec.nextAt > now) continue;
+      if (!nextAt || nextAt > now) continue;
 
-      let cursor = rec.nextAt;
+      let cursor = nextAt;
       while (cursor <= now && createdCount < MAX_PER_RUN) {
         if (rec.until && cursor > rec.until) break;
         // Anti-duplicata : vérifier qu'il n'existe pas déjà une occurrence pour ce jour
