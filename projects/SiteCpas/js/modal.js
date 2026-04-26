@@ -3052,6 +3052,7 @@ function openTechIssueModal() {
   }
   if (g('techIssueRecurInterval')) g('techIssueRecurInterval').value = '1';
   if (g('techIssueRecurUnit'))     g('techIssueRecurUnit').value = 'months';
+  if (g('techIssueRecurStart'))    g('techIssueRecurStart').value = '';
   if (g('techIssueRecurUntil'))    g('techIssueRecurUntil').value = '';
   if (g('techIssueRecurPreview'))  g('techIssueRecurPreview').textContent = '';
 
@@ -3255,6 +3256,7 @@ function _initTechIssueModal() {
   const recurFields = g('techIssueRecurFields');
   const recurInt    = g('techIssueRecurInterval');
   const recurUnit   = g('techIssueRecurUnit');
+  const recurStart  = g('techIssueRecurStart');
   const recurUntil  = g('techIssueRecurUntil');
   const recurPrev   = g('techIssueRecurPreview');
   function _updateRecurPreview() {
@@ -3264,16 +3266,16 @@ function _initTechIssueModal() {
     const unitMap = { days: 'jour', weeks: 'semaine', months: 'mois' };
     const unit = recurUnit?.value || 'months';
     const unitLabel = unitMap[unit] + (n > 1 && unit !== 'months' ? 's' : '');
-    const untilStr  = recurUntil?.value
-      ? ` jusqu'au ${new Date(recurUntil.value).toLocaleDateString('fr-BE', { day: '2-digit', month: 'long', year: 'numeric' })}`
-      : ' (sans date de fin)';
-    recurPrev.textContent = `Cette requête se régénérera tous les ${n} ${unitLabel}${untilStr}.`;
+    const fmtDate = (s) => new Date(s).toLocaleDateString('fr-BE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const startStr  = recurStart?.value ? `À partir du ${fmtDate(recurStart.value)}, ` : '';
+    const untilStr  = recurUntil?.value ? ` jusqu'au ${fmtDate(recurUntil.value)}` : ' (sans date de fin)';
+    recurPrev.textContent = `${startStr}cette requête se régénérera tous les ${n} ${unitLabel}${untilStr}.`;
   }
   recurCb?.addEventListener('change', () => {
     recurFields?.classList.toggle('hidden', !recurCb.checked);
     _updateRecurPreview();
   });
-  [recurInt, recurUnit, recurUntil].forEach(el => el?.addEventListener('input', _updateRecurPreview));
+  [recurInt, recurUnit, recurStart, recurUntil].forEach(el => el?.addEventListener('input', _updateRecurPreview));
 
   // Sélection urgencyLevel : boutons 1-5, un seul actif à la fois
   g('techIssueUrgencyLevels')?.querySelectorAll('.ti-urg-btn').forEach(btn => {
@@ -3316,10 +3318,20 @@ function _initTechIssueModal() {
     if (recurCb?.checked) {
       const interval = Math.max(1, parseInt(recurInt?.value, 10) || 1);
       const unit     = recurUnit?.value || 'months';
+      const startStr = recurStart?.value || null;
       const untilStr = recurUntil?.value || null;
+      // startDate (optionnelle) : 00h00 local du jour choisi.
+      // Si laissée vide ou dans le passé, démarre aujourd'hui.
+      let startDate = null;
+      if (startStr) {
+        const sd = new Date(startStr);
+        sd.setHours(0, 0, 0, 0);
+        if (sd.getTime() > Date.now()) startDate = sd.getTime();
+      }
       recurrence = {
         interval,
         unit,
+        startDate,
         until: untilStr ? new Date(untilStr).getTime() : null,
       };
     }

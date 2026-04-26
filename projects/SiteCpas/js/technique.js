@@ -291,6 +291,7 @@
         .map(([id, r]) => ({ id, ...r }))
         .filter(r => {
           if (r.createdAt < cutoff) return false;
+          if (r.createdAt > now) return false;        // exclut les templates récurrents programmés
           if (this._status !== 'all' && r.status !== this._status) return false;
           if (!q) return true;
           const hay = [
@@ -363,12 +364,16 @@
       });
       const topAgents = Object.entries(agentCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
-      // Récurrences actives : templates dont until n'est pas passé
+      // Récurrences actives : templates dont until n'est pas passé.
+      // On lit depuis _allRequests (pas reqs filtré) pour inclure les
+      // séries programmées dans le futur (createdAt > now).
       const now = Date.now();
-      const activeSeries = reqs.filter(r =>
-        r.recurrence && r.recurrence.templateId === r.id &&
-        (!r.recurrence.until || r.recurrence.until > now)
-      );
+      const activeSeries = Object.entries(this._allRequests || {})
+        .map(([id, r]) => ({ id, ...r }))
+        .filter(r =>
+          r.recurrence && r.recurrence.templateId === r.id &&
+          (!r.recurrence.until || r.recurrence.until > now)
+        );
       // Plus les templates HORS période filtrée (sinon on rate les templates anciens qui continuent à générer)
       Object.values(this._allRequests || {}).forEach(r => {
         if (r.recurrence && r.recurrence.templateId && !activeSeries.find(a => a.id === r.id)) {
@@ -662,7 +667,9 @@
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
       // Appliquer les mêmes filtres que le pane actuel.
+      const _now = Date.now();
       const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
@@ -812,7 +819,9 @@
         return r?.urgent ? 5 : 3;
       };
 
+      const _now = Date.now();
       const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)         // masque les templates programmés (startDate future)
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)

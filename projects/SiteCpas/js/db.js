@@ -1846,13 +1846,21 @@ const DB = {
   getRequests()       { return this._requests; },
 
   async createRequest({ type, description, local, urgent, urgencyLevel, fromAgentKey, fromAgentName, themeId, recurrence }) {
-    const id = `req_${Date.now()}`;
+    const now = Date.now();
+    const id  = `req_${now}`;
     // urgencyLevel 1-5. Si non fourni mais urgent=true → 5 (rétrocompat).
     // Si urgent=false et level non fourni → 3 par défaut (moyen).
     let level = parseInt(urgencyLevel);
     if (!level || level < 1 || level > 5) {
       level = urgent ? 5 : 3;
     }
+    // Récurrente avec startDate dans le futur ? La 1ère occurrence
+    // (= template) sera datée à startDate, donc invisible des listes
+    // courantes jusqu'à cette date (filtre createdAt > now).
+    const startDate = (recurrence && recurrence.startDate && recurrence.startDate > now)
+      ? recurrence.startDate
+      : null;
+    const createdAt = startDate || now;
     const payload = {
       type:         type || 'technique',
       description,
@@ -1870,7 +1878,7 @@ const DB = {
       workerBadge:  null,
       workerName:   null,
       reopenAt:     null,
-      createdAt:    Date.now(),
+      createdAt,
     };
     // Récurrence : la première occurrence est aussi le "template".
     // templateId = id de la première occurrence. Toutes les occurrences suivantes
@@ -1879,9 +1887,10 @@ const DB = {
       payload.recurrence = {
         unit:       recurrence.unit,       // 'days' | 'weeks' | 'months'
         interval:   recurrence.interval,   // entier > 0
+        startDate:  startDate || null,     // null si démarre aujourd'hui
         until:      recurrence.until || null,
         templateId: id,                    // cette première occurrence est le template
-        nextAt:     this._computeNextAt(Date.now(), recurrence.unit, recurrence.interval),
+        nextAt:     this._computeNextAt(createdAt, recurrence.unit, recurrence.interval),
       };
     }
     await this._ref(`requests/${id}`).set(payload);

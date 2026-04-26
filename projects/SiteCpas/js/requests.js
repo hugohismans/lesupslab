@@ -93,9 +93,10 @@ const REQUESTS = {
   },
 
   _updateBadge() {
+    const now = Date.now();
     const reqs = Object.values(DB.getRequests());
     const countForType = (type) =>
-      reqs.filter(r => r.status === 'open' &&
+      reqs.filter(r => r.status === 'open' && r.createdAt <= now &&
         (r.type === type || (type === 'technique' && r.type === 'autre' && this._canSeeType('technique')))
       ).length;
 
@@ -156,14 +157,17 @@ const REQUESTS = {
       return r.type === 'technique' || r.type === 'autre';
     };
 
-    // Compter par statut (filtré par rôle ET type courant)
+    // Compter par statut (filtré par rôle, type courant, et exclu les requêtes
+    // futures = templates récurrents avec startDate > now).
+    const now = Date.now();
+    const isVisible = r => r.createdAt <= now;
     const counts = { open: 0, in_progress: 0, postponed: 0, done: 0 };
     Object.values(reqs).forEach(r => {
-      if (counts[r.status] !== undefined && this._filterByRole(r) && typeFilterFn(r)) counts[r.status]++;
+      if (counts[r.status] !== undefined && isVisible(r) && this._filterByRole(r) && typeFilterFn(r)) counts[r.status]++;
     });
 
     const filtered = Object.entries(reqs)
-      .filter(([, r]) => r.status === this._filter && this._filterByRole(r) && typeFilterFn(r))
+      .filter(([, r]) => r.status === this._filter && isVisible(r) && this._filterByRole(r) && typeFilterFn(r))
       .sort(([, a], [, b]) => b.createdAt - a.createdAt);
 
     const tabBtn = (status, label) => {
@@ -472,7 +476,11 @@ const REQUESTS = {
     if (isTemplate) {
       const unitLabels = { days: 'jour(s)', weeks: 'semaine(s)', months: 'mois' };
       const label = `tous les ${rec.interval} ${unitLabels[rec.unit] || rec.unit}`;
-      recurBadge = `<span class="req-recur-badge" title="Template récurrent — ${escapeHtml(label)}">↻ Série ${escapeHtml(label)}</span>`;
+      const future = r.createdAt > Date.now();
+      const startTxt = future
+        ? ` — démarre ${new Date(r.createdAt).toLocaleDateString('fr-BE', { day:'2-digit', month:'long', year:'numeric' })}`
+        : '';
+      recurBadge = `<span class="req-recur-badge" title="Template récurrent — ${escapeHtml(label)}${escapeHtml(startTxt)}">↻ Série ${escapeHtml(label)}${escapeHtml(startTxt)}</span>`;
     } else if (isOccurrence) {
       recurBadge = `<span class="req-recur-badge req-recur-occ" title="Occurrence d'une série récurrente">↻ Occurrence</span>`;
     }

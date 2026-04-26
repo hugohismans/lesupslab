@@ -816,6 +816,7 @@
         .filter(r => r.type === 'entretien')        // 🔒 scope entretien
         .filter(r => {
           if (r.createdAt < cutoff) return false;
+          if (r.createdAt > now) return false;       // exclut les templates programmés (startDate future)
           if (this._status !== 'all' && r.status !== this._status) return false;
           if (!q) return true;
           const themeLbl = DB.getThemeLabelForRequestType?.('entretien', r.themeId)
@@ -870,11 +871,16 @@
       reqs.forEach(r => { if (r.assignedToName) agentCounts[r.assignedToName] = (agentCounts[r.assignedToName] || 0) + 1; });
       const topAgents = Object.entries(agentCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
 
+      // Séries actives — on lit _allRequests (non filtré) pour inclure
+      // les séries programmées dans le futur (createdAt > now).
       const now = Date.now();
-      const activeSeries = reqs.filter(r =>
-        r.recurrence && r.recurrence.templateId === r.id &&
-        (!r.recurrence.until || r.recurrence.until > now)
-      );
+      const activeSeries = Object.entries(this._allRequests || {})
+        .map(([id, r]) => ({ id, ...r }))
+        .filter(r =>
+          r.type === 'entretien' &&
+          r.recurrence && r.recurrence.templateId === r.id &&
+          (!r.recurrence.until || r.recurrence.until > now)
+        );
       const lateCutoff = now - 7 * 24 * 3600 * 1000;
       const lateReqs = reqs.filter(r =>
         (r.status === 'open' || r.status === 'in_progress') && r.createdAt < lateCutoff
@@ -1152,7 +1158,9 @@
         if (l >= 1 && l <= 5) return l;
         return r?.urgent ? 5 : 3;
       };
+      const _now = Date.now();
       const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)              // exclut templates programmés
         .filter(([, r]) => r.type === 'entretien')           // 🔒 scope entretien
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
@@ -1221,7 +1229,9 @@
       };
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+      const _now = Date.now();
       const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.type === 'entretien')
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
