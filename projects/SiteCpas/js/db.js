@@ -2360,6 +2360,84 @@ const DB = {
     await this._ref(`entretien/logs/${id}`).remove();
   },
 
+  // ── Stock consommables entretien ──────────────────────────────────
+  // Modèle : entretien/stock/items/{itemId} = { name, emoji, unit, quantity, order }
+  _stockItems: {},
+  _stockItemsCbs: [],
+  listenStockItems() {
+    this._ref('entretien/stock/items').on('value', snap => {
+      this._stockItems = snap.val() || {};
+      this._stockItemsCbs.forEach(fn => fn(this._stockItems));
+    });
+  },
+  onStockItemsChange(fn) { this._stockItemsCbs.push(fn); },
+  // Liste triée : champ order asc, puis name
+  getStockItems() {
+    return Object.entries(this._stockItems || {})
+      .map(([id, it]) => ({ id, ...it }))
+      .sort((a, b) =>
+        (a.order ?? 999) - (b.order ?? 999) ||
+        (a.name || '').localeCompare(b.name || '', 'fr')
+      );
+  },
+  async addStockItem({ name, emoji, unit, quantity, threshold }) {
+    const order = Object.values(this._stockItems || {}).length;
+    const ref = this._ref('entretien/stock/items').push();
+    await ref.set({
+      name:      (name || '').trim() || 'Article',
+      emoji:     emoji || '📦',
+      unit:      (unit || '').trim() || null,
+      quantity:  Math.max(0, parseInt(quantity, 10) || 0),
+      threshold: Math.max(0, parseInt(threshold, 10) || 0),
+      order,
+    });
+    return ref.key;
+  },
+  async removeStockItem(id) {
+    await this._ref(`entretien/stock/items/${id}`).remove();
+  },
+  async updateStockItem(id, fields) {
+    const updates = {};
+    if (fields.name      !== undefined) updates.name      = String(fields.name).trim() || 'Article';
+    if (fields.emoji     !== undefined) updates.emoji     = fields.emoji || '📦';
+    if (fields.unit      !== undefined) updates.unit      = String(fields.unit).trim() || null;
+    if (fields.order     !== undefined) updates.order     = parseInt(fields.order, 10) || 0;
+    if (fields.threshold !== undefined) updates.threshold = Math.max(0, parseInt(fields.threshold, 10) || 0);
+    if (Object.keys(updates).length) {
+      await this._ref(`entretien/stock/items/${id}`).update(updates);
+    }
+  },
+  // Items en alerte = quantity ≤ threshold ET threshold > 0
+  // (threshold = 0 désactive l'alerte pour cet item)
+  getLowStockItems() {
+    return this.getStockItems().filter(it => {
+      const t = parseInt(it.threshold, 10) || 0;
+      const q = parseInt(it.quantity, 10) || 0;
+      return t > 0 && q <= t;
+    });
+  },
+  async setStockQuantity(id, qty) {
+    const n = Math.max(0, parseInt(qty, 10) || 0);
+    await this._ref(`entretien/stock/items/${id}/quantity`).set(n);
+  },
+  // Décrément simple : -by (default 1). Pas de transaction Firebase ici —
+  // le throughput est faible (quelques clics/jour) et le Worker valide les
+  // écritures, donc une lecture+écriture suffit.
+  async decrementStockItem(id, by = 1) {
+    const item = (this._stockItems || {})[id];
+    const current = item ? parseInt(item.quantity, 10) || 0 : 0;
+    const next = Math.max(0, current - Math.max(1, parseInt(by, 10) || 1));
+    await this._ref(`entretien/stock/items/${id}/quantity`).set(next);
+    return next;
+  },
+  async incrementStockItem(id, by = 1) {
+    const item = (this._stockItems || {})[id];
+    const current = item ? parseInt(item.quantity, 10) || 0 : 0;
+    const next = current + Math.max(1, parseInt(by, 10) || 1);
+    await this._ref(`entretien/stock/items/${id}/quantity`).set(next);
+    return next;
+  },
+
   async addService(name) {
     await this._ref('appConfig/services').push(name);
   },

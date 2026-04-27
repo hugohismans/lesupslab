@@ -554,6 +554,263 @@
     .ent-print-rq-comment-author { font-weight: 700; color: #1e293b; }
     .ent-print-rq-comment-time   { color: #64748b; font-size: .68rem; }
     .ent-print-rq-comment-text   { color: #1e293b; flex: 1; min-width: 0; }
+
+    /* ── Stock ─────────────────────────────────────────────────── */
+    .ent-stock-wrap, .ent-stock-manage {
+      background: #fff; border-radius: 14px; padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .ent-stock-head { margin-bottom: 1rem; }
+    .ent-stock-title { font-size: 1.05rem; font-weight: 800; color: #064e3b; }
+    .ent-stock-sub   { font-size: .85rem; color: #64748b; margin-top: .2rem; }
+
+    .ent-stock-grid {
+      display: grid; gap: .85rem;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+    .ent-stock-card {
+      background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 12px;
+      padding: 1rem; display: flex; flex-direction: column; gap: .5rem;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .ent-stock-card:hover { border-color: #15803d; box-shadow: 0 4px 12px rgba(21,128,61,.08); }
+    .ent-stock-card-low   { border-color: #f59e0b; background: #fffbeb; }
+    .ent-stock-card-zero  { border-color: #ef4444; background: #fef2f2; }
+    .ent-stock-card-hd {
+      display: flex; align-items: center; gap: .55rem;
+    }
+    .ent-stock-emoji { font-size: 1.7rem; line-height: 1; }
+    .ent-stock-name  { font-weight: 700; color: #1e293b; font-size: .98rem; }
+    .ent-stock-bell  {
+      display: inline-block; margin-left: .25rem; font-size: .85rem;
+      animation: ent-bell-pulse 1.5s ease-in-out infinite;
+    }
+    @keyframes ent-bell-pulse {
+      0%, 100% { transform: rotate(0); }
+      25%      { transform: rotate(-15deg); }
+      75%      { transform: rotate(15deg); }
+    }
+    .ent-stock-unit  { font-size: .78rem; color: #64748b; margin-left: auto; }
+    .ent-stock-qty   {
+      font-size: 2.2rem; font-weight: 900; color: #166534;
+      line-height: 1; text-align: center; padding: .25rem 0;
+    }
+    .ent-stock-card-low  .ent-stock-qty { color: #b45309; }
+    .ent-stock-card-zero .ent-stock-qty { color: #991b1b; }
+    .ent-stock-card-actions {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .35rem;
+    }
+    .ent-stock-adj {
+      padding: .5rem .35rem;
+      color: #fff; border: none; border-radius: 8px;
+      font-size: .9rem; font-weight: 800; cursor: pointer;
+      transition: background .12s, transform .08s; font-family: inherit;
+    }
+    .ent-stock-adj:hover:not(:disabled)  { transform: translateY(-1px); }
+    .ent-stock-adj:disabled              { background: #94a3b8 !important; cursor: not-allowed; }
+    /* Décrément : -1 vert, -5 vert foncé */
+    .ent-stock-dec    { background: #ef4444; }
+    .ent-stock-dec:hover:not(:disabled)    { background: #dc2626; }
+    .ent-stock-dec-5  { background: #991b1b; }
+    .ent-stock-dec-5:hover:not(:disabled)  { background: #7f1d1d; }
+    /* Incrément : +1 vert, +5 vert foncé (réception/réapprovisionnement) */
+    .ent-stock-inc    { background: #22c55e; }
+    .ent-stock-inc:hover:not(:disabled)    { background: #16a34a; }
+    .ent-stock-inc-5  { background: #15803d; }
+    .ent-stock-inc-5:hover:not(:disabled)  { background: #166534; }
+
+    /* Liste de gestion (set absolu / renommer / supprimer) */
+    .ent-stock-manage-list {
+      display: flex; flex-direction: column; gap: .55rem;
+      margin-bottom: 1.25rem;
+    }
+    .ent-stock-manage-row {
+      display: grid;
+      grid-template-columns: 50px minmax(120px, 1fr) minmax(90px, 130px) 80px 90px 90px 50px;
+      gap: .5rem; align-items: center;
+      padding: .55rem .7rem;
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
+    }
+    @media (max-width: 720px) {
+      .ent-stock-manage-row {
+        grid-template-columns: 1fr 1fr; gap: .35rem;
+      }
+    }
+    .ent-stock-input {
+      width: 100%; padding: .4rem .55rem;
+      border: 1.5px solid #d1d5db; border-radius: 6px;
+      background: #fff; color: #1e293b; font-size: .88rem;
+      font-family: inherit; outline: none;
+    }
+    .ent-stock-input:focus { border-color: #15803d; }
+    .ent-stock-input-emoji { text-align: center; font-size: 1.1rem; }
+    .ent-stock-input-qty   { text-align: right; }
+
+    .ent-stock-save {
+      padding: .42rem .55rem; background: #15803d; color: #fff;
+      border: none; border-radius: 6px; font-size: .85rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: background .12s;
+    }
+    .ent-stock-save:hover:not(:disabled) { background: #166534; }
+    .ent-stock-save:disabled             { background: #94a3b8; cursor: wait; }
+    .ent-stock-del {
+      padding: .42rem .55rem; background: #fee2e2; color: #991b1b;
+      border: 1.5px solid #fca5a5; border-radius: 6px;
+      font-size: .9rem; font-weight: 800; cursor: pointer;
+      font-family: inherit; transition: background .12s, color .12s;
+    }
+    .ent-stock-del:hover:not(:disabled) { background: #fca5a5; color: #fff; }
+    .ent-stock-del:disabled             { opacity: .5; cursor: wait; }
+
+    .ent-stock-add {
+      border-top: 1px solid #e5e7eb; padding-top: 1rem;
+    }
+    .ent-stock-add-title {
+      font-size: .9rem; font-weight: 800; color: #1a3a5c; margin-bottom: .5rem;
+    }
+    .ent-stock-add-row {
+      display: grid;
+      grid-template-columns: 50px minmax(120px, 1fr) minmax(90px, 130px) 80px 90px auto;
+      gap: .5rem; align-items: center;
+    }
+    @media (max-width: 720px) {
+      .ent-stock-add-row { grid-template-columns: 1fr 1fr; }
+      .ent-stock-add-btn { grid-column: span 2; }
+    }
+    .ent-stock-add-btn {
+      padding: .5rem 1rem; background: #15803d; color: #fff;
+      border: none; border-radius: 8px; font-size: .9rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: background .12s;
+    }
+    .ent-stock-add-btn:hover { background: #166534; }
+
+    /* ── Emoji picker ──────────────────────────────────────────── */
+    .ent-emoji-trigger {
+      width: 100%; padding: .35rem .25rem;
+      background: #fff; border: 1.5px solid #d1d5db; border-radius: 6px;
+      font-size: 1.25rem; line-height: 1; text-align: center;
+      cursor: pointer; transition: border-color .12s, background .12s;
+      font-family: inherit;
+    }
+    .ent-emoji-trigger:hover { border-color: #15803d; background: #f0fdf4; }
+    .ent-emoji-trigger.active { border-color: #15803d; background: #dcfce7; }
+    .ent-emoji-popover {
+      position: fixed; z-index: 250;
+      background: #fff; border: 1.5px solid #15803d; border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.15); padding: .5rem;
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: .25rem;
+      max-width: 280px;
+    }
+    .ent-emoji-popover.hidden { display: none; }
+    .ent-emoji-opt {
+      width: 38px; height: 38px; border: none;
+      background: #f9fafb; border-radius: 6px;
+      font-size: 1.3rem; line-height: 1; cursor: pointer;
+      transition: background .1s, transform .1s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ent-emoji-opt:hover { background: #dcfce7; transform: scale(1.15); }
+
+    /* ── Tournée du jour ──────────────────────────────────────── */
+    .ent-tour-wrap {
+      background: #fff; border-radius: 14px; padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .ent-tour-setup {
+      display: flex; flex-direction: column; gap: 1rem; max-width: 520px; margin: 0 auto;
+    }
+    .ent-tour-setup-title {
+      font-size: 1.1rem; font-weight: 800; color: #064e3b;
+      text-align: center; margin-bottom: .5rem;
+    }
+    .ent-tour-setup-sub {
+      font-size: .88rem; color: #64748b; text-align: center; margin-bottom: 1rem;
+    }
+    .ent-tour-start {
+      padding: .9rem 1.5rem; background: #15803d; color: #fff;
+      border: none; border-radius: 10px; font-size: 1rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+      margin-top: .5rem;
+    }
+    .ent-tour-start:hover:not(:disabled)  { background: #166534; }
+    .ent-tour-start:disabled              { background: #94a3b8; cursor: not-allowed; }
+
+    .ent-tour-step      { text-align: center; padding: 1.5rem 1rem; }
+    .ent-tour-progress  {
+      max-width: 600px; margin: 0 auto 1.25rem;
+      height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;
+    }
+    .ent-tour-progress-fill {
+      height: 100%; background: linear-gradient(90deg, #22c55e, #15803d);
+      transition: width .3s ease;
+    }
+    .ent-tour-counter {
+      font-size: .85rem; color: #64748b; margin-bottom: .5rem;
+      letter-spacing: .03em; text-transform: uppercase; font-weight: 700;
+    }
+    .ent-tour-local-name {
+      font-size: 2.2rem; font-weight: 900; color: #1e293b;
+      margin: 1rem 0 .5rem; line-height: 1.1;
+    }
+    .ent-tour-local-lieu {
+      font-size: .92rem; color: #475569; margin-bottom: .8rem;
+    }
+    .ent-tour-history {
+      font-size: .85rem; color: #64748b; margin-bottom: 1.5rem;
+      padding: .55rem .9rem; background: #f8fafc; border-radius: 8px;
+      display: inline-block;
+    }
+    .ent-tour-deep-toggle {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .9rem; color: #b45309; cursor: pointer;
+      margin-bottom: 1.5rem; user-select: none;
+    }
+    .ent-tour-deep-toggle input { accent-color: #d97706; cursor: pointer; }
+    .ent-tour-actions {
+      display: grid; grid-template-columns: auto 1fr 1fr; gap: .6rem;
+      max-width: 600px; margin: 0 auto;
+    }
+    .ent-tour-btn {
+      padding: 1rem .75rem; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 800; cursor: pointer;
+      font-family: inherit; transition: background .12s, transform .08s;
+    }
+    .ent-tour-btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .ent-tour-btn:disabled             { background: #94a3b8 !important; cursor: not-allowed; color: #fff; }
+    .ent-tour-btn-back { background: #e5e7eb; color: #1e293b; }
+    .ent-tour-btn-back:hover:not(:disabled) { background: #d1d5db; }
+    .ent-tour-btn-skip { background: #fef3c7; color: #b45309; }
+    .ent-tour-btn-skip:hover:not(:disabled) { background: #fde68a; }
+    .ent-tour-btn-done { background: #15803d; color: #fff; }
+    .ent-tour-btn-done:hover:not(:disabled) { background: #166534; }
+    @media (max-width: 480px) {
+      .ent-tour-actions { grid-template-columns: 1fr 1fr; }
+      .ent-tour-btn-back { grid-column: span 2; }
+    }
+
+    .ent-tour-summary { text-align: center; padding: 2rem 1rem; }
+    .ent-tour-summary-title {
+      font-size: 1.4rem; font-weight: 900; color: #064e3b; margin-bottom: 1rem;
+    }
+    .ent-tour-summary-stats {
+      display: flex; gap: 1.25rem; justify-content: center;
+      flex-wrap: wrap; margin: 1.5rem 0;
+    }
+    .ent-tour-summary-stat {
+      background: #f0fdf4; border: 1.5px solid #15803d; border-radius: 12px;
+      padding: 1rem 1.25rem; min-width: 120px;
+    }
+    .ent-tour-summary-stat-num   { font-size: 2rem; font-weight: 900; color: #166534; line-height: 1; }
+    .ent-tour-summary-stat-label { font-size: .8rem; color: #64748b; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; margin-top: .35rem; }
+    .ent-tour-summary-stat.skipped { background: #fffbeb; border-color: #f59e0b; }
+    .ent-tour-summary-stat.skipped .ent-tour-summary-stat-num { color: #b45309; }
+    .ent-tour-reset {
+      padding: .7rem 1.4rem; background: #15803d; color: #fff;
+      border: none; border-radius: 10px; font-size: .95rem; font-weight: 800;
+      cursor: pointer; font-family: inherit; transition: background .15s;
+      margin-top: 1rem;
+    }
+    .ent-tour-reset:hover { background: #166534; }
   </style>
 </head>
 
@@ -600,8 +857,11 @@
     <button class="ent-tab ent-tab-active" data-tab="dashboard" role="tab">📊 Dashboard</button>
     <button class="ent-tab" data-tab="requests" role="tab">📋 Toutes les requêtes</button>
     <button class="ent-tab" data-tab="register" role="tab">📝 Enregistrer un nettoyage</button>
+    <button class="ent-tab" data-tab="tour" role="tab">🚶 Tournée du jour</button>
     <button class="ent-tab" data-tab="bilan" role="tab">🗓 Bilan mensuel</button>
     <button class="ent-tab" data-tab="annul" role="tab">↩ Annuler une saisie</button>
+    <button class="ent-tab" data-tab="stock" role="tab">📦 Stock</button>
+    <button class="ent-tab" data-tab="stockManage" role="tab">🛠 Gérer stock</button>
   </div>
 
   <!-- ──── Onglet Dashboard ──── -->
@@ -632,10 +892,16 @@
     </div>
   </section>
 
-  <!-- ──── Onglet Requêtes ──── -->
+  <!-- ──── Onglet Requêtes (Liste OU Kanban selon toggle) ──── -->
   <section class="ent-pane" id="entPaneRequests" style="display:none">
     <div class="ent-req-toolbar">
-      <div class="ent-req-tabs" id="entReqTabs" role="tablist">
+      <!-- Toggle Liste / Kanban (thème vert) -->
+      <div class="req-view-toggle theme-ent" role="tablist">
+        <button type="button" class="req-view-toggle-btn" data-view="list">📋 Liste</button>
+        <button type="button" class="req-view-toggle-btn active" data-view="kanban">📊 Kanban</button>
+      </div>
+      <!-- Onglets statut (mode Liste uniquement) -->
+      <div class="ent-req-tabs" id="entReqTabs" role="tablist" style="display:none">
         <button class="req-tab active" data-status="open">Ouvertes</button>
         <button class="req-tab" data-status="in_progress">En cours</button>
         <button class="req-tab" data-status="postponed">Reportées</button>
@@ -646,10 +912,13 @@
           <button class="ent-filter-btn active" data-urg="all">Toutes urgences</button>
           <button class="ent-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
         </div>
-        <button class="ent-export-btn" id="entReqPrintBtn" title="Imprimer la liste filtrée, groupée par agent assigné">🖨 Imprimer</button>
+        <button class="ent-export-btn" id="entReqPrintBtn" title="Imprimer la liste filtrée, groupée par agent">🖨 Imprimer</button>
       </div>
     </div>
-    <div class="ent-req-list" id="entReqList">
+    <div class="req-kanban" id="entKanban">
+      <div class="ent-loading">Chargement des requêtes…</div>
+    </div>
+    <div class="ent-req-list" id="entReqList" style="display:none">
       <div class="ent-loading">Chargement des requêtes…</div>
     </div>
   </section>
@@ -689,6 +958,36 @@
       </div>
 
       <button type="button" class="ent-save-btn" id="entBtnSave" disabled>💾 Enregistrer</button>
+    </div>
+  </section>
+
+  <!-- ──── Onglet Tournée du jour ──── -->
+  <section class="ent-pane" id="entPaneTour" style="display:none">
+    <div class="ent-tour-wrap">
+      <!-- Setup -->
+      <div id="entTourSetup" class="ent-tour-setup">
+        <div class="ent-tour-setup-title">🚶 Tournée du jour</div>
+        <div class="ent-tour-setup-sub">Sélectionne un lieu, un agent d'entretien et un type, puis l'app te guide local par local.</div>
+        <div>
+          <label class="ent-field-label" for="entTourLieu">Lieu</label>
+          <select id="entTourLieu" class="ent-select"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div>
+          <label class="ent-field-label" for="entTourCleaner">Agent d'entretien</label>
+          <select id="entTourCleaner" class="ent-select"><option value="">— Sélectionner —</option></select>
+        </div>
+        <div>
+          <label class="ent-field-label" for="entTourType">Type de nettoyage</label>
+          <select id="entTourType" class="ent-select"><option value="">— Sélectionner —</option></select>
+        </div>
+        <button type="button" id="entTourStartBtn" class="ent-tour-start" disabled>▶ Démarrer la tournée</button>
+      </div>
+
+      <!-- Step (vue locale active) -->
+      <div id="entTourStep" class="ent-tour-step" style="display:none"></div>
+
+      <!-- Récap final -->
+      <div id="entTourSummary" class="ent-tour-summary" style="display:none"></div>
     </div>
   </section>
 
@@ -753,9 +1052,53 @@
     </div>
   </section>
 
+  <!-- ──── Onglet Stock (décrémenter en 1 clic) ──── -->
+  <section class="ent-pane" id="entPaneStock" style="display:none">
+    <div class="ent-stock-wrap">
+      <div class="ent-stock-head">
+        <div class="ent-stock-title">📦 État du stock</div>
+        <div class="ent-stock-sub">Clique sur un bouton pour décrémenter quand tu utilises un consommable.</div>
+      </div>
+      <div id="entStockGrid" class="ent-stock-grid">
+        <div class="ent-empty-hint">Chargement du stock…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──── Onglet Gérer Stock (créer / set absolu / renommer / supprimer) ──── -->
+  <section class="ent-pane" id="entPaneStockManage" style="display:none">
+    <div class="ent-stock-manage">
+      <div class="ent-stock-head">
+        <div class="ent-stock-title">🛠 Gérer le stock</div>
+        <div class="ent-stock-sub">Définit la quantité absolue (réception de livraison), renomme ou supprime un article.</div>
+      </div>
+
+      <!-- Liste éditable -->
+      <div id="entStockManageList" class="ent-stock-manage-list">
+        <div class="ent-empty-hint">Chargement…</div>
+      </div>
+
+      <!-- Ajout d'un nouvel article -->
+      <div class="ent-stock-add">
+        <div class="ent-stock-add-title">➕ Ajouter un article</div>
+        <div class="ent-stock-add-row">
+          <button type="button" id="entStockNewEmoji" class="ent-emoji-trigger" data-value="📦" title="Choisir un emoji">📦</button>
+          <input type="text" id="entStockNewName"   class="ent-stock-input ent-stock-input-name"  placeholder="Nom (ex: Papier toilette)">
+          <input type="text" id="entStockNewUnit"   class="ent-stock-input ent-stock-input-unit"  placeholder="Unité (rouleau, sac…)">
+          <input type="number" id="entStockNewQty"  class="ent-stock-input ent-stock-input-qty"   placeholder="Quantité (ex: 24)" min="0">
+          <input type="number" id="entStockNewThreshold" class="ent-stock-input ent-stock-input-qty" placeholder="Alerte ≤" min="0" title="Seuil d'alerte (0 = pas d'alerte)">
+          <button type="button" id="entStockAddBtn" class="ent-stock-add-btn">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <div class="ent-toast" id="entToast"></div>
+
+<!-- Emoji picker partagé (positionné au clic sur un .ent-emoji-trigger) -->
+<div id="entEmojiPopover" class="ent-emoji-popover hidden" role="dialog"></div>
 
 <!-- Container dédié à l'impression des requêtes (caché à l'écran) -->
 <div id="entRqPrintArea" class="ent-print-area"></div>

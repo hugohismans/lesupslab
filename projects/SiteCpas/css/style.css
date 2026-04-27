@@ -2541,6 +2541,15 @@ select.field-input { cursor: pointer; }
 }
 .btn-tech-issue:hover { background: #4c1d95; color: #ede9fe; }
 
+/* ── Bouton Vue mobile (header) ───────────────────────────────── */
+.btn-mobile-mode {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: .38rem .65rem; border-radius: 8px; border: 1.5px solid #475569;
+  background: #1e293b; color: #cbd5e1; font-size: .95rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap; text-decoration: none;
+}
+.btn-mobile-mode:hover { background: #334155; color: #f1f5f9; border-color: #64748b; }
+
 /* ── Autocomplete bureau (champ Lieu dans modal requête) ────── */
 .ti-local-suggest {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
@@ -2699,6 +2708,72 @@ select.field-input { cursor: pointer; }
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 4px rgba(0,0,0,.04);
   padding: .75rem 1rem; border-radius: 12px;
+}
+
+/* ── Toggle Liste/Kanban (technique + entretien) ─────────────── */
+.req-view-toggle {
+  display: inline-flex; gap: 0; border-radius: 8px; overflow: hidden;
+  border: 1.5px solid #e2e8f0; background: #f1f5f9;
+}
+.req-view-toggle-btn {
+  padding: .4rem .8rem; background: transparent; border: none;
+  font-size: .82rem; font-weight: 700; color: #64748b;
+  cursor: pointer; transition: all .12s; font-family: inherit;
+  white-space: nowrap;
+}
+.req-view-toggle-btn:not(:last-child) { border-right: 1.5px solid #e2e8f0; }
+.req-view-toggle-btn:hover { background: #e2e8f0; }
+.req-view-toggle-btn.active { background: #fef3c7; color: #b45309; }
+/* Variante verte pour entretien */
+.req-view-toggle.theme-ent .req-view-toggle-btn.active { background: #dcfce7; color: #166534; }
+
+/* ── Kanban requêtes (technique + entretien) ──────────────────── */
+.req-kanban {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem;
+  align-items: start;
+}
+@media (max-width: 1100px) { .req-kanban { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 720px)  { .req-kanban { grid-template-columns: 1fr; } }
+.req-kanban-col {
+  background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px;
+  padding: .65rem; min-height: 240px;
+  display: flex; flex-direction: column; gap: .5rem;
+  transition: background .15s, border-color .15s;
+}
+.req-kanban-col.drag-over {
+  background: #ecfeff; border-color: #06b6d4; border-style: dashed;
+}
+.req-kanban-col-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .15rem .25rem .35rem;
+  border-bottom: 1.5px solid #e2e8f0;
+  font-size: .85rem; font-weight: 800; color: #1a3a5c;
+}
+.req-kanban-col-count {
+  background: #e2e8f0; color: #475569; border-radius: 999px;
+  padding: .05rem .55rem; font-size: .72rem; font-weight: 800;
+}
+.req-kanban-col[data-status="open"]        .req-kanban-col-hd { color: #b45309; }
+.req-kanban-col[data-status="in_progress"] .req-kanban-col-hd { color: #1d4ed8; }
+.req-kanban-col[data-status="postponed"]   .req-kanban-col-hd { color: #475569; }
+.req-kanban-col[data-status="done"]        .req-kanban-col-hd { color: #15803d; }
+.req-kanban-cards {
+  display: flex; flex-direction: column; gap: .5rem;
+  flex: 1; min-height: 60px;
+}
+.req-kanban-cards .req-card {
+  background: #fff; color: #1e293b;
+  border: 1px solid #e2e8f0; box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  padding: .6rem .75rem; border-radius: 10px;
+  cursor: grab; transition: box-shadow .12s, transform .08s;
+}
+.req-kanban-cards .req-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.req-kanban-cards .req-card.dragging {
+  opacity: .45; cursor: grabbing; transform: scale(.98);
+}
+.req-kanban-empty {
+  font-size: .78rem; color: #94a3b8; font-style: italic; text-align: center;
+  padding: 1rem .5rem;
 }
 .req-badge {
   position: absolute; top: -5px; right: -5px;

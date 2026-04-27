@@ -26,6 +26,7 @@
   const agentBadge = document.getElementById('tqAgentBadge');
   const orgNameEl  = document.getElementById('tqOrgName');
 
+  const VIEW_MODE_KEY = 'cpas_tech_req_view_mode';
   const TECH = {
     _period: 30,
     _status: 'all',
@@ -36,6 +37,10 @@
     _reqStatusFilter: 'open',
     _reqTypeFilter:   'all',
     _reqUrgFilter:    'all',
+    _viewMode: (() => {
+      try { return localStorage.getItem(VIEW_MODE_KEY) || 'kanban'; }
+      catch { return 'kanban'; }
+    })(),
 
     init() {
       // Initialiser Firebase database + DB._db avant d'attaquer les listeners
@@ -666,11 +671,15 @@
       };
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-      // Appliquer les mêmes filtres que le pane actuel.
+      // En vue Liste : on imprime le statut courant. En vue Kanban : on
+      // imprime "actives" (open + in_progress) — la liste de travail du matin.
       const _now = Date.now();
+      const statusFilter = this._viewMode === 'list'
+        ? (r) => r.status === this._reqStatusFilter
+        : (r) => r.status === 'open' || r.status === 'in_progress';
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
-        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => statusFilter(r))
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
 
@@ -711,14 +720,14 @@
         return va.label.localeCompare(vb.label, 'fr');
       });
 
-      // Titre selon filtre statut
-      const statusLabels = {
-        open: 'Requêtes ouvertes',
-        in_progress: 'Requêtes en cours',
-        postponed: 'Requêtes reportées',
-        done: 'Requêtes terminées',
+      // Titre selon mode + filtre statut
+      const STATUS_LBL = {
+        open: 'Requêtes ouvertes', in_progress: 'Requêtes en cours',
+        postponed: 'Requêtes reportées', done: 'Requêtes terminées',
       };
-      const statusTitle = statusLabels[this._reqStatusFilter] || 'Requêtes';
+      const statusTitle = this._viewMode === 'list'
+        ? (STATUS_LBL[this._reqStatusFilter] || 'Requêtes')
+        : 'Requêtes actives (ouvertes + en cours)';
       const typeLabels = { technique: 'techniques', entretien: 'entretien', autre: 'autres', all: '(tous types)' };
       const typeTitle = typeLabels[this._reqTypeFilter] || '';
       const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -772,6 +781,19 @@
     },
 
     _bindRequestsPaneFilters() {
+      // Toggle Liste / Kanban
+      document.querySelectorAll('.req-view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === this._viewMode);
+        btn.addEventListener('click', () => {
+          this._viewMode = btn.dataset.view;
+          try { localStorage.setItem(VIEW_MODE_KEY, this._viewMode); } catch {}
+          document.querySelectorAll('.req-view-toggle-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.view === this._viewMode));
+          this._applyViewModeUI();
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      // Onglets statut (mode Liste uniquement)
       document.querySelectorAll('#tqReqTabs .req-tab').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#tqReqTabs .req-tab').forEach(b => b.classList.remove('active'));
@@ -799,7 +821,87 @@
       document.getElementById('tqReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
     },
 
+    // Affiche/cache les sous-toolbars selon le mode actif.
+    _applyViewModeUI() {
+      const tabs   = document.getElementById('tqReqTabs');
+      const list   = document.getElementById('tqReqList');
+      const kanban = document.getElementById('tqKanban');
+      const isList = this._viewMode === 'list';
+      if (tabs)   tabs.style.display   = isList ? '' : 'none';
+      if (list)   list.style.display   = isList ? '' : 'none';
+      if (kanban) kanban.style.display = isList ? 'none' : '';
+    },
+
     _renderRequestsPane() {
+      this._applyViewModeUI();
+      if (this._viewMode === 'list') this._renderListView();
+      else this._renderKanbanView();
+    },
+
+    // Vue Kanban (4 colonnes drag-and-drop)
+    _renderKanbanView() {
+      const wrap = document.getElementById('tqKanban');
+      if (!wrap) return;
+      const reqs = this._allRequests || {};
+      const isAdmin = DB.hasPermission?.('editSettings');
+      const agents  = DB.getAgentsWithKeys?.() || [];
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const STATUS_LABELS = {
+        open:        '🟡 Ouverte',
+        in_progress: '🔵 En cours',
+        postponed:   '⏸ Reportée',
+        done:        '✅ Terminée',
+      };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+
+      const _now = Date.now();
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)
+        .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
+
+      const STATUSES = [
+        { key: 'open',        label: '🟡 Ouvertes' },
+        { key: 'in_progress', label: '🔵 En cours' },
+        { key: 'postponed',   label: '⏸ Reportées' },
+        { key: 'done',        label: '✅ Terminées' },
+      ];
+      const byStatus = { open: [], in_progress: [], postponed: [], done: [] };
+      entries.forEach(([id, r]) => {
+        if (byStatus[r.status]) byStatus[r.status].push([id, r]);
+      });
+
+      const renderCol = (status, label) => {
+        const list = byStatus[status] || [];
+        const cardsHtml = list.length
+          ? list.map(([id, r]) =>
+              (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+                ? `<div draggable="true" data-req-drag-id="${id}" data-req-drag-status="${r.status}">${REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)}</div>`
+                : ''
+            ).join('')
+          : '<div class="req-kanban-empty">— vide —</div>';
+        return `<div class="req-kanban-col" data-status="${status}">
+          <div class="req-kanban-col-hd">
+            <span>${label}</span>
+            <span class="req-kanban-col-count">${list.length}</span>
+          </div>
+          <div class="req-kanban-cards">${cardsHtml}</div>
+        </div>`;
+      };
+
+      wrap.innerHTML = STATUSES.map(s => renderCol(s.key, s.label)).join('');
+      this._bindKanbanInteractions(wrap, agents);
+    },
+
+    // Vue Liste (filtrée par statut courant via tqReqTabs) — c'est le rendu
+    // historique, pré-Kanban. Les cartes sont rendues par REQUESTS._renderCard
+    // exactement comme avant.
+    _renderListView() {
       const listEl = document.getElementById('tqReqList');
       if (!listEl) return;
       const reqs = this._allRequests || {};
@@ -812,20 +914,17 @@
         postponed:   '⏸ Reportée',
         done:        '✅ Terminée',
       };
-
       const urg = (r) => {
         const l = parseInt(r?.urgencyLevel);
         if (l >= 1 && l <= 5) return l;
         return r?.urgent ? 5 : 3;
       };
-
       const _now = Date.now();
       const entries = Object.entries(reqs)
-        .filter(([, r]) => r.createdAt <= _now)         // masque les templates programmés (startDate future)
+        .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
-        // Tri : urgence desc en priorité, puis createdAt desc
         .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
 
       if (!entries.length) {
@@ -833,63 +932,111 @@
         return;
       }
 
-      // On délègue le rendu carte à REQUESTS._renderCard si disponible
-      // (même module qui sert sur app.html, donc rendu identique).
       listEl.innerHTML = entries.map(([id, r]) =>
         (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
           ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
           : ''
       ).join('');
 
-      // Brancher les handlers d'action (claim/done/postponed/open/delete/assign worker)
-      // en déléguant à REQUESTS._handleAction (nécessite un état minimal).
-      if (typeof REQUESTS !== 'undefined') {
-        // Assurer que REQUESTS connaît l'agent courant (il s'init sur requests
-        // listener, mais sans init complet on l'alimente ici).
-        if (!REQUESTS._agentKey) REQUESTS._agentKey = sessionStorage.getItem('cpas_current_agent_key');
-        if (!REQUESTS._agentName) {
-          REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
-        }
-        listEl.querySelectorAll('[data-req-action]').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { reqAction: action, reqId: id } = btn.dataset;
-            await REQUESTS._handleAction?.(action, id, null, agents);
-          });
+      // Wire les boutons (réutilise la logique du kanban pour les actions —
+      // pas de drag-and-drop côté liste). On extrait juste les bindings d'action.
+      this._bindRequestActionButtons(listEl, agents);
+    },
+
+    // Bindings boutons d'action (claim/done/etc.) sans drag-drop. Utilisé
+    // par la vue Liste. La vue Kanban a son propre _bindKanbanInteractions
+    // qui inclut ces mêmes bindings + le DnD.
+    _bindRequestActionButtons(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+
+      wrap.querySelectorAll('[data-req-action]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const { reqAction: action, reqId: id } = btn.dataset;
+          await REQUESTS._handleAction?.(action, id, null, agents);
         });
-        listEl.querySelectorAll('.req-assign-worker-select').forEach(sel => {
-          sel.addEventListener('change', async (e) => {
-            e.stopPropagation();
-            const id = sel.dataset.reqId;
-            try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
-          });
+      });
+      wrap.querySelectorAll('.req-assign-worker-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          e.stopPropagation();
+          const id = sel.dataset.reqId;
+          try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-comment-toggle').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-comment-toggle').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-tag-btn').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-view-series').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+      });
+      wrap.querySelectorAll('.req-stop-series').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
+          try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+      });
+    },
+
+    // Branche les handlers boutons (claim/done/etc.) et drag-and-drop sur les
+    // colonnes du kanban. Réutilise REQUESTS._handleAction pour les transitions.
+    _bindKanbanInteractions(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      // Boutons d'action (claim, done, comment, tag, série, urg, etc.)
+      this._bindRequestActionButtons(wrap, agents);
+
+      // ── Drag-and-drop ─────────────────────────────────────────
+      const STATUS_TO_ACTION = {
+        open: 'open', in_progress: 'claim',
+        postponed: 'postponed', done: 'done',
+      };
+      wrap.querySelectorAll('[data-req-drag-id]').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            id: card.dataset.reqDragId,
+            from: card.dataset.reqDragStatus,
+          }));
+          e.dataTransfer.effectAllowed = 'move';
+          card.classList.add('dragging');
         });
-        listEl.querySelectorAll('.req-view-series').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            REQUESTS._openSeriesView?.(btn.dataset.reqId);
-          });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      });
+      wrap.querySelectorAll('.req-kanban-col').forEach(col => {
+        col.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          col.classList.add('drag-over');
+          e.dataTransfer.dropEffect = 'move';
         });
-        listEl.querySelectorAll('.req-stop-series').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée. Les occurrences existantes sont conservées.')) return;
-            try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
-          });
+        col.addEventListener('dragleave', (e) => {
+          // dragleave fire aussi quand on entre dans un enfant — on ignore si le
+          // related target reste dans la colonne.
+          if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
         });
-        listEl.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            REQUESTS._openUrgencyPicker?.(btn.dataset.reqId);
-          });
+        col.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          col.classList.remove('drag-over');
+          let payload;
+          try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+          if (!payload || !payload.id) return;
+          const targetStatus = col.dataset.status;
+          if (payload.from === targetStatus) return; // pas de changement
+          const action = STATUS_TO_ACTION[targetStatus];
+          if (!action) return;
+          try {
+            await REQUESTS._handleAction?.(action, payload.id, null, agents);
+          } catch (err) {
+            console.warn('[TECH] kanban drop failed', err);
+          }
         });
-      }
+      });
     },
   };
 

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#1e3a5f">
+  <title>Mobile — SiteCpas</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Reset/mobile-first */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: #0f172a; color: #e2e8f0;
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      min-height: 100vh;
+    }
+
+    /* ── Header sticky ─────────────────────────────────────────── */
+    .mb-hd {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+      color: #fff; padding: .85rem 1rem;
+      display: flex; align-items: center; gap: .6rem;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 8px rgba(0,0,0,.4);
+    }
+    .mb-hd-title { flex: 1; font-size: 1rem; font-weight: 800; }
+    .mb-hd-name  { font-size: .82rem; opacity: .85; }
+    .mb-back {
+      background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.3);
+      color: #fff; border-radius: 8px; padding: .45rem .7rem;
+      font-size: .85rem; font-weight: 700; text-decoration: none;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .mb-back:active { background: rgba(255,255,255,.3); }
+
+    /* ── Cloche notif ──────────────────────────────────────────── */
+    .mb-bell-wrap { position: relative; }
+    .mb-bell {
+      background: rgba(255,255,255,.15); border: 1.5px solid rgba(255,255,255,.3);
+      color: #fff; border-radius: 8px; padding: .45rem .55rem; font-size: 1rem;
+      cursor: pointer; -webkit-appearance: none;
+    }
+    .mb-bell:active { background: rgba(255,255,255,.3); }
+
+    /* ── Loading / Refused ─────────────────────────────────────── */
+    .mb-loading {
+      text-align: center; padding: 3rem 1rem; color: #94a3b8; font-size: .95rem;
+    }
+    .mb-refused {
+      max-width: 90%; margin: 3rem auto; background: #1e293b;
+      border: 1.5px solid #f87171; border-radius: 16px; padding: 1.5rem;
+      text-align: center;
+    }
+    .mb-refused-icon  { font-size: 2.5rem; margin-bottom: .5rem; }
+    .mb-refused-title { font-size: 1.1rem; font-weight: 800; color: #fca5a5; margin-bottom: .5rem; }
+    .mb-refused-msg   { color: #94a3b8; font-size: .88rem; line-height: 1.5; margin-bottom: 1rem; }
+
+    /* ── Liste de cartes ────────────────────────────────────── */
+    .mb-body { padding: .75rem .65rem 5rem; }
+    .mb-tabs {
+      display: flex; gap: .35rem; margin-bottom: .75rem; padding: 0 .15rem;
+    }
+    .mb-tab {
+      flex: 1; padding: .55rem .35rem;
+      background: #1e293b; color: #94a3b8; border: 1.5px solid #334155;
+      border-radius: 8px; font-size: .82rem; font-weight: 700;
+      cursor: pointer; -webkit-appearance: none; font-family: inherit;
+    }
+    .mb-tab.active { background: #fef3c7; color: #b45309; border-color: #f59e0b; }
+
+    .mb-card {
+      background: #1e293b; border: 1.5px solid #334155;
+      border-radius: 12px; padding: .85rem .9rem; margin-bottom: .65rem;
+      position: relative;
+    }
+    .mb-card-hd {
+      display: flex; align-items: center; gap: .5rem; margin-bottom: .4rem;
+    }
+    .mb-urg-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 28px; height: 28px; border-radius: 8px;
+      font-size: .85rem; font-weight: 900; color: #fff;
+    }
+    .mb-urg-1 { background: #22c55e; }
+    .mb-urg-2 { background: #84cc16; color: #1e293b; }
+    .mb-urg-3 { background: #eab308; color: #1e293b; }
+    .mb-urg-4 { background: #f97316; }
+    .mb-urg-5 { background: #ef4444; }
+    .mb-card-type { font-size: .78rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .03em; font-weight: 700; }
+    .mb-card-status {
+      margin-left: auto; font-size: .72rem; font-weight: 700;
+      padding: .15rem .5rem; border-radius: 999px;
+      background: rgba(255,255,255,.08); color: #cbd5e1;
+    }
+    .mb-card-status[data-st="open"]        { background: rgba(245,158,11,.2); color: #fbbf24; }
+    .mb-card-status[data-st="in_progress"] { background: rgba(59,130,246,.2); color: #60a5fa; }
+    .mb-card-status[data-st="postponed"]   { background: rgba(148,163,184,.2); color: #cbd5e1; }
+    .mb-card-status[data-st="done"]        { background: rgba(34,197,94,.2); color: #4ade80; }
+    .mb-card-desc {
+      font-size: .95rem; line-height: 1.4; color: #f1f5f9;
+      margin: .3rem 0; word-wrap: break-word;
+    }
+    .mb-card-meta {
+      display: flex; flex-wrap: wrap; gap: .4rem .8rem;
+      font-size: .76rem; color: #94a3b8;
+      margin-bottom: .6rem;
+    }
+    .mb-card-meta b { color: #cbd5e1; font-weight: 600; }
+    .mb-card-actions {
+      display: grid; gap: .4rem;
+    }
+    .mb-card-actions.two { grid-template-columns: 1fr 1fr; }
+    .mb-card-actions.three { grid-template-columns: 1fr 1fr 1fr; }
+    .mb-btn {
+      padding: .85rem .5rem; min-height: 44px;
+      border: none; border-radius: 10px;
+      font-size: .9rem; font-weight: 800;
+      cursor: pointer; -webkit-appearance: none; font-family: inherit;
+      transition: transform .08s, opacity .12s;
+    }
+    .mb-btn:active { transform: scale(.97); opacity: .85; }
+    .mb-btn-claim { background: #2563eb; color: #fff; }
+    .mb-btn-done  { background: #15803d; color: #fff; }
+    .mb-btn-postpone { background: #f59e0b; color: #1e293b; }
+    .mb-btn-reopen { background: #2563eb; color: #fff; }
+    .mb-btn-comment { background: #334155; color: #e2e8f0; }
+
+    .mb-empty {
+      text-align: center; padding: 3rem 1rem; color: #64748b; font-size: .9rem;
+      font-style: italic;
+    }
+
+    /* ── Toast ─────────────────────────────────────────────────── */
+    .mb-toast {
+      position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%);
+      background: #15803d; color: #fff;
+      padding: .65rem 1.1rem; border-radius: 12px;
+      font-weight: 700; font-size: .9rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      opacity: 0; transition: opacity .2s, transform .2s;
+      pointer-events: none; z-index: 100;
+      max-width: 90%; text-align: center;
+    }
+    .mb-toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+    .mb-toast.err  { background: #991b1b; }
+
+    /* Style spécifique notif-panel sur mobile (positionnement) */
+    body > .notif-panel {
+      position: fixed; top: 60px; right: .5rem; left: .5rem;
+      max-width: none; width: auto;
+      max-height: 60vh;
+      z-index: 60;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- Header -->
+<div class="mb-hd" id="mbHeader" style="display:none">
+  <a href="app.html" class="mb-back" id="mbBackBtn" title="Vue desktop">←</a>
+  <div class="mb-hd-title">📱 <span id="mbAgentName">—</span></div>
+  <div class="mb-bell-wrap">
+    <button class="mb-bell" id="notifBell" title="Notifications">🔔
+      <span class="notif-badge hidden" id="notifBadge"></span>
+    </button>
+  </div>
+</div>
+
+<!-- Notif panel (rendered by notif.js, positioned by mobile CSS) -->
+<div class="notif-panel hidden" id="notifPanel"></div>
+
+<!-- Loading -->
+<div class="mb-loading" id="mbLoading">Chargement…</div>
+
+<!-- Accès refusé -->
+<div class="mb-refused" id="mbRefused" style="display:none">
+  <div class="mb-refused-icon">🚫</div>
+  <div class="mb-refused-title">Connexion requise</div>
+  <div class="mb-refused-msg">
+    Tu dois être connecté pour utiliser la vue mobile. Reviens à la page de connexion.
+  </div>
+  <a href="index.html" class="mb-back" style="display:inline-block;background:#2563eb;border-color:#2563eb">→ Connexion</a>
+</div>
+
+<!-- Body -->
+<main class="mb-body" id="mbBody" style="display:none">
+  <div class="mb-tabs" id="mbTabs">
+    <button class="mb-tab active" data-filter="mine">📌 Mes tâches</button>
+    <button class="mb-tab"        data-filter="open">🟡 Ouvertes</button>
+    <button class="mb-tab"        data-filter="all">📋 Toutes</button>
+  </div>
+  <div id="mbList">
+    <div class="mb-loading">Chargement des requêtes…</div>
+  </div>
+</main>
+
+<div class="mb-toast" id="mbToast"></div>
+
+<!-- Firebase SDK -->
+<script src="js/fb-bootstrap.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<!-- App scripts -->
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/audit.js"></script>
+<script src="js/worker-client.js"></script>
+<script src="js/db.js"></script>
+<script src="js/session.js"></script>
+
+<!-- Modules partagés : notifications + actions sur les requêtes -->
+<script src="js/notif.js"></script>
+<script src="js/requests.js"></script>
+
+<!-- Logique mobile -->
+<script src="js/mobile.js"></script>
+
+</body>
+</html>

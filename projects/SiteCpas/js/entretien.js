@@ -63,6 +63,96 @@
     setTimeout(() => toastEl.classList.remove('show'), 2400);
   }
 
+  // ── Emoji picker partagé (pour le stock entretien) ─────────────
+  // Liste curatée pour consommables/entretien d'une maison de repos.
+  const STOCK_EMOJIS = [
+    '🧻','🗑','🧴','🧤','🧽','🧼',
+    '🪣','🧹','🪥','🪠','🚽','🚰',
+    '🧷','🩹','😷','🥽','🩺','💊',
+    '🌡','✨','💧','🧺','🛏','🍽',
+    '📦','🛒','☕','🥤','🍵','🧊',
+    '💡','🔋','🧯','🪛','⚡','📋',
+  ];
+  const EMOJI_PICKER = {
+    _popover:  null,
+    _trigger:  null,
+    _onPick:   null,
+    _bound:    false,
+    init() {
+      if (this._bound) return;
+      this._popover = document.getElementById('entEmojiPopover');
+      if (!this._popover) return;
+      // Construire la grille une seule fois
+      this._popover.innerHTML = STOCK_EMOJIS.map(e =>
+        `<button type="button" class="ent-emoji-opt" data-emoji="${e}" title="${e}">${e}</button>`
+      ).join('');
+      this._popover.querySelectorAll('.ent-emoji-opt').forEach(btn => {
+        btn.addEventListener('mousedown', ev => {
+          ev.preventDefault();
+          this._pick(btn.dataset.emoji);
+        });
+      });
+      // Fermer si on clique en dehors
+      document.addEventListener('mousedown', (ev) => {
+        if (this._popover.classList.contains('hidden')) return;
+        if (this._popover.contains(ev.target)) return;
+        if (this._trigger && this._trigger.contains(ev.target)) return;
+        this.close();
+      });
+      // Échap pour fermer
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') this.close();
+      });
+      this._bound = true;
+    },
+    open(triggerEl, onPick) {
+      this.init();
+      if (!this._popover) return;
+      this._trigger = triggerEl;
+      this._onPick  = onPick;
+      // Position : sous le trigger, alignée à gauche, recadrée si bord d'écran
+      const r = triggerEl.getBoundingClientRect();
+      this._popover.classList.remove('hidden');
+      const pw = this._popover.offsetWidth;
+      const ph = this._popover.offsetHeight;
+      let left = r.left;
+      let top  = r.bottom + 4;
+      if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+      if (left < 8) left = 8;
+      if (top  + ph > window.innerHeight - 8) top  = r.top - ph - 4; // au-dessus si manque de place
+      this._popover.style.left = `${left}px`;
+      this._popover.style.top  = `${top}px`;
+      triggerEl.classList.add('active');
+    },
+    close() {
+      if (!this._popover) return;
+      this._popover.classList.add('hidden');
+      if (this._trigger) this._trigger.classList.remove('active');
+      this._trigger = null;
+      this._onPick  = null;
+    },
+    _pick(emoji) {
+      if (this._onPick) this._onPick(emoji);
+      this.close();
+    },
+  };
+  // Délégation globale : tout bouton .ent-emoji-trigger ouvre/ferme le
+  // picker et met à jour son propre data-value + textContent à la sélection.
+  document.addEventListener('click', (ev) => {
+    const trig = ev.target.closest('.ent-emoji-trigger');
+    if (!trig) return;
+    ev.preventDefault();
+    // Toggle : si déjà ouvert sur ce même trigger → fermer
+    if (EMOJI_PICKER._trigger === trig && EMOJI_PICKER._popover && !EMOJI_PICKER._popover.classList.contains('hidden')) {
+      EMOJI_PICKER.close();
+      return;
+    }
+    EMOJI_PICKER.open(trig, (emoji) => {
+      trig.dataset.value  = emoji;
+      trig.textContent    = emoji;
+    });
+  });
+
   const ENTRETIEN = {
     _tab: 'dashboard',
     _guardDone: false,
@@ -76,23 +166,46 @@
     _suggestHighlight: -1,
     _reqStatusFilter: 'open',
     _reqUrgFilter:    'all',
+    _viewMode: (() => {
+      try { return localStorage.getItem('cpas_ent_req_view_mode') || 'kanban'; }
+      catch { return 'kanban'; }
+    })(),
+
+    // ── Stock : détection de franchissement de seuil ──────────────
+    _prevStock:        {},     // état précédent pour comparer
+    _prevStockReady:   false,  // au 1er event, on initialise sans alerter
+    _alertCooldownMs:  4 * 3600 * 1000, // 4h anti-spam pour le même item
+
+    // ── Tournée du jour : état en mémoire (refresh page = reset) ──
+    _tour: { phase: 'setup', lieuId: '', cleanerId: '', typeId: '',
+             approfondi: false, localIds: [], current: 0, results: {} },
 
     init() {
       DB.init();
       DB.initConfig();
       DB.listenCleaningLogs();
       DB.listenRequests();
+      DB.listenStockItems();
 
       DB.onConfigChange(() => {
         if (!this._guardDone) { this._guard(); this._guardDone = true; }
         this._refreshSelects();
+        this._refreshTourSelects();
         if (this._tab === 'dashboard') this._renderDashboard();
         else if (this._tab === 'bilan') this._renderBilan();
+        else if (this._tab === 'tour' && this._tour.phase === 'setup') this._renderTour();
       });
       DB.onCleaningLogsChange(logs => {
         this._logs = logs || {};
         if (this._tab === 'bilan') this._renderBilan();
         if (this._tab === 'annul') this._renderAnnul();
+      });
+      DB.onStockItemsChange((items) => {
+        // Détection de franchissement de seuil pour notifier les agents
+        // entretien/admin. _prevStock garde l'état précédent en mémoire.
+        this._detectLowStockTransitions(items);
+        if (this._tab === 'stock')       this._renderStock();
+        if (this._tab === 'stockManage') this._renderStockManage();
       });
       let _schedulerRan = false;
       DB.onRequestChange(reqs => {
@@ -116,6 +229,7 @@
       this._bindAnnul();
       this._bindDashboard();
       this._bindRequestsPaneFilters();
+      this._bindTour();
     },
 
     _guard() {
@@ -145,11 +259,14 @@
     // ── Tabs ─────────────────────────────────────────────────────
     _bindTabs() {
       const PANES = {
-        dashboard: 'entPaneDashboard',
-        requests:  'entPaneRequests',
-        register:  'entPaneRegister',
-        bilan:     'entPaneBilan',
-        annul:     'entPaneAnnul',
+        dashboard:   'entPaneDashboard',
+        requests:    'entPaneRequests',
+        register:    'entPaneRegister',
+        tour:        'entPaneTour',
+        bilan:       'entPaneBilan',
+        annul:       'entPaneAnnul',
+        stock:       'entPaneStock',
+        stockManage: 'entPaneStockManage',
       };
       document.querySelectorAll('.ent-tab').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -160,10 +277,13 @@
             const el = document.getElementById(id);
             if (el) el.style.display = (this._tab === tab) ? '' : 'none';
           }
-          if (this._tab === 'dashboard') this._renderDashboard();
-          if (this._tab === 'requests')  this._renderRequestsPane();
-          if (this._tab === 'bilan')     this._renderBilan();
-          if (this._tab === 'annul')     this._renderAnnul();
+          if (this._tab === 'dashboard')   this._renderDashboard();
+          if (this._tab === 'requests')    this._renderRequestsPane();
+          if (this._tab === 'bilan')       this._renderBilan();
+          if (this._tab === 'annul')       this._renderAnnul();
+          if (this._tab === 'stock')       this._renderStock();
+          if (this._tab === 'stockManage') this._renderStockManage();
+          if (this._tab === 'tour')        this._renderTour();
         });
       });
     },
@@ -1121,6 +1241,20 @@
     // Pane Requêtes plein écran (réutilise REQUESTS._renderCard)
     // ═══════════════════════════════════════════════════════════════
     _bindRequestsPaneFilters() {
+      // Toggle Liste / Kanban (scoped au pane Requêtes pour ne pas
+      // matcher les autres .req-view-toggle-btn éventuels)
+      document.querySelectorAll('#entPaneRequests .req-view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === this._viewMode);
+        btn.addEventListener('click', () => {
+          this._viewMode = btn.dataset.view;
+          try { localStorage.setItem('cpas_ent_req_view_mode', this._viewMode); } catch {}
+          document.querySelectorAll('#entPaneRequests .req-view-toggle-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.view === this._viewMode));
+          this._applyEntViewModeUI();
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      // Onglets statut (mode Liste uniquement)
       document.querySelectorAll('#entReqTabs .req-tab').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#entReqTabs .req-tab').forEach(b => b.classList.remove('active'));
@@ -1140,7 +1274,81 @@
       document.getElementById('entReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
     },
 
+    _applyEntViewModeUI() {
+      const tabs   = document.getElementById('entReqTabs');
+      const list   = document.getElementById('entReqList');
+      const kanban = document.getElementById('entKanban');
+      const isList = this._viewMode === 'list';
+      if (tabs)   tabs.style.display   = isList ? '' : 'none';
+      if (list)   list.style.display   = isList ? '' : 'none';
+      if (kanban) kanban.style.display = isList ? 'none' : '';
+    },
+
     _renderRequestsPane() {
+      this._applyEntViewModeUI();
+      if (this._viewMode === 'list') this._renderRequestsListView();
+      else this._renderRequestsKanbanView();
+    },
+
+    _renderRequestsKanbanView() {
+      const wrap = document.getElementById('entKanban');
+      if (!wrap) return;
+      const reqs = this._allRequests || {};
+      const isAdmin = DB.hasPermission?.('editSettings');
+      const agents  = DB.getAgentsWithKeys?.() || [];
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const STATUS_LABELS = {
+        open:        '🟡 Ouverte',
+        in_progress: '🔵 En cours',
+        postponed:   '⏸ Reportée',
+        done:        '✅ Terminée',
+      };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const _now = Date.now();
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)
+        .filter(([, r]) => r.type === 'entretien')           // 🔒 scope entretien
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
+
+      const STATUSES = [
+        { key: 'open',        label: '🟡 Ouvertes' },
+        { key: 'in_progress', label: '🔵 En cours' },
+        { key: 'postponed',   label: '⏸ Reportées' },
+        { key: 'done',        label: '✅ Terminées' },
+      ];
+      const byStatus = { open: [], in_progress: [], postponed: [], done: [] };
+      entries.forEach(([id, r]) => {
+        if (byStatus[r.status]) byStatus[r.status].push([id, r]);
+      });
+
+      const renderCol = (status, label) => {
+        const list = byStatus[status] || [];
+        const cardsHtml = list.length
+          ? list.map(([id, r]) =>
+              (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+                ? `<div draggable="true" data-req-drag-id="${id}" data-req-drag-status="${r.status}">${REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)}</div>`
+                : ''
+            ).join('')
+          : '<div class="req-kanban-empty">— vide —</div>';
+        return `<div class="req-kanban-col" data-status="${status}">
+          <div class="req-kanban-col-hd">
+            <span>${label}</span>
+            <span class="req-kanban-col-count">${list.length}</span>
+          </div>
+          <div class="req-kanban-cards">${cardsHtml}</div>
+        </div>`;
+      };
+
+      wrap.innerHTML = STATUSES.map(s => renderCol(s.key, s.label)).join('');
+      this._bindKanbanInteractions(wrap, agents);
+    },
+
+    _renderRequestsListView() {
       const listEl = document.getElementById('entReqList');
       if (!listEl) return;
       const reqs = this._allRequests || {};
@@ -1160,8 +1368,8 @@
       };
       const _now = Date.now();
       const entries = Object.entries(reqs)
-        .filter(([, r]) => r.createdAt <= _now)              // exclut templates programmés
-        .filter(([, r]) => r.type === 'entretien')           // 🔒 scope entretien
+        .filter(([, r]) => r.createdAt <= _now)
+        .filter(([, r]) => r.type === 'entretien')
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
         .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
@@ -1177,44 +1385,97 @@
           : ''
       ).join('');
 
-      if (typeof REQUESTS !== 'undefined') {
-        if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
-        if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+      this._bindRequestActionButtons(listEl, agents);
+    },
 
-        listEl.querySelectorAll('[data-req-action]').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { reqAction: action, reqId: id } = btn.dataset;
-            await REQUESTS._handleAction?.(action, id, null, agents);
-          });
+    // Bindings boutons d'action (claim/done/etc.) — utilisé par les vues Liste
+    // ET Kanban. Le kanban ajoute en plus le drag-and-drop.
+    _bindRequestActionButtons(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
+      if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
+
+      wrap.querySelectorAll('[data-req-action]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const { reqAction: action, reqId: id } = btn.dataset;
+          await REQUESTS._handleAction?.(action, id, null, agents);
         });
-        listEl.querySelectorAll('.req-assign-worker-select').forEach(sel => {
-          sel.addEventListener('change', async (e) => {
-            e.stopPropagation();
-            const id = sel.dataset.reqId;
-            try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
-          });
+      });
+      wrap.querySelectorAll('.req-assign-worker-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+          e.stopPropagation();
+          const id = sel.dataset.reqId;
+          try { await DB.assignRequestWorker(id, sel.value || null); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-comment-toggle').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-comment-toggle').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openCommentBox?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-tag-btn').forEach(btn => {
+        btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-view-series').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+      });
+      wrap.querySelectorAll('.req-stop-series').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
+          try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
         });
-        listEl.querySelectorAll('.req-tag-btn').forEach(btn => {
-          btn.addEventListener('click', () => REQUESTS._openThemePicker?.(btn.dataset.reqId));
+      });
+      wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+      });
+    },
+
+    // Drag-and-drop pour le kanban (en plus des bindings d'action)
+    _bindKanbanInteractions(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      this._bindRequestActionButtons(wrap, agents);
+
+      const STATUS_TO_ACTION = {
+        open: 'open', in_progress: 'claim',
+        postponed: 'postponed', done: 'done',
+      };
+      wrap.querySelectorAll('[data-req-drag-id]').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            id:   card.dataset.reqDragId,
+            from: card.dataset.reqDragStatus,
+          }));
+          e.dataTransfer.effectAllowed = 'move';
+          card.classList.add('dragging');
         });
-        listEl.querySelectorAll('.req-view-series').forEach(btn => {
-          btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openSeriesView?.(btn.dataset.reqId); });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      });
+      wrap.querySelectorAll('.req-kanban-col').forEach(col => {
+        col.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          col.classList.add('drag-over');
+          e.dataTransfer.dropEffect = 'move';
         });
-        listEl.querySelectorAll('.req-stop-series').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (!confirm('Arrêter la série ? Aucune nouvelle occurrence ne sera générée.')) return;
-            try { await DB.stopRequestSeries(btn.dataset.reqId); } catch (err) { console.warn(err); }
-          });
+        col.addEventListener('dragleave', (e) => {
+          if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
         });
-        listEl.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+        col.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          col.classList.remove('drag-over');
+          let payload;
+          try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+          if (!payload || !payload.id) return;
+          const targetStatus = col.dataset.status;
+          if (payload.from === targetStatus) return;
+          const action = STATUS_TO_ACTION[targetStatus];
+          if (!action) return;
+          try {
+            await REQUESTS._handleAction?.(action, payload.id, null, agents);
+          } catch (err) {
+            console.warn('[ENTRETIEN] kanban drop failed', err);
+          }
         });
-      }
+      });
     },
 
     _printRequestsList() {
@@ -1230,10 +1491,14 @@
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
       const _now = Date.now();
+      // En vue Liste : on imprime le statut courant. En vue Kanban : actives.
+      const statusFilter = this._viewMode === 'list'
+        ? (r) => r.status === this._reqStatusFilter
+        : (r) => r.status === 'open' || r.status === 'in_progress';
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.type === 'entretien')
-        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => statusFilter(r))
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
 
       if (!entries.length) { alert('Aucune requête à imprimer avec les filtres actuels.'); return; }
@@ -1257,11 +1522,13 @@
         return va.label.localeCompare(vb.label, 'fr');
       });
 
-      const statusLabels = {
+      const STATUS_LBL = {
         open: 'Requêtes ouvertes', in_progress: 'Requêtes en cours',
         postponed: 'Requêtes reportées', done: 'Requêtes terminées',
       };
-      const statusTitle = statusLabels[this._reqStatusFilter] || 'Requêtes';
+      const statusTitle = this._viewMode === 'list'
+        ? (STATUS_LBL[this._reqStatusFilter] || 'Requêtes')
+        : 'Requêtes actives (ouvertes + en cours)';
       const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
       let html = `<div class="ent-print-rq-title">${esc(statusTitle)} entretien</div>`;
@@ -1309,6 +1576,506 @@
       area.innerHTML = html;
       this._installPrintMode('rq', '@page { size: portrait; margin: 1cm; }');
       setTimeout(() => window.print(), 50);
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // Stock consommables — décrément 1 clic + gestion (set absolu/CRUD)
+    // ═══════════════════════════════════════════════════════════════
+    _renderStock() {
+      const grid = document.getElementById('entStockGrid');
+      if (!grid) return;
+      const items = DB.getStockItems();
+      if (!items.length) {
+        grid.innerHTML = '<div class="ent-empty-hint">Aucun article configuré. Va dans 🛠 Gérer stock pour en ajouter.</div>';
+        return;
+      }
+      grid.innerHTML = items.map(it => {
+        const qty       = parseInt(it.quantity,  10) || 0;
+        const threshold = parseInt(it.threshold, 10) || 0;
+        // Couleur d'état :
+        // - rouge si qty = 0 (toujours)
+        // - orange si threshold > 0 ET qty ≤ threshold
+        // - normal sinon
+        let cls = '';
+        if (qty === 0) cls = ' ent-stock-card-zero';
+        else if (threshold > 0 && qty <= threshold) cls = ' ent-stock-card-low';
+        const bell  = (threshold > 0 && qty <= threshold) ? ' <span class="ent-stock-bell" title="Stock bas">🔔</span>' : '';
+        const emoji = it.emoji || '📦';
+        const unit  = it.unit ? `<span class="ent-stock-unit">${escapeHtml(it.unit)}</span>` : '';
+        return `<div class="ent-stock-card${cls}" data-id="${escapeHtml(it.id)}">
+          <div class="ent-stock-card-hd">
+            <span class="ent-stock-emoji">${escapeHtml(emoji)}</span>
+            <span class="ent-stock-name">${escapeHtml(it.name || 'Article')}${bell}</span>
+            ${unit}
+          </div>
+          <div class="ent-stock-qty">${qty}</div>
+          <div class="ent-stock-card-actions">
+            <button type="button" class="ent-stock-adj ent-stock-dec"   data-id="${escapeHtml(it.id)}" data-delta="-1">−1</button>
+            <button type="button" class="ent-stock-adj ent-stock-inc"   data-id="${escapeHtml(it.id)}" data-delta="1">+1</button>
+            <button type="button" class="ent-stock-adj ent-stock-dec-5" data-id="${escapeHtml(it.id)}" data-delta="-5">−5</button>
+            <button type="button" class="ent-stock-adj ent-stock-inc-5" data-id="${escapeHtml(it.id)}" data-delta="5">+5</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      grid.querySelectorAll('.ent-stock-adj').forEach(btn => {
+        btn.addEventListener('click', () => this._adjustStock(btn));
+      });
+    },
+
+    async _adjustStock(btn) {
+      const id = btn.dataset.id;
+      const delta = parseInt(btn.dataset.delta, 10) || 0;
+      if (!id || !delta) return;
+      const item = DB.getStockItems().find(it => it.id === id);
+      const name = item?.name || 'Article';
+      const current = parseInt(item?.quantity, 10) || 0;
+      // Décrément sur stock vide : feedback explicite
+      if (delta < 0 && current <= 0) {
+        showToast(`${name} : stock vide, réapprovisionne via 🛠 Gérer stock`, true);
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const next = delta < 0
+          ? await DB.decrementStockItem(id, -delta)
+          : await DB.incrementStockItem(id, delta);
+        showToast(`✓ ${name} : ${next}`);
+      } catch (e) {
+        console.warn('[ENTRETIEN] adjust stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+      }
+      btn.disabled = false;
+    },
+
+    _renderStockManage() {
+      const list = document.getElementById('entStockManageList');
+      if (!list) return;
+      const items = DB.getStockItems();
+      if (!items.length) {
+        list.innerHTML = '<div class="ent-empty-hint">Aucun article configuré. Utilise le formulaire ci-dessous pour en ajouter.</div>';
+      } else {
+        list.innerHTML = items.map(it => {
+          const emoji = it.emoji || '📦';
+          const unit  = it.unit  || '';
+          const qty   = parseInt(it.quantity, 10) || 0;
+          const threshold = parseInt(it.threshold, 10) || 0;
+          return `<div class="ent-stock-manage-row" data-id="${escapeHtml(it.id)}">
+            <button type="button" class="ent-emoji-trigger" data-field="emoji" data-value="${escapeHtml(emoji)}" title="Choisir un emoji">${escapeHtml(emoji)}</button>
+            <input type="text"   class="ent-stock-input ent-stock-input-name"  data-field="name"      value="${escapeHtml(it.name || '')}" placeholder="Nom">
+            <input type="text"   class="ent-stock-input ent-stock-input-unit"  data-field="unit"      value="${escapeHtml(unit)}" placeholder="Unité">
+            <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="quantity"  value="${qty}" min="0">
+            <input type="number" class="ent-stock-input ent-stock-input-qty"   data-field="threshold" value="${threshold}" min="0" placeholder="Alerte ≤" title="Seuil d'alerte (0 = pas d'alerte)">
+            <button type="button" class="ent-stock-save" data-id="${escapeHtml(it.id)}">✓</button>
+            <button type="button" class="ent-stock-del"  data-id="${escapeHtml(it.id)}" title="Supprimer">🗑</button>
+          </div>`;
+        }).join('');
+      }
+
+      list.querySelectorAll('.ent-stock-save').forEach(btn => {
+        btn.addEventListener('click', () => this._saveStockRow(btn));
+      });
+      list.querySelectorAll('.ent-stock-del').forEach(btn => {
+        btn.addEventListener('click', () => this._removeStockRow(btn));
+      });
+      list.querySelectorAll('.ent-stock-input').forEach(input => {
+        input.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            const id = input.closest('.ent-stock-manage-row')?.dataset.id;
+            list.querySelector(`.ent-stock-save[data-id="${id}"]`)?.click();
+          }
+        });
+      });
+
+      // Bouton "Ajouter" (bound une seule fois)
+      const addBtn = document.getElementById('entStockAddBtn');
+      if (addBtn && !addBtn._bound) {
+        addBtn._bound = true;
+        addBtn.addEventListener('click', () => this._addStockItem());
+        // Submit on Enter dans le formulaire d'ajout
+        ['entStockNewEmoji', 'entStockNewName', 'entStockNewUnit', 'entStockNewQty', 'entStockNewThreshold'].forEach(id => {
+          document.getElementById(id)?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') addBtn.click();
+          });
+        });
+      }
+    },
+
+    async _saveStockRow(btn) {
+      const row = btn.closest('.ent-stock-manage-row');
+      const id  = row?.dataset.id;
+      if (!id) return;
+      // Pour le picker emoji on lit dataset.value (button), sinon .value (input).
+      const getField = (field) => {
+        const el = row.querySelector(`[data-field="${field}"]`);
+        if (!el) return '';
+        return field === 'emoji' ? (el.dataset.value || el.textContent) : el.value;
+      };
+      btn.disabled = true;
+      try {
+        await DB.updateStockItem(id, {
+          emoji:     getField('emoji'),
+          name:      getField('name'),
+          unit:      getField('unit'),
+          threshold: getField('threshold'),
+        });
+        await DB.setStockQuantity(id, getField('quantity'));
+        showToast('✓ Article mis à jour');
+      } catch (e) {
+        console.warn('[ENTRETIEN] update stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+      }
+      btn.disabled = false;
+    },
+
+    async _removeStockRow(btn) {
+      const id = btn.dataset.id;
+      if (!id) return;
+      const item = DB.getStockItems().find(it => it.id === id);
+      const name = item?.name || 'cet article';
+      if (!confirm(`Supprimer "${name}" du stock ?`)) return;
+      btn.disabled = true;
+      try {
+        await DB.removeStockItem(id);
+        showToast('✓ Supprimé');
+      } catch (e) {
+        console.warn('[ENTRETIEN] remove stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+        btn.disabled = false;
+      }
+    },
+
+    async _addStockItem() {
+      const emojiBtn  = document.getElementById('entStockNewEmoji');
+      const emoji     = emojiBtn?.dataset.value || emojiBtn?.textContent || '📦';
+      const name      = document.getElementById('entStockNewName')?.value.trim();
+      const unit      = document.getElementById('entStockNewUnit')?.value.trim();
+      const qty       = parseInt(document.getElementById('entStockNewQty')?.value, 10) || 0;
+      const threshold = parseInt(document.getElementById('entStockNewThreshold')?.value, 10) || 0;
+      if (!name) {
+        showToast('Donne un nom à l\'article', true);
+        document.getElementById('entStockNewName')?.focus();
+        return;
+      }
+      try {
+        await DB.addStockItem({ name, emoji, unit, quantity: qty, threshold });
+        showToast(`✓ ${name} ajouté`);
+        // Reset le formulaire (emoji revient à 📦 par défaut)
+        if (emojiBtn) { emojiBtn.dataset.value = '📦'; emojiBtn.textContent = '📦'; }
+        document.getElementById('entStockNewName').value      = '';
+        document.getElementById('entStockNewUnit').value      = '';
+        document.getElementById('entStockNewQty').value       = '';
+        document.getElementById('entStockNewThreshold').value = '';
+        document.getElementById('entStockNewName')?.focus();
+      } catch (e) {
+        console.warn('[ENTRETIEN] add stock failed', e);
+        showToast('Erreur : ' + (e?.message || e), true);
+      }
+    },
+
+    // ── Détection franchissement de seuil + notif aux agents ─────
+    // Appelé sur chaque update de entretien/stock/items. Compare l'état
+    // précédent (_prevStock) à l'état nouveau et déclenche l'alerte
+    // uniquement si on FRANCHIT le seuil (pas à chaque tick sous le seuil).
+    _detectLowStockTransitions(items) {
+      const newMap = items || {};
+      // Au 1er event après le boot, on init _prevStock sans alerter
+      // (évite de notifier pour tous les items déjà sous le seuil).
+      if (!this._prevStockReady) {
+        this._prevStockReady = true;
+        this._prevStock = {};
+        Object.entries(newMap).forEach(([id, it]) => { this._prevStock[id] = { ...it }; });
+        return;
+      }
+      Object.entries(newMap).forEach(([id, it]) => {
+        const prev      = this._prevStock[id];
+        const threshold = parseInt(it.threshold, 10) || 0;
+        const newQty    = parseInt(it.quantity,  10) || 0;
+        if (threshold <= 0) {
+          this._prevStock[id] = { ...it };
+          return; // alerte désactivée pour cet item
+        }
+        const prevQty       = prev ? (parseInt(prev.quantity,  10) || 0) : Infinity;
+        const prevThreshold = prev ? (parseInt(prev.threshold, 10) || 0) : 0;
+        // Franchissement = (qty - threshold) passe de >0 à ≤0,
+        // OU le seuil a augmenté et nous met d'un coup sous le seuil
+        const wasAbove = prevQty  > prevThreshold || prevThreshold === 0;
+        const nowBelow = newQty  <= threshold;
+        if (wasAbove && nowBelow) {
+          this._maybeAlertLowStock(id, { ...it });
+        }
+        this._prevStock[id] = { ...it };
+      });
+    },
+
+    async _maybeAlertLowStock(itemId, item) {
+      try {
+        // CAS-like : on lit lastAlerts/{itemId} et on n'envoie que si
+        // > cooldown depuis la dernière notif. Évite que tous les agents
+        // connectés envoient en même temps.
+        const ref = DB._ref(`entretien/stock/lastAlerts/${itemId}`);
+        const snap = await ref.once('value');
+        const last = snap.val();
+        const now  = Date.now();
+        if (last && last.ts && (now - last.ts) < this._alertCooldownMs) return;
+
+        // Réserver le slot avant d'envoyer (réduit la collision)
+        const myKey = sessionStorage.getItem('cpas_current_agent_key');
+        await ref.set({ ts: now, by: myKey || null });
+
+        // Envoyer la notif aux destinataires
+        const name      = item.name      || 'Article';
+        const qty       = parseInt(item.quantity,  10) || 0;
+        const threshold = parseInt(item.threshold, 10) || 0;
+        const unit      = item.unit ? ' ' + item.unit : '';
+        const message   = qty === 0
+          ? `🔔 Stock épuisé : ${name}`
+          : `🔔 Stock bas : ${name} → ${qty}${unit} (seuil ${threshold})`;
+
+        const targets = DB.getAgentsWithKeys()
+          .filter(a => {
+            const role = DB.getAgentPermRole?.(a.key);
+            return role === '__entretien__' || role === '__admin__';
+          });
+        for (const a of targets) {
+          await DB.sendNotif(message, qty === 0 ? 'alert' : 'warn', a.key, {
+            stockItemId: itemId,
+            stockName:   name,
+          });
+        }
+      } catch (e) {
+        console.warn('[ENTRETIEN] low-stock alert failed', e);
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════════
+    // Tournée du jour — guidage step-by-step local par local
+    // ═══════════════════════════════════════════════════════════════
+    _bindTour() {
+      const lieuSel    = document.getElementById('entTourLieu');
+      const cleanerSel = document.getElementById('entTourCleaner');
+      const typeSel    = document.getElementById('entTourType');
+      const startBtn   = document.getElementById('entTourStartBtn');
+      const updateStart = () => {
+        if (!startBtn) return;
+        startBtn.disabled = !(lieuSel?.value && cleanerSel?.value && typeSel?.value);
+      };
+      [lieuSel, cleanerSel, typeSel].forEach(s => s?.addEventListener('change', updateStart));
+      startBtn?.addEventListener('click', () => this._tourStart());
+    },
+
+    _refreshTourSelects() {
+      const lieuSel    = document.getElementById('entTourLieu');
+      const cleanerSel = document.getElementById('entTourCleaner');
+      const typeSel    = document.getElementById('entTourType');
+      if (!lieuSel) return;
+
+      const lieux = DB.getLieux();
+      const cur1  = lieuSel.value;
+      lieuSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        Object.entries(lieux).map(([id, l]) => `<option value="${escapeHtml(id)}">${escapeHtml(l.name || id)}</option>`).join('');
+      if (cur1 && lieux[cur1]) lieuSel.value = cur1;
+
+      const cleaners = DB.getCleaners();
+      const cur2 = cleanerSel.value;
+      cleanerSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        cleaners.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.badge)} — ${escapeHtml(c.name)}</option>`).join('');
+      if (cur2 && cleaners.find(c => c.id === cur2)) cleanerSel.value = cur2;
+
+      const types = DB.getCleaningTypes();
+      const cur3 = typeSel.value;
+      typeSel.innerHTML = '<option value="">— Sélectionner —</option>' +
+        types.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.label)}</option>`).join('');
+      if (cur3 && types.find(t => t.id === cur3)) typeSel.value = cur3;
+
+      // Activer/désactiver le bouton démarrer
+      const startBtn = document.getElementById('entTourStartBtn');
+      if (startBtn) startBtn.disabled = !(lieuSel.value && cleanerSel.value && typeSel.value);
+    },
+
+    _renderTour() {
+      // Affiche la section correspondant à la phase courante
+      const setup   = document.getElementById('entTourSetup');
+      const step    = document.getElementById('entTourStep');
+      const summary = document.getElementById('entTourSummary');
+      if (!setup || !step || !summary) return;
+      const ph = this._tour.phase;
+      setup.style.display   = ph === 'setup'   ? '' : 'none';
+      step.style.display    = ph === 'step'    ? '' : 'none';
+      summary.style.display = ph === 'summary' ? '' : 'none';
+      if (ph === 'setup')   this._refreshTourSelects();
+      if (ph === 'step')    this._renderTourStep();
+      if (ph === 'summary') this._renderTourSummary();
+    },
+
+    _tourStart() {
+      const lieuId    = document.getElementById('entTourLieu')?.value;
+      const cleanerId = document.getElementById('entTourCleaner')?.value;
+      const typeId    = document.getElementById('entTourType')?.value;
+      if (!lieuId || !cleanerId || !typeId) return;
+      const lieu = DB.getLieux()[lieuId];
+      const localIds = (lieu?.localIds || []).map(Number).sort((a, b) => a - b);
+      if (!localIds.length) {
+        showToast('Ce lieu n\'a aucun local configuré', true);
+        return;
+      }
+      this._tour = {
+        phase:      'step',
+        lieuId, cleanerId, typeId,
+        approfondi: false,
+        localIds,
+        current:    0,
+        results:    {}, // localId -> { action: 'done'|'skipped', logId?: string, approfondi?: boolean }
+      };
+      this._renderTour();
+    },
+
+    _renderTourStep() {
+      const step = document.getElementById('entTourStep');
+      if (!step) return;
+      const t = this._tour;
+      // Si on a fini → écran récap
+      if (t.current >= t.localIds.length) {
+        t.phase = 'summary';
+        this._renderTour();
+        return;
+      }
+      const localId = t.localIds[t.current];
+      const total   = t.localIds.length;
+      const pct     = ((t.current) / total) * 100;
+      const lieu    = DB.getLieux()[t.lieuId];
+      const lieuName  = lieu?.name || '';
+      const localLbl  = DB.getLocalLabel(localId) || `Local ${localId}`;
+
+      // Historique : dernier nettoyage de ce local (toutes types confondus)
+      const lastLog = Object.values(this._logs || {})
+        .filter(l => Number(l.localId) === Number(localId))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+      let historyHtml = '<em>Jamais nettoyé enregistré.</em>';
+      if (lastLog) {
+        const days = Math.floor((Date.now() - (lastLog.ts || 0)) / (24 * 3600 * 1000));
+        const cleaners = DB.getCleaners();
+        const cleanerName = cleaners.find(c => c.id === lastLog.cleanerId)?.name || lastLog.cleanerBadge || '?';
+        const ago = days === 0 ? 'aujourd\'hui' : days === 1 ? 'hier' : `il y a ${days} jours`;
+        historyHtml = `Dernier nettoyage : <b>${ago}</b> par ${escapeHtml(cleanerName)}`;
+      }
+
+      step.innerHTML = `
+        <div class="ent-tour-progress"><div class="ent-tour-progress-fill" style="width:${pct}%"></div></div>
+        <div class="ent-tour-counter">Local ${t.current + 1} / ${total}</div>
+        <div class="ent-tour-local-name">${escapeHtml(localLbl)}</div>
+        <div class="ent-tour-local-lieu">📍 ${escapeHtml(lieuName)}</div>
+        <div class="ent-tour-history">${historyHtml}</div>
+        <div>
+          <label class="ent-tour-deep-toggle">
+            <input type="checkbox" id="entTourDeepCb" ${t.approfondi ? 'checked' : ''}>
+            🔥 Nettoyage approfondi
+          </label>
+        </div>
+        <div class="ent-tour-actions">
+          <button type="button" class="ent-tour-btn ent-tour-btn-back" id="entTourBackBtn" ${t.current === 0 ? 'disabled' : ''}>← Retour</button>
+          <button type="button" class="ent-tour-btn ent-tour-btn-skip" id="entTourSkipBtn">Skip</button>
+          <button type="button" class="ent-tour-btn ent-tour-btn-done" id="entTourDoneBtn">✓ Fait</button>
+        </div>
+      `;
+
+      document.getElementById('entTourDeepCb')?.addEventListener('change', (e) => {
+        this._tour.approfondi = !!e.target.checked;
+      });
+      document.getElementById('entTourBackBtn')?.addEventListener('click', () => this._tourBack());
+      document.getElementById('entTourSkipBtn')?.addEventListener('click', () => this._tourSkip());
+      document.getElementById('entTourDoneBtn')?.addEventListener('click', () => this._tourDone());
+    },
+
+    async _tourDone() {
+      const t = this._tour;
+      const localId = t.localIds[t.current];
+      const cleaner = DB.getCleaners().find(c => c.id === t.cleanerId);
+      const cleanerBadge = cleaner?.badge || null;
+      const date = isoDate(new Date());
+      const doneBtn = document.getElementById('entTourDoneBtn');
+      if (doneBtn) doneBtn.disabled = true;
+      try {
+        const logId = await DB.addCleaningLog({
+          date,
+          lieuId:    t.lieuId,
+          localId,
+          cleanerId: t.cleanerId,
+          cleanerBadge,
+          typeId:    t.typeId,
+          approfondi: !!t.approfondi,
+        });
+        t.results[localId] = { action: 'done', logId, approfondi: !!t.approfondi };
+        t.current++;
+        this._renderTour();
+      } catch (e) {
+        console.warn('[ENTRETIEN] tour done failed', e);
+        showToast('Erreur enregistrement : ' + (e?.message || e), true);
+        if (doneBtn) doneBtn.disabled = false;
+      }
+    },
+
+    _tourSkip() {
+      const t = this._tour;
+      const localId = t.localIds[t.current];
+      t.results[localId] = { action: 'skipped' };
+      t.current++;
+      this._renderTour();
+    },
+
+    async _tourBack() {
+      const t = this._tour;
+      if (t.current === 0) return;
+      // Si on revient sur un "fait" → on supprime le log enregistré
+      const prevLocalId = t.localIds[t.current - 1];
+      const prev = t.results[prevLocalId];
+      if (prev && prev.action === 'done' && prev.logId) {
+        try { await DB.removeCleaningLog(prev.logId); }
+        catch (e) { console.warn('[ENTRETIEN] tour back: remove log failed', e); }
+      }
+      delete t.results[prevLocalId];
+      t.current--;
+      this._renderTour();
+    },
+
+    _renderTourSummary() {
+      const sum = document.getElementById('entTourSummary');
+      if (!sum) return;
+      const t = this._tour;
+      const done    = Object.values(t.results).filter(r => r.action === 'done').length;
+      const skipped = Object.values(t.results).filter(r => r.action === 'skipped').length;
+      const total   = t.localIds.length;
+      const lieu    = DB.getLieux()[t.lieuId];
+      const cleaner = DB.getCleaners().find(c => c.id === t.cleanerId);
+      const type    = DB.getCleaningTypes().find(ty => ty.id === t.typeId);
+
+      sum.innerHTML = `
+        <div class="ent-tour-summary-title">🎉 Tournée terminée</div>
+        <div style="color:#475569;font-size:.92rem">${escapeHtml(lieu?.name || '')} · ${escapeHtml(cleaner?.name || '')} · ${escapeHtml(type?.label || '')}</div>
+        <div class="ent-tour-summary-stats">
+          <div class="ent-tour-summary-stat">
+            <div class="ent-tour-summary-stat-num">${done}</div>
+            <div class="ent-tour-summary-stat-label">✓ Fait</div>
+          </div>
+          <div class="ent-tour-summary-stat skipped">
+            <div class="ent-tour-summary-stat-num">${skipped}</div>
+            <div class="ent-tour-summary-stat-label">⊘ Skipped</div>
+          </div>
+          <div class="ent-tour-summary-stat" style="background:#f1f5f9;border-color:#cbd5e1">
+            <div class="ent-tour-summary-stat-num" style="color:#1e293b">${total}</div>
+            <div class="ent-tour-summary-stat-label">Total</div>
+          </div>
+        </div>
+        <button type="button" class="ent-tour-reset" id="entTourResetBtn">🏠 Nouvelle tournée</button>
+      `;
+
+      document.getElementById('entTourResetBtn')?.addEventListener('click', () => this._tourReset());
+    },
+
+    _tourReset() {
+      this._tour = { phase: 'setup', lieuId: '', cleanerId: '', typeId: '',
+                     approfondi: false, localIds: [], current: 0, results: {} };
+      this._renderTour();
     },
   };
 
