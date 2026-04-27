@@ -2096,6 +2096,18 @@ const DB = {
     if (!templateId) return;
     await this._ref(`requests/${templateId}/recurrence/until`).set(Date.now());
   },
+  // Supprime totalement une série : template + toutes les occurrences générées.
+  // Retourne le nombre de requêtes supprimées.
+  async deleteRequestSeries(templateId) {
+    if (!templateId) return 0;
+    const series = this.getRequestsInSeries(templateId);
+    const updates = {};
+    series.forEach(r => { updates[`requests/${r.id}`] = null; });
+    // S'assurer que le template lui-même est inclus (il l'est si templateId === self id)
+    updates[`requests/${templateId}`] = null;
+    await this._update(updates);
+    return Object.keys(updates).length;
+  },
   // Modifie les paramètres de récurrence d'une série.
   async updateRequestRecurrence(templateId, { unit, interval, until }) {
     const updates = {};

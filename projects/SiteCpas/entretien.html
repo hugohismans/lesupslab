@@ -463,7 +463,15 @@
       background: #f0fdf4; border-radius: 0 6px 6px 0; margin-bottom: .4rem;
     }
     .ent-rec-desc { font-size: .85rem; font-weight: 700; color: #1e293b; margin-bottom: .2rem; }
-    .ent-rec-meta { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .72rem; color: #64748b; }
+    .ent-rec-meta { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .72rem; color: #64748b; align-items: center; }
+    .ent-rec-del {
+      margin-left: auto; background: #fee2e2; color: #991b1b;
+      border: 1.5px solid #fca5a5; border-radius: 6px;
+      padding: .15rem .45rem; font-size: .85rem; cursor: pointer;
+      transition: background .12s, color .12s; font-family: inherit;
+    }
+    .ent-rec-del:hover:not(:disabled) { background: #fca5a5; color: #fff; }
+    .ent-rec-del:disabled { opacity: .5; cursor: wait; }
     .ent-rec-freq { color: #166534; font-weight: 700; }
     .ent-rec-next { color: #065f46; font-weight: 600; }
 

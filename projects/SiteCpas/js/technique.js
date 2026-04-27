@@ -470,12 +470,16 @@
 
       // Récurrences actives
       const unitLabels = { days: 'jour(s)', weeks: 'sem.', months: 'mois' };
+      const isAdminRec = DB.hasPermission?.('editSettings');
       const activeRecHtml = activeSeries.length
         ? activeSeries.map(t => {
             const rec = t.recurrence;
             const nextDate = rec.nextAt && (!rec.until || rec.nextAt <= rec.until)
               ? new Date(rec.nextAt).toLocaleDateString('fr-BE', { day: '2-digit', month: 'short', year: 'numeric' })
               : 'terminée';
+            const delBtn = isAdminRec
+              ? `<button class="tq-rec-del" data-tpl-id="${escapeAttr(t.id)}" title="Supprimer la série (template + toutes les occurrences)">🗑</button>`
+              : '';
             return `<div class="tq-rec-row">
               <div class="tq-rec-desc" title="${escapeAttr(t.description || '')}">${escapeHtml((t.description || '').slice(0, 60))}</div>
               <div class="tq-rec-meta">
@@ -483,6 +487,7 @@
                 <span class="tq-rec-theme">🏷️ ${escapeHtml(DB.getTechThemeLabel(t.themeId))}</span>
                 ${t.local ? `<span class="tq-rec-local">📍 ${escapeHtml(t.local)}</span>` : ''}
                 <span class="tq-rec-next">Prochaine : <b>${nextDate}</b></span>
+                ${delBtn}
               </div>
             </div>`;
           }).join('')
@@ -576,6 +581,25 @@
           const val = row.dataset.hbarClick;
           const searchEl = document.getElementById('tqSearch');
           if (searchEl) { searchEl.value = val; this._search = val.toLowerCase(); this.render(); }
+        });
+      });
+      // Bouton supprimer série (admin uniquement)
+      gridEl.querySelectorAll('.tq-rec-del').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const tplId = btn.dataset.tplId;
+          if (!tplId) return;
+          const series = DB.getRequestsInSeries(tplId);
+          const count = series.length || 1;
+          if (!confirm(`Supprimer cette série ?\n\nCela effacera le template + ${count} occurrence(s) liée(s). Action irréversible.`)) return;
+          btn.disabled = true;
+          try {
+            await DB.deleteRequestSeries(tplId);
+          } catch (err) {
+            console.warn('[tech] delete series failed', err);
+            alert('Erreur : ' + (err?.message || err));
+            btn.disabled = false;
+          }
         });
       });
     },
