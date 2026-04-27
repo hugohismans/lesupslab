@@ -1751,18 +1751,36 @@ const MODAL = {
       showToast('Tous les locaux ont été vidés ✓');
     }));
 
-    // Export JSON (admin)
+    // Export JSON (admin) — backup complet de l'org.
+    // Lit `orgs/{ORG_ID}` (les Rules sécu interdisent de lire `/` à tout
+    // sauf le superadmin). Le snapshot contient toute l'app : appConfig,
+    // reservations, requests, entretien, queues, planning, etc.
     g('stExportJson').addEventListener('click', () => this._requireAdmin(async () => {
-      const snap = await DB._db.ref('/').once('value');
-      const data = snap.val();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url;
-      a.download = `cpas-backup-${isoDate(new Date())}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('Export JSON téléchargé ✓');
+      try {
+        const orgId = (typeof ORG_ID !== 'undefined') ? ORG_ID : 'cpas-quaregnon';
+        const snap = await DB._db.ref(`orgs/${orgId}`).once('value');
+        const data = snap.val();
+        if (!data) {
+          showToast('Aucune donnée à exporter', true);
+          return;
+        }
+        // Recréer la hiérarchie complète orgs/{orgId}/... pour que
+        // l'import (Firebase console / restore) remette les données
+        // au bon endroit sans manip.
+        const wrapped = { orgs: { [orgId]: data } };
+        const blob = new Blob([JSON.stringify(wrapped, null, 2)], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `cpas-backup-${orgId}-${isoDate(new Date())}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Export JSON téléchargé ✓');
+      } catch (e) {
+        console.warn('[ExportJSON]', e);
+        showToast('Erreur export : ' + (e?.message || e), true);
+        return;
+      }
     }));
 
     // Export PDF (admin) — ouvre la vue semaine en mode impression
