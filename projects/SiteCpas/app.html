@@ -230,7 +230,7 @@
   <button class="hs-patchnote-btn" id="hsPatchnoteBtn" type="button">
     <span class="hs-patchnote-sparkle">✨</span>
     <span class="hs-patchnote-text">
-      <span class="hs-patchnote-tag">Patch note v1.4.0</span>
+      <span class="hs-patchnote-tag">Patch note v1.5.0</span>
       <span class="hs-patchnote-label">Regarde ce qui a changé !</span>
     </span>
     <span class="hs-patchnote-arrow">→</span>
@@ -240,115 +240,130 @@
   <div class="modal-overlay hidden" id="patchnoteModal">
     <div class="modal-box patchnote-box">
       <div class="modal-header">
-        <span class="modal-title">✨ Patch note v1.4.0 — 22 avril 2026</span>
+        <span class="modal-title">✨ Patch note v1.5.0 — 27 avril 2026</span>
         <button class="modal-close" id="patchnoteClose">✕</button>
       </div>
       <div class="modal-body patchnote-body">
+
         <div class="pn-section">
-          <div class="pn-section-title">🛠️ Nouveau : Espace Responsable technique</div>
+          <div class="pn-section-title">🧹 NOUVEAU : Espace Entretien complet</div>
           <ul class="pn-list">
-            <li><b>Nouveau rôle "Responsable technique"</b> disponible dans la gestion des rôles — il supervise les requêtes techniques et accède à une page dédiée avec des statistiques détaillées.</li>
-            <li><b>Thèmes d'intervention</b> : chaque requête technique peut maintenant être catégorisée (Chauffage/Chaudière, Plomberie, Électricité, Serrurerie, Menuiserie, Peinture, Informatique, Mobilier, Sécurité/Alarme, Espaces verts, Nettoyage, Autre). L'admin peut ajouter/renommer/supprimer des thèmes dans Paramètres → 🏷️ Thèmes techniques.</li>
-            <li><b>Requêtes récurrentes</b> : à la création d'une requête, coche "↻ Requête récurrente" pour la faire régénérer automatiquement tous les X jours / semaines / mois, avec date de fin optionnelle. Pratique pour les entretiens périodiques (ex: vérification chaudière tous les 6 mois).</li>
-            <li><b>Page <code>/technique.html</code></b> accessible via le bouton <b>🛠️ Espace technique</b> du header (visible pour le Responsable technique et l'admin). Contient :
-              <ul>
-                <li>4 KPIs : total requêtes, ouvertes, temps moyen de résolution, top thème.</li>
-                <li>Graphe temporel des créations sur la période.</li>
-                <li>Répartition par thème, par statut, top 10 locaux, charge par agent.</li>
-                <li>Requêtes en retard (ouvertes depuis > 7 jours).</li>
-                <li>Séries récurrentes actives avec prochaine occurrence.</li>
-                <li>Timeline des dernières requêtes.</li>
-                <li>Barre de recherche universelle + filtres période/statut.</li>
-                <li>Export CSV en un clic.</li>
-              </ul>
-            </li>
-            <li><b>Badges dans le panneau Interventions</b> : chaque requête affiche son thème 🏷️ et un badge ↻ pour les récurrentes. Bouton <b>🏷️ Catégoriser</b> pour tagger les anciennes requêtes. Boutons <b>Voir la série</b> / <b>Arrêter la série</b> pour les templates récurrents.</li>
+            <li>Page <code>/entretien.html</code> accessible via le bouton <b>🧹 Entretien</b> du header (rôles <code>__entretien__</code> et <code>__admin__</code>). Calquée sur l'Espace technique mais scopée au type "entretien", avec sa propre <b>cloche de notifications</b>.</li>
+            <li><b>8 onglets</b> : 📊 Dashboard · 📋 Toutes les requêtes · 📝 Enregistrer un nettoyage · 🚶 Tournée du jour · 🗓 Bilan mensuel · ↩ Annuler une saisie · 📦 Stock · 🛠 Gérer stock.</li>
+            <li><b>Dashboard entretien</b> : KPIs (total, ouvertes, résolution moyenne, top thème), répartition par thème/local/agent, requêtes en retard, séries récurrentes actives, timeline et export CSV — tout filtré sur le type entretien.</li>
+            <li><b>Bilan mensuel</b> : tableau locaux × jours du mois, codes couleur (vert nettoyé · orange approfondi · rouge conflit), toggles d'affichage Badge / Nom / Type, impression A3 paysage et export CSV détaillé.</li>
+            <li><b>Onglet Annuler</b> : voir les 100 dernières saisies (toutes ou seulement les miennes) et supprimer une saisie effectuée par erreur.</li>
+            <li><b>Agents d'entretien sans compte</b> : géré dans Paramètres → 🧹 Entretien (admin). Ajoute des cleaners par badge + nom (ex: "C001 — Marie Dupont"). Pareil pour les types de nettoyage.</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">📅 Refonte de la vue Jour (rappel v1.3.0)</div>
+          <div class="pn-section-title">📦 NOUVEAU : Gestion de stock des consommables</div>
           <ul class="pn-list">
-            <li><b>Une colonne par local</b> (au lieu d'une par desk). Les locaux avec plusieurs desks affichent ceux-ci en <b>sous-lanes côte à côte</b> : une résa sur un desk occupe 1/N de la largeur de la colonne du local.</li>
-            <li><b>Toggle « Vue compacte / Vue complète »</b> (bouton dans la barre de date, à droite) :
-              <ul>
-                <li><b>Compacte</b> — lignes à 36px, contenu condensé (svc + agent · heure).</li>
-                <li><b>Complète</b> — <b>hauteurs de ligne dynamiques</b> : une ligne vide reste à 36px, mais s'épaissit automatiquement pour afficher tous les détails d'une résa (service, agent, heure, commentaire, invités) — même sur 30 minutes.</li>
-              </ul>
-              Ton choix est mémorisé par navigateur.
-            </li>
-            <li><b>Largeur des colonnes ajustable</b> — survole la bordure droite d'un header de local puis glisse pour redimensionner ; double-clic pour revenir à 140px. Les largeurs sont persistées localement.</li>
-            <li><b>Scroll horizontal automatique</b> quand il y a beaucoup de locaux — le tableau dépasse, la barre de date et les entêtes suivent.</li>
-            <li><b>Mode zoom</b> — clique sur un toggle « Local X » au-dessus du calendrier pour zoomer sur un seul local : sa colonne s'élargit pour laisser ~140px par desk-lane. Badge 🔍 sur le header.</li>
-            <li><b>Colonne « 👤 Mon agenda »</b> — largeur fixe, toujours accrochée à gauche à côté de la colonne des heures, peu importe le lieu sélectionné.</li>
+            <li><b>Onglet 📦 Stock</b> : grille de cartes avec emoji + nom + quantité géante + 4 boutons d'ajustement <b>−1 / +1 / −5 / +5</b>. Décrémenter à la consommation, incrémenter à la réception d'une livraison.</li>
+            <li><b>Onglet 🛠 Gérer stock</b> : ajout / édition / suppression d'articles. Sélecteur d'emoji curaté (36 emojis pour consommables et hygiène) — clique sur le bouton emoji pour choisir.</li>
+            <li><b>🔔 Alerte stock bas</b> : seuil configurable par article (champ "Alerte ≤"). Quand la quantité franchit le seuil, une notification est envoyée à tous les agents entretien et admin (cooldown 4 h anti-spam, badge 🔔 pulsant sur la carte concernée).</li>
+            <li>Codes couleur : vert (OK) · orange (≤ seuil) · rouge (épuisé, boutons − affichent un toast explicite "réapprovisionne via 🛠 Gérer stock").</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">✍️ Widget « Partir en mission » — commentaire sans limite</div>
+          <div class="pn-section-title">🚶 NOUVEAU : Tournée du jour entretien</div>
           <ul class="pn-list">
-            <li>Le champ « Destination / motif » n'est <b>plus limité à 80 caractères</b>. Écris autant que tu veux.</li>
-            <li>La zone <b>s'étire en hauteur</b> au fur et à mesure que tu tapes (multi-ligne).</li>
+            <li>Choisis un <b>lieu + agent d'entretien + type de nettoyage</b>, l'app te guide ensuite <b>local par local</b> en mode step-by-step.</li>
+            <li>Vue plein cadre : un seul local en grand, indicateur "Local 3 / 8", barre de progression, <b>historique du dernier nettoyage</b> (ex: "Dernier nettoyage : il y a 3 jours par C002").</li>
+            <li>3 boutons tap-friendly : <b>✓ Fait</b> (enregistre un log) / <b>Skip</b> (passe sans logger) / <b>← Retour</b> (annule la dernière saisie). Toggle "🔥 Approfondi" disponible à chaque étape.</li>
+            <li>Récap final : Fait / Skipped / Total avec stats colorées + bouton "🏠 Nouvelle tournée".</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">🧹 Vider un local en un clic (rappel v1.2.2)</div>
+          <div class="pn-section-title">📊 NOUVEAU : Kanban drag-and-drop pour les requêtes</div>
           <ul class="pn-list">
-            <li>Bouton flottant <b>🧹 en bas à gauche</b> pour l'agent d'accueil (et admin / chef de service).</li>
-            <li>Un clic ouvre la liste de tous les locaux groupés par lieu, avec <b>les agents actuellement déclarés</b> dans chacun.</li>
-            <li>Sélectionne un local → confirmation → <b>toute la présence est retirée</b>, le bureau est fermé et la file locale remise à zéro.</li>
-            <li>Pratique quand quelqu'un a oublié de quitter son bureau ou pour faire le ménage rapidement.</li>
+            <li>L'onglet <b>"Toutes les requêtes"</b> sur technique et entretien affiche désormais 4 colonnes côte à côte : <b>🟡 Ouvertes · 🔵 En cours · ⏸ Reportées · ✅ Terminées</b>.</li>
+            <li><b>Drag une carte</b> d'une colonne à l'autre pour changer son statut (claim, terminer, reporter avec date, rouvrir). Le rendu carte et tous les boutons d'action restent identiques à avant.</li>
+            <li>Compteur par colonne, highlight au drop, mobile-friendly (4 → 2 → 1 colonnes selon viewport).</li>
+            <li><b>Toggle 📋 Liste / 📊 Kanban</b> en haut du toolbar : chaque agent choisit son mode préféré, persisté par device. Indépendant entre technique et entretien.</li>
+            <li><b>Impression intelligente</b> : en vue Liste, imprime le statut courant ; en vue Kanban, imprime "actives" (open + in_progress) — la liste de travail du matin.</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">🔔 Appel direct d'un ticket de la file (v1.2.1)</div>
+          <div class="pn-section-title">📱 NOUVEAU : Vue mobile pour agents terrain</div>
           <ul class="pn-list">
-            <li>Sur la carte de ton bureau (Vue Direct), chaque ticket en attente a maintenant un bouton <b>cloche 🔔</b> à sa droite.</li>
-            <li>Un clic sur la cloche <b>appelle directement ce ticket-là</b>, sans respecter l'ordre FIFO. Pratique pour un bénéficiaire identifié, une urgence, un RDV…</li>
-            <li>Garde-fous : refus si ton bureau n'est pas ouvert ou s'il est déjà occupé (un message te l'explique).</li>
+            <li>Page <code>/mobile.html</code> accessible via le bouton <b>📱</b> du header desktop. Interface ultra-simplifiée pour smartphone, dark theme, boutons tap-friendly (min. 44 px).</li>
+            <li>3 filtres rapides : <b>📌 Mes tâches</b> (assignées à moi) · <b>🟡 Ouvertes</b> · <b>📋 Toutes</b>.</li>
+            <li>Actions claires selon le statut : <b>🙋 Prends en charge</b> / <b>✓ Terminé</b> / <b>⏸ Reporter</b> / <b>🔄 Rouvrir</b>. Notifications intégrées via la cloche du header.</li>
+            <li>Pour les ouvriers / cleaners qui veulent gérer leurs interventions sans laptop pendant la tournée.</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">💺 Nouveau : « Ce bureau sera bientôt pris »</div>
+          <div class="pn-section-title">🔁 Requêtes récurrentes — refonte</div>
           <ul class="pn-list">
-            <li>Dans la modal « Demande agent spécifique », nouvelle case à cocher <b>« 💺 Ce bureau sera bientôt pris »</b>.</li>
-            <li>Si l'agent ciblé <b>n'a pas encore ouvert de bureau</b>, la demande reste en attente. Dès qu'il ouvre un bureau, elle est <b>routée automatiquement</b> avec émission du ticket SP.</li>
-            <li>Sur la Vue Direct de l'accueil, nouveau récap visuel <b>« 🎫 Demandes en cours »</b> et <b>« 💺 En attente d'ouverture »</b> pour suivre toutes les demandes SP d'un coup d'œil. Bouton ✕ pour annuler une demande en attente.</li>
+            <li><b>Date de début programmable</b> : à la création d'une récurrente, choisis <b>"À partir du …"</b> pour démarrer la série dans le futur (ex: "à partir du 1er mai, tous les 2 semaines"). Le template reste invisible des listes courantes jusqu'à sa date de démarrage, mais apparaît dans le widget Dashboard "↻ Séries récurrentes actives".</li>
+            <li><b>Sémantique calendaire</b> : "tous les jours" signifie maintenant <b>une fois par jour calendaire</b>, et non plus "exactement 24 h après". Une récurrente créée à 23 h ne fait plus attendre jusqu'au lendemain 23 h — la nouvelle occurrence apparaît dès le début du jour suivant.</li>
+            <li><b>Héritage urgence + ouvrier</b> : les occurrences générées par le scheduler récupèrent désormais le niveau d'urgence (1-5) et l'ouvrier assigné du template (avant : urgence repassait à 3 et l'ouvrier sautait à chaque occurrence).</li>
+            <li>Fix : le scheduler tournait parfois à vide au boot et bloquait son anti-doublon de 5 min, plus aucune occurrence n'était générée. Désormais il attend que les requêtes soient effectivement chargées avant de tourner.</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">🎉 Calendrier de congés personnel (rappel v1.1.0)</div>
+          <div class="pn-section-title">🔧 Améliorations Espace technique</div>
           <ul class="pn-list">
-            <li>Widget <b>« Mes absences »</b> sur l'écran d'accueil : déclare et gère tes congés/maladies/formations.</li>
-            <li>À la déclaration : <b>détection auto des réservations</b> existantes sur la période, avec option de les supprimer.</li>
-            <li><b>Indicateurs rouges</b> sur Jour (bannière) / Semaine (soulignement) / Mois (rayures diagonales + 🌴).</li>
-            <li><b>Blocage strict</b> à la création de réservation sur un jour d'absence.</li>
+            <li><b>Niveaux d'urgence 1 à 5</b> au lieu d'un simple urgent/normal. Filtre rapide <b>🔴 Urgentes</b> (niveaux 4 et 5) dans le pane Requêtes. Bouton "⚡ Urgence" sur chaque carte pour ajuster en cours de route.</li>
+            <li><b>Ouvriers techniques sans compte</b> : assigne une requête à un ouvrier identifié par badge, sans qu'il ait besoin d'un compte agent. Géré dans Paramètres admin.</li>
+            <li><b>Réassignation</b> facile depuis la carte d'une requête en cours (sélecteur visible si admin).</li>
+            <li><b>Impression</b> de la liste des requêtes <b>groupée par ouvrier assigné</b>, avec les commentaires affichés sous chaque requête. Idéal pour la liste du matin distribuée à chaque ouvrier.</li>
+            <li><b>Recherche améliorée</b> : barre de recherche universelle avec suggestions auto (locaux, lieux, thèmes, agents, mots-clés). Tape un nom de lieu → matche aussi tous ses locaux.</li>
+            <li><b>Commentaires datés</b> : la date est désormais visible en plus de l'heure dans le fil de commentaires d'une requête.</li>
+            <li><b>Modal Nouvelle requête</b> retravaillée : labels enfin lisibles (la classe CSS manquait !), recherche locale qui affiche le lieu en plus du nom du local, placeholder clair "Rechercher un local…".</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">🐛 Corrections</div>
+          <div class="pn-section-title">🔒 Sécurité — refonte complète (Phases 0 à 5)</div>
           <ul class="pn-list">
-            <li><b>« Appeler le suivant » vs file avec SP</b> : le système ignorait parfois le SP quand un ticket avait été appelé hors ordre juste avant (via la cloche). La comparaison saute maintenant les tickets déjà traités.</li>
-            <li><b>Panneau admin — Affichage des tickets</b> : la ligne « Cartes groupe file » se synchronise correctement avec Firebase. Quand tout est décoché, le numéro de ticket n'apparaît plus en fallback (anonymisation respectée).</li>
-            <li><b>Widget « Partir en mission »</b> : le champ texte ne se vide plus tout seul pendant la saisie.</li>
-            <li><b>Ticket nominatif</b> : cliquer sur « Annuler » dans le prompt abandonne bien l'émission.</li>
-            <li><b>Inscription à une file d'attente</b> (Vue Direct) : warning affiché + blocage si ton bureau n'est pas ouvert.</li>
-            <li><b>Modal « Demande agent spécifique »</b> : labels au-dessus des champs, nom complet préservé (« Mr Roger » reste « Mr Roger »).</li>
-            <li><b>Vue Direct</b> : carte du bureau actif accessible en scroll sur petit écran.</li>
-            <li><b>Vue Jour — colonnes étroites</b> : texte des réservations plus coupé quand Windows est en mise à l'échelle 125 % ou plus.</li>
+            <li>La couche de sécurité a été <b>entièrement repensée</b> pour protéger les données du CPAS. Voir <code>SECURITY.md</code> pour le détail technique.</li>
+            <li><b>Authentification anonyme Firebase</b> sur toutes les pages publiques : plus d'accès anonyme libre.</li>
+            <li><b>Login agent via Cloudflare Worker</b> : la vérification du mot de passe ne se fait plus dans le navigateur, mais sur un service serveur (rate-limit + signature signInWithCustomToken).</li>
+            <li><b>CRUD via Worker</b> : les écritures sensibles passent par le Worker qui valide les droits selon le rôle (système d'autorisations zone-based + scoped rules).</li>
+            <li><b>Chiffrement AES-GCM</b> des champs sensibles (noms bénéficiaires, commentaires) dans la base.</li>
+            <li><b>Sessions temporaires</b> avec auto-expiration (validateSession + grantEnd).</li>
+            <li><b>Audit log</b> — un Journal admin trace toutes les actions sensibles (créations, modifs, suppressions).</li>
+            <li><b>CSP + HSTS strict</b> et règles Firebase durcies.</li>
           </ul>
         </div>
 
         <div class="pn-section">
-          <div class="pn-section-title">✨ Améliorations UX</div>
+          <div class="pn-section-title">🛠️ Rappel v1.4.0 — Espace Responsable technique</div>
           <ul class="pn-list">
-            <li><b>Widget « Me déclarer dans un bureau »</b> : les bureaux déjà occupés par un autre agent sont maintenant marqués en <span style="color:#f97316;font-weight:700">🔴 orange</span>. Au survol, le nom de l'occupant s'affiche.</li>
-            <li><b>Vue Direct — cartes de groupe</b> : le « Prochain créneau » affiche désormais l'heure de fin (ex : <code>lun. 20/04 · 08:30 – 09:00</code>).</li>
+            <li>Page <code>/technique.html</code> via le bouton <b>🛠️ Espace technique</b> du header (rôles <code>__responsable_technique__</code> et <code>__admin__</code>) avec dashboard complet, recherche universelle, export CSV, et désormais Kanban drag-and-drop ou Liste au choix.</li>
+            <li><b>Thèmes d'intervention</b> : chaque requête peut être catégorisée. Listes séparées Tech / Entretien gérées dans Paramètres admin.</li>
+            <li><b>Requêtes récurrentes</b> : coche "↻ Récurrente" pour générer automatiquement tous les X jours / semaines / mois (voir refonte dans cette version).</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">📅 Rappel v1.3.0 — Refonte de la vue Jour</div>
+          <ul class="pn-list">
+            <li><b>Une colonne par local</b>, desks affichés en sous-lanes côte à côte. Largeurs ajustables et persistées localement.</li>
+            <li><b>Toggle Vue compacte / Vue complète</b> : la complète a des hauteurs de ligne dynamiques qui s'adaptent au contenu.</li>
+            <li><b>Mode zoom</b> sur un seul local + colonne <b>"👤 Mon agenda"</b> ancrée à gauche.</li>
+          </ul>
+        </div>
+
+        <div class="pn-section">
+          <div class="pn-section-title">🐛 Corrections récentes</div>
+          <ul class="pn-list">
+            <li><b>Login bloqué</b> par un flag <code>firebase:previous_websocket_failure</code> qui persistait en localStorage → nettoyé automatiquement au boot de chaque page.</li>
+            <li><b>CSP</b> : le long-polling Firebase ne fonctionnait plus → autorisé dans la directive <code>connect-src</code>.</li>
+            <li><b>Modal "Voir la série"</b> : texte sombre sur fond sombre → thème clair forcé.</li>
+            <li><b>Impression bilan entretien</b> : la carte écran apparaissait par-dessus le tableau imprimé → modes d'impression désormais scopés par classe body.</li>
+            <li><b>Modal Nouvelle requête</b> : labels invisibles (la classe <code>.form-label</code> n'avait aucune règle CSS) → désormais lisibles.</li>
+            <li><b>Vue Jour</b> : alignement de "Mon agenda" vs colonnes locaux corrigé (canvas absolu).</li>
+            <li><b>Barre "Tous les locaux"</b> persistait sur l'écran d'accueil après un retour depuis la vue Jour → vidée.</li>
+            <li><b>Modal "Voir la série"</b> : les boutons "Voir / Arrêter" étaient parfois inertes dans l'onglet Requêtes tech → handlers correctement bindés.</li>
           </ul>
         </div>
 
