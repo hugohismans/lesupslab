@@ -2871,6 +2871,28 @@ select.field-input { cursor: pointer; }
 }
 .req-del-btn:hover { opacity: 1; }
 
+/* 📌 Bouton "Garder ouverte" (admin) — exclusion du bulk archive */
+.req-keep-open-btn {
+  background: none; border: none; color: #94a3b8;
+  font-size: .95rem; cursor: pointer; opacity: .55; padding: .1rem .3rem;
+  transition: opacity .12s, color .12s, transform .08s;
+}
+.req-keep-open-btn:hover { opacity: 1; transform: scale(1.15); }
+.req-keep-open-btn.active {
+  opacity: 1; color: #16a34a; text-shadow: 0 0 4px rgba(22,163,74,.6);
+}
+/* Si déjà un .req-del-btn dans la card-hd, le keep-open vient à sa gauche
+   et n'écrase pas le margin-left:auto du del-btn. On force margin-left:auto
+   sur le keep-open uniquement s'il n'y a pas de del-btn (donc isolé). */
+.req-card-hd .req-keep-open-btn { margin-left: auto; }
+.req-card-hd .req-keep-open-btn + .req-del-btn { margin-left: 0; }
+
+/* Carte avec keepOpen : bordure verte gauche + léger fond */
+.req-card.req-keep-open {
+  border-left: 3px solid #16a34a !important;
+  box-shadow: -2px 0 8px rgba(22,163,74,.15);
+}
+
 /* ── Actions ─────────────────────────────────────────────────── */
 .req-actions {
   display: flex; gap: .4rem; flex-wrap: wrap; align-items: center;

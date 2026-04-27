@@ -1453,6 +1453,17 @@
       wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
       });
+      // 📌 Toggle keepOpen (exclusion du bulk archive)
+      wrap.querySelectorAll('.req-keep-open-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.reqId;
+          const req = DB.getRequests()[id];
+          if (!req) return;
+          try { await DB.setRequestKeepOpen(id, !req.keepOpen); }
+          catch (err) { console.warn('[ent] keepOpen failed', err); }
+        });
+      });
     },
 
     // Drag-and-drop pour le kanban (en plus des bindings d'action)

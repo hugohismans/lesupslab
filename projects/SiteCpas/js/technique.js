@@ -843,6 +843,57 @@
         });
       });
       document.getElementById('tqReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
+      // 🗃 Archiver tout le reste (admin only) — visible seulement si admin
+      const bulkBtn = document.getElementById('tqReqBulkArchiveBtn');
+      if (bulkBtn) {
+        const isAdmin = DB.hasPermission?.('editSettings');
+        if (!isAdmin) bulkBtn.style.display = 'none';
+        else bulkBtn.addEventListener('click', () => this._bulkArchiveOpenRequests());
+      }
+    },
+
+    // Calcule les requêtes 'open' correspondant aux filtres courants
+    // (type, urgence, créées dans le passé) et les passe en 'done'
+    // sauf celles avec keepOpen=true.
+    async _bulkArchiveOpenRequests() {
+      const reqs = this._allRequests || {};
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const _now = Date.now();
+      // Mêmes filtres que la vue Kanban/Liste mais on force status=open
+      const candidates = Object.entries(reqs)
+        .filter(([, r]) => r.status === 'open')
+        .filter(([, r]) => r.createdAt <= _now)
+        .filter(([, r]) => !r.keepOpen)
+        .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
+
+      const ids = candidates.map(([id]) => id);
+      const kept = Object.values(reqs).filter(r => r.status === 'open' && r.keepOpen).length;
+
+      if (!ids.length) {
+        alert('Aucune requête à archiver avec les filtres courants (les 📌 sont déjà exclues).');
+        return;
+      }
+
+      const filterDesc = [];
+      if (this._reqTypeFilter !== 'all') filterDesc.push(`type=${this._reqTypeFilter}`);
+      if (this._reqUrgFilter === 'high') filterDesc.push('urgence ≥ 4');
+      const filterTxt = filterDesc.length ? `\nFiltres : ${filterDesc.join(', ')}` : '';
+      const keptTxt = kept ? `\n${kept} requête(s) 📌 préservée(s).` : '';
+
+      if (!confirm(`Marquer ${ids.length} requête(s) ouverte(s) comme TERMINÉE(S) ?${filterTxt}${keptTxt}\n\nAction irréversible (ça reste dans la colonne Terminées).`)) return;
+
+      try {
+        const n = await DB.bulkSetRequestStatus(ids, 'done');
+        alert(`✓ ${n} requête(s) archivée(s).`);
+      } catch (e) {
+        console.warn('[bulk archive]', e);
+        alert('Erreur : ' + (e?.message || e));
+      }
     },
 
     // Affiche/cache les sous-toolbars selon le mode actif.
@@ -1007,6 +1058,17 @@
       });
       wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
+      });
+      // 📌 Toggle keepOpen (exclusion du bulk archive)
+      wrap.querySelectorAll('.req-keep-open-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.reqId;
+          const req = DB.getRequests()[id];
+          if (!req) return;
+          try { await DB.setRequestKeepOpen(id, !req.keepOpen); }
+          catch (err) { console.warn('[tech] keepOpen failed', err); }
+        });
       });
     },
 
