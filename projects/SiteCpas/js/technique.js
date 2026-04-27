@@ -26,6 +26,7 @@
   const agentBadge = document.getElementById('tqAgentBadge');
   const orgNameEl  = document.getElementById('tqOrgName');
 
+  const VIEW_MODE_KEY = 'cpas_tech_req_view_mode';
   const TECH = {
     _period: 30,
     _status: 'all',
@@ -36,6 +37,10 @@
     _reqStatusFilter: 'open',
     _reqTypeFilter:   'all',
     _reqUrgFilter:    'all',
+    _viewMode: (() => {
+      try { return localStorage.getItem(VIEW_MODE_KEY) || 'kanban'; }
+      catch { return 'kanban'; }
+    })(),
 
     init() {
       // Initialiser Firebase database + DB._db avant d'attaquer les listeners
@@ -666,13 +671,15 @@
       };
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-      // Appliquer les mêmes filtres que le pane actuel + statut "actif"
-      // (open + in_progress) — c'est ce qui intéresse une équipe terrain
-      // pour la liste du matin.
+      // En vue Liste : on imprime le statut courant. En vue Kanban : on
+      // imprime "actives" (open + in_progress) — la liste de travail du matin.
       const _now = Date.now();
+      const statusFilter = this._viewMode === 'list'
+        ? (r) => r.status === this._reqStatusFilter
+        : (r) => r.status === 'open' || r.status === 'in_progress';
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
-        .filter(([, r]) => r.status === 'open' || r.status === 'in_progress')
+        .filter(([, r]) => statusFilter(r))
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
 
@@ -713,8 +720,14 @@
         return va.label.localeCompare(vb.label, 'fr');
       });
 
-      // Titre figé : print = liste de travail (ouvertes + en cours)
-      const statusTitle = 'Requêtes actives (ouvertes + en cours)';
+      // Titre selon mode + filtre statut
+      const STATUS_LBL = {
+        open: 'Requêtes ouvertes', in_progress: 'Requêtes en cours',
+        postponed: 'Requêtes reportées', done: 'Requêtes terminées',
+      };
+      const statusTitle = this._viewMode === 'list'
+        ? (STATUS_LBL[this._reqStatusFilter] || 'Requêtes')
+        : 'Requêtes actives (ouvertes + en cours)';
       const typeLabels = { technique: 'techniques', entretien: 'entretien', autre: 'autres', all: '(tous types)' };
       const typeTitle = typeLabels[this._reqTypeFilter] || '';
       const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -768,7 +781,27 @@
     },
 
     _bindRequestsPaneFilters() {
-      // Plus de filtre statut : le kanban affiche les 4 colonnes simultanément.
+      // Toggle Liste / Kanban
+      document.querySelectorAll('.req-view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === this._viewMode);
+        btn.addEventListener('click', () => {
+          this._viewMode = btn.dataset.view;
+          try { localStorage.setItem(VIEW_MODE_KEY, this._viewMode); } catch {}
+          document.querySelectorAll('.req-view-toggle-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.view === this._viewMode));
+          this._applyViewModeUI();
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      // Onglets statut (mode Liste uniquement)
+      document.querySelectorAll('#tqReqTabs .req-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#tqReqTabs .req-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqStatusFilter = btn.dataset.status;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
       document.querySelectorAll('#tqReqTypeFilter .tq-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#tqReqTypeFilter .tq-filter-btn').forEach(b => b.classList.remove('active'));
@@ -788,7 +821,25 @@
       document.getElementById('tqReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
     },
 
+    // Affiche/cache les sous-toolbars selon le mode actif.
+    _applyViewModeUI() {
+      const tabs   = document.getElementById('tqReqTabs');
+      const list   = document.getElementById('tqReqList');
+      const kanban = document.getElementById('tqKanban');
+      const isList = this._viewMode === 'list';
+      if (tabs)   tabs.style.display   = isList ? '' : 'none';
+      if (list)   list.style.display   = isList ? '' : 'none';
+      if (kanban) kanban.style.display = isList ? 'none' : '';
+    },
+
     _renderRequestsPane() {
+      this._applyViewModeUI();
+      if (this._viewMode === 'list') this._renderListView();
+      else this._renderKanbanView();
+    },
+
+    // Vue Kanban (4 colonnes drag-and-drop)
+    _renderKanbanView() {
       const wrap = document.getElementById('tqKanban');
       if (!wrap) return;
       const reqs = this._allRequests || {};
@@ -808,7 +859,6 @@
       };
 
       const _now = Date.now();
-      // Filtres globaux : type + urgence + dates futures (templates programmés)
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
@@ -848,15 +898,59 @@
       this._bindKanbanInteractions(wrap, agents);
     },
 
-    // Branche les handlers boutons (claim/done/etc.) et drag-and-drop sur les
-    // colonnes du kanban. Réutilise REQUESTS._handleAction pour les transitions.
-    _bindKanbanInteractions(wrap, agents) {
+    // Vue Liste (filtrée par statut courant via tqReqTabs) — c'est le rendu
+    // historique, pré-Kanban. Les cartes sont rendues par REQUESTS._renderCard
+    // exactement comme avant.
+    _renderListView() {
+      const listEl = document.getElementById('tqReqList');
+      if (!listEl) return;
+      const reqs = this._allRequests || {};
+      const isAdmin = DB.hasPermission?.('editSettings');
+      const agents  = DB.getAgentsWithKeys?.() || [];
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const STATUS_LABELS = {
+        open:        '🟡 Ouverte',
+        in_progress: '🔵 En cours',
+        postponed:   '⏸ Reportée',
+        done:        '✅ Terminée',
+      };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const _now = Date.now();
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)
+        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
+
+      if (!entries.length) {
+        listEl.innerHTML = '<div class="tq-loading">Aucune requête ne correspond aux filtres.</div>';
+        return;
+      }
+
+      listEl.innerHTML = entries.map(([id, r]) =>
+        (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+          ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
+          : ''
+      ).join('');
+
+      // Wire les boutons (réutilise la logique du kanban pour les actions —
+      // pas de drag-and-drop côté liste). On extrait juste les bindings d'action.
+      this._bindRequestActionButtons(listEl, agents);
+    },
+
+    // Bindings boutons d'action (claim/done/etc.) sans drag-drop. Utilisé
+    // par la vue Liste. La vue Kanban a son propre _bindKanbanInteractions
+    // qui inclut ces mêmes bindings + le DnD.
+    _bindRequestActionButtons(wrap, agents) {
       if (typeof REQUESTS === 'undefined') return;
-      // Assurer que REQUESTS connaît l'agent courant
       if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
       if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
 
-      // Boutons d'action existants (mêmes handlers qu'avant)
       wrap.querySelectorAll('[data-req-action]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -890,6 +984,14 @@
       wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
       });
+    },
+
+    // Branche les handlers boutons (claim/done/etc.) et drag-and-drop sur les
+    // colonnes du kanban. Réutilise REQUESTS._handleAction pour les transitions.
+    _bindKanbanInteractions(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      // Boutons d'action (claim, done, comment, tag, série, urg, etc.)
+      this._bindRequestActionButtons(wrap, agents);
 
       // ── Drag-and-drop ─────────────────────────────────────────
       const STATUS_TO_ACTION = {

@@ -166,6 +166,10 @@
     _suggestHighlight: -1,
     _reqStatusFilter: 'open',
     _reqUrgFilter:    'all',
+    _viewMode: (() => {
+      try { return localStorage.getItem('cpas_ent_req_view_mode') || 'kanban'; }
+      catch { return 'kanban'; }
+    })(),
 
     // ── Stock : détection de franchissement de seuil ──────────────
     _prevStock:        {},     // état précédent pour comparer
@@ -1237,7 +1241,28 @@
     // Pane Requêtes plein écran (réutilise REQUESTS._renderCard)
     // ═══════════════════════════════════════════════════════════════
     _bindRequestsPaneFilters() {
-      // Plus de filtre statut : kanban affiche les 4 colonnes simultanément.
+      // Toggle Liste / Kanban (scoped au pane Requêtes pour ne pas
+      // matcher les autres .req-view-toggle-btn éventuels)
+      document.querySelectorAll('#entPaneRequests .req-view-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === this._viewMode);
+        btn.addEventListener('click', () => {
+          this._viewMode = btn.dataset.view;
+          try { localStorage.setItem('cpas_ent_req_view_mode', this._viewMode); } catch {}
+          document.querySelectorAll('#entPaneRequests .req-view-toggle-btn').forEach(b =>
+            b.classList.toggle('active', b.dataset.view === this._viewMode));
+          this._applyEntViewModeUI();
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
+      // Onglets statut (mode Liste uniquement)
+      document.querySelectorAll('#entReqTabs .req-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#entReqTabs .req-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this._reqStatusFilter = btn.dataset.status;
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      });
       document.querySelectorAll('#entReqUrgencyFilter .ent-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#entReqUrgencyFilter .ent-filter-btn').forEach(b => b.classList.remove('active'));
@@ -1249,7 +1274,23 @@
       document.getElementById('entReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
     },
 
+    _applyEntViewModeUI() {
+      const tabs   = document.getElementById('entReqTabs');
+      const list   = document.getElementById('entReqList');
+      const kanban = document.getElementById('entKanban');
+      const isList = this._viewMode === 'list';
+      if (tabs)   tabs.style.display   = isList ? '' : 'none';
+      if (list)   list.style.display   = isList ? '' : 'none';
+      if (kanban) kanban.style.display = isList ? 'none' : '';
+    },
+
     _renderRequestsPane() {
+      this._applyEntViewModeUI();
+      if (this._viewMode === 'list') this._renderRequestsListView();
+      else this._renderRequestsKanbanView();
+    },
+
+    _renderRequestsKanbanView() {
       const wrap = document.getElementById('entKanban');
       if (!wrap) return;
       const reqs = this._allRequests || {};
@@ -1307,8 +1348,49 @@
       this._bindKanbanInteractions(wrap, agents);
     },
 
-    // Drag-and-drop + bindings boutons (réutilise REQUESTS._handleAction)
-    _bindKanbanInteractions(wrap, agents) {
+    _renderRequestsListView() {
+      const listEl = document.getElementById('entReqList');
+      if (!listEl) return;
+      const reqs = this._allRequests || {};
+      const isAdmin = DB.hasPermission?.('editSettings');
+      const agents  = DB.getAgentsWithKeys?.() || [];
+      const TYPE_ICONS = { technique: '🔧', entretien: '🧹', autre: '📋' };
+      const STATUS_LABELS = {
+        open:        '🟡 Ouverte',
+        in_progress: '🔵 En cours',
+        postponed:   '⏸ Reportée',
+        done:        '✅ Terminée',
+      };
+      const urg = (r) => {
+        const l = parseInt(r?.urgencyLevel);
+        if (l >= 1 && l <= 5) return l;
+        return r?.urgent ? 5 : 3;
+      };
+      const _now = Date.now();
+      const entries = Object.entries(reqs)
+        .filter(([, r]) => r.createdAt <= _now)
+        .filter(([, r]) => r.type === 'entretien')
+        .filter(([, r]) => r.status === this._reqStatusFilter)
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
+
+      if (!entries.length) {
+        listEl.innerHTML = '<div class="ent-loading">Aucune requête ne correspond aux filtres.</div>';
+        return;
+      }
+
+      listEl.innerHTML = entries.map(([id, r]) =>
+        (typeof REQUESTS !== 'undefined' && REQUESTS._renderCard)
+          ? REQUESTS._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)
+          : ''
+      ).join('');
+
+      this._bindRequestActionButtons(listEl, agents);
+    },
+
+    // Bindings boutons d'action (claim/done/etc.) — utilisé par les vues Liste
+    // ET Kanban. Le kanban ajoute en plus le drag-and-drop.
+    _bindRequestActionButtons(wrap, agents) {
       if (typeof REQUESTS === 'undefined') return;
       if (!REQUESTS._agentKey)  REQUESTS._agentKey  = sessionStorage.getItem('cpas_current_agent_key');
       if (!REQUESTS._agentName) REQUESTS._agentName = DB.getAgentsWithKeys().find(a => a.key === REQUESTS._agentKey)?.name || null;
@@ -1346,8 +1428,13 @@
       wrap.querySelectorAll('.req-urg-edit-btn').forEach(btn => {
         btn.addEventListener('click', (e) => { e.stopPropagation(); REQUESTS._openUrgencyPicker?.(btn.dataset.reqId); });
       });
+    },
 
-      // Drag-and-drop entre colonnes
+    // Drag-and-drop pour le kanban (en plus des bindings d'action)
+    _bindKanbanInteractions(wrap, agents) {
+      if (typeof REQUESTS === 'undefined') return;
+      this._bindRequestActionButtons(wrap, agents);
+
       const STATUS_TO_ACTION = {
         open: 'open', in_progress: 'claim',
         postponed: 'postponed', done: 'done',
@@ -1404,10 +1491,14 @@
       const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
       const _now = Date.now();
+      // En vue Liste : on imprime le statut courant. En vue Kanban : actives.
+      const statusFilter = this._viewMode === 'list'
+        ? (r) => r.status === this._reqStatusFilter
+        : (r) => r.status === 'open' || r.status === 'in_progress';
       const entries = Object.entries(reqs)
         .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => r.type === 'entretien')
-        .filter(([, r]) => r.status === 'open' || r.status === 'in_progress')
+        .filter(([, r]) => statusFilter(r))
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
 
       if (!entries.length) { alert('Aucune requête à imprimer avec les filtres actuels.'); return; }
@@ -1431,7 +1522,13 @@
         return va.label.localeCompare(vb.label, 'fr');
       });
 
-      const statusTitle = 'Requêtes actives (ouvertes + en cours)';
+      const STATUS_LBL = {
+        open: 'Requêtes ouvertes', in_progress: 'Requêtes en cours',
+        postponed: 'Requêtes reportées', done: 'Requêtes terminées',
+      };
+      const statusTitle = this._viewMode === 'list'
+        ? (STATUS_LBL[this._reqStatusFilter] || 'Requêtes')
+        : 'Requêtes actives (ouvertes + en cours)';
       const dateStr = new Date().toLocaleDateString('fr-BE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
       let html = `<div class="ent-print-rq-title">${esc(statusTitle)} entretien</div>`;

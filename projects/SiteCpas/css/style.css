@@ -2710,6 +2710,23 @@ select.field-input { cursor: pointer; }
   padding: .75rem 1rem; border-radius: 12px;
 }
 
+/* ── Toggle Liste/Kanban (technique + entretien) ─────────────── */
+.req-view-toggle {
+  display: inline-flex; gap: 0; border-radius: 8px; overflow: hidden;
+  border: 1.5px solid #e2e8f0; background: #f1f5f9;
+}
+.req-view-toggle-btn {
+  padding: .4rem .8rem; background: transparent; border: none;
+  font-size: .82rem; font-weight: 700; color: #64748b;
+  cursor: pointer; transition: all .12s; font-family: inherit;
+  white-space: nowrap;
+}
+.req-view-toggle-btn:not(:last-child) { border-right: 1.5px solid #e2e8f0; }
+.req-view-toggle-btn:hover { background: #e2e8f0; }
+.req-view-toggle-btn.active { background: #fef3c7; color: #b45309; }
+/* Variante verte pour entretien */
+.req-view-toggle.theme-ent .req-view-toggle-btn.active { background: #dcfce7; color: #166534; }
+
 /* ── Kanban requêtes (technique + entretien) ──────────────────── */
 .req-kanban {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: .8rem;
