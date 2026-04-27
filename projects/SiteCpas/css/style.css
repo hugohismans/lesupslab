@@ -2541,6 +2541,15 @@ select.field-input { cursor: pointer; }
 }
 .btn-tech-issue:hover { background: #4c1d95; color: #ede9fe; }
 
+/* ── Bouton Vue mobile (header) ───────────────────────────────── */
+.btn-mobile-mode {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: .38rem .65rem; border-radius: 8px; border: 1.5px solid #475569;
+  background: #1e293b; color: #cbd5e1; font-size: .95rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap; text-decoration: none;
+}
+.btn-mobile-mode:hover { background: #334155; color: #f1f5f9; border-color: #64748b; }
+
 /* ── Autocomplete bureau (champ Lieu dans modal requête) ────── */
 .ti-local-suggest {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
