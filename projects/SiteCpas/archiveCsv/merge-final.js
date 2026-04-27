@@ -70,11 +70,19 @@ merged.requests = { ...oldRequests, ...newRequests };
 const finalContent = merged;
 
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT);
+
+// Format 1 : contenu direct, à importer sur orgs/cpas-quaregnon
 const finalPath = path.join(OUT, 'final-import.json');
 fs.writeFileSync(finalPath, JSON.stringify(finalContent, null, 2));
 
+// Format 2 : wrappé { cpas-quaregnon: {...} }, à importer sur le node `orgs/`
+// Utile quand orgs/cpas-quaregnon n'existe pas encore (impossible de naviguer dessus).
+const orgsWrappedPath = path.join(OUT, 'final-import-orgs.json');
+fs.writeFileSync(orgsWrappedPath, JSON.stringify({ [ORG_ID]: finalContent }, null, 2));
+
 const sizeMb = (fs.statSync(finalPath).size / 1024 / 1024).toFixed(2);
 console.log(`✓ ${finalPath} (${sizeMb} Mo)`);
+console.log(`✓ ${orgsWrappedPath} (même contenu, wrappé pour import direct sur orgs/)`);
 console.log('');
 console.log('Contenu :');
 console.log(`  - techThemes : ${Object.keys(oldThemes).length} existants + ${Object.keys(newThemes).length} nouveaux = ${Object.keys(merged.appConfig.techThemes).length}`);
@@ -82,7 +90,9 @@ console.log(`  - requests   : ${Object.keys(oldRequests).length} existantes + ${
 const otherNodes = Object.keys(merged).filter(k => k !== 'appConfig' && k !== 'requests');
 console.log(`  - autres     : ${otherNodes.join(', ')}`);
 console.log('');
-console.log('Étape suivante :');
-console.log('  Firebase Console → orgs/' + ORG_ID);
-console.log('  → bouton ⋮ → Import JSON → choisir `final-import.json`');
-console.log('  Confirm. UN SEUL replace, tout est dedans, rien n\'est perdu.');
+console.log('Étape suivante (au choix selon ton état Firebase) :');
+console.log('  A) Si orgs/' + ORG_ID + ' existe déjà :');
+console.log('     Firebase Console → orgs/' + ORG_ID + ' → ⋮ → Import JSON → `final-import.json`');
+console.log('  B) Si orgs/ existe mais est vide (cas après nettoyage) :');
+console.log('     Firebase Console → orgs/ → ⋮ → Import JSON → `final-import-orgs.json`');
+console.log('     (préserve superadmin/ qui est sibling)');
