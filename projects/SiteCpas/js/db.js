@@ -2114,26 +2114,6 @@ const DB = {
     if (!templateId) return;
     await this._ref(`requests/${templateId}/recurrence/until`).set(Date.now());
   },
-  // ── Bulk archive : marquer plusieurs requêtes comme terminées ─────
-  // Tag persistant "à garder ouverte" — utilisé pour exclure une requête
-  // d'un futur bulk archive.
-  async setRequestKeepOpen(requestId, keep) {
-    if (!requestId) return;
-    await this._ref(`requests/${requestId}/keepOpen`).set(keep ? true : null);
-  },
-  // Met `status` sur N requêtes en un seul multi-path update Firebase.
-  // Retourne le nombre effectivement modifié.
-  async bulkSetRequestStatus(requestIds, status) {
-    if (!Array.isArray(requestIds) || !requestIds.length) return 0;
-    const updates = {};
-    requestIds.forEach(id => { updates[`requests/${id}/status`] = status; });
-    await this._update(updates);
-    if (typeof AUDIT !== 'undefined' && AUDIT.log) {
-      AUDIT.log('requests.bulkSetStatus', { count: requestIds.length, status });
-    }
-    return requestIds.length;
-  },
-
   // Supprime totalement une série : template + toutes les occurrences générées.
   // Retourne le nombre de requêtes supprimées.
   async deleteRequestSeries(templateId) {

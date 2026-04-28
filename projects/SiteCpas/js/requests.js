@@ -285,18 +285,6 @@ const REQUESTS = {
         this._openUrgencyPicker(btn.dataset.reqId);
       });
     });
-
-    // 📌 Toggle keepOpen (bulk archive exclusion)
-    this._panel.querySelectorAll('.req-keep-open-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        const id = btn.dataset.reqId;
-        const req = DB.getRequests()[id];
-        if (!req) return;
-        try { await DB.setRequestKeepOpen(id, !req.keepOpen); }
-        catch (err) { console.warn('[req] keepOpen failed', err); }
-      });
-    });
   },
 
   _openUrgencyPicker(reqId) {
@@ -456,7 +444,7 @@ const REQUESTS = {
   _renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS) {
     const icon    = TYPE_ICONS[r.type] || '📋';
     const d       = new Date(r.createdAt);
-    const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit' });
+    const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: '2-digit' });
     const timeStr = d.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
     const uLevel  = this._urgencyLevel(r);
     const urgBadge = `<span class="req-urg-badge req-urg-${uLevel}" title="Niveau d'urgence : ${uLevel}/5">⚡ ${uLevel}/5</span>`;
@@ -566,24 +554,14 @@ const REQUESTS = {
       ? `<button class="req-del-btn" data-req-action="delete" data-req-id="${id}" title="Supprimer">✕</button>`
       : '';
 
-    // 📌 Garder ouverte (admin uniquement, sur les cartes status='open')
-    // Tag persistant qui exclut la requête du bulk archive (Espace technique).
-    const keepOpenTitle = r.keepOpen
-      ? 'Marquée à garder ouverte (cliquer pour retirer)'
-      : 'Garder cette requête ouverte (exclue du bulk archive)';
-    const keepOpenBtn = (isAdmin && r.status === 'open')
-      ? `<button class="req-keep-open-btn${r.keepOpen ? ' active' : ''}" data-req-id="${id}" title="${keepOpenTitle}">📌</button>`
-      : '';
-
     return `
-      <div class="req-card req-status-${r.status} req-urg-card-${uLevel}${uLevel >= 5 ? ' req-urgent' : ''}${r.keepOpen ? ' req-keep-open' : ''}">
+      <div class="req-card req-status-${r.status} req-urg-card-${uLevel}${uLevel >= 5 ? ' req-urgent' : ''}">
         <div class="req-card-hd">
           <span class="req-type-icon">${icon}</span>
           <span class="req-from">${escapeHtml(r.fromAgentName || '?')}</span>
           ${urgBadge}
           ${recurBadge}
           <span class="req-date">${dateStr} ${timeStr}</span>
-          ${keepOpenBtn}
           ${delBtn}
         </div>
         <div class="req-card-body">
