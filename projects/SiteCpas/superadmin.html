@@ -448,8 +448,36 @@ async function showApp() {
 // que TOUTES les const/let du script soient initialisées avant qu'il ne les
 // référence (éviter les erreurs TDZ : ex. TOKEN_PATH, DOCS_ADMIN_HASH_PATH,
 // MASCOT_TYPES déclarés plus bas dans le fichier).
+//
+// HARDENING : le flag SA_KEY en sessionStorage seul ne suffit pas (bypass
+// trivial via console). On exige aussi que Firebase Auth ait un user
+// non-anonymous avec le claim `superadmin:true` (= signed via Worker).
+async function _checkSuperadminAuth() {
+  if (!firebase.auth) return false;
+  const user = firebase.auth().currentUser;
+  if (!user || user.isAnonymous) return false;
+  try {
+    const tokenResult = await user.getIdTokenResult(false);
+    return tokenResult?.claims?.superadmin === true;
+  } catch (e) {
+    console.warn('[superadmin] getIdTokenResult failed', e?.message || e);
+    return false;
+  }
+}
+
 if (sessionStorage.getItem(SA_KEY) === '1') {
-  queueMicrotask(showApp);
+  // Vérifier l'auth Firebase avant de révéler l'UI. Si pas de claim
+  // superadmin → bypass détecté, on wipe et reset au login.
+  firebase.auth().onAuthStateChanged(async (user) => {
+    const ok = await _checkSuperadminAuth();
+    if (!ok) {
+      console.warn('[superadmin] SA_KEY set sans claim Firebase superadmin → bypass détecté, wipe');
+      sessionStorage.removeItem(SA_KEY);
+      location.reload();
+      return;
+    }
+    queueMicrotask(showApp);
+  });
 } else {
   db.ref(SA_HASH_PATH).once('value').then(snap => {
     const hash = snap.val();
