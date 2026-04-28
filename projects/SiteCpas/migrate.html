@@ -18,18 +18,25 @@
 </head>
 <body>
 
-<h1>🚀 Migration SiteCpas — Multi-tenant</h1>
-<p>Ce script copie toutes les données existantes (à la racine Firebase) vers <code>/orgs/cpas-quaregnon/</code>.</p>
-<p><strong style="color:#fbbf24">⚠ À n'exécuter qu'une seule fois. Les données originales sont conservées en place.</strong></p>
+<div id="mainContent" style="display:none">
+  <h1>🚀 Migration SiteCpas — Multi-tenant</h1>
+  <p>Ce script copie toutes les données existantes (à la racine Firebase) vers <code>/orgs/cpas-quaregnon/</code>.</p>
+  <p><strong style="color:#fbbf24">⚠ À n'exécuter qu'une seule fois. Les données originales sont conservées en place.</strong></p>
 
-<div>
-  <button id="btnCheck">1. Vérifier l'état actuel</button>
-  <button id="btnMigrate" disabled>2. Lancer la migration</button>
-  <button id="btnVerify" disabled>3. Vérifier après migration</button>
-  <button id="btnCleanup" class="danger" disabled>4. Supprimer les anciennes données (irréversible)</button>
+  <div>
+    <button id="btnCheck">1. Vérifier l'état actuel</button>
+    <button id="btnMigrate" disabled>2. Lancer la migration</button>
+    <button id="btnVerify" disabled>3. Vérifier après migration</button>
+    <button id="btnCleanup" class="danger" disabled>4. Supprimer les anciennes données (irréversible)</button>
+  </div>
+
+  <div class="log" id="log"></div>
 </div>
 
-<div class="log" id="log"></div>
+<div id="authGate" style="text-align:center; padding:4rem 2rem; max-width:500px; margin:2rem auto; background:#1e293b; border:1.5px solid #f87171; border-radius:12px;">
+  <h2 style="color:#fca5a5; margin-bottom:1rem">🔒 Accès restreint</h2>
+  <p style="color:#cbd5e1; line-height:1.6">Cette page de migration est réservée aux <strong>superadmin</strong>. Connecte-toi via <a href="superadmin.html" style="color:#38bdf8">superadmin.html</a> avant d'accéder à cet outil.</p>
+</div>
 
 <script src="js/fb-bootstrap.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -42,6 +49,21 @@ const ROOTS = ['reservations', 'appConfig', 'queues', 'appState', 'agentStatus']
 
 firebase.initializeApp(CONFIG.FIREBASE);
 const db = firebase.database();
+
+// Gate : exige Firebase auth avec claim superadmin avant de révéler l'UI.
+// La protection "réelle" reste les Rules Firebase (qui bloquent les writes
+// à la racine pour non-superadmin), mais on cache l'UI pour éviter qu'un
+// non-autorisé ne tente même les actions destructives.
+firebase.auth().onAuthStateChanged(async (user) => {
+  if (!user || user.isAnonymous) return; // Reste sur le authGate
+  try {
+    const tokenResult = await user.getIdTokenResult(false);
+    if (tokenResult?.claims?.superadmin === true) {
+      document.getElementById('authGate').style.display = 'none';
+      document.getElementById('mainContent').style.display = '';
+    }
+  } catch (e) { console.warn('[migrate] auth check failed', e?.message || e); }
+});
 
 function log(msg, cls = 'info') {
   const el = document.getElementById('log');
