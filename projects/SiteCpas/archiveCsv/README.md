@@ -93,8 +93,34 @@ Voir la sortie de `node import.js`. En résumé attendu :
 - Les initiateurs ne sont **pas matchés** automatiquement aux comptes agents existants — à faire manuellement après import si besoin.
 - Beaucoup de requêtes importées sont en réalité déjà finies dans la vie réelle. Un système de "bulk mark-done" dans SiteCpas est prévu en suivi pour passer plusieurs requêtes en `'done'` d'un coup.
 
+## Archivage en masse via CSVs "ouvertes"
+
+Quand l'utilisateur fournit les exports des requêtes ENCORE OUVERTES dans l'ancien système, le script `archive-by-csv.js` permet d'archiver automatiquement toutes celles qui n'apparaissent pas dans cette liste.
+
+**Usage :**
+```bash
+# 1. Place les CSVs dans archiveCsv/ouverte/ (1 par org, nom inclut "cpas" ou "mrs")
+#    ex: archiveCsv/ouverte/requestouvertescpas.csv
+#        archiveCsv/ouverte/requestouvertemrs.csv
+
+# 2. Lance le script
+node archive-by-csv.js
+```
+
+**Logique du script :**
+- Détecte l'org de chaque CSV via le nom de fichier (mots-clés `cpas` / `mrs`) ou par majorité des `Site` dans le contenu
+- Pour chaque ponctuelle (T_P) importée :
+  - **Match dans la CSV ouverte** → `keepOpen: true` (status reste `open`)
+  - **Pas match** → `status: 'done'` (archivée)
+- Pour chaque récurrente (template T_R) → toujours `keepOpen: true` (par nature elles tournent en boucle)
+- Si pas de CSV pour un org → ses ponctuelles sont **inchangées** (toutes restent `open`)
+
+**Sortie** : `output/requests-archived.json` à importer en remplacement complet sur `orgs/cpas-quaregnon/requests` via Firebase Console.
+
+⚠️ Le replace écrase l'état Firebase courant des requêtes. Si tu as fait des modifs (claim, comment, status changes via l'UI) depuis l'import initial, fais un backup avant.
+
 ## Hors scope (futur)
 
 - Création des techniciens (Vincent, Luxpro, Pelzer, etc.) depuis les services uniques rencontrés
 - Match auto des initiateurs vers `fromAgentKey` (fuzzy match par nom)
-- Bulk mark-done pour archivage rapide
+- API d'archivage incrémental (sans replace global) — utiliserait le Worker /data/write
