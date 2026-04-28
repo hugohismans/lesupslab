@@ -173,7 +173,25 @@
       background: #fffbeb; border-radius: 0 6px 6px 0; margin-bottom: .4rem;
     }
     .tq-rec-desc { font-size: .85rem; font-weight: 700; color: #1e293b; margin-bottom: .2rem; }
-    .tq-rec-meta { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .72rem; color: #64748b; }
+    .tq-rec-meta { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .72rem; color: #64748b; align-items: center; }
+    .tq-rec-edit {
+      margin-left: auto; background: #dbeafe; color: #1e3a8a;
+      border: 1.5px solid #93c5fd; border-radius: 6px;
+      padding: .15rem .45rem; font-size: .85rem; cursor: pointer;
+      transition: background .12s, color .12s; font-family: inherit;
+    }
+    .tq-rec-edit:hover { background: #93c5fd; color: #fff; }
+    .tq-rec-del {
+      background: #fee2e2; color: #991b1b;
+      border: 1.5px solid #fca5a5; border-radius: 6px;
+      padding: .15rem .45rem; font-size: .85rem; cursor: pointer;
+      transition: background .12s, color .12s; font-family: inherit;
+    }
+    /* Si edit + del présents, edit prend le margin-left:auto, del colle */
+    .tq-rec-meta .tq-rec-edit + .tq-rec-del { margin-left: 0; }
+    .tq-rec-meta .tq-rec-del:not(.tq-rec-edit + *) { margin-left: auto; }
+    .tq-rec-del:hover:not(:disabled) { background: #fca5a5; color: #fff; }
+    .tq-rec-del:disabled { opacity: .5; cursor: wait; }
     .tq-rec-freq { color: #b45309; font-weight: 700; }
     .tq-rec-next { color: #065f46; font-weight: 600; }
 

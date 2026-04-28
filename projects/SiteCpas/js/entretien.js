@@ -993,6 +993,7 @@
 
       // Séries actives — on lit _allRequests (non filtré) pour inclure
       // les séries programmées dans le futur (createdAt > now).
+      // Tri par prochaine occurrence (nextAt ASC).
       const now = Date.now();
       const activeSeries = Object.entries(this._allRequests || {})
         .map(([id, r]) => ({ id, ...r }))
@@ -1000,7 +1001,8 @@
           r.type === 'entretien' &&
           r.recurrence && r.recurrence.templateId === r.id &&
           (!r.recurrence.until || r.recurrence.until > now)
-        );
+        )
+        .sort((a, b) => (a.recurrence?.nextAt || Infinity) - (b.recurrence?.nextAt || Infinity));
       const lateCutoff = now - 7 * 24 * 3600 * 1000;
       const lateReqs = reqs.filter(r =>
         (r.status === 'open' || r.status === 'in_progress') && r.createdAt < lateCutoff
@@ -1070,12 +1072,19 @@
       }).join('');
 
       const unitLabels = { days: 'jour(s)', weeks: 'sem.', months: 'mois' };
+      const isAdminRec = DB.hasPermission?.('editSettings');
       const activeRecHtml = activeSeries.length
         ? activeSeries.map(t => {
             const rec = t.recurrence;
             const nextDate = rec.nextAt && (!rec.until || rec.nextAt <= rec.until)
               ? new Date(rec.nextAt).toLocaleDateString('fr-BE', { day: '2-digit', month: 'short', year: 'numeric' })
               : 'terminée';
+            const editBtn = isAdminRec
+              ? `<button class="ent-rec-edit" data-tpl-id="${escapeHtml(t.id)}" title="Modifier la série (description, thème, récurrence, prochaine date)">✏️</button>`
+              : '';
+            const delBtn  = isAdminRec
+              ? `<button class="ent-rec-del"  data-tpl-id="${escapeHtml(t.id)}" title="Supprimer la série (template + toutes les occurrences)">🗑</button>`
+              : '';
             return `<div class="ent-rec-row">
               <div class="ent-rec-desc" title="${escapeHtml(t.description || '')}">${escapeHtml((t.description || '').slice(0, 60))}</div>
               <div class="ent-rec-meta">
@@ -1083,6 +1092,8 @@
                 <span>🏷️ ${escapeHtml(themeLabel(t.themeId))}</span>
                 ${t.local ? `<span>📍 ${escapeHtml(t.local)}</span>` : ''}
                 <span class="ent-rec-next">Prochaine : <b>${nextDate}</b></span>
+                ${editBtn}
+                ${delBtn}
               </div>
             </div>`;
           }).join('')
@@ -1172,6 +1183,35 @@
           const val = row.dataset.hbarClick;
           const searchEl = document.getElementById('entSearch');
           if (searchEl) { searchEl.value = val; this._search = val.toLowerCase(); this._renderDashboard(); }
+        });
+      });
+      // Bouton modifier série (admin uniquement)
+      grid.querySelectorAll('.ent-rec-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tplId = btn.dataset.tplId;
+          if (!tplId) return;
+          REQUESTS._openSeriesEditor?.(tplId);
+        });
+      });
+      // Bouton supprimer série (admin uniquement)
+      grid.querySelectorAll('.ent-rec-del').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const tplId = btn.dataset.tplId;
+          if (!tplId) return;
+          const series = DB.getRequestsInSeries(tplId);
+          const count = series.length || 1;
+          if (!confirm(`Supprimer cette série ?\n\nCela effacera le template + ${count} occurrence(s) liée(s). Action irréversible.`)) return;
+          btn.disabled = true;
+          try {
+            await DB.deleteRequestSeries(tplId);
+            showToast('Série supprimée ✓');
+          } catch (err) {
+            console.warn('[ent] delete series failed', err);
+            showToast('Erreur : ' + (err?.message || err), true);
+            btn.disabled = false;
+          }
         });
       });
     },

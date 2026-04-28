@@ -2114,6 +2114,18 @@ const DB = {
     if (!templateId) return;
     await this._ref(`requests/${templateId}/recurrence/until`).set(Date.now());
   },
+  // Supprime totalement une série : template + toutes les occurrences générées.
+  // Retourne le nombre de requêtes supprimées.
+  async deleteRequestSeries(templateId) {
+    if (!templateId) return 0;
+    const series = this.getRequestsInSeries(templateId);
+    const updates = {};
+    series.forEach(r => { updates[`requests/${r.id}`] = null; });
+    // S'assurer que le template lui-même est inclus (il l'est si templateId === self id)
+    updates[`requests/${templateId}`] = null;
+    await this._update(updates);
+    return Object.keys(updates).length;
+  },
   // Modifie les paramètres de récurrence d'une série.
   async updateRequestRecurrence(templateId, { unit, interval, until }) {
     const updates = {};
@@ -2129,6 +2141,31 @@ const DB = {
       updates[`requests/${templateId}/recurrence/nextAt`] = this._computeNextAt(latest, u, i);
     }
     if (Object.keys(updates).length) await this._update(updates);
+  },
+  // Édition complète d'une série : description, local, themeId + récurrence
+  // (unit, interval, until, nextAt). Affecte uniquement le template — les
+  // occurrences déjà générées gardent leurs valeurs, on ne réécrit pas
+  // l'historique. Les occurrences futures héritent du template à la
+  // génération.
+  async updateRequestTemplate(templateId, fields) {
+    if (!templateId) return;
+    const updates = {};
+    if (fields.description !== undefined) updates[`requests/${templateId}/description`] = String(fields.description || '');
+    if (fields.local       !== undefined) updates[`requests/${templateId}/local`]       = fields.local || null;
+    if (fields.themeId     !== undefined) updates[`requests/${templateId}/themeId`]     = fields.themeId || null;
+    const rec = fields.recurrence;
+    if (rec) {
+      if (rec.unit     !== undefined) updates[`requests/${templateId}/recurrence/unit`]     = rec.unit;
+      if (rec.interval !== undefined) updates[`requests/${templateId}/recurrence/interval`] = parseInt(rec.interval, 10) || 1;
+      if (rec.until    !== undefined) updates[`requests/${templateId}/recurrence/until`]    = rec.until || null;
+      if (rec.nextAt   !== undefined) updates[`requests/${templateId}/recurrence/nextAt`]   = rec.nextAt || null;
+    }
+    if (Object.keys(updates).length) {
+      await this._update(updates);
+      if (typeof AUDIT !== 'undefined' && AUDIT.log) {
+        AUDIT.log('requests.updateTemplate', { templateId });
+      }
+    }
   },
 
   // Scheduler : génère les occurrences dues pour toutes les séries

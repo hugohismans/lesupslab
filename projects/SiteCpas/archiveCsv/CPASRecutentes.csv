@@ -1,0 +1,24 @@
+﻿Numéro de la tâche;Date de création de la tâche;Nom de la personne initiatrice de la tâche;Site de réalisation de la tâche;Nature de la tâche;Description de la tâche;Prochaine date pour la tâche;Durée estimée en heure(s) ou journée(s);Nombre de personnes souhaitées;Service mandaté pour la réalisation de la tâche;Journée de la semaine pour réaliser la tâche;Tâche réalisée toutes les X semaines;Journée du mois pour émettre la tâche;Tâche émise tous les X mois
+;;;;;;;;;;;;;
+;;;;;;;;;;;;;
+T_R020;45187;Corinne Buisseret;CPAS;Entretien général;produits frais ressaix;46092;2h;1;Vincent;Mercredi;1;;
+T_R013;44265;Corinne Buisseret;Magasin;Entretien général;entretien intérieur du frigo mural ;46096;30 MIN;1;Vincent;Mardi;2;;
+T_R015;44267;Corinne Buisseret;Magasin;Entretien général;relevé des compteurs gaz-électricité-eau rue Charles Dupuis 114;46113;;1;Vincent;;;1;1
+T_R016;44322;Corinne Buisseret;Magasin;Entretien général;"contrôle interne pour magasin et appartement 
+hydrants internes- alarme - extracteur de fumée - extincteurs blocs de secours     ";46122;1h;1;Vincent;;;10;1
+T_R009;44236;Helene Courcelles;Roseraie;Plomberie;Cartouche anticalcaire à remplacer dans toutes les maisons (Roseraie et Chemin du Bon Dieu) Ref: micromet 75 chez Van Marcke;46073;;;Vincent;;;20;6
+T_R008;44236;Helene Courcelles;CPAS;Entretien général;Vérifier les backup de l'application;46076;;;Administrateur;Lundi;2;;
+T_R002;44236;Helene Courcelles;Roseraie;Entretien général;Nettoyer les trappes d'égout;46082;;;Vincent;;;1;6
+T_R006;44236;Helene Courcelles;CPAS;Entretien général;Me transmettre les relevés des compteurs d'eau, de gaz et d'électricité pour la rue Jules Destrée;46113;;;Vincent;;;1;1
+T_R018;44505;Helene Courcelles;CPAS;Entretien général;Contrôle des blocs d'éclairage de sécurité pour la rue Destrée;46122;0,5h;1;Vincent;;;10;1
+T_R003;44236;Helene Courcelles;Roseraie;Entretien général;Nettoyer les corniches des maisons;46147;;;Vincent;;;5;6
+T_R019;44881;Helene Courcelles;CPAS;Entretien général;Entretien de 3 tombes au cimetière de Quaregnon;46296;;1;Ouvriers_ADV;;;1;12
+T_R007;44236;Helene Courcelles;Roseraie;Jardin / extérieur;Enlever la mousse des trottoirs, bordures, …;46371;;;Vincent;;;15;1
+T_R001;44236;Helene Courcelles;Roseraie;Entretien général;Vérifier les boites aux lettres;46482;;;Vincent;;;5;12
+T_R021;45786;Secrétariat général;CPAS;Entretien général;Remonter 3 caisses de papier A4 au 2ème étage chaque lundi et  informer le secrétariat du stock restant;46090;30 min;1;Vincent;Lundi;1;;
+T_R022;45798;Sophie Paternoster;CPAS;Parc voitures;Completer la checklist : Renault MASTER & la Fiat FIORINO (voir le document à l'atelier);46083;30 min;1;Vincent;;;2;1
+T_R011;44264;Steve Stoffel;CPAS;Entretien général;Déplacer papiers/carton vers l'ADV + Produits d'entretien;46094;1h;1;Vincent;Vendredi;1;;
+T_R010;44250;Corinne Buisseret;CPAS;Entretien général;produits frais ressaix;45154;2h;1;Vincent;Mercredi;1;;
+T_R012;44265;Corinne Buisseret;Magasin;Marchandises magasin;retrait palette de casse Nivelles le 1er jeudi de  chaque mois;45505;3H45;2;Vincent;;;1;1
+T_R004;44236;Helene Courcelles;Roseraie;Peinture;Rénover les panneaux de signalisation;46152;;;Vincent;;;10;12
+T_R017;44349;Stéphanie Debeil;ILA;Entretien général;se rendre dans chaque ILA, transit 1X/mois pour controler l'état des logements;45078;;1;Vincent;;;1;1

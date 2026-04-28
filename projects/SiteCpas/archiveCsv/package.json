@@ -1,0 +1,13 @@
+{
+  "name": "sitecpas-archive-import",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Script d'import des anciennes requêtes techniques (CSV → Firebase JSON pour SiteCpas)",
+  "main": "import.js",
+  "scripts": {
+    "import": "node import.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.6.0"
+  }
+}
