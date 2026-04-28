@@ -8,15 +8,19 @@
 //   - archiveCsv/ouverte/*.csv    (fichiers d'export "encore ouvertes")
 //   - output/requests-import.json (les ~3280 requêtes déjà importées)
 //
-// Logique de match :
+// Logique de match — UNIFORME pour T_P (ponctuelles) ET T_R (récurrentes) :
 //   - L'org de chaque CSV est inférée du nom de fichier :
 //     "*cpas*" → org cpas, "*mrs*" → org mrs
 //     (sinon : par majorité des Site dans le fichier)
-//   - Pour chaque ponctuelle (T_P) importée :
-//     - Si org a une CSV ouverte ET ID source dans la CSV → keepOpen=true (status reste 'open')
-//     - Si org a une CSV ouverte ET ID source ABSENT      → status='done' (archivée)
-//     - Si org n'a PAS de CSV ouverte                     → laissée 'open' inchangée
-//   - Pour chaque récurrente (templateId === self) → keepOpen=true (toujours active)
+//   - Si org a une CSV ouverte :
+//     - ID source dans la CSV → keepOpen=true (status reste 'open')
+//     - ID source ABSENT      → status='done' (archivée)
+//                               + pour les T_R (templates) : recurrence retirée
+//                                 (empêche la génération de nouvelles occurrences)
+//   - Si org n'a PAS de CSV ouverte → laissée 'open' inchangée
+//
+// Détection de fichiers doublons (md5 identique) → second fichier ignoré
+// avec warning. Évite de polluer le matching sur la mauvaise org.
 //
 // Sortie : output/requests-archived.json à importer en remplacement complet
 // sur orgs/cpas-quaregnon/requests via Firebase Console.
@@ -26,6 +30,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { parse } = require('csv-parse/sync');
 
 const HERE = __dirname;
@@ -64,15 +69,24 @@ function loadOuverteCsvs() {
     console.error(`Aucun CSV dans ${OUVERTE_DIR}`);
     process.exit(1);
   }
+  // Tri alphabétique pour rendre l'ordre déterministe (sinon readdirSync
+  // peut donner un ordre différent selon l'OS / le système de fichiers)
+  files.sort();
 
   const result = { cpas: null, mrs: null }; // null = pas de CSV pour cet org → inchangé
-  const seenHashes = new Set();
+  const seenHashes = new Map();              // hash → nom du fichier déjà chargé
 
   for (const file of files) {
     const fullPath = path.join(OUVERTE_DIR, file);
     const content = fs.readFileSync(fullPath, 'utf8');
-    // Détection collision (fichiers identiques uploadés sous 2 noms)
-    const hash = require('crypto').createHash('md5').update(content).digest('hex');
+    const hash = crypto.createHash('md5').update(content).digest('hex');
+
+    // Skip les doublons exacts (même md5 que fichier déjà chargé)
+    if (seenHashes.has(hash)) {
+      console.warn(`  [skip] ${file} : doublon exact de ${seenHashes.get(hash)} (md5 identique)`);
+      continue;
+    }
+    seenHashes.set(hash, file);
 
     let rows;
     try {
@@ -88,35 +102,45 @@ function loadOuverteCsvs() {
       continue;
     }
 
-    let org = inferOrgFromFilename(file) || inferOrgFromContent(rows);
+    const orgByName    = inferOrgFromFilename(file);
+    const orgByContent = inferOrgFromContent(rows);
+
+    // Garde-fou : si le nom dit "cpas" mais le contenu est MRS (ou inverse),
+    // c'est un fichier mal nommé (cas vu : requestouvertecpas.csv contient
+    // en fait des tâches MRS). On skip pour ne pas polluer le matching.
+    if (orgByName && orgByContent && orgByName !== orgByContent) {
+      console.warn(`  [skip] ${file} : nom suggère "${orgByName}" mais contenu suggère "${orgByContent}" — fichier mal nommé, ignoré`);
+      continue;
+    }
+
+    const org = orgByName || orgByContent;
     if (!org) {
       console.warn(`  [skip] ${file} : impossible de déterminer l'org (nom + contenu ambigus)`);
       continue;
     }
 
-    // Si même contenu déjà vu pour un autre org → warn (cas du doublon CPAS=MRS)
-    if (seenHashes.has(hash)) {
-      console.warn(`  [warn] ${file} a le même contenu qu'un autre fichier déjà chargé (doublon ?). On l'attribue à l'org "${org}".`);
-    }
-    seenHashes.add(hash);
-
-    // Extraire les T_P IDs (ponctuelles)
+    // Extraire les IDs (T_P et T_R sont traités uniformément)
     const ids = new Set();
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (!row || !row.length) continue;
       const id = String(row[0] || '').trim();
       if (/^T_[PR]\d+$/i.test(id)) ids.add(id);
+      // (les headers sont skippés naturellement car "Numéro de la tâche" ne match pas le regex)
     }
 
-    // Si l'org a déjà été chargé, fusionne (merge des sets)
+    // Fusion si l'org a déjà été chargé via un autre fichier
     if (result[org]) {
       ids.forEach(x => result[org].ids.add(x));
       result[org].files.push(file);
     } else {
       result[org] = { ids, files: [file] };
     }
-    console.log(`  ${file.padEnd(30)} → org "${org}" : ${ids.size} ID(s) à garder ouvert`);
+
+    // Compter T_P vs T_R pour le récap
+    const tp = [...ids].filter(x => /^T_P/i.test(x)).length;
+    const tr = [...ids].filter(x => /^T_R/i.test(x)).length;
+    console.log(`  ${file.padEnd(30)} → org "${org}" : ${ids.size} ID(s) à garder (${tp} ponctuelles, ${tr} récurrentes)`);
   }
 
   return result;
@@ -131,9 +155,12 @@ function main() {
   console.log('\nÉtat des org :');
   ['cpas', 'mrs'].forEach(org => {
     if (ouverte[org]) {
-      console.log(`  ${org.toUpperCase()} : CSV trouvée (${ouverte[org].files.join(', ')}) — ${ouverte[org].ids.size} requêtes à garder`);
+      const tp = [...ouverte[org].ids].filter(x => /^T_P/i.test(x)).length;
+      const tr = [...ouverte[org].ids].filter(x => /^T_R/i.test(x)).length;
+      console.log(`  ${org.toUpperCase()} : CSV trouvée (${ouverte[org].files.join(', ')})`);
+      console.log(`           ${ouverte[org].ids.size} à garder ouvert (${tp} T_P, ${tr} T_R)`);
     } else {
-      console.log(`  ${org.toUpperCase()} : pas de CSV ouverte → ponctuelles inchangées (toutes restent 'open')`);
+      console.log(`  ${org.toUpperCase()} : pas de CSV ouverte → ses requêtes seront laissées inchangées (toutes restent 'open')`);
     }
   });
 
@@ -148,27 +175,20 @@ function main() {
 
   // ── Appliquer la logique d'archive ──
   const stats = {
-    total:       0,
-    recurrentes: 0,
-    keptCpas:    0,
-    archivedCpas:0,
-    inchangéCpas:0,
-    keptMrs:     0,
-    archivedMrs: 0,
-    inchangéMrs: 0,
-    inconnu:     0,
+    total:        0,
+    keptCpasTp:   0, keptCpasTr:   0,
+    archivedCpasTp: 0, archivedCpasTr: 0,
+    inchangéCpas: 0,
+    keptMrsTp:    0, keptMrsTr:    0,
+    archivedMrsTp: 0, archivedMrsTr: 0,
+    inchangéMrs:  0,
+    inconnu:      0,
   };
 
   for (const [reqId, payload] of Object.entries(requests)) {
     stats.total++;
-    // Récurrente (template) → toujours keepOpen
-    if (payload.recurrence && payload.recurrence.templateId === reqId) {
-      payload.keepOpen = true;
-      stats.recurrentes++;
-      continue;
-    }
 
-    // Identifier l'org via le préfixe d'id : import_cpas_T_PXXX ou import_mrs_T_PXXX
+    // Identifier l'org + sourceId via le préfixe : import_cpas_T_PXXX ou import_mrs_T_RXXX
     const m = reqId.match(/^import_(cpas|mrs)_(T_[PR]\d+)$/i);
     if (!m) {
       stats.inconnu++;
@@ -176,6 +196,7 @@ function main() {
     }
     const org      = m[1].toLowerCase();
     const sourceId = m[2];
+    const isTp     = /^T_P/i.test(sourceId);
 
     const orgData = ouverte[org];
     if (!orgData) {
@@ -187,12 +208,19 @@ function main() {
     if (orgData.ids.has(sourceId)) {
       // Match → garder ouverte
       payload.keepOpen = true;
-      if (org === 'cpas') stats.keptCpas++; else stats.keptMrs++;
+      // S'assurer que status reste 'open' (au cas où re-run sur un fichier déjà archivé)
+      if (payload.status !== 'open') payload.status = 'open';
+      if (org === 'cpas') (isTp ? stats.keptCpasTp++ : stats.keptCpasTr++);
+      else                (isTp ? stats.keptMrsTp++  : stats.keptMrsTr++);
     } else {
       // Pas dans la liste ouverte → archiver
       payload.status = 'done';
-      delete payload.keepOpen; // au cas où elle aurait été tagged précédemment
-      if (org === 'cpas') stats.archivedCpas++; else stats.archivedMrs++;
+      delete payload.keepOpen;
+      // Si c'est un template récurrent : retirer recurrence pour stopper la génération
+      // (le scheduler ne reconnaît plus comme template)
+      if (payload.recurrence) delete payload.recurrence;
+      if (org === 'cpas') (isTp ? stats.archivedCpasTp++ : stats.archivedCpasTr++);
+      else                (isTp ? stats.archivedMrsTp++  : stats.archivedMrsTr++);
     }
   }
 
@@ -203,25 +231,24 @@ function main() {
 
   console.log('\n═══ Stats ═══');
   console.log(`  Total requêtes traitées : ${stats.total}`);
-  console.log(`  Récurrentes (templates) → keepOpen : ${stats.recurrentes}`);
   console.log('');
-  console.log(`  CPAS — gardées ouvertes  : ${stats.keptCpas}`);
-  console.log(`  CPAS — archivées (done)  : ${stats.archivedCpas}`);
-  console.log(`  CPAS — inchangées (no CSV): ${stats.inchangéCpas}`);
+  console.log(`  CPAS — gardées ouvertes : ${stats.keptCpasTp + stats.keptCpasTr} (${stats.keptCpasTp} T_P, ${stats.keptCpasTr} T_R)`);
+  console.log(`  CPAS — archivées (done) : ${stats.archivedCpasTp + stats.archivedCpasTr} (${stats.archivedCpasTp} T_P, ${stats.archivedCpasTr} T_R)`);
+  if (stats.inchangéCpas) console.log(`  CPAS — inchangées (pas de CSV) : ${stats.inchangéCpas}`);
   console.log('');
-  console.log(`  MRS  — gardées ouvertes  : ${stats.keptMrs}`);
-  console.log(`  MRS  — archivées (done)  : ${stats.archivedMrs}`);
-  console.log(`  MRS  — inchangées (no CSV): ${stats.inchangéMrs}`);
+  console.log(`  MRS  — gardées ouvertes : ${stats.keptMrsTp + stats.keptMrsTr} (${stats.keptMrsTp} T_P, ${stats.keptMrsTr} T_R)`);
+  console.log(`  MRS  — archivées (done) : ${stats.archivedMrsTp + stats.archivedMrsTr} (${stats.archivedMrsTp} T_P, ${stats.archivedMrsTr} T_R)`);
+  if (stats.inchangéMrs) console.log(`  MRS  — inchangées (pas de CSV) : ${stats.inchangéMrs}`);
   console.log('');
   if (stats.inconnu) console.log(`  ⚠️  ${stats.inconnu} ID(s) non standard (préfixe non match)`);
 
   const sizeMb = (fs.statSync(outputPath).size / 1024 / 1024).toFixed(2);
   console.log(`\n✓ ${outputPath} (${sizeMb} Mo)`);
   console.log('\nÉtape suivante :');
-  console.log('  Firebase Console → orgs/cpas-quaregnon/requests');
-  console.log('  → bouton ⋮ → Importer JSON → choisir `requests-archived.json`');
+  console.log('  1. Backup d\'abord (Paramètres admin → ⬇ Exporter JSON)');
+  console.log('  2. Firebase Console → orgs/cpas-quaregnon/requests');
+  console.log('     → bouton ⋮ → Importer JSON → choisir `requests-archived.json`');
   console.log('  ⚠️  Replace : remplace toutes les requêtes par cette version mise à jour.');
-  console.log('     Backup recommandé avant si tu as fait des modifs UI depuis l\'import.');
 }
 
 main();
