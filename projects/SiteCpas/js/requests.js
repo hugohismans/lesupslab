@@ -374,6 +374,102 @@ const REQUESTS = {
     };
   },
 
+  // Modal d'édition d'une série récurrente : description, local, thème,
+  // récurrence (unit/interval/until/nextAt). Affecte le template seul.
+  _openSeriesEditor(templateId) {
+    const tpl = DB.getRequests()[templateId];
+    if (!tpl || !tpl.recurrence) return;
+    const themes = DB.getThemesForRequestType?.(tpl.type) || DB.getTechThemes() || [];
+    let box = document.getElementById('reqSeriesEditBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'reqSeriesEditBox';
+      box.className = 'req-comment-box';
+      document.body.appendChild(box);
+    }
+    const rec = tpl.recurrence;
+    const toDateInput = (ts) => {
+      if (!ts) return '';
+      const d = new Date(ts);
+      const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+    const fromDateInput = (s) => {
+      if (!s) return null;
+      const d = new Date(s);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    };
+    box.innerHTML = `
+      <div class="req-comment-box-inner" style="max-width:480px">
+        <h3 style="margin:0 0 .8rem;font-size:1.05rem;color:#1a3a5c">↻ Modifier la série récurrente</h3>
+
+        <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Description</label>
+        <textarea id="rseDesc" rows="2" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit;resize:vertical;margin-bottom:.65rem">${escapeHtml(tpl.description || '')}</textarea>
+
+        <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Local concerné</label>
+        <input type="text" id="rseLocal" value="${escapeHtml(tpl.local || '')}" placeholder="(optionnel)" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit;margin-bottom:.65rem">
+
+        <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Thème</label>
+        <select id="rseTheme" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit;margin-bottom:.65rem">
+          <option value="">— Non catégorisé —</option>
+          ${themes.map(t => `<option value="${t.id}"${t.id === tpl.themeId ? ' selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}
+        </select>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.65rem">
+          <div>
+            <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Tous les</label>
+            <input type="number" id="rseInterval" min="1" max="365" value="${rec.interval || 1}" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit">
+          </div>
+          <div>
+            <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Unité</label>
+            <select id="rseUnit" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit">
+              <option value="days"${rec.unit === 'days' ? ' selected' : ''}>jour(s)</option>
+              <option value="weeks"${rec.unit === 'weeks' ? ' selected' : ''}>semaine(s)</option>
+              <option value="months"${rec.unit === 'months' ? ' selected' : ''}>mois</option>
+            </select>
+          </div>
+        </div>
+
+        <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Prochaine occurrence</label>
+        <input type="date" id="rseNextAt" value="${toDateInput(rec.nextAt)}" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit;margin-bottom:.65rem">
+
+        <label style="display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.2rem">Jusqu'au (optionnel)</label>
+        <input type="date" id="rseUntil" value="${toDateInput(rec.until)}" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;font-family:inherit;margin-bottom:.5rem">
+
+        <div class="req-comment-box-actions">
+          <button class="btn-secondary" id="rseCancel">Annuler</button>
+          <button class="btn-primary"   id="rseSave">💾 Enregistrer</button>
+        </div>
+      </div>`;
+    box.classList.remove('hidden');
+    document.getElementById('rseCancel').onclick = () => box.classList.add('hidden');
+    document.getElementById('rseSave').onclick   = async () => {
+      const description = document.getElementById('rseDesc').value.trim();
+      const local       = document.getElementById('rseLocal').value.trim() || null;
+      const themeId     = document.getElementById('rseTheme').value || null;
+      const interval    = parseInt(document.getElementById('rseInterval').value, 10) || 1;
+      const unit        = document.getElementById('rseUnit').value || 'months';
+      const nextAt      = fromDateInput(document.getElementById('rseNextAt').value);
+      const until       = fromDateInput(document.getElementById('rseUntil').value);
+      if (!description) {
+        alert('La description ne peut pas être vide.');
+        return;
+      }
+      try {
+        await DB.updateRequestTemplate(templateId, {
+          description, local, themeId,
+          recurrence: { unit, interval, until, nextAt },
+        });
+        box.classList.add('hidden');
+        if (typeof showToast === 'function') showToast('Série mise à jour ✓');
+      } catch (e) {
+        console.warn('[REQUESTS] updateSeries failed', e);
+        alert('Erreur : ' + (e?.message || e));
+      }
+    };
+  },
+
   _openSeriesView(templateId) {
     const series = DB.getRequestsInSeries(templateId);
     let box = document.getElementById('reqSeriesBox');

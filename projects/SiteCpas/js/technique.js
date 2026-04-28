@@ -372,13 +372,15 @@
       // Récurrences actives : templates dont until n'est pas passé.
       // On lit depuis _allRequests (pas reqs filtré) pour inclure les
       // séries programmées dans le futur (createdAt > now).
+      // Tri par prochaine occurrence (nextAt ASC) — plus utile que par création.
       const now = Date.now();
       const activeSeries = Object.entries(this._allRequests || {})
         .map(([id, r]) => ({ id, ...r }))
         .filter(r =>
           r.recurrence && r.recurrence.templateId === r.id &&
           (!r.recurrence.until || r.recurrence.until > now)
-        );
+        )
+        .sort((a, b) => (a.recurrence?.nextAt || Infinity) - (b.recurrence?.nextAt || Infinity));
       // Plus les templates HORS période filtrée (sinon on rate les templates anciens qui continuent à générer)
       Object.values(this._allRequests || {}).forEach(r => {
         if (r.recurrence && r.recurrence.templateId && !activeSeries.find(a => a.id === r.id)) {
@@ -477,7 +479,10 @@
             const nextDate = rec.nextAt && (!rec.until || rec.nextAt <= rec.until)
               ? new Date(rec.nextAt).toLocaleDateString('fr-BE', { day: '2-digit', month: 'short', year: 'numeric' })
               : 'terminée';
-            const delBtn = isAdminRec
+            const editBtn = isAdminRec
+              ? `<button class="tq-rec-edit" data-tpl-id="${escapeAttr(t.id)}" title="Modifier la série (description, thème, récurrence, prochaine date)">✏️</button>`
+              : '';
+            const delBtn  = isAdminRec
               ? `<button class="tq-rec-del" data-tpl-id="${escapeAttr(t.id)}" title="Supprimer la série (template + toutes les occurrences)">🗑</button>`
               : '';
             return `<div class="tq-rec-row">
@@ -487,6 +492,7 @@
                 <span class="tq-rec-theme">🏷️ ${escapeHtml(DB.getTechThemeLabel(t.themeId))}</span>
                 ${t.local ? `<span class="tq-rec-local">📍 ${escapeHtml(t.local)}</span>` : ''}
                 <span class="tq-rec-next">Prochaine : <b>${nextDate}</b></span>
+                ${editBtn}
                 ${delBtn}
               </div>
             </div>`;
@@ -581,6 +587,15 @@
           const val = row.dataset.hbarClick;
           const searchEl = document.getElementById('tqSearch');
           if (searchEl) { searchEl.value = val; this._search = val.toLowerCase(); this.render(); }
+        });
+      });
+      // Bouton modifier série (admin uniquement)
+      gridEl.querySelectorAll('.tq-rec-edit').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tplId = btn.dataset.tplId;
+          if (!tplId) return;
+          REQUESTS._openSeriesEditor?.(tplId);
         });
       });
       // Bouton supprimer série (admin uniquement)

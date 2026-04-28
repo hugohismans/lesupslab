@@ -2142,6 +2142,31 @@ const DB = {
     }
     if (Object.keys(updates).length) await this._update(updates);
   },
+  // Édition complète d'une série : description, local, themeId + récurrence
+  // (unit, interval, until, nextAt). Affecte uniquement le template — les
+  // occurrences déjà générées gardent leurs valeurs, on ne réécrit pas
+  // l'historique. Les occurrences futures héritent du template à la
+  // génération.
+  async updateRequestTemplate(templateId, fields) {
+    if (!templateId) return;
+    const updates = {};
+    if (fields.description !== undefined) updates[`requests/${templateId}/description`] = String(fields.description || '');
+    if (fields.local       !== undefined) updates[`requests/${templateId}/local`]       = fields.local || null;
+    if (fields.themeId     !== undefined) updates[`requests/${templateId}/themeId`]     = fields.themeId || null;
+    const rec = fields.recurrence;
+    if (rec) {
+      if (rec.unit     !== undefined) updates[`requests/${templateId}/recurrence/unit`]     = rec.unit;
+      if (rec.interval !== undefined) updates[`requests/${templateId}/recurrence/interval`] = parseInt(rec.interval, 10) || 1;
+      if (rec.until    !== undefined) updates[`requests/${templateId}/recurrence/until`]    = rec.until || null;
+      if (rec.nextAt   !== undefined) updates[`requests/${templateId}/recurrence/nextAt`]   = rec.nextAt || null;
+    }
+    if (Object.keys(updates).length) {
+      await this._update(updates);
+      if (typeof AUDIT !== 'undefined' && AUDIT.log) {
+        AUDIT.log('requests.updateTemplate', { templateId });
+      }
+    }
+  },
 
   // Scheduler : génère les occurrences dues pour toutes les séries
   // ET rouvre les requêtes reportées dont la date de réouverture est passée.
