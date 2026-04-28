@@ -8,8 +8,17 @@
   const orgParam  = ORG_ID !== 'cpas-quaregnon' ? `?org=${ORG_ID}` : '';
 
   // ── Page app.html : vérifier la session ─────────────────────────
+  // Gate exigeant : il faut le flag AUTH_KEY ET un AGENT_KEY non vide.
+  // Sans les deux, on redirige vers le login.
+  // Défense en profondeur : db.js vérifie aussi que firebase.auth() est
+  // non-anonymous post-load, et bascule en redirect si Session stale.
   if (!document.getElementById('stepAgent')) {
-    if (sessionStorage.getItem(AUTH_KEY) !== '1') {
+    const _hasAuth  = sessionStorage.getItem(AUTH_KEY)  === '1';
+    const _hasAgent = !!sessionStorage.getItem(AGENT_KEY);
+    if (!_hasAuth || !_hasAgent) {
+      // Nettoyage défensif : si l'un est set sans l'autre, on wipe les deux
+      sessionStorage.removeItem(AUTH_KEY);
+      sessionStorage.removeItem(AGENT_KEY);
       location.href = `index.html${orgParam}`; return;
     }
     document.getElementById('btnLogout')?.addEventListener('click', function () {

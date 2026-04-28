@@ -303,10 +303,16 @@
 
     // ── Auth guard (ignoré en mode test) ─────────────────────────
     if (!_testIntroType) {
-      if (sessionStorage.getItem(AUTH_KEY) !== '1') { location.href = `index.html${orgParam}`; return; }
-      const _agentKeyCheck = sessionStorage.getItem(AGENT_KEY);
-      if (!_agentKeyCheck) { location.href = `index.html${orgParam}`; return; }
-      if (localStorage.getItem(`mc_welcomed_${_agentKeyCheck}`)) {
+      const _hasAuth     = sessionStorage.getItem(AUTH_KEY) === '1';
+      const _agentKeyCk  = sessionStorage.getItem(AGENT_KEY);
+      if (!_hasAuth || !_agentKeyCk) {
+        // Wipe défensif si l'un est set sans l'autre (prévention bypass)
+        sessionStorage.removeItem(AUTH_KEY);
+        sessionStorage.removeItem(AGENT_KEY);
+        location.href = `index.html${orgParam}`;
+        return;
+      }
+      if (localStorage.getItem(`mc_welcomed_${_agentKeyCk}`)) {
         location.href = `app.html${orgParam}`; return;
       }
     }

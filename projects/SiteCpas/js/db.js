@@ -152,15 +152,33 @@ const DB = {
             const mode = user.isAnonymous ? 'anonymous' : 'custom';
             console.log(`%c[DB] 🔐 auth ${mode} OK`, 'color:#10b981;font-weight:bold', 'uid=', user.uid);
 
-            // Phase 3 : si l'agent prétend être loggé (session flag)
-            // MAIS firebase est en anonymous, c'est une session stale
-            // (ancienne avant Phase 2, ou custom token perdu). Force
-            // un re-login sinon les calls Worker échoueront en 401.
-            const hasAgentFlag = (typeof sessionStorage !== 'undefined')
-              && sessionStorage.getItem('cpas_auth_v1') === '1'
+            // Phase 3 + hardening bypass : si l'auth flag est set MAIS
+            // Firebase est en anonymous, c'est forcément :
+            //   (a) une session stale d'avant Phase 2 (custom token perdu)
+            //   (b) un attaquant qui a fait `sessionStorage.setItem('cpas_auth_v1','1')`
+            //       pour bypasser le gate naïf de auth.js
+            // Dans les deux cas : wipe + redirect.
+            const ssAuth  = (typeof sessionStorage !== 'undefined')
+              && sessionStorage.getItem('cpas_auth_v1') === '1';
+            const ssAgent = (typeof sessionStorage !== 'undefined')
               && sessionStorage.getItem('cpas_current_agent_key');
-            if (user.isAnonymous && hasAgentFlag) {
-              console.warn('[DB] Session anonymous alors qu\'un agent est en session → redirection login');
+            const hasAnySessionFlag = ssAuth || ssAgent;
+            if (user.isAnonymous && hasAnySessionFlag) {
+              console.warn('[DB] Session anonymous avec flag de session présent → bypass possible, redirection login');
+              try {
+                sessionStorage.removeItem('cpas_auth_v1');
+                sessionStorage.removeItem('cpas_current_agent_key');
+              } catch (e) { /* ignore */ }
+              const orgParam = (typeof ORG_ID !== 'undefined' && ORG_ID !== 'cpas-quaregnon')
+                ? `?org=${ORG_ID}&reason=session_expired` : '?reason=session_expired';
+              location.replace(`index.html${orgParam}`);
+              return;
+            }
+            // Garde-fou supplémentaire : si l'agent est non-anonymous mais
+            // que l'uid Firebase ne matche pas le agentKey en session, c'est
+            // une incohérence (custom token d'un autre agent ?). On force.
+            if (!user.isAnonymous && ssAgent && user.uid !== ssAgent) {
+              console.warn('[DB] uid Firebase ≠ agentKey en session →', user.uid, 'vs', ssAgent);
               try {
                 sessionStorage.removeItem('cpas_auth_v1');
                 sessionStorage.removeItem('cpas_current_agent_key');
