@@ -214,6 +214,5 @@ const BAGS = [
 
 // Photos de la palette de couleurs raphia (pour la section sur mesure)
 const RAPHIA_PALETTE = [
-  'palette_couleur_raraphia/IMG_3429.jpg',
-  'palette_couleur_raraphia/IMG_3430.jpg',
+  'palette_couleur_raraphia/palette_complete_raphia.png',
 ];
