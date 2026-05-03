@@ -33,6 +33,8 @@ const BAGS = [
     material: 'raffia',
     status: 'available',
     photos: [
+      'img/aphrodite/IMG_3521.jpeg',
+      'img/aphrodite/IMG_3524.jpeg',
       'img/aphrodite/5291be4b-33fb-40c1-b2af-df7f9ac5be8e.JPG',
       'img/aphrodite/97453be2-a5b6-4364-92e7-d56313dcc3e8.JPG',
       'img/aphrodite/cd1735ba-0162-4c89-8e18-9949e2c9e509.JPG',
@@ -40,6 +42,7 @@ const BAGS = [
       'img/aphrodite/a7da3187-ce9c-4c92-aaf0-304b5ca187fb.JPG',
       'img/aphrodite/92d69270-fdb6-410b-ae11-521644320d84.JPG',
       'img/aphrodite/sac-raphia-rond-mandala.jpg',
+      'img/aphrodite/IMG_3522.jpeg',
     ],
     dimensions: '31×39 cm',
     price: 45,
@@ -179,6 +182,9 @@ const BAGS = [
     status: 'available',
     photos: [
       'img/diane/3e9a0e8a-3758-4377-8730-a99903b75794.JPG',
+      'img/diane/IMG_3525.jpeg',
+      'img/diane/IMG_3527.jpeg',
+      'img/diane/IMG_3526.jpeg',
     ],
     dimensions: '23×37 cm',
     price: 15,
