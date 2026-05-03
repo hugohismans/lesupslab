@@ -121,12 +121,12 @@
       padding: 2rem;
     }
 
-    .hero-content h1 {
-      font-family: var(--font-head);
-      font-size: clamp(3rem, 8vw, 7rem);
-      letter-spacing: 0.3em;
-      font-weight: normal;
-      margin-bottom: 1rem;
+    .hero-logo {
+      width: clamp(220px, 38vw, 420px);
+      height: auto;
+      display: block;
+      margin: 0 auto 1rem;
+      filter: brightness(0) invert(1);
     }
 
     .hero-content p {
@@ -955,7 +955,7 @@
 
       .form-reassurance { flex-direction: column; align-items: center; gap: 0.8rem; }
 
-      .hero-content h1 { letter-spacing: 0.12em; }
+      .hero-logo { width: clamp(180px, 60vw, 280px); }
 
       .livraison-grid { grid-template-columns: 1fr; }
     }
@@ -1003,7 +1003,7 @@
   <section class="hero">
     <img src="img/aphrodite/sac-raphia-rond-mandala.jpg" alt="MISKA" />
     <div class="hero-content">
-      <h1>MISKA</h1>
+      <img src="logo.png" alt="MISKA" class="hero-logo" />
       <p data-i18n="hero.tagline">Sacs artisanaux · Tissu &amp; Raphia</p>
       <a href="#creations" class="btn" data-i18n="hero.cta">Découvrir</a>
     </div>
