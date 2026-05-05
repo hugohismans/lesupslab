@@ -1200,6 +1200,48 @@ const DB = {
     return `${base} ${i}`;
   },
 
+  // ── Helpers pour le ticket logging ───────────────────────────────
+  // Trouve le local du bureau ouvert où l'agent courant est présent.
+  // Utilisé pour annoter les logs ticket avec "appelé au Bureau X".
+  _myOpenBureauLocalId() {
+    const myKey = (typeof sessionStorage !== 'undefined')
+      ? sessionStorage.getItem('cpas_current_agent_key') : null;
+    if (!myKey) return null;
+    for (const [localId, b] of Object.entries(this._bureauState || {})) {
+      if (b?.open && b?.presence && b.presence[myKey]) return localId;
+    }
+    return null;
+  },
+  _resolveAgentName(agentKey) {
+    if (!agentKey) return null;
+    return this.getAgentsWithKeys?.().find(a => a.key === agentKey)?.name || null;
+  },
+  _getGroupName(groupId) {
+    return this._config?.queueGroups?.[groupId]?.name || groupId;
+  },
+  // Pousse une entrée AUDIT pour une action ticket. Non-bloquant.
+  // payload : { groupId, ticketNumber, ticketLabel, beneficiaryName, ... }
+  // Auto-annote : agentName, localId, localLabel, groupName, ts.
+  _logTicket(action, payload = {}) {
+    if (typeof AUDIT === 'undefined' || !AUDIT.log) return;
+    try {
+      const myKey = (typeof sessionStorage !== 'undefined')
+        ? sessionStorage.getItem('cpas_current_agent_key') : null;
+      const localId = payload.localId ?? this._myOpenBureauLocalId();
+      const localLabel = (localId !== null && localId !== undefined)
+        ? this.getLocalLabel?.(localId) : null;
+      const groupName = payload.groupId ? this._getGroupName(payload.groupId) : null;
+      AUDIT.log(`ticket.${action}`, {
+        ...payload,
+        groupName,
+        byAgentKey: myKey || null,
+        byAgentName: this._resolveAgentName(myKey),
+        localId: localId || null,
+        localLabel,
+      });
+    } catch (e) { /* silently ignore — logs ne doivent jamais bloquer */ }
+  },
+
   async issueTicket(groupId, beneficiaryName, { skip = false } = {}) {
     const today = isoDate(new Date());
     const n = this.getTicketIssued(groupId) + 1;
@@ -1214,7 +1256,12 @@ const DB = {
     // l'UI voie tick_ sans skip_ entre deux updates.
     if (skip) writes[`skip_${groupId}/${n}`] = true;
     await this._ref(`queues/${today}`).update(writes);
-    return { label: this.formatTicket(groupId, n), number: n, resolvedName };
+    const ticketLabel = this.formatTicket(groupId, n);
+    this._logTicket(skip ? 'issueSP' : 'issue', {
+      groupId, ticketNumber: n, ticketLabel,
+      beneficiaryName: resolvedName,
+    });
+    return { label: ticketLabel, number: n, resolvedName };
   },
 
   // Timestamp d'émission du ticket N d'un groupe (pour comparer l'ancienneté inter-groupes)
@@ -1278,6 +1325,10 @@ const DB = {
 
     const label   = this.formatTicket(groupId, called);
     const display = name || label;
+    this._logTicket('call', {
+      groupId, ticketNumber: called, ticketLabel: label,
+      beneficiaryName: name || null,
+    });
     return { display, label, name: name || null };
   },
 
@@ -1332,6 +1383,10 @@ const DB = {
 
     const label   = this.formatTicket(groupId, ticketNumber);
     const display = name || label;
+    this._logTicket('callSpecific', {
+      groupId, ticketNumber, ticketLabel: label,
+      beneficiaryName: name || null,
+    });
     return { display, label, name: name || null };
   },
 
@@ -1340,6 +1395,9 @@ const DB = {
     const today   = isoDate(new Date());
     const current = this.getTicketCalled(groupId);
     if (ticketNumber <= current) return; // déjà traité
+
+    // Capturer le nom AVANT le remove (l'écriture queues/names plus bas le supprime)
+    const _capturedName = this.getTicketName(groupId, ticketNumber);
 
     const writes = {};
     if (ticketNumber === current + 1) {
@@ -1370,6 +1428,11 @@ const DB = {
 
     // Nettoyer la demande spécifique (preferred) associée à ce ticket si elle existe
     const ticketLabel = this.formatTicket(groupId, ticketNumber);
+
+    this._logTicket('dismiss', {
+      groupId, ticketNumber, ticketLabel,
+      beneficiaryName: _capturedName || null,
+    });
     const prefMatch = this.findPreferredPendingByTicket(ticketLabel);
     if (prefMatch) {
       if (prefMatch.pend.requestId) {
@@ -1674,6 +1737,7 @@ const DB = {
         const m = ticketLabel.match(/(\d+)$/);
         const ticketNum = m ? parseInt(m[1], 10) : null;
         if (ticketNum === null) return;
+        const _capturedName = this.getTicketName(grp.id, ticketNum);
         await this._ref(`queues/${today}/names_${grp.id}/${ticketNum}`).remove();
         const issued = this.getTicketIssued(grp.id);
         const writes = {};
@@ -1691,6 +1755,11 @@ const DB = {
           if (newOvf <= 0) writes[`waitSince_${grp.id}`] = null;
         }
         if (Object.keys(writes).length) await this._ref(`queues/${today}`).update(writes);
+        this._logTicket('cancel', {
+          groupId: grp.id, ticketNumber: ticketNum, ticketLabel,
+          beneficiaryName: _capturedName || null,
+          localId,
+        });
       };
 
       // Vérifier si c'est dans preferredPending

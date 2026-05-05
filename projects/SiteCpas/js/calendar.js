@@ -1821,12 +1821,14 @@ const LIVE = {
     const role = this.getRole();
     const isAccueil = role === 'accueil';
     g('btnQueueGroups').classList.toggle('hidden', !isAccueil);
+    g('btnTicketLog')?.classList.toggle('hidden', !isAccueil);
     g('btnToggleBureaux').classList.toggle('hidden', !isAccueil);
     g('liveAgentSearch').closest('.live-search-wrap').classList.toggle('hidden', !isAccueil);
     // Sidebar agents → bureau : visible uniquement en mode accueil
     g('agentLocationsPanel').classList.toggle('hidden', !isAccueil);
     if (!isAccueil) {
       g('queueGroupPanel').classList.add('hidden');
+      g('ticketLogPanel')?.classList.add('hidden');
       this._showAllBureaux = false;
     }
     this._updateToggleBtn();
@@ -3678,11 +3680,137 @@ const LIVE = {
     this._renderQueueGroupPanel();
   },
 
+  // ── Panneau Log ticket ────────────────────────────────────────
+  // Lit les entrées audit /orgs/{orgId}/audit dont action commence par
+  // "ticket." et qui ont eu lieu dans la journée sélectionnée. Rend un
+  // historique lisible par humain.
+  _initTicketLogPanel() {
+    const dateInput = g('ticketLogDate');
+    const refreshBtn = g('ticketLogRefresh');
+    const filterInput = g('ticketLogFilter');
+    const listEl = g('ticketLogList');
+    if (!dateInput || !listEl) return;
+    if (!dateInput.value) {
+      const t = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      dateInput.value = `${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+    }
+    let _entries = [];
+    const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    const fmtTime = ts => {
+      const d = new Date(ts);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+
+    const messageFor = e => {
+      const d = e.details || {};
+      const tkt = d.ticketLabel || (d.groupId && d.ticketNumber ? `${d.groupId}${d.ticketNumber}` : '?');
+      const benef = d.beneficiaryName ? ` (${d.beneficiaryName})` : '';
+      const local = d.localLabel ? ` au <b>${esc(d.localLabel)}</b>` : '';
+      const grp = d.groupName ? ` <i>[${esc(d.groupName)}]</i>` : '';
+      const agent = d.byAgentName ? esc(d.byAgentName) : '<i>?</i>';
+      switch (e.action) {
+        case 'ticket.issue':
+          return `🎫 Ticket <b>${esc(tkt)}</b>${esc(benef)}${grp} émis par ${agent}${local}`;
+        case 'ticket.issueSP':
+          return `🎯 Ticket SP <b>${esc(tkt)}</b>${esc(benef)}${grp} émis par ${agent}${local} <span style="color:#fbbf24">(demande agent spécifique)</span>`;
+        case 'ticket.call':
+          return `📢 ${agent} a appelé le ticket <b>${esc(tkt)}</b>${esc(benef)}${grp}${local}`;
+        case 'ticket.callSpecific':
+          return `🔔 ${agent} a appelé <u>spécifiquement</u> le ticket <b>${esc(tkt)}</b>${esc(benef)}${grp}${local} <span style="color:#94a3b8">(hors ordre)</span>`;
+        case 'ticket.dismiss':
+          return `❌ ${agent} a retiré le ticket <b>${esc(tkt)}</b>${esc(benef)}${grp}${local}`;
+        case 'ticket.cancel':
+          return `⤫ ${agent} a annulé le ticket SP <b>${esc(tkt)}</b>${esc(benef)}${grp}${local}`;
+        default:
+          return `${esc(e.action)} — ${esc(JSON.stringify(d))}`;
+      }
+    };
+
+    const colorFor = action => ({
+      'ticket.issue':         '#10b981',
+      'ticket.issueSP':       '#f59e0b',
+      'ticket.call':          '#3b82f6',
+      'ticket.callSpecific':  '#8b5cf6',
+      'ticket.dismiss':       '#ef4444',
+      'ticket.cancel':        '#6b7280',
+    }[action] || '#94a3b8');
+
+    const render = () => {
+      const q = (filterInput.value || '').trim().toLowerCase();
+      const filtered = q
+        ? _entries.filter(e => {
+            const d = e.details || {};
+            const haystack = [
+              e.action, e.actor,
+              d.byAgentName, d.beneficiaryName, d.ticketLabel, d.localLabel, d.groupName,
+            ].filter(Boolean).join(' ').toLowerCase();
+            return haystack.includes(q);
+          })
+        : _entries;
+      if (!filtered.length) {
+        listEl.innerHTML = '<p style="text-align:center;color:#64748b;padding:1.5rem .5rem;font-style:italic">Aucun log pour cette date.</p>';
+        return;
+      }
+      listEl.innerHTML = filtered.map(e => `
+        <div style="padding:.45rem .65rem;border-bottom:1px solid #1e293b;border-left:3px solid ${colorFor(e.action)};margin-bottom:.25rem;background:#1e293b;border-radius:0 6px 6px 0">
+          <div style="display:flex;gap:.5rem;align-items:baseline;font-size:.8rem;line-height:1.45">
+            <span style="color:#64748b;font-family:monospace;font-size:.72rem;flex-shrink:0">${fmtTime(e.ts)}</span>
+            <span style="color:#e2e8f0">${messageFor(e)}</span>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    const load = async () => {
+      listEl.innerHTML = '<p style="text-align:center;color:#64748b;padding:1.5rem .5rem">Chargement…</p>';
+      try {
+        const dateStr = dateInput.value;
+        const start = new Date(dateStr + 'T00:00:00').getTime();
+        const end   = start + 24 * 3600 * 1000;
+        const snap = await DB._db.ref(`orgs/${ORG_ID}/audit`)
+          .orderByChild('ts').startAt(start).endAt(end - 1).once('value');
+        const val = snap.val() || {};
+        _entries = Object.entries(val)
+          .map(([id, r]) => ({ id, ...r }))
+          .filter(r => (r.action || '').startsWith('ticket.'))
+          .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      } catch (e) {
+        console.warn('[TicketLog] fetch failed', e);
+        listEl.innerHTML = `<p style="text-align:center;color:#f87171;padding:1.5rem .5rem">Erreur : ${esc(e?.message || e)}</p>`;
+        return;
+      }
+      render();
+    };
+
+    if (!this._ticketLogBound) {
+      this._ticketLogBound = true;
+      dateInput.addEventListener('change', load);
+      refreshBtn?.addEventListener('click', load);
+      filterInput?.addEventListener('input', render);
+    }
+    load();
+  },
+
   _initQueueGroupPanel() {
     g('btnQueueGroups').addEventListener('click', () => {
       const panel = g('queueGroupPanel');
       panel.classList.toggle('hidden');
       if (!panel.classList.contains('hidden')) this._renderQueueGroupPanel();
+      // Fermer le panneau log si ouvert
+      g('ticketLogPanel')?.classList.add('hidden');
+    });
+
+    // Bouton 📜 Log : ouvre le panneau historique tickets du jour
+    g('btnTicketLog')?.addEventListener('click', () => {
+      const panel = g('ticketLogPanel');
+      if (!panel) return;
+      const wasHidden = panel.classList.contains('hidden');
+      panel.classList.toggle('hidden');
+      g('queueGroupPanel')?.classList.add('hidden');
+      if (wasHidden) this._initTicketLogPanel();
     });
 
     g('btnResetAllQueues').addEventListener('click', () => {
