@@ -2386,11 +2386,25 @@ select.field-input { cursor: pointer; }
 .lv-grp-preferred:hover { background: #7c3aed; }
 
 .lv-pref-receive {
-  width: 100%; padding: .45rem; border-radius: 10px; border: 1.5px solid #f59e0b;
+  flex: 1 1 auto; min-width: 0;
+  padding: .45rem; border-radius: 10px; border: 1.5px solid #f59e0b;
   background: #fef3c7; color: #78350f; font-size: .85rem; font-weight: 600;
-  cursor: pointer; transition: background .12s; margin-top: .35rem;
+  cursor: pointer; transition: background .12s;
 }
 .lv-pref-receive:hover { background: #fde68a; }
+.lv-pref-receive-row {
+  display: flex; align-items: stretch; gap: .35rem;
+  margin-top: .35rem;
+}
+.lv-pref-receive-cancel {
+  flex: 0 0 auto;
+  background: transparent; border: 1.5px solid #b91c1c; color: #ef4444;
+  width: 36px; border-radius: 10px;
+  font-size: 1rem; line-height: 1; padding: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.lv-pref-receive-cancel:hover { background: #b91c1c; color: #fff; }
 
 /* Listes récapitulatives SP sur la carte accueil */
 .lv-pref-section-title {
@@ -2421,6 +2435,7 @@ select.field-input { cursor: pointer; }
 }
 .lv-pref-ticket { font-weight: 700; color: #fbbf24; }
 .lv-pref-name   { color: #f1f5f9; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lv-pref-pos    { display: inline-block; margin-left: .35rem; padding: 1px 6px; border-radius: 8px; background: #475569; color: #e2e8f0; font-size: .7rem; font-weight: 700; }
 .lv-pref-arrow  { color: #64748b; }
 .lv-pref-agent  { color: #c4b5fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lv-pref-local  { color: #94a3b8; font-size: .72rem; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }

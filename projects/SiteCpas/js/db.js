@@ -907,52 +907,63 @@ const DB = {
     }
   },
 
-  // Migre une demande spécifique awaiting vers preferredPending / preferredQueue
-  // sur le bureau que l'agent vient d'ouvrir. Émet aussi un ticket SP sur le groupe
-  // du local pour apparaître dans la file visuelle.
+  // Migre toutes les demandes spécifiques awaiting d'un agent vers preferredPending /
+  // preferredQueue sur le bureau qu'il vient d'ouvrir. Émet un ticket SP sur le groupe
+  // du local pour chaque demande, dans l'ordre FIFO (ts croissant).
   async _migrateAwaitingPreferred(agentKey, localId) {
     // Lecture Firebase directe (le cache local peut être vide si on vient
     // tout juste de se connecter : openBureau peut précéder le 1er snapshot du listener)
-    let aw = this._awaitingPreferred?.[agentKey] || null;
-    if (!aw) {
+    let nodeMap = this._awaitingPreferred?.[agentKey] || null;
+    if (!nodeMap || !Object.keys(nodeMap).length) {
       const snap = await this._ref(`appState/awaitingPreferred/${agentKey}`).once('value');
-      aw = snap.val();
+      nodeMap = this._normalizeAwaitingNode(snap.val());
     }
-    if (!aw) return;
+    if (!nodeMap || !Object.keys(nodeMap).length) return;
+
+    // Trier par ts croissant (FIFO)
+    const entries = Object.entries(nodeMap)
+      .map(([reqId, data]) => ({ reqId, data }))
+      .sort((a, b) => (a.data?.ts || 0) - (b.data?.ts || 0));
 
     const grp = this.getLocalGroup(localId);
-    let ticketLabel = aw.ticketLabel || null;
-    let displayName = aw.displayName || 'Bénéficiaire';
-    if (grp) {
-      const result = await this.issueTicket(grp.id, displayName, { skip: true });
-      ticketLabel  = `SP${String(result.number).padStart(2, '0')}`;
-      displayName  = result.resolvedName || displayName;
+
+    for (const { reqId, data: aw } of entries) {
+      let ticketLabel = aw.ticketLabel || null;
+      let displayName = aw.displayName || 'Bénéficiaire';
+      if (grp) {
+        const result = await this.issueTicket(grp.id, displayName, { skip: true });
+        ticketLabel  = `SP${String(result.number).padStart(2, '0')}`;
+        displayName  = result.resolvedName || displayName;
+      }
+
+      const effectiveReqId = aw.requestId || (reqId !== '_legacy' ? reqId : null);
+
+      const payload = {
+        displayName,
+        ticketLabel,
+        agentPublicName: aw.agentPublicName || null,
+        requestId:       effectiveReqId,
+        ts:              aw.ts || Date.now(),
+      };
+
+      const existing = this.getPreferredPending(localId);
+      const busy     = this.isBureauBusyWithPreferred(localId);
+      if (!existing && !busy) {
+        await this._ref(`appState/preferredPending/${localId}`).set(payload);
+      } else {
+        await this._ref(`appState/preferredQueue/${localId}`).push(payload);
+      }
+
+      if (effectiveReqId) {
+        await this._ref(`appState/preferredRequests/${effectiveReqId}`).update({
+          status:      'accepted',
+          localId,
+          respondedAt: Date.now(),
+        });
+      }
     }
 
-    const payload = {
-      displayName,
-      ticketLabel,
-      agentPublicName: aw.agentPublicName || null,
-      requestId:       aw.requestId || null,
-      ts:              aw.ts || Date.now(),
-    };
-
-    const existing = this.getPreferredPending(localId);
-    const busy     = this.isBureauBusyWithPreferred(localId);
-    if (!existing && !busy) {
-      await this._ref(`appState/preferredPending/${localId}`).set(payload);
-    } else {
-      await this._ref(`appState/preferredQueue/${localId}`).push(payload);
-    }
-
-    if (aw.requestId) {
-      await this._ref(`appState/preferredRequests/${aw.requestId}`).update({
-        status:      'accepted',
-        localId,
-        respondedAt: Date.now(),
-      });
-    }
-
+    // Nettoyer toutes les entrées awaiting de cet agent en une fois
     await this.removeAwaitingPreferred(agentKey);
   },
   getBureauAgentKey(localId)            { return this._bureauState[String(localId)]?.agentKey || null; },
@@ -1563,24 +1574,57 @@ const DB = {
 
   // ── Demandes spécifiques en attente d'ouverture de bureau ────────
   // Quand l'accueil coche "Ce bureau sera bientôt pris" pour un agent qui n'a
-  // pas encore ouvert de bureau : on stocke ici par agentKey, et la migration
-  // vers preferredPending/preferredQueue se fait dans openBureau().
+  // pas encore ouvert de bureau : on stocke ici par agentKey × requestId, et la migration
+  // vers preferredPending/preferredQueue se fait dans openBureau() (ordre FIFO par ts).
+  // Shape : { [agentKey]: { [requestId]: { displayName, agentPublicName, ts, ... } } }
+  // Compat rétro : si un node `agentKey` contient directement un objet avec `displayName`
+  // (ancien shape mono-entrée), on le wrappe en `{ [requestId || '_legacy']: data }`.
   _awaitingPreferred: {},
   _awaitingPreferredCbs: [],
+  // Normalise un node éventuellement legacy en map { requestId: data }
+  _normalizeAwaitingNode(node) {
+    if (!node || typeof node !== 'object') return {};
+    if (node.displayName !== undefined || node.agentPublicName !== undefined || node.requestId !== undefined) {
+      // Ancien shape : un seul objet stocké directement sous agentKey
+      const reqId = node.requestId || '_legacy';
+      return { [reqId]: node };
+    }
+    return node;
+  },
   initAwaitingPreferred() {
     this._ref('appState/awaitingPreferred').on('value', snap => {
-      this._awaitingPreferred = snap.val() || {};
+      const raw = snap.val() || {};
+      const normalized = {};
+      for (const [aKey, node] of Object.entries(raw)) {
+        normalized[aKey] = this._normalizeAwaitingNode(node);
+      }
+      this._awaitingPreferred = normalized;
       this._awaitingPreferredCbs.forEach(fn => fn());
     });
   },
   onAwaitingPreferredChange(fn) { this._awaitingPreferredCbs.push(fn); },
-  getAwaitingPreferred(agentKey) { return this._awaitingPreferred[agentKey] || null; },
-  getAllAwaitingPreferred() { return this._awaitingPreferred || {}; },
-  async setAwaitingPreferred(agentKey, data) {
-    await this._ref(`appState/awaitingPreferred/${agentKey}`).set(data);
+  // Retourne la map { requestId: data } pour cet agent (vide si rien)
+  getAwaitingPreferred(agentKey) { return this._awaitingPreferred[agentKey] || {}; },
+  // Retourne la liste triée par ts pour cet agent
+  getAwaitingPreferredList(agentKey) {
+    const map = this.getAwaitingPreferred(agentKey);
+    return Object.entries(map)
+      .map(([reqId, data]) => ({ requestId: reqId, ...data }))
+      .sort((a, b) => (a.ts || 0) - (b.ts || 0));
   },
-  async removeAwaitingPreferred(agentKey) {
-    await this._ref(`appState/awaitingPreferred/${agentKey}`).remove();
+  getAllAwaitingPreferred() { return this._awaitingPreferred || {}; },
+  // Push une nouvelle entrée sous awaitingPreferred/{agentKey}/{requestId}
+  async setAwaitingPreferred(agentKey, requestId, data) {
+    if (!agentKey || !requestId) throw new Error('setAwaitingPreferred requires agentKey + requestId');
+    await this._ref(`appState/awaitingPreferred/${agentKey}/${requestId}`).set(data);
+  },
+  // Si requestId fourni : retire seulement cette entrée. Sinon : retire tout pour l'agent.
+  async removeAwaitingPreferred(agentKey, requestId = null) {
+    if (requestId) {
+      await this._ref(`appState/awaitingPreferred/${agentKey}/${requestId}`).remove();
+    } else {
+      await this._ref(`appState/awaitingPreferred/${agentKey}`).remove();
+    }
   },
 
   getPreferredPending(localId) {

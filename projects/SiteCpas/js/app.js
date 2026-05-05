@@ -3538,7 +3538,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     } else if (awaitsBureau) {
       // Pas de bureau ouvert MAIS l'accueil sait que l'agent arrive bientôt :
       // on met la demande en attente, elle sera routée automatiquement à l'ouverture.
-      await DB.setAwaitingPreferred(targetAgentKey, {
+      await DB.setAwaitingPreferred(targetAgentKey, requestId, {
         requestId,
         displayName,
         agentPublicName,

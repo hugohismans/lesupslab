@@ -2291,7 +2291,10 @@ const LIVE = {
           : '';
         const _prefDisplay = preferred ? (preferred.ticketLabel ? `${preferred.ticketLabel} · ${preferred.displayName || '?'}` : (preferred.displayName || '?')) : '';
         const preferredBtn = preferred
-          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(_prefDisplay)} qui ne souhaite voir que moi</button>`
+          ? `<div class="lv-pref-receive-row">
+               <button class="lv-pref-receive" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}">📥 Recevoir ${escapeHtml(_prefDisplay)} qui ne souhaite voir que moi</button>
+               <button class="lv-pref-receive-cancel" data-local="${l}" data-req="${preferred.requestId}" data-name="${escapeHtml(preferred.displayName || '?')}" title="Annuler ce SP">✕</button>
+             </div>`
           : '';
         // Rappel preferred côté accueil (rappeler l'annonce publique)
         const pendingForAccueil = isAccueil ? DB.getPreferredPending(l) : null;
@@ -2317,7 +2320,10 @@ const LIVE = {
         const noGrpPreferred = amIHere ? DB.getPreferredPending(l) : null;
         const _ngPrefDisp = noGrpPreferred ? (noGrpPreferred.ticketLabel ? `${noGrpPreferred.ticketLabel} · ${noGrpPreferred.displayName || '?'}` : (noGrpPreferred.displayName || '?')) : '';
         const noGrpPrefBtn = noGrpPreferred
-          ? `<button class="lv-pref-receive" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}">📥 Recevoir ${escapeHtml(_ngPrefDisp)} qui ne souhaite voir que moi</button>`
+          ? `<div class="lv-pref-receive-row">
+               <button class="lv-pref-receive" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}">📥 Recevoir ${escapeHtml(_ngPrefDisp)} qui ne souhaite voir que moi</button>
+               <button class="lv-pref-receive-cancel" data-local="${l}" data-req="${noGrpPreferred.requestId}" data-name="${escapeHtml(noGrpPreferred.displayName || '?')}" title="Annuler ce SP">✕</button>
+             </div>`
           : '';
         const noGrpPrefRecall = isAccueil ? DB.getPreferredPending(l) : null;
         const _ngRecallDisp = noGrpPrefRecall ? (noGrpPrefRecall.ticketLabel ? `${noGrpPrefRecall.ticketLabel} · ${noGrpPrefRecall.displayName || '?'}` : (noGrpPrefRecall.displayName || '?')) : '';
@@ -2493,24 +2499,47 @@ const LIVE = {
         : '';
 
       // Liste des demandes SP en attente d'ouverture de bureau
+      // Le shape Firebase est { [agentKey]: { [requestId]: data } } : on aplatit en
+      // une liste plate triée par ts (FIFO global) avec position par agent.
       const _awaitingMap = DB.getAllAwaitingPreferred();
-      const _awaitingList = Object.entries(_awaitingMap)
-        .map(([agentKey, data]) => ({ agentKey, data }))
-        .sort((a, b) => (a.data?.ts || 0) - (b.data?.ts || 0));
-      const _awaitingHtml = _awaitingList.length
+      const _awaitingFlat = [];
+      for (const [agentKey, reqMap] of Object.entries(_awaitingMap)) {
+        // Compat rétro : si reqMap est un objet avec displayName direct, le wrapper
+        const _reqMap = (reqMap && (reqMap.displayName !== undefined || reqMap.requestId !== undefined))
+          ? { [reqMap.requestId || '_legacy']: reqMap }
+          : (reqMap || {});
+        for (const [requestId, data] of Object.entries(_reqMap)) {
+          _awaitingFlat.push({ agentKey, requestId, data });
+        }
+      }
+      _awaitingFlat.sort((a, b) => (a.data?.ts || 0) - (b.data?.ts || 0));
+      // Calcul des positions par agent (1er, 2e, 3e en attente pour cet agent)
+      const _awaitingPositions = {};
+      for (const item of _awaitingFlat) {
+        _awaitingPositions[item.agentKey] = (_awaitingPositions[item.agentKey] || 0) + 1;
+        item.position = _awaitingPositions[item.agentKey];
+      }
+      // Total par agent pour savoir si on doit afficher la position
+      const _awaitingTotals = {};
+      for (const item of _awaitingFlat) {
+        _awaitingTotals[item.agentKey] = (_awaitingTotals[item.agentKey] || 0) + 1;
+      }
+      const _awaitingHtml = _awaitingFlat.length
         ? `<div class="lv-pref-section-title lv-pref-section-title-await">💺 En attente d'ouverture</div>
-           <div class="lv-pref-list">${_awaitingList.map(({ agentKey, data }) => {
+           <div class="lv-pref-list">${_awaitingFlat.map(({ agentKey, requestId, data, position }) => {
              const _info = DB.getAgentsWithKeys().find(a => a.key === agentKey);
              const _agentName = _info?.name || agentKey;
              const _name  = data.displayName || '?';
              const _place = data.publicPlaceName || '';
+             const _total = _awaitingTotals[agentKey] || 1;
+             const _posLabel = _total > 1 ? `<span class="lv-pref-pos">${position}${position === 1 ? 'er' : 'e'}/${_total}</span>` : '';
              return `<div class="lv-pref-item lv-pref-item-await">
                <span class="lv-pref-ticket">⏳</span>
-               <span class="lv-pref-name">${escapeHtml(_name)}</span>
+               <span class="lv-pref-name">${escapeHtml(_name)}${_posLabel}</span>
                <span class="lv-pref-arrow">→</span>
                <span class="lv-pref-agent">${escapeHtml(_agentName)}</span>
                <span class="lv-pref-local">${_place ? `📍 ${escapeHtml(_place)}` : 'bureau non ouvert'}</span>
-               <button class="lv-pref-cancel" data-agent-key="${escapeHtml(agentKey)}" title="Annuler l'attente">✕</button>
+               <button class="lv-pref-cancel" data-agent-key="${escapeHtml(agentKey)}" data-req-id="${escapeHtml(requestId)}" title="Annuler l'attente">✕</button>
              </div>`;
            }).join('')}</div>`
         : '';
@@ -2740,13 +2769,16 @@ const LIVE = {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         const agentKey = btn.dataset.agentKey;
+        const requestId = btn.dataset.reqId || null;
         if (!agentKey) return;
         if (!confirm('Annuler cette demande en attente ?')) return;
-        const aw = DB.getAwaitingPreferred(agentKey);
-        if (aw?.requestId) {
-          await DB._ref(`appState/preferredRequests/${aw.requestId}`).update({ status: 'cancelled', benefName: null });
+        // Identifier la requestId effective (compat rétro : legacy → utiliser data.requestId)
+        const map = DB.getAwaitingPreferred(agentKey);
+        const targetReqId = (requestId && requestId !== '_legacy') ? requestId : (map?.[requestId]?.requestId || null);
+        if (targetReqId) {
+          await DB._ref(`appState/preferredRequests/${targetReqId}`).update({ status: 'cancelled', benefName: null });
         }
-        await DB.removeAwaitingPreferred(agentKey);
+        await DB.removeAwaitingPreferred(agentKey, requestId);
         showToast('Demande annulée');
       });
     });
@@ -2806,13 +2838,20 @@ const LIVE = {
             Number(o.localId) === localId && o._start <= now2 && (o._end === null || o._end >= now2)
           );
           const pubAgent = DB.getBureauAgentDisplayName(localId);
+          // Récupérer le ticketLabel du SP avant de le retirer (pour l'afficher dans "En cours")
+          const _pendForDisp = DB.getPreferredPending(localId);
+          const _prefTicketInfo = {
+            display: _pendForDisp?.ticketLabel || dispName,
+            label:   _pendForDisp?.ticketLabel || 'SP',
+            name:    dispName,
+          };
           // _storeCall en mémoire AVANT les awaits : la render Firebase qui suit
           // closePreferredRequest verra _lastCalled déjà peuplé → bouton immédiat
-          LIVE._storeCall(localId, dispName, occ2);
+          LIVE._storeCall(localId, _prefTicketInfo, occ2);
           showToast(`✅ ${dispName} reçu.`);
           await DB.closePreferredRequest(reqId, localId);
           await DB.setBureauBusyWithPreferred(localId, true);
-          await DB.writeLastCall(localId, pubAgent, grp?.name || null, dispName);
+          await DB.writeLastCall(localId, pubAgent, grp?.name || null, _prefTicketInfo.display, _prefTicketInfo.label, _prefTicketInfo.name);
         };
         // Bypass seulement si des gens en overflow sont arrivés AVANT la demande preferred
         const prefTs        = DB.getPreferredPending(localId)?.ts || 0;
@@ -2826,6 +2865,25 @@ const LIVE = {
           });
         } else {
           await doReceive();
+        }
+      });
+    });
+
+    // Bouton ✕ "Annuler ce SP" (à côté de Recevoir) — pour les SP fantômes / non sollicités
+    g('liveGrid').querySelectorAll('.lv-pref-receive-cancel').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
+        const localId  = parseInt(btn.dataset.local);
+        const reqId    = btn.dataset.req;
+        const dispName = btn.dataset.name || '?';
+        if (!reqId) return;
+        if (!confirm(`Annuler la demande spécifique de ${dispName} ?\n\nLe ticket sera retiré de la file et la demande marquée annulée.`)) return;
+        try {
+          await DB.cancelPreferredRequest(reqId, localId);
+          showToast(`Demande de ${dispName} annulée`);
+        } catch (err) {
+          console.error('cancelPreferredRequest failed:', err);
+          showToast('❌ Erreur lors de l\'annulation');
         }
       });
     });
