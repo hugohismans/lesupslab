@@ -37,6 +37,8 @@
     _reqStatusFilter: 'open',
     _reqTypeFilter:   'all',
     _reqUrgFilter:    'all',
+    _reqSearch:       '',     // texte de recherche (lowercase, trim)
+    _reqSearchTimer:  null,
     _viewMode: (() => {
       try { return localStorage.getItem(VIEW_MODE_KEY) || 'kanban'; }
       catch { return 'kanban'; }
@@ -720,7 +722,8 @@
         .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => statusFilter(r))
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
-        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4);
+        .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .filter(([, r]) => this._matchesSearch(r));
 
       if (!entries.length) {
         alert('Aucune requête à imprimer avec les filtres actuels.');
@@ -858,6 +861,72 @@
         });
       });
       document.getElementById('tqReqPrintBtn')?.addEventListener('click', () => this._printRequestsList());
+
+      // Recherche : input avec debounce 150ms + bouton clear
+      const _searchInput = document.getElementById('tqReqSearchInput');
+      const _searchClear = document.getElementById('tqReqSearchClear');
+      if (_searchInput) {
+        _searchInput.addEventListener('input', () => {
+          if (this._reqSearchTimer) clearTimeout(this._reqSearchTimer);
+          this._reqSearchTimer = setTimeout(() => {
+            this._reqSearch = (_searchInput.value || '').trim().toLowerCase();
+            if (_searchClear) _searchClear.style.display = this._reqSearch ? '' : 'none';
+            if (this._tab === 'requests') this._renderRequestsPane();
+          }, 150);
+        });
+      }
+      if (_searchClear) {
+        _searchClear.addEventListener('click', () => {
+          if (_searchInput) { _searchInput.value = ''; _searchInput.focus(); }
+          this._reqSearch = '';
+          _searchClear.style.display = 'none';
+          if (this._tab === 'requests') this._renderRequestsPane();
+        });
+      }
+    },
+
+    // Concatène et lowercase tous les champs textuels d'une requête pour la recherche.
+    // Cache le résultat sur la requête (clé _searchHaystack) avec invalidation par updatedAt/createdAt.
+    _buildSearchHaystack(r) {
+      const cacheKey = `${r.updatedAt || 0}|${r.createdAt || 0}`;
+      if (r._searchHaystackKey === cacheKey && r._searchHaystack) return r._searchHaystack;
+      const parts = [];
+      const push = (v) => { if (v) parts.push(String(v)); };
+      push(r.description);
+      push(r.local);
+      push(r.fromAgentName);
+      push(r.assignedToName);
+      push(r.assignedTo);
+      push(r.workerName);
+      push(r.workerBadge);
+      push(r.type);
+      // Thème : résoudre le label
+      const themeLbl = (DB.getThemeLabelForRequestType?.(r.type, r.themeId)
+        || DB.getTechThemeLabel?.(r.themeId)
+        || '');
+      push(themeLbl);
+      // Commentaires : auteur + texte
+      if (r.comments && typeof r.comments === 'object') {
+        for (const c of Object.values(r.comments)) {
+          if (!c) continue;
+          push(c.text);
+          push(c.authorName);
+        }
+      }
+      const hay = parts.join(' · ').toLowerCase();
+      r._searchHaystack = hay;
+      r._searchHaystackKey = cacheKey;
+      return hay;
+    },
+
+    _matchesSearch(r) {
+      const q = this._reqSearch;
+      if (!q) return true;
+      // Recherche multi-tokens AND : tous les mots doivent matcher (séparés par espaces)
+      const tokens = q.split(/\s+/).filter(Boolean);
+      if (!tokens.length) return true;
+      const hay = this._buildSearchHaystack(r);
+      return tokens.every(t => hay.includes(t));
     },
 
     // Affiche/cache les sous-toolbars selon le mode actif.
@@ -902,6 +971,7 @@
         .filter(([, r]) => r.createdAt <= _now)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .filter(([, r]) => this._matchesSearch(r))
         .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
 
       const STATUSES = [
@@ -964,10 +1034,14 @@
         .filter(([, r]) => r.status === this._reqStatusFilter)
         .filter(([, r]) => this._reqTypeFilter === 'all' || r.type === this._reqTypeFilter)
         .filter(([, r]) => this._reqUrgFilter !== 'high' || urg(r) >= 4)
+        .filter(([, r]) => this._matchesSearch(r))
         .sort(([, a], [, b]) => (urg(b) - urg(a)) || (b.createdAt - a.createdAt));
 
       if (!entries.length) {
-        listEl.innerHTML = '<div class="tq-loading">Aucune requête ne correspond aux filtres.</div>';
+        const empty = this._reqSearch
+          ? `Aucune requête ne correspond à la recherche « ${this._reqSearch} » avec les filtres actuels.`
+          : 'Aucune requête ne correspond aux filtres.';
+        listEl.innerHTML = `<div class="tq-loading">${empty}</div>`;
         return;
       }
 

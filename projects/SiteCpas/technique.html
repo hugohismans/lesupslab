@@ -372,6 +372,12 @@
           <button class="tq-filter-btn active" data-urg="all">Toutes urgences</button>
           <button class="tq-filter-btn" data-urg="high" title="Niveau 4 et 5">🔴 Urgentes</button>
         </div>
+        <div class="tq-search-wrap">
+          <input type="search" id="tqReqSearchInput" class="tq-search-input"
+                 placeholder="🔎 Rechercher (description, demandeur, responsable, ouvrier, lieu, thème, commentaires…)"
+                 autocomplete="off" />
+          <button type="button" class="tq-search-clear" id="tqReqSearchClear" title="Effacer la recherche" style="display:none">✕</button>
+        </div>
         <button class="tq-export-btn" id="tqReqPrintBtn" title="Imprimer la liste filtrée, groupée par ouvrier">🖨 Imprimer</button>
       </div>
     </div>
