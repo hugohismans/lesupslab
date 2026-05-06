@@ -437,11 +437,11 @@
     .ent-hbar-fill  { background: linear-gradient(90deg, #22c55e, #15803d); height: 100%; border-radius: 4px; transition: width .3s; }
     .ent-hbar-count { font-weight: 800; color: #166534; font-size: .82rem; min-width: 30px; text-align: right; }
 
-    .ent-vbars { display: flex; gap: 2px; align-items: flex-end; height: 150px; padding: .25rem 0; }
-    .ent-vbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 12px; }
-    .ent-vbar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+    .ent-vbars { display: flex; gap: 2px; align-items: stretch; height: 150px; padding: .25rem 0; }
+    .ent-vbar-col { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 12px; height: 100%; }
+    .ent-vbar-track { flex: 1; width: 100%; min-height: 0; display: flex; align-items: flex-end; }
     .ent-vbar-fill  { width: 100%; background: linear-gradient(180deg, #22c55e, #15803d); border-radius: 2px 2px 0 0; min-height: 2px; transition: height .3s; }
-    .ent-vbar-label { font-size: .62rem; color: #94a3b8; margin-top: .2rem; }
+    .ent-vbar-label { font-size: .62rem; color: #94a3b8; margin-top: .2rem; flex-shrink: 0; }
 
     .ent-status-bar { display: flex; height: 22px; border-radius: 5px; overflow: hidden; margin-bottom: .5rem; }
     .ent-status-seg { height: 100%; }
