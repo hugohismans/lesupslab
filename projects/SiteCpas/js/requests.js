@@ -661,7 +661,11 @@ const REQUESTS = {
           ${delBtn}
         </div>
         <div class="req-card-body">
-          <p class="req-desc">${escapeHtml(r.description)}</p>
+          <p class="req-desc${DB.isEncryptedDisplay?.(r.description) ? ' req-desc-decrypting' : ''}">${
+            DB.isEncryptedDisplay?.(r.description)
+              ? '🔐 <em>Déchiffrement en cours…</em>'
+              : escapeHtml(r.description || '')
+          }</p>
           <div class="req-meta">${themeBadge}${localTxt}${assignedTxt}${reopenTxt}</div>
         </div>
         ${comments ? `<div class="req-comments">${comments}</div>` : ''}

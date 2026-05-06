@@ -468,7 +468,11 @@
           <td>${statusIcon}</td>
           <td class="tq-tl-theme">${escapeHtml(theme)}</td>
           <td class="tq-tl-local">${escapeHtml(r.local || '—')}</td>
-          <td class="tq-tl-desc" title="${escapeAttr(r.description || '')}">${escapeHtml((r.description || '').slice(0, 80))}</td>
+          <td class="tq-tl-desc" title="${escapeAttr(DB.isEncryptedDisplay?.(r.description) ? '🔐 Déchiffrement en cours…' : (r.description || ''))}">${
+            DB.isEncryptedDisplay?.(r.description)
+              ? '<em class="tq-decrypting">🔐 Déchiffrement…</em>'
+              : escapeHtml((r.description || '').slice(0, 80))
+          }</td>
         </tr>`;
       }).join('');
 
@@ -509,7 +513,11 @@
               <span class="tq-late-days">${days}j</span>
               <span class="tq-late-theme">${escapeHtml(DB.getTechThemeLabel(r.themeId))}</span>
               <span class="tq-late-local">${escapeHtml(r.local || '—')}</span>
-              <span class="tq-late-desc" title="${escapeAttr(r.description || '')}">${escapeHtml((r.description || '').slice(0, 50))}</span>
+              <span class="tq-late-desc" title="${escapeAttr(DB.isEncryptedDisplay?.(r.description) ? '🔐 Déchiffrement en cours…' : (r.description || ''))}">${
+                DB.isEncryptedDisplay?.(r.description)
+                  ? '<em class="tq-decrypting">🔐 Déchiffrement…</em>'
+                  : escapeHtml((r.description || '').slice(0, 50))
+              }</span>
             </div>`;
           }).join('')}</div>${lateReqs.length > 10 ? `<p class="tq-widget-sub">… et ${lateReqs.length - 10} de plus</p>` : ''}`
         : '<p class="tq-placeholder">Aucune requête en retard 🎉</p>';
@@ -892,7 +900,8 @@
       if (r._searchHaystackKey === cacheKey && r._searchHaystack) return r._searchHaystack;
       const parts = [];
       const push = (v) => { if (v) parts.push(String(v)); };
-      push(r.description);
+      // Ne pas indexer les descriptions encore chiffrées (cache rebuild auto au prochain render)
+      if (!DB.isEncryptedDisplay?.(r.description)) push(r.description);
       push(r.local);
       push(r.fromAgentName);
       push(r.assignedToName);

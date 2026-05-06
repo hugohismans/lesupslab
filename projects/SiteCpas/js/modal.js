@@ -3166,28 +3166,49 @@ function _initTechIssueModal() {
   let _localHighlight = -1;
 
   function _getLocalOptions() {
-    // Construit une liste d'entrées { value, internal, pub, lieu } pour chaque local
+    // Construit une liste d'entrées { value, internal, pub, lieu, isLieu } :
+    // - 1 entrée par lieu global (ex: "Roseraie" sans local précis)
+    // - 1 entrée par local composant le lieu (ex: "Roseraie · Bon dieu 14")
     const allLieux = DB.getLieux?.() || {};
     const seen = new Set();
     const entries = [];
     Object.entries(allLieux).forEach(([, lieu]) => {
+      const lieuName = lieu.name || '';
+      // Entrée "lieu global" en tête de groupe
+      if (lieuName) {
+        entries.push({
+          value:    lieuName,
+          internal: lieuName,
+          pub:      null,
+          lieu:     '',
+          isLieu:   true,
+        });
+      }
       (lieu.localIds || []).forEach(id => {
         if (seen.has(id)) return;
         seen.add(id);
         const internal = DB.getLocalLabel(id);
         const pub      = DB.getPublicLocalLabel(id);
         if (internal) entries.push({
-          value: internal,
+          value:    internal,
           internal,
-          pub: pub !== internal ? pub : null,
-          lieu: lieu.name || '',
+          pub:      pub !== internal ? pub : null,
+          lieu:     lieuName,
+          isLieu:   false,
         });
       });
     });
-    return entries.sort((a, b) =>
-      (a.lieu || '').localeCompare(b.lieu || '', 'fr') ||
-      a.internal.localeCompare(b.internal, 'fr')
-    );
+    // Tri : les entrées "lieu global" en tête de chaque groupe (alphabétique par lieu),
+    // puis les locaux internes triés alphabétiquement dans le groupe.
+    return entries.sort((a, b) => {
+      const aGroup = a.isLieu ? a.internal : a.lieu;
+      const bGroup = b.isLieu ? b.internal : b.lieu;
+      const groupCmp = (aGroup || '').localeCompare(bGroup || '', 'fr');
+      if (groupCmp !== 0) return groupCmp;
+      // Même groupe : isLieu d'abord, puis alphabétique
+      if (a.isLieu !== b.isLieu) return a.isLieu ? -1 : 1;
+      return a.internal.localeCompare(b.internal, 'fr');
+    });
   }
 
   function _renderSuggestions(query) {
@@ -3205,6 +3226,10 @@ function _initTechIssueModal() {
       localSuggest.innerHTML = `<div class="ti-local-suggest-empty">Aucun résultat</div>`;
     } else {
       localSuggest.innerHTML = matches.map(e => {
+        if (e.isLieu) {
+          // Entrée "lieu global" — le bénéficiaire ne précise pas de local interne
+          return `<div class="ti-local-suggest-item ti-local-suggest-item-lieu" data-val="${e.value.replace(/"/g,'&quot;')}"><span class="ti-local-suggest-lieu-icon">🏛</span><span class="ti-local-suggest-name">${escapeHtml(e.internal)}</span><span class="ti-local-suggest-pub"> — lieu entier</span></div>`;
+        }
         const lieuHtml = e.lieu ? `<span class="ti-local-suggest-lieu">${escapeHtml(e.lieu)}</span> · ` : '';
         const pubHtml  = e.pub  ? ` <span class="ti-local-suggest-pub">— ${escapeHtml(e.pub)}</span>` : '';
         return `<div class="ti-local-suggest-item" data-val="${e.value.replace(/"/g,'&quot;')}">${lieuHtml}<span class="ti-local-suggest-name">${escapeHtml(e.internal)}</span>${pubHtml}</div>`;

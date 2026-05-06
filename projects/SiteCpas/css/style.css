@@ -2587,6 +2587,13 @@ select.field-input { cursor: pointer; }
 }
 .ti-local-suggest-name { font-weight: 600; }
 .ti-local-suggest-pub  { color: #64748b; font-size: .8em; }
+.ti-local-suggest-item-lieu .ti-local-suggest-name {
+  font-weight: 700; color: #93c5fd; text-transform: uppercase; letter-spacing: .02em;
+}
+.ti-local-suggest-lieu-icon { margin-right: .4rem; font-size: .95em; }
+.ti-local-suggest-item-lieu { background: rgba(59,130,246,.05); }
+.ti-local-suggest-item-lieu:hover,
+.ti-local-suggest-item-lieu.active { background: rgba(59,130,246,.18); }
 .ti-local-suggest-empty {
   padding: .55rem .85rem; font-size: .83rem; color: #64748b; font-style: italic;
 }
@@ -2892,6 +2899,11 @@ select.field-input { cursor: pointer; }
 }
 .req-card-body { display: flex; flex-direction: column; gap: .25rem; }
 .req-desc      { color: #cbd5e1; font-size: .85rem; margin: 0; white-space: pre-wrap; }
+.req-desc-decrypting { color: #94a3b8; font-style: italic; }
+.req-desc-decrypting em { font-style: normal; color: #cbd5e1; }
+/* Variante carte fond clair (technique liste) */
+.tq-req-list .req-desc-decrypting { color: #64748b; }
+.tq-decrypting { color: #94a3b8; font-style: italic; font-size: .8rem; }
 .req-meta      { display: flex; gap: .5rem; flex-wrap: wrap; }
 .req-local     { color: #94a3b8; font-size: .78rem; }
 .req-assigned  { color: #6ee7b7; font-size: .78rem; }

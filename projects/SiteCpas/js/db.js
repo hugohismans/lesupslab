@@ -237,6 +237,15 @@ const DB = {
     return this._decryptCollection(raw, 'reservations', 'comment');
   },
 
+  // Helper public : retourne true si la valeur ressemble à du ciphertext non déchiffré.
+  // Tolère les deux formats observés (`enc:v1:` et le visuel `encv1:`).
+  isEncryptedDisplay(v) {
+    return typeof v === 'string' && (v.startsWith('enc:v1:') || /^encv1:/.test(v));
+  },
+
+  // Retours-tournants : déchiffrements en attente (paths qui ont échoué au moins une fois).
+  _decRetrySchedule: { 'requests': null, 'planning': null, 'reservations': null, 'appState/appointmentRequests': null },
+
   async _decryptCollection(raw, parent, field) {
     if (!raw || typeof raw !== 'object') return raw;
     if (!(typeof CONFIG !== 'undefined' && CONFIG.WORKER_CRUD && typeof WORKER !== 'undefined')) return raw;
@@ -246,7 +255,7 @@ const DB = {
     for (const [id, r] of Object.entries(raw)) {
       if (!r || typeof r !== 'object') continue;
       const v = r[field];
-      if (typeof v === 'string' && v.startsWith('enc:v1:')) {
+      if (this.isEncryptedDisplay(v)) {
         const p = `${parent}/${id}/${field}`;
         const cached = this._decCache[p];
         if (cached && cached._cipher === v) {
@@ -259,6 +268,7 @@ const DB = {
     }
     if (!pathsToFetch.length) return raw;
 
+    let stillEncrypted = 0;
     try {
       const results = await WORKER.decryptBatch(pathsToFetch);
       for (let i = 0; i < pathsToFetch.length; i++) {
@@ -266,15 +276,49 @@ const DB = {
         const id = targetIds[i];
         const plain = results[p];
         const cipher = raw[id]?.[field];
-        if (typeof plain === 'string') {
+        if (typeof plain === 'string' && !this.isEncryptedDisplay(plain)) {
           this._decCache[p] = { _cipher: cipher, plain };
           raw[id] = { ...raw[id], [field]: plain };
+        } else {
+          stillEncrypted++;
         }
       }
     } catch (e) {
       console.warn(`[DB] decryptBatch ${parent}/${field} failed`, e?.message || e);
+      stillEncrypted = pathsToFetch.length;
     }
+
+    // Si au moins un path est encore chiffré, planifier un retry (debounced par parent).
+    if (stillEncrypted > 0) this._scheduleDecryptRetry(parent, field);
     return raw;
+  },
+
+  // Planifie un retry de déchiffrement pour la collection ; debouncé pour ne pas
+  // empiler les timers. Le retry re-déclenche un snapshot once + re-fire des callbacks.
+  _scheduleDecryptRetry(parent, field) {
+    if (this._decRetrySchedule[parent]) return; // déjà programmé
+    const delay = 3000;
+    this._decRetrySchedule[parent] = setTimeout(async () => {
+      this._decRetrySchedule[parent] = null;
+      try {
+        const snap = await this._ref(parent).once('value');
+        const raw = snap.val() || {};
+        const decrypted = await this._decryptCollection(raw, parent, field);
+        // Mettre à jour le cache local approprié et fire les callbacks
+        if (parent === 'requests') {
+          this._requests = decrypted;
+          this._requestCbs.forEach(fn => fn(this._requests));
+        } else if (parent === 'planning') {
+          this._planningData = decrypted;
+          this._planningCbs?.forEach?.(fn => fn(this._planningData));
+        } else if (parent === 'reservations') {
+          this._reservations = decrypted;
+          this._reservationCbs?.forEach?.(fn => fn(this._reservations));
+        }
+      } catch (e) {
+        console.warn(`[DB] decrypt retry ${parent} failed`, e?.message || e);
+      }
+    }, delay);
   },
 
   // ── Config dynamique (agents / services) ─────────────────────────

@@ -1067,7 +1067,11 @@
           <td>${statusIcon}</td>
           <td class="ent-tl-theme">${escapeHtml(theme)}</td>
           <td class="ent-tl-local">${escapeHtml(r.local || '—')}</td>
-          <td class="ent-tl-desc" title="${escapeHtml(r.description || '')}">${escapeHtml((r.description || '').slice(0, 80))}</td>
+          <td class="ent-tl-desc" title="${escapeHtml(DB.isEncryptedDisplay?.(r.description) ? '🔐 Déchiffrement en cours…' : (r.description || ''))}">${
+            DB.isEncryptedDisplay?.(r.description)
+              ? '<em class="tq-decrypting">🔐 Déchiffrement…</em>'
+              : escapeHtml((r.description || '').slice(0, 80))
+          }</td>
         </tr>`;
       }).join('');
 
@@ -1106,7 +1110,11 @@
               <span class="ent-late-days">${days}j</span>
               <span class="ent-late-theme">${escapeHtml(themeLabel(r.themeId))}</span>
               <span class="ent-late-local">${escapeHtml(r.local || '—')}</span>
-              <span class="ent-late-desc" title="${escapeHtml(r.description || '')}">${escapeHtml((r.description || '').slice(0, 50))}</span>
+              <span class="ent-late-desc" title="${escapeHtml(DB.isEncryptedDisplay?.(r.description) ? '🔐 Déchiffrement en cours…' : (r.description || ''))}">${
+                DB.isEncryptedDisplay?.(r.description)
+                  ? '<em class="tq-decrypting">🔐 Déchiffrement…</em>'
+                  : escapeHtml((r.description || '').slice(0, 50))
+              }</span>
             </div>`;
           }).join('')}</div>${lateReqs.length > 10 ? `<p class="ent-widget-sub">… et ${lateReqs.length - 10} de plus</p>` : ''}`
         : '<p class="ent-placeholder">Aucune requête en retard 🎉</p>';
