@@ -1891,17 +1891,34 @@ function applyFeatureFlags() {
     const el = document.getElementById(id);
     if (el) el.style.display = visible ? '' : 'none';
   };
-  show('btnLive',             DB.getFeature('enableTickets'));
+  show('btnLive',             DB.getFeature('enableTickets')             && DB.hasPermission('viewDirect'));
   show('btnPublic',           DB._config.features['enablePublicView'] !== false);
-  show('btnPresenceHd',       DB.getFeature('enablePresence'));
-  show('btnAnalytics',        DB.getFeature('enableAnalytics') && DB.hasPermission('viewAnalytics'));
+  show('btnPresenceHd',       DB.getFeature('enablePresence')            && DB.hasPermission('viewMyStatus'));
+  show('btnMyAbsences',       DB.hasPermission('viewMyAbsences'));
+  show('btnAnalytics',        DB.getFeature('enableAnalytics')           && DB.hasPermission('viewAnalytics'));
   show('btnTechSpace',        DB.hasPermission('viewTechAnalytics'));
   show('btnMaintenanceSpace', DB.hasPermission('manageCleaning'));
   show('notifBell',           DB.getFeature('enableNotif'));
   show('btnDnd',              DB.getFeature('enableNotif'));
-  show('btnCalendarExport',   DB.getFeature('enableCalendarSync') && !!sessionStorage.getItem('cpas_current_agent_key'));
-  show('btnTechIssue',        DB._config.features?.['enableTechRequests'] !== false);
+  show('btnCalendarExport',   DB.getFeature('enableCalendarSync')        && !!sessionStorage.getItem('cpas_current_agent_key'));
+  show('btnTechIssue',        DB._config.features?.['enableTechRequests'] !== false && DB.hasPermission('submitRequest'));
   show('btnBroadcast',        DB._config.features?.['enableBroadcast'] !== false && (DB.hasPermission?.('sendNotif') || false));
+  // Onglets calendrier (Jour/Semaine/Mois) + bouton + Réserver — gates sur viewCalendar.
+  // L'onglet Accueil reste TOUJOURS visible (entrée principale de l'app).
+  // Couvre à la fois les onglets desktop (.hd-tabs .tab) et mobile (.mob-bottom-nav .mob-tab).
+  const _canViewCal = DB.hasPermission('viewCalendar');
+  document.querySelectorAll('.hd-tabs .tab, .mob-bottom-nav .mob-tab').forEach(el => {
+    const view = el.dataset.view;
+    if (view === 'home') return;     // Accueil toujours visible
+    if (view === 'planning') return; // géré séparément plus bas
+    if (!view) return;               // ex: mob-tab-new (pas de data-view)
+    el.style.display = _canViewCal ? '' : 'none';
+  });
+  show('btnNew', _canViewCal);
+  show('mobBtnNew', _canViewCal);
+  // Boutons de navigation calendrier (prev/today/next) sont déjà gatés par .hd-cal-only
+  // qui est géré par le toggle de vue. Si !viewCalendar, ces boutons restent cachés
+  // car l'utilisateur ne peut pas activer une vue calendrier.
   // Bouton personnaliser — visible uniquement si connecté
   const _customizeBtn = document.getElementById('hsCustomizeBtn');
   if (_customizeBtn) {

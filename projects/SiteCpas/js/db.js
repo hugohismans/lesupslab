@@ -2832,6 +2832,14 @@ const DB = {
     { key: 'viewTechAnalytics',    label: 'Accès à l\'espace Responsable technique (stats requêtes) 🔧' },
     { key: 'manageTechRequests',   label: 'Gérer les requêtes techniques (assigner, changer le statut, commenter)' },
     { key: 'manageCleaning',       label: 'Accès à l\'espace Entretien (enregistrer le nettoyage + bilan mensuel) 🧹' },
+    // Header buttons : visibilité par poste
+    { key: 'viewCalendar',              label: 'Voir le calendrier (onglets Jour / Semaine / Mois + bouton « + Réserver »)' },
+    { key: 'viewDirect',                label: 'Voir le bouton « Direct » (vue dispatch en direct)' },
+    { key: 'viewMyStatus',              label: 'Voir le bouton « Mon statut » (déclarer retard / absence ponctuelle)' },
+    { key: 'viewMyAbsences',            label: 'Voir le bouton « Absences » (déclarer une absence)' },
+    { key: 'submitRequest',             label: 'Voir le bouton « Requête » (envoyer une requête technique / entretien / autre)' },
+    { key: 'viewInterventionsTech',     label: 'Voir le bouton « Interventions tech » (panneau requêtes techniques)' },
+    { key: 'viewInterventionsCleaning', label: 'Voir le bouton « Interventions entretien » (panneau requêtes nettoyage)' },
   ],
 
   // Rôles par défaut utilisés si aucun rôle n'est défini dans Firebase
@@ -2845,7 +2853,9 @@ const DB = {
                sendUrgentNotif:true, viewAnalytics:true, editSettings:true,
                managePlanning:true, viewAllPlanning:true, panicButton:true, kickFromLocal:true, panicDemo:true,
                viewTechAnalytics:true, manageTechRequests:true,
-               manageCleaning:true },
+               manageCleaning:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__direction__': {
       // Vue complète + analytics, pas de gestion opérationnelle directe
@@ -2854,7 +2864,9 @@ const DB = {
                inviteAgents:false, manageAgentStatus:true, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:true, viewAnalytics:true, editSettings:false,
-               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:false, canAnnounceArrival:true, panicDemo:false },
+               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:false, canAnnounceArrival:true, panicDemo:false,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__chef_service__': {
       // Coordination équipe : voit tout, peut notifier, peut modifier les RDV de l'équipe
@@ -2863,7 +2875,9 @@ const DB = {
                inviteAgents:true, manageAgentStatus:true, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:true, sendNotif:true,
                sendUrgentNotif:false, viewAnalytics:true, editSettings:false,
-               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:true, canAnnounceArrival:true, panicDemo:false },
+               managePlanning:true, viewAllPlanning:true, panicButton:false, kickFromLocal:true, canAnnounceArrival:true, panicDemo:false,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__as__': {
       // Assistant social : gère ses RDV et sa file, collabore avec l'équipe
@@ -2871,7 +2885,9 @@ const DB = {
       perms: { createReservation:true, editReservation:true, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__accueil__': {
       // Accueil : crée des tickets, oriente, voit toute la file
@@ -2879,7 +2895,9 @@ const DB = {
       perms: { createReservation:true, editReservation:false, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:false, manageQueue:true, sendPublicMessage:false, sendNotif:true,
-               sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true, kickFromLocal:true, panicDemo:true },
+               sendUrgentNotif:false, viewAnalytics:true, editSettings:false, panicButton:true, kickFromLocal:true, panicDemo:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__agent__': {
       // Agent de bureau : gère ses RDV et sa propre file
@@ -2887,7 +2905,9 @@ const DB = {
       perms: { createReservation:true, editReservation:true, deleteReservation:false,
                inviteAgents:false, manageAgentStatus:false, openBureau:true, closeBureau:true,
                managePause:true, manageQueue:true, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:true, kickFromLocal:false, panicDemo:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__technicien__': {
       // Technicien : consulte l'agenda, pas de gestion de file ni de RDV bénéficiaires
@@ -2896,7 +2916,9 @@ const DB = {
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
                sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
-               viewTechAnalytics:false, manageTechRequests:true },
+               viewTechAnalytics:false, manageTechRequests:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:false },
     },
     '__responsable_technique__': {
       // Responsable technique : supervise les requêtes tech, accède aux stats
@@ -2905,7 +2927,9 @@ const DB = {
                inviteAgents:false, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:true,
                sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
-               viewTechAnalytics:true, manageTechRequests:true },
+               viewTechAnalytics:true, manageTechRequests:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:true, viewInterventionsCleaning:true },
     },
     '__entretien__': {
       // Agent d'entretien : accès minimal + gestion du nettoyage des locaux
@@ -2915,7 +2939,9 @@ const DB = {
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
                sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
                viewTechAnalytics:false, manageTechRequests:true,
-               manageCleaning:true },
+               manageCleaning:true,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:false, viewInterventionsCleaning:true },
     },
     '__juriste__': {
       // Juriste : gère ses RDV, consulte l'équipe, pas de gestion file
@@ -2923,7 +2949,9 @@ const DB = {
       perms: { createReservation:true, editReservation:true, deleteReservation:false,
                inviteAgents:true, manageAgentStatus:false, openBureau:false, closeBureau:false,
                managePause:false, manageQueue:false, sendPublicMessage:false, sendNotif:false,
-               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false },
+               sendUrgentNotif:false, viewAnalytics:false, editSettings:false, panicButton:false, kickFromLocal:false, panicDemo:false,
+               viewCalendar:true, viewDirect:true, viewMyStatus:true, viewMyAbsences:true,
+               submitRequest:true, viewInterventionsTech:false, viewInterventionsCleaning:false },
     },
   },
 

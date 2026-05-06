@@ -69,13 +69,17 @@ const REQUESTS = {
   },
 
   // Retourne true si ce rôle peut voir ce type de requête.
-  // technicien → seulement technique, entretien → seulement entretien,
-  // admin/direction/chef/responsable → les deux.
+  // Source de vérité : perms `viewInterventionsTech` / `viewInterventionsCleaning`.
+  // Les requêtes de type "autre" sont liées à la cloche tech (intuition usuelle).
   _canSeeType(type) {
     if (!this._agentRole) return false;
-    if (this._agentRole === '__technicien__') return type === 'technique';
-    if (this._agentRole === '__entretien__')  return type === 'entretien';
-    return true;
+    if (type === 'technique' || type === 'autre') {
+      return DB.hasPermission?.('viewInterventionsTech') === true;
+    }
+    if (type === 'entretien') {
+      return DB.hasPermission?.('viewInterventionsCleaning') === true;
+    }
+    return false;
   },
 
   _filterByRole(req) {
