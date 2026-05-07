@@ -2846,6 +2846,33 @@ select.field-input { cursor: pointer; }
   transition: color .15s;
 }
 .req-close-btn:hover { color: #e2e8f0; }
+.req-panel-readonly-hint {
+  font-size: .72rem; font-weight: 500; color: #64748b; margin-left: .35rem;
+}
+.req-panel-search-wrap {
+  position: relative; display: flex; align-items: center;
+  padding: .55rem .75rem; border-bottom: 1px solid #1e293b; flex-shrink: 0;
+}
+.req-panel-search-input {
+  flex: 1 1 auto; padding: .4rem .6rem; padding-right: 1.9rem;
+  border: 1.5px solid #334155; border-radius: 7px;
+  background: #1e293b; color: #e2e8f0; font-size: .82rem; font-family: inherit;
+  transition: border-color .12s, box-shadow .12s;
+}
+.req-panel-search-input:focus {
+  outline: none; border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, .2);
+}
+.req-panel-search-input::placeholder { color: #64748b; font-size: .76rem; }
+.req-panel-search-clear {
+  position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+  background: transparent; border: none; color: #64748b;
+  width: 22px; height: 22px; border-radius: 4px; cursor: pointer;
+  font-size: .85rem; line-height: 1; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.req-panel-search-clear:hover { background: #334155; color: #f87171; }
 .req-tabs {
   display: flex; gap: .25rem; padding: .5rem .75rem;
   border-bottom: 1px solid #1e293b; flex-shrink: 0; flex-wrap: wrap;

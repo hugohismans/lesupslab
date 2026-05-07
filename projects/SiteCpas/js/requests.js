@@ -10,6 +10,8 @@ const REQUESTS = {
   _agentRole:   null,
   _filter:      'open',       // 'open' | 'in_progress' | 'postponed' | 'done'
   _typeFilter:  'technique',  // 'technique' | 'entretien' — contexte du panneau ouvert
+  _search:      '',           // texte de recherche (lowercase, trim) — read-only sur ce panneau
+  _searchTimer: null,
 
   // Rôles qui voient le panneau interventions
   _TECH_ROLES: new Set(['__technicien__', '__entretien__', '__admin__', '__chef_service__', '__direction__', '__responsable_technique__']),
@@ -170,13 +172,22 @@ const REQUESTS = {
       if (counts[r.status] !== undefined && isVisible(r) && this._filterByRole(r) && typeFilterFn(r)) counts[r.status]++;
     });
 
+    // Filtre recherche : applique aux cartes ET aux compteurs d'onglet
+    const matchesSearch = (r) => this._matchesSearch(r);
+    // Recompter par statut en tenant compte de la recherche
+    const countsFiltered = { open: 0, in_progress: 0, postponed: 0, done: 0 };
+    Object.values(reqs).forEach(r => {
+      if (countsFiltered[r.status] !== undefined && isVisible(r) && this._filterByRole(r) && typeFilterFn(r) && matchesSearch(r))
+        countsFiltered[r.status]++;
+    });
+
     const filtered = Object.entries(reqs)
-      .filter(([, r]) => r.status === this._filter && isVisible(r) && this._filterByRole(r) && typeFilterFn(r))
+      .filter(([, r]) => r.status === this._filter && isVisible(r) && this._filterByRole(r) && typeFilterFn(r) && matchesSearch(r))
       .sort(([, a], [, b]) => b.createdAt - a.createdAt);
 
     const tabBtn = (status, label) => {
       const active = this._filter === status;
-      const cnt = counts[status];
+      const cnt = countsFiltered[status];
       return `<button class="req-tab${active ? ' active' : ''}" data-status="${status}">
         ${label}${cnt ? ` <span class="req-tab-count">${cnt}</span>` : ''}
       </button>`;
@@ -186,10 +197,19 @@ const REQUESTS = {
       ? '🧹 Interventions entretien'
       : '🔧 Interventions techniques';
 
+    const _searchVal = this._search || '';
+    const _searchClearStyle = _searchVal ? '' : 'display:none';
+
     this._panel.innerHTML = `
       <div class="req-panel-hd">
-        <span>${panelTitle}</span>
+        <span>${panelTitle} <span class="req-panel-readonly-hint">— consultation</span></span>
         <button class="req-close-btn" id="reqCloseBtn">✕</button>
+      </div>
+      <div class="req-panel-search-wrap">
+        <input type="search" id="reqPanelSearchInput" class="req-panel-search-input"
+               placeholder="🔎 Rechercher (description, demandeur, ouvrier, lieu, thème, commentaires…)"
+               value="${escapeHtml(_searchVal)}" autocomplete="off" />
+        <button type="button" class="req-panel-search-clear" id="reqPanelSearchClear" title="Effacer" style="${_searchClearStyle}">✕</button>
       </div>
       <div class="req-tabs">
         ${tabBtn('open', 'Ouvertes')}
@@ -199,10 +219,43 @@ const REQUESTS = {
       </div>
       <div class="req-list">
         ${filtered.length === 0
-          ? `<div class="req-empty">Aucune intervention ${STATUS_LABELS[this._filter]?.toLowerCase() || ''}</div>`
-          : filtered.map(([id, r]) => this._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS)).join('')
+          ? `<div class="req-empty">${_searchVal
+              ? `Aucune intervention ne correspond à « ${escapeHtml(_searchVal)} » dans cet onglet.`
+              : `Aucune intervention ${STATUS_LABELS[this._filter]?.toLowerCase() || ''}`}</div>`
+          : filtered.map(([id, r]) => this._renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS, { readOnly: true })).join('')
         }
       </div>`;
+
+    // Recherche : input avec debounce 150ms + croix de clear
+    const _searchInput = document.getElementById('reqPanelSearchInput');
+    const _searchClear = document.getElementById('reqPanelSearchClear');
+    if (_searchInput) {
+      _searchInput.addEventListener('input', (e) => {
+        e.stopPropagation();
+        if (this._searchTimer) clearTimeout(this._searchTimer);
+        this._searchTimer = setTimeout(() => {
+          this._search = (_searchInput.value || '').trim().toLowerCase();
+          this._render();
+          // Restaurer le focus + position curseur après re-render
+          const _newInput = document.getElementById('reqPanelSearchInput');
+          if (_newInput) {
+            _newInput.focus();
+            const len = _newInput.value.length;
+            _newInput.setSelectionRange(len, len);
+          }
+        }, 150);
+      });
+      // Stop propagation pour éviter que les clics dans l'input ferment le panneau
+      _searchInput.addEventListener('click', e => e.stopPropagation());
+      _searchInput.addEventListener('keydown', e => e.stopPropagation());
+    }
+    if (_searchClear) {
+      _searchClear.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._search = '';
+        this._render();
+      });
+    }
 
     // Tabs
     this._panel.querySelectorAll('.req-tab').forEach(btn => {
@@ -541,7 +594,41 @@ const REQUESTS = {
     return r?.urgent ? 5 : 3;
   },
 
-  _renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS) {
+  // Recherche multi-champs (lowercase, multi-tokens AND).
+  // Construit un haystack à la volée — pas de cache (panneau réouvert souvent).
+  _matchesSearch(r) {
+    const q = (this._search || '').trim();
+    if (!q) return true;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (!tokens.length) return true;
+    const parts = [];
+    const push = v => { if (v) parts.push(String(v)); };
+    // Skip description si encore chiffrée (cipher pollue l'index)
+    if (!DB.isEncryptedDisplay?.(r.description)) push(r.description);
+    push(r.local);
+    push(r.fromAgentName);
+    push(r.assignedToName);
+    push(r.assignedTo);
+    push(r.workerName);
+    push(r.workerBadge);
+    push(r.type);
+    const themeLbl = (DB.getThemeLabelForRequestType?.(r.type, r.themeId)
+      || DB.getTechThemeLabel?.(r.themeId)
+      || '');
+    push(themeLbl);
+    if (r.comments && typeof r.comments === 'object') {
+      for (const c of Object.values(r.comments)) {
+        if (!c) continue;
+        push(c.text);
+        push(c.agentName);
+      }
+    }
+    const hay = parts.join(' · ').toLowerCase();
+    return tokens.every(t => hay.includes(t));
+  },
+
+  _renderCard(id, r, isAdmin, agents, TYPE_ICONS, STATUS_LABELS, opts) {
+    const readOnly = !!(opts && opts.readOnly);
     const icon    = TYPE_ICONS[r.type] || '📋';
     const d       = new Date(r.createdAt);
     const dateStr = d.toLocaleDateString('fr-BE', { day: '2-digit', month: '2-digit', year: '2-digit' });
@@ -591,7 +678,7 @@ const REQUESTS = {
     let actions = '';
     // Assignation ouvrier (admin) : disponible sur open ET in_progress pour
     // permettre une réassignation en cas d'erreur.
-    const canAssign = isAdmin && (r.status === 'open' || r.status === 'in_progress');
+    const canAssign = !readOnly && isAdmin && (r.status === 'open' || r.status === 'in_progress');
     const workerSelect = canAssign ? (() => {
       const workers = DB.getWorkersForRequestType?.(r.type) || [];
       const currentWid = r.workerId || '';
@@ -604,39 +691,41 @@ const REQUESTS = {
       </select>`;
     })() : '';
 
-    if (r.status === 'open') {
-      actions += `<button class="req-btn req-btn-claim" data-req-action="claim" data-req-id="${id}">🙋 Je prends</button>`;
-      actions += workerSelect;
-    } else if (r.status === 'in_progress') {
-      actions += `<button class="req-btn req-btn-done" data-req-action="done" data-req-id="${id}">✓ Terminée</button>`;
-      actions += `<button class="req-btn req-btn-postpone" data-req-action="postponed" data-req-id="${id}">⏸ Reporter</button>`;
-      actions += workerSelect;
-    } else if (r.status === 'postponed') {
-      actions += `<button class="req-btn req-btn-reopen" data-req-action="open" data-req-id="${id}">🔄 Rouvrir</button>`;
-    }
-
-    // Commentaire toujours dispo sauf done sans permission
-    if (r.status !== 'done' || isAdmin) {
-      actions += `<button class="req-comment-toggle req-btn req-btn-comment" data-req-id="${id}">💬 Commenter</button>`;
-    }
-
-    // Catégoriser : sur toutes les requêtes, accessible à ceux qui peuvent gérer
-    const canManageReq = isAdmin || DB.hasPermission('manageTechRequests');
-    if (canManageReq) {
-      actions += `<button class="req-tag-btn req-btn req-btn-tag" data-req-id="${id}">🏷️ Catégoriser</button>`;
-      // Redéfinir le niveau d'urgence (visible sauf sur les requêtes terminées)
-      if (r.status !== 'done') {
-        actions += `<button class="req-urg-edit-btn req-btn req-btn-urg-edit" data-req-id="${id}" title="Changer le niveau d'urgence">⚡ Urgence</button>`;
+    if (!readOnly) {
+      if (r.status === 'open') {
+        actions += `<button class="req-btn req-btn-claim" data-req-action="claim" data-req-id="${id}">🙋 Je prends</button>`;
+        actions += workerSelect;
+      } else if (r.status === 'in_progress') {
+        actions += `<button class="req-btn req-btn-done" data-req-action="done" data-req-id="${id}">✓ Terminée</button>`;
+        actions += `<button class="req-btn req-btn-postpone" data-req-action="postponed" data-req-id="${id}">⏸ Reporter</button>`;
+        actions += workerSelect;
+      } else if (r.status === 'postponed') {
+        actions += `<button class="req-btn req-btn-reopen" data-req-action="open" data-req-id="${id}">🔄 Rouvrir</button>`;
       }
-    }
 
-    // Actions série (template uniquement)
-    if (isTemplate && canManageReq) {
-      const isStopped = rec.until && rec.until <= Date.now();
-      if (!isStopped) {
-        actions += `<button class="req-stop-series req-btn req-btn-stop-series" data-req-id="${id}">⏹ Arrêter la série</button>`;
+      // Commentaire toujours dispo sauf done sans permission
+      if (r.status !== 'done' || isAdmin) {
+        actions += `<button class="req-comment-toggle req-btn req-btn-comment" data-req-id="${id}">💬 Commenter</button>`;
       }
-      actions += `<button class="req-view-series req-btn req-btn-view-series" data-req-id="${id}">📜 Voir la série</button>`;
+
+      // Catégoriser : sur toutes les requêtes, accessible à ceux qui peuvent gérer
+      const canManageReq = isAdmin || DB.hasPermission('manageTechRequests');
+      if (canManageReq) {
+        actions += `<button class="req-tag-btn req-btn req-btn-tag" data-req-id="${id}">🏷️ Catégoriser</button>`;
+        // Redéfinir le niveau d'urgence (visible sauf sur les requêtes terminées)
+        if (r.status !== 'done') {
+          actions += `<button class="req-urg-edit-btn req-btn req-btn-urg-edit" data-req-id="${id}" title="Changer le niveau d'urgence">⚡ Urgence</button>`;
+        }
+      }
+
+      // Actions série (template uniquement)
+      if (isTemplate && canManageReq) {
+        const isStopped = rec.until && rec.until <= Date.now();
+        if (!isStopped) {
+          actions += `<button class="req-stop-series req-btn req-btn-stop-series" data-req-id="${id}">⏹ Arrêter la série</button>`;
+        }
+        actions += `<button class="req-view-series req-btn req-btn-view-series" data-req-id="${id}">📜 Voir la série</button>`;
+      }
     }
 
     // Commentaires existants
@@ -649,8 +738,8 @@ const REQUESTS = {
         return `<div class="req-comment"><span class="req-comment-author">${escapeHtml(c.agentName || '?')}</span> <span class="req-comment-time">${ct}</span><p class="req-comment-text">${escapeHtml(c.text)}</p></div>`;
       }).join('') : '';
 
-    // Supprimer (admin)
-    const delBtn = isAdmin
+    // Supprimer (admin) — masqué en mode read-only
+    const delBtn = (!readOnly && isAdmin)
       ? `<button class="req-del-btn" data-req-action="delete" data-req-id="${id}" title="Supprimer">✕</button>`
       : '';
 
@@ -673,7 +762,7 @@ const REQUESTS = {
           <div class="req-meta">${themeBadge}${localTxt}${assignedTxt}${reopenTxt}</div>
         </div>
         ${comments ? `<div class="req-comments">${comments}</div>` : ''}
-        <div class="req-actions">${actions}</div>
+        ${actions ? `<div class="req-actions">${actions}</div>` : ''}
       </div>`;
   },
 
