@@ -108,13 +108,26 @@ const WORKER = {
     });
   },
 
-  // Déchiffrement batch d'une liste de paths.
+  // Déchiffrement batch. `items` accepte soit des paths (string), soit des
+  // objets { path, cipher }. Quand le ciphertext est fourni (le client l'a
+  // déjà lu dans le snapshot Firebase), le Worker déchiffre directement sans
+  // relire la base — indispensable sur les collections à plusieurs milliers
+  // d'entrées. On envoie aussi `paths` pour rester compatible avec un Worker
+  // pas encore redéployé (il ignore `items` et relit la base).
   // Retourne { [path]: plaintext | null }.
-  async decryptBatch(paths) {
+  async decryptBatch(items) {
+    const list = (items || [])
+      .map(it => (typeof it === 'string' ? { path: it, cipher: null } : it))
+      .filter(it => it && it.path);
+    if (!list.length) return {};
+    const withCipher = list.filter(it => typeof it.cipher === 'string' && it.cipher);
     const r = await this._fetch('/data/decrypt', {
       method: 'POST',
       authed: true,
-      body:   { paths },
+      body:   {
+        paths: list.map(it => it.path),
+        items: withCipher.map(it => ({ path: it.path, cipher: it.cipher })),
+      },
     });
     return r?.results || {};
   },

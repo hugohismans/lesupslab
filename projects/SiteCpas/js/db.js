@@ -243,78 +243,173 @@ const DB = {
     return typeof v === 'string' && (v.startsWith('enc:v1:') || /^encv1:/.test(v));
   },
 
+  // Nombre de paths envoyés par appel au Worker. Le Worker refuse un batch
+  // trop gros (`too_many_paths`) : en production, la collection `requests`
+  // dépassait largement ce plafond, donc l'unique appel global partait en 400
+  // et PLUS AUCUNE description ne se déchiffrait ("🔐 Déchiffrement en cours…"
+  // affiché indéfiniment). On découpe donc en lots.
+  _DEC_CHUNK: 200,
+
   // Retours-tournants : déchiffrements en attente (paths qui ont échoué au moins une fois).
   _decRetrySchedule: { 'requests': null, 'planning': null, 'reservations': null, 'appState/appointmentRequests': null },
+  _decRetryCount:    {},
+  _decTailRunning:   {},
+  _decTailPending:   {},
+
+  // Store local d'une collection : où réinjecter les textes déchiffrés
+  // arrivés en arrière-plan, et quels callbacks re-fire ensuite.
+  _decStore(parent) {
+    switch (parent) {
+      case 'reservations':
+        return { get: () => this._data,         notify: () => this._cbs.forEach(fn => fn()) };
+      case 'requests':
+        return { get: () => this._requests,     notify: () => this._requestCbs.forEach(fn => fn(this._requests)) };
+      case 'planning':
+        return { get: () => this._planningData, notify: () => this._planningCbs.forEach(fn => fn(this._planningData)) };
+      default:
+        return null;  // ex. appState/appointmentRequests : pas de store global
+    }
+  },
+
+  // Priorité de déchiffrement : ce que l'utilisateur voit en premier.
+  // Non terminé avant terminé, puis du plus récent au plus ancien.
+  _decPriority(r) {
+    const active = (r && r.status && r.status !== 'done') ? 1 : 0;
+    const ts = Number(r?.updatedAt || r?.createdAt || r?.date || 0) || 0;
+    return active * 1e15 + ts;
+  },
 
   async _decryptCollection(raw, parent, field) {
     if (!raw || typeof raw !== 'object') return raw;
     if (!(typeof CONFIG !== 'undefined' && CONFIG.WORKER_CRUD && typeof WORKER !== 'undefined')) return raw;
 
-    const pathsToFetch = [];
-    const targetIds = [];
+    const pending = [];
     for (const [id, r] of Object.entries(raw)) {
       if (!r || typeof r !== 'object') continue;
-      const v = r[field];
-      if (this.isEncryptedDisplay(v)) {
-        const p = `${parent}/${id}/${field}`;
-        const cached = this._decCache[p];
-        if (cached && cached._cipher === v) {
-          raw[id] = { ...r, [field]: cached.plain };
-        } else {
-          pathsToFetch.push(p);
-          targetIds.push(id);
-        }
+      const cipher = r[field];
+      if (!this.isEncryptedDisplay(cipher)) continue;
+      const path = `${parent}/${id}/${field}`;
+      const cached = this._decCache[path];
+      if (cached && cached._cipher === cipher) {
+        raw[id] = { ...r, [field]: cached.plain };
+        continue;
       }
+      pending.push({ id, path, cipher, prio: this._decPriority(r) });
     }
-    if (!pathsToFetch.length) return raw;
+    if (!pending.length) return raw;
 
-    let stillEncrypted = 0;
-    try {
-      const results = await WORKER.decryptBatch(pathsToFetch);
-      for (let i = 0; i < pathsToFetch.length; i++) {
-        const p = pathsToFetch[i];
-        const id = targetIds[i];
-        const plain = results[p];
-        const cipher = raw[id]?.[field];
-        if (typeof plain === 'string' && !this.isEncryptedDisplay(plain)) {
-          this._decCache[p] = { _cipher: cipher, plain };
-          raw[id] = { ...raw[id], [field]: plain };
-        } else {
-          stillEncrypted++;
-        }
-      }
-    } catch (e) {
-      console.warn(`[DB] decryptBatch ${parent}/${field} failed`, e?.message || e);
-      stillEncrypted = pathsToFetch.length;
-    }
+    pending.sort((a, b) => b.prio - a.prio);
 
-    // Si au moins un path est encore chiffré, planifier un retry (debounced par parent).
-    if (stillEncrypted > 0) this._scheduleDecryptRetry(parent, field);
+    // 1er lot déchiffré en ligne → les cartes visibles s'affichent tout de suite.
+    const failed = await this._decryptChunk(pending.slice(0, this._DEC_CHUNK), field, raw);
+
+    // Le reste part en arrière-plan, lot par lot, avec re-render progressif.
+    const tail = pending.slice(this._DEC_CHUNK);
+    if (tail.length) this._decryptTail(parent, field, tail);
+
+    if (failed) this._scheduleDecryptRetry(parent, field);
+    else if (!tail.length) this._decRetryCount[parent] = 0;
     return raw;
   },
 
-  // Planifie un retry de déchiffrement pour la collection ; debouncé pour ne pas
-  // empiler les timers. Le retry re-déclenche un snapshot once + re-fire des callbacks.
+  // Déchiffre un lot. Applique les résultats dans le cache et, si `target`
+  // est fourni, directement dans l'objet de collection.
+  // Retourne le nombre de paths encore chiffrés après l'appel.
+  async _decryptChunk(items, field, target) {
+    if (!items || !items.length) return 0;
+    let results;
+    try {
+      results = await WORKER.decryptBatch(items.map(it => ({ path: it.path, cipher: it.cipher })));
+    } catch (e) {
+      console.warn('[DB] decryptBatch failed', e?.message || e);
+      return items.length;
+    }
+    let failed = 0;
+    for (const it of items) {
+      const plain = results[it.path];
+      if (typeof plain === 'string' && !this.isEncryptedDisplay(plain)) {
+        this._decCache[it.path] = { _cipher: it.cipher, plain };
+        if (target && target[it.id] && target[it.id][field] === it.cipher) {
+          target[it.id] = { ...target[it.id], [field]: plain };
+        }
+      } else {
+        failed++;
+      }
+    }
+    return failed;
+  },
+
+  // Lots suivants en tâche de fond : on ne bloque pas le premier rendu et on
+  // re-notifie les vues après chaque lot (affichage progressif).
+  async _decryptTail(parent, field, items) {
+    if (this._decTailRunning[parent]) { this._decTailPending[parent] = true; return; }
+    this._decTailRunning[parent] = true;
+    let failed = 0;
+    try {
+      // Re-render throttlé : sur une grosse collection (des milliers de cartes),
+      // re-notifier après chaque lot ferait ramer la vue. On regroupe.
+      let lastNotify = 0;
+      for (let i = 0; i < items.length; i += this._DEC_CHUNK) {
+        failed += await this._decryptChunk(items.slice(i, i + this._DEC_CHUNK), field, null);
+        const isLast = i + this._DEC_CHUNK >= items.length;
+        if (isLast || Date.now() - lastNotify > 1000) {
+          lastNotify = Date.now();
+          this._applyDecCache(parent, field);
+        }
+      }
+    } catch (e) {
+      console.warn(`[DB] decrypt tail ${parent} failed`, e?.message || e);
+      failed++;
+    } finally {
+      this._decTailRunning[parent] = false;
+    }
+    // Un snapshot est arrivé pendant le passage : on repasse dessus.
+    if (this._decTailPending[parent]) { this._decTailPending[parent] = false; failed++; }
+    if (failed) this._scheduleDecryptRetry(parent, field);
+    else this._decRetryCount[parent] = 0;
+  },
+
+  // Réinjecte dans le store courant les textes déjà déchiffrés, puis notifie
+  // les vues si quelque chose a changé.
+  _applyDecCache(parent, field) {
+    const store = this._decStore(parent);
+    const cur = store?.get?.();
+    if (!cur || typeof cur !== 'object') return;
+    let changed = false;
+    for (const [id, r] of Object.entries(cur)) {
+      if (!r || typeof r !== 'object') continue;
+      const cipher = r[field];
+      if (!this.isEncryptedDisplay(cipher)) continue;
+      const c = this._decCache[`${parent}/${id}/${field}`];
+      if (c && c._cipher === cipher) {
+        cur[id] = { ...r, [field]: c.plain };
+        changed = true;
+      }
+    }
+    if (changed) store.notify();
+  },
+
+  // Planifie un retry pour les paths encore chiffrés. Debouncé par collection,
+  // backoff exponentiel et nombre d'essais borné : l'ancienne version relançait
+  // un `once('value')` sur toute la collection toutes les 3s indéfiniment
+  // (des milliers d'enregistrements re-téléchargés en boucle).
   _scheduleDecryptRetry(parent, field) {
-    if (this._decRetrySchedule[parent]) return; // déjà programmé
-    const delay = 3000;
+    if (this._decRetrySchedule[parent]) return;      // déjà programmé
+    const store = this._decStore(parent);
+    if (!store) return;                              // pas de store → rien à re-notifier
+    const attempt = this._decRetryCount[parent] || 0;
+    if (attempt >= 5) return;                        // le prochain snapshot réessaiera
+    this._decRetryCount[parent] = attempt + 1;
+    const delay = Math.min(3000 * Math.pow(2, attempt), 60000);
     this._decRetrySchedule[parent] = setTimeout(async () => {
       this._decRetrySchedule[parent] = null;
       try {
-        const snap = await this._ref(parent).once('value');
-        const raw = snap.val() || {};
-        const decrypted = await this._decryptCollection(raw, parent, field);
-        // Mettre à jour le cache local approprié et fire les callbacks
-        if (parent === 'requests') {
-          this._requests = decrypted;
-          this._requestCbs.forEach(fn => fn(this._requests));
-        } else if (parent === 'planning') {
-          this._planningData = decrypted;
-          this._planningCbs?.forEach?.(fn => fn(this._planningData));
-        } else if (parent === 'reservations') {
-          this._reservations = decrypted;
-          this._reservationCbs?.forEach?.(fn => fn(this._reservations));
-        }
+        const cur = store.get();
+        if (!cur || typeof cur !== 'object') return;
+        // On repart du store en mémoire (le ciphertext y est déjà) : aucun
+        // re-téléchargement de la collection.
+        await this._decryptCollection(cur, parent, field);
+        store.notify();
       } catch (e) {
         console.warn(`[DB] decrypt retry ${parent} failed`, e?.message || e);
       }

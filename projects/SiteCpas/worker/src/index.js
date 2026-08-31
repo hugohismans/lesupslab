@@ -12,7 +12,8 @@ import {
 } from './firebase.js';
 import { requireAuth } from './auth-middleware.js';
 import { isAuthorized } from './authz.js';
-import { encryptForWrite, decryptForRead } from './sensitive.js';
+import { encryptForWrite, decryptForRead, isSensitiveLeaf } from './sensitive.js';
+import { decryptString } from './crypto.js';
 
 const ALLOWED_ORIGINS = [
   'https://cpasquaregnon.vercel.app',
@@ -339,47 +340,103 @@ async function handleDataWrite(request, env, auth, cors) {
 
 // ═══════════════════════════════════════════════════════════════════
 // Phase 3 — déchiffrement batch
-// Body : { paths: [path, path, ...] }
-//   paths = chemins relatifs à orgs/{orgId}/, soit directement une feuille
-//   sensible (ex "reservations/abc/note"), soit un objet parent
-//   (ex "reservations/abc") auquel cas on déchiffre ses champs sensibles.
+// Body : { paths: [path, ...], items: [{ path, cipher }, ...] }
+//   items (recommandé) : le client renvoie le ciphertext qu'il a déjà lu
+//     depuis Firebase → déchiffrement direct, ZÉRO lecture serveur. Sur les
+//     collections à plusieurs milliers d'entrées (requests), le mode "paths"
+//     faisait un read Firebase par entrée : trop lent, et le batch entier
+//     dépassait le plafond → plus rien ne se déchiffrait.
+//   paths : mode historique (lecture Firebase du path puis déchiffrement),
+//     conservé pour les clients pas encore à jour et pour les paths sans
+//     ciphertext fourni. paths = chemins relatifs à orgs/{orgId}/, soit une
+//     feuille sensible (ex "reservations/abc/comment"), soit un objet parent
+//     (ex "reservations/abc") dont on déchiffre les champs sensibles.
 // Réponse : { results: { path: plaintextValue | null } }
 // ═══════════════════════════════════════════════════════════════════
+const DECRYPT_MAX_PATHS  = 2000;   // plafond global d'un batch
+const DECRYPT_MAX_READS  = 500;    // plafond des paths nécessitant un read Firebase
+const DECRYPT_MAX_CIPHER = 20000;  // garde-fou taille d'un ciphertext
+
+function normDecryptPath(p) {
+  return String(p || '').replace(/^\/+|\/+$/g, '');
+}
+
 async function handleDataDecrypt(request, env, auth, cors) {
   let body;
   try { body = await request.json(); }
   catch { return jsonWithCors({ error: 'bad_request', detail: 'invalid_json' }, cors, 400); }
 
-  const paths = Array.isArray(body.paths) ? body.paths : [];
+  // Ciphertexts fournis par le client, indexés par path normalisé.
+  const cipherByPath = new Map();
+  if (Array.isArray(body.items)) {
+    for (const it of body.items) {
+      if (!it || typeof it.path !== 'string' || typeof it.cipher !== 'string') continue;
+      if (it.cipher.length > DECRYPT_MAX_CIPHER) continue;
+      const rel = normDecryptPath(it.path);
+      if (rel) cipherByPath.set(rel, it.cipher);
+    }
+  }
+
+  // paths explicites, sinon on prend ceux des items.
+  const paths = (Array.isArray(body.paths) && body.paths.length)
+    ? body.paths
+    : [...cipherByPath.keys()];
   if (!paths.length) return jsonWithCors({ error: 'bad_request', detail: 'empty_paths' }, cors, 400);
-  if (paths.length > 500) return jsonWithCors({ error: 'bad_request', detail: 'too_many_paths' }, cors, 400);
+  if (paths.length > DECRYPT_MAX_PATHS) {
+    return jsonWithCors({ error: 'bad_request', detail: 'too_many_paths' }, cors, 400);
+  }
+
+  // Les paths sans ciphertext fourni coûtent un read Firebase chacun : plafond bas.
+  const needsRead = paths.filter(p => !cipherByPath.has(normDecryptPath(p)));
+  if (needsRead.length > DECRYPT_MAX_READS) {
+    return jsonWithCors({ error: 'bad_request', detail: 'too_many_paths' }, cors, 400);
+  }
 
   const orgId = auth.orgId;
   if (!orgId) return jsonWithCors({ error: 'unauthorized', detail: 'no_org_in_token' }, cors, 401);
 
   try {
-    const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
-    const accessToken = await getAccessToken(sa);
-    const dbUrl = env.FIREBASE_DB_URL;
-
     const results = {};
-    // Concurrence limitée à 20 reads en parallèle pour ne pas saturer.
-    const queue = [...paths];
-    async function worker() {
-      while (queue.length) {
-        const p = queue.shift();
-        try {
-          const pRel = String(p || '').replace(/^\/+|\/+$/g, '');
-          if (!pRel) { results[p] = null; continue; }
-          const raw = await dbGet(dbUrl, `orgs/${orgId}/${pRel}`, accessToken);
-          results[p] = await decryptForRead(pRel, raw, env);
-        } catch (e) {
-          console.warn('[data/decrypt] path failed', p, e?.message || e);
-          results[p] = null;
-        }
+
+    // ── 1) Ciphertexts fournis : déchiffrement direct, aucun read ──
+    // On exige que le path soit une feuille sensible connue, pour ne pas
+    // transformer l'endpoint en oracle de déchiffrement générique.
+    for (const p of paths) {
+      const rel = normDecryptPath(p);
+      if (!cipherByPath.has(rel)) continue;
+      if (!isSensitiveLeaf(rel)) { results[p] = null; continue; }
+      try {
+        results[p] = await decryptString(cipherByPath.get(rel), env);
+      } catch (e) {
+        console.warn('[data/decrypt] cipher failed', p, e?.message || e);
+        results[p] = null;
       }
     }
-    await Promise.all(Array.from({ length: Math.min(20, paths.length) }, () => worker()));
+
+    // ── 2) Reste : lecture Firebase puis déchiffrement (mode historique) ──
+    if (needsRead.length) {
+      const sa = parseServiceAccount(env.FIREBASE_SERVICE_ACCOUNT);
+      const accessToken = await getAccessToken(sa);
+      const dbUrl = env.FIREBASE_DB_URL;
+
+      // Concurrence limitée à 20 reads en parallèle pour ne pas saturer.
+      const queue = [...needsRead];
+      async function worker() {
+        while (queue.length) {
+          const p = queue.shift();
+          try {
+            const pRel = normDecryptPath(p);
+            if (!pRel) { results[p] = null; continue; }
+            const raw = await dbGet(dbUrl, `orgs/${orgId}/${pRel}`, accessToken);
+            results[p] = await decryptForRead(pRel, raw, env);
+          } catch (e) {
+            console.warn('[data/decrypt] path failed', p, e?.message || e);
+            results[p] = null;
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(20, needsRead.length) }, () => worker()));
+    }
 
     return jsonWithCors({ results }, cors, 200);
   } catch (e) {
