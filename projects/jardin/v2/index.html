@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jardin Féerique — V2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <div id="loading"><div class="spinner"></div><p>Le jardin se prépare…</p></div>
+
+  <!-- Écran d'entrée : pseudo, couleur, personnage -->
+  <div id="overlay" class="hidden">
+    <div class="card intro">
+      <h1>Jardin Féerique</h1>
+      <p class="sub">Un jardin partagé où chacun plante ses fleurs, pour toujours.</p>
+
+      <label class="field">Ton nom
+        <input id="pseudo" type="text" maxlength="16" placeholder="Ton nom" autocomplete="off" />
+      </label>
+
+      <div class="field">Ta couleur
+        <div id="swatches" class="swatches"></div>
+      </div>
+
+      <div class="field">Ton personnage
+        <div id="chars" class="chars"></div>
+      </div>
+
+      <button id="startBtn" class="primary">Entrer dans le jardin</button>
+      <p class="help">ZQSD / WASD pour marcher · glisser la souris pour tourner la caméra · molette pour zoomer · Entrée pour discuter</p>
+      <a class="v1link" href="../v1/">↩ Retrouver l'ancienne version (V1)</a>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="topChip"><span id="biomeName">Printemps</span><span class="sep">·</span><span id="clock">--:--</span></div>
+    <button id="menuBtn" class="round" aria-label="Menu">☰</button>
+    <div id="menu" class="card panel hidden">
+      <div class="row"><strong>Connectés</strong><span id="onlineCount" class="badge">1</span></div>
+      <ul id="who"></ul>
+      <div class="row"><span>Son</span>
+        <div class="inline"><button id="audioToggle" class="pill">Coupé</button><input id="audioVol" type="range" min="0" max="1" step="0.01" value="0.25" /></div>
+      </div>
+      <div class="row"><span>Qualité</span>
+        <div class="seg" id="qualitySeg">
+          <button data-q="auto">Auto</button><button data-q="high">Haute</button><button data-q="low">Basse</button>
+        </div>
+      </div>
+      <div class="row"><span>Personnage</span><button id="changeChar" class="pill">Changer</button></div>
+      <p class="keys">E ✨ Aurore · F 🌸 Fleur · T 🌳 Arbre · Entrée 💬 Chat</p>
+      <a class="v1link" href="../v1/">↩ Version d'origine (V1)</a>
+    </div>
+
+    <div id="chat" class="card">
+      <ul id="messages"></ul>
+      <form id="chatForm">
+        <input id="msg" maxlength="200" placeholder="Écrire un message…" autocomplete="off" />
+        <button type="submit" class="pill">Envoyer</button>
+      </form>
+    </div>
+    <button id="chatToggle" class="round" aria-label="Chat">💬</button>
+
+    <div id="actions">
+      <button class="act" data-act="spell" title="Aurore (E)"><span>✨</span><small>E</small></button>
+      <button class="act" data-act="flower" title="Planter une fleur (F)"><span>🌸</span><small>F</small></button>
+      <button class="act" data-act="tree" title="Planter un arbre (T)"><span>🌳</span><small>T</small></button>
+    </div>
+
+    <button id="portalBtn" class="primary hidden"></button>
+    <div id="toasts"></div>
+
+    <div id="sticks">
+      <div id="stickL" class="stick"><div class="knob"></div></div>
+      <div id="stickR" class="stick"><div class="knob"></div></div>
+    </div>
+  </div>
+
+  <!-- Planter une fleur (mêmes choix que la V1) -->
+  <div id="flowerModal" class="modal hidden">
+    <div class="card">
+      <h3>Planter une fleur 🌸</h3>
+      <p>La fleur sera plantée <b>pour toujours</b>. Tu peux ajouter un message (optionnel) :</p>
+      <textarea id="flowerMsg" rows="3" maxlength="140" placeholder="Ton message (140 caractères max)"></textarea>
+      <div class="btns">
+        <button id="fmCancel" class="pill">Annuler</button>
+        <button id="fmNoMsg" class="pill">Sans message</button>
+        <button id="fmWithMsg" class="primary small">Planter</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
