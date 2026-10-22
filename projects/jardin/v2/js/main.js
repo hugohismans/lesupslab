@@ -171,6 +171,7 @@ refreshQualityButtons();
 const chatEl = $('chat');
 if (IS_MOBILE) chatEl.classList.add('collapsed');
 $('chatToggle').onclick = () => { chatEl.classList.remove('collapsed'); };
+$('chatClose').onclick = () => { chatEl.classList.add('collapsed'); $('msg').blur(); };
 function isTyping() { const a = document.activeElement; return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'); }
 
 function applyTier(tier) {
