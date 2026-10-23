@@ -8,6 +8,8 @@ import { groundY, biomeAt, WATER_LEVEL } from './world.js';
 import { plantMaterial } from './flowers.js';
 
 export const TREE_GROW_MS = 2 * 24 * 60 * 60 * 1000;
+// distance d'affichage du nom au-dessus des arbres, selon le réglage « Messages des fleurs »
+const TREE_LABEL_RANGE = { petit: 30, grand: 90, infini: Infinity };
 
 function withAttrs(geo, colorFn, glow = 0, keepNormals = false) {
   if (geo.index) { geo.computeVertexNormals(); geo = geo.toNonIndexed(); keepNormals = true; }
@@ -177,7 +179,7 @@ export class Trees {
     this.pending = new Map();
     this.group = new THREE.Group(); this.group.name = 'Trees';
     scene.add(this.group);
-    this.label = null; this.labelOn = null;
+
   }
 
   add(key, d, { now = false } = {}) {
@@ -215,7 +217,7 @@ export class Trees {
   remove(key) {
     this.pending.delete(key);
     const g = this.nodes.get(key); if (!g) return;
-    if (this.labelOn === g) this.hideLabel();
+    if (g.userData.label) disposeLabel(g.userData.label);
     g.userData.tree.geometry.dispose(); g.userData.sprout.geometry.dispose();
     this.group.remove(g); this.nodes.delete(key);
   }
@@ -236,30 +238,34 @@ export class Trees {
     return t;
   }
 
-  showLabel(g) {
-    const pct = Math.round(g.userData.t * 100);
-    if (this.labelOn === g && g.userData.pct === pct) return;
-    this.hideLabel();
-    const d = g.userData.data;
+  // Étiquette « Arbre de … » (avec % tant qu'il pousse), gardée en cache et refaite si le % change
+  labelFor(g) {
+    const u = g.userData, pct = Math.round(u.t * 100);
+    if (u.label && u.pct === pct) return u.label;
+    if (u.label) disposeLabel(u.label);
+    const d = u.data;
     const txt = pct >= 100 ? `Arbre de ${d.name || 'Fée'}` : `Arbre de ${d.name || 'Fée'} — ${pct}%`;
-    this.label = makeLabel(txt, d.color || '#88e5ff', { fontSize: 26, worldHeight: 0.32 });
-    this.label.position.set(g.position.x, g.position.y + g.userData.grownH + 0.4, g.position.z);
-    this.scene.add(this.label);
-    this.labelOn = g; g.userData.pct = pct;
+    u.label = makeLabel(txt, d.color || '#88e5ff', { fontSize: 26, worldHeight: 0.32 });
+    u.label.userData.base = u.label.scale.clone();
+    this.scene.add(u.label); u.pct = pct;
+    return u.label;
   }
-  hideLabel() { if (this.label) disposeLabel(this.label); this.label = null; this.labelOn = null; }
 
-  tick(player, now) {
-    let best = null, bestD = 7;
+  // Le nom du propriétaire flotte au-dessus de chaque arbre dans la portée choisie
+  tick(player, now, range = 'grand', fontScale = 1) {
+    const maxD = TREE_LABEL_RANGE[range] ?? TREE_LABEL_RANGE.grand;
     for (const g of this.nodes.values()) {
+      const u = g.userData;
       const dx = g.position.x - player.x, dz = g.position.z - player.z, d = Math.hypot(dx, dz);
-      g.visible = d < 170;
-      if (g.userData.t < 1 || g.userData._lastGrow === undefined || now - g.userData._lastGrow > 5000) {
-        if (now - (g.userData._lastGrow || 0) > 1000) { this.grow(g, now); g.userData._lastGrow = now; }
-      }
-      if (d < bestD) { bestD = d; best = g; }
+      g.visible = d < Math.max(170, maxD);
+      if (now - (u._lastGrow || 0) > (u.t < 1 ? 1000 : 5000)) { this.grow(g, now); u._lastGrow = now; }
+      if (d < maxD) {
+        const lbl = this.labelFor(g);
+        lbl.scale.copy(lbl.userData.base).multiplyScalar(Math.min(8, Math.max(1, d / 6)) * fontScale);
+        lbl.position.set(g.position.x, g.position.y + u.grownH + 0.4, g.position.z);
+        lbl.visible = true;
+      } else if (u.label) u.label.visible = false;
     }
-    if (best) this.showLabel(best); else this.hideLabel();
   }
 
   positions() { return [...this.nodes.values()].map(g => [g.position.x, g.position.z]); }

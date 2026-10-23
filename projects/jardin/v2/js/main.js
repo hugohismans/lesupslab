@@ -548,7 +548,7 @@ function frame() {
   water.material.uniforms.uSky.value.copy(sky.uniforms.uHor.value);
   flowers.process(player, 5); trees.process(player, 5);
   flowers.tick(player, now);
-  trees.tick(player, Date.now());
+  trees.tick(player, Date.now(), flowers.range, flowers.fontScale);
   decor.tick(dt);
   creatures.update(dt);
   fx.update(dt, innerHeight, renderer.getPixelRatio());
