@@ -173,6 +173,12 @@ flowers.range = ['petit', 'grand', 'infini'].includes(LS.get('jf2_range')) ? LS.
 function refreshRangeButtons() { document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.toggle('sel', b.dataset.r === flowers.range)); }
 document.querySelectorAll('#rangeSeg button').forEach(b => b.onclick = () => { flowers.range = b.dataset.r; LS.set('jf2_range', b.dataset.r); refreshRangeButtons(); });
 refreshRangeButtons();
+// taille du texte des étiquettes de fleurs (réglage mémorisé)
+const FONT_SCALES = { petite: 0.7, moyenne: 1, grande: 1.5 };
+let fontPref = FONT_SCALES[LS.get('jf2_font')] ? LS.get('jf2_font') : 'moyenne';
+function applyFont() { flowers.fontScale = FONT_SCALES[fontPref]; document.querySelectorAll('#fontSeg button').forEach(b => b.classList.toggle('sel', b.dataset.f === fontPref)); }
+document.querySelectorAll('#fontSeg button').forEach(b => b.onclick = () => { fontPref = b.dataset.f; LS.set('jf2_font', fontPref); applyFont(); });
+applyFont();
 const chatEl = $('chat');
 if (IS_MOBILE) chatEl.classList.add('collapsed');
 $('chatToggle').onclick = () => { chatEl.classList.remove('collapsed'); };

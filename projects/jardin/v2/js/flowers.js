@@ -226,6 +226,7 @@ export class Flowers {
     this.pending = new Map();    // en attente de construction (on étale le travail)
     this.labels = new Map();     // étiquettes en cache : clé → sprite
     this.range = 'grand';        // portée d'affichage des messages
+    this.fontScale = 1;          // taille du texte des étiquettes
     this.group = new THREE.Group(); this.group.name = 'Flowers';
     scene.add(this.group);
     this._islet = null;
@@ -335,7 +336,7 @@ export class Flowers {
     for (const [m, d] of shown) {
       const lbl = this.labelFor(m);
       const k = Math.min(8, Math.max(1, d / 5));          // taille quasi constante à l’écran : lisible de loin
-      lbl.scale.copy(lbl.userData.base).multiplyScalar(k);
+      lbl.scale.copy(lbl.userData.base).multiplyScalar(k * this.fontScale);
       lbl.position.set(m.position.x, m.position.y + m.userData.height + 0.25, m.position.z);
       lbl.visible = true; keep.add(m.userData.key);
     }
