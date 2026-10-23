@@ -137,3 +137,23 @@ button { font: inherit; cursor: pointer; }
 }
 #menu .netstatus { font-weight: 700; font-size: 13px; color: var(--ink-soft); text-align: right; }
 #menu .netstatus.bad { color: #c0392b; }
+
+/* Mini-jeux */
+#gamesBtn { top: 12px; right: 66px; }
+#gamePill { position: fixed; top: 50px; left: 50%; transform: translateX(-50%); z-index: 10; border: 0; padding: 4px 12px; border-radius: 999px; background: rgba(255, 248, 236, .82); box-shadow: var(--shadow); font: 800 13px "Nunito", sans-serif; color: var(--ink); }
+#games { position: fixed; top: 66px; right: 12px; z-index: 13; width: 340px; padding: 12px 16px; max-height: calc(100vh - 90px); overflow: auto; }
+#games section { padding: 8px 0; border-bottom: 1px dashed rgba(61, 50, 71, .15); }
+#games section:last-child { border-bottom: 0; }
+#games h4 { margin: 0 0 6px; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+#games p { margin: 0 0 8px; font-size: 14px; }
+#games small { color: var(--ink-soft); }
+#games .bar { height: 10px; border-radius: 999px; background: #f1e3c9; overflow: hidden; margin-bottom: 4px; }
+#games .bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .4s; }
+#games .hints { list-style: none; margin: 0; padding: 0; font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+#games .hints li { padding: 3px 8px; border-radius: 8px; background: #fff; }
+#games .hints li.ok { color: #4f8a3a; background: #eef8e6; text-decoration: line-through; }
+#blind { position: fixed; inset: 0; z-index: 25; display: grid; place-content: center; justify-items: center; gap: 6px; background: rgba(30, 24, 44, .92); color: #fff; font-weight: 800; pointer-events: none; }
+#blind p { margin: 0; font-size: 20px; }
+#blind b { font-size: 84px; font-family: "Caveat", cursive; color: #ffd98a; }
+@media (max-width: 640px) { #gamePill { top: 108px; } #games { width: calc(100vw - 24px); } }
+#games summary { cursor: pointer; font-weight: 700; font-size: 13px; color: #b0607e; margin-bottom: 6px; }

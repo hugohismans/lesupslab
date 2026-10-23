@@ -35,6 +35,8 @@ export class Net {
     this.onStatus = null;
     onTokenChanged(this.appCheck, () => this.setStatus({ appCheck: 'ok' }), (e) => this.setStatus({ appCheck: e?.code || 'erreur' }));
     onValue(ref(this.db, '.info/connected'), (s) => this.setStatus({ connected: !!s.val() }));
+    this.serverOffset = 0;   // décalage d'horloge avec le serveur (pour synchroniser le cache-cache)
+    onValue(ref(this.db, '.info/serverTimeOffset'), (s) => { this.serverOffset = s.val() || 0; });
   }
   setStatus(p) { Object.assign(this.status, p); this.onStatus?.(this.status); }
 
@@ -92,6 +94,12 @@ export class Net {
       });
     };
     go(0);
+  }
+
+  // état de partie de cache-cache, rangé dans sa propre présence (null = aucune partie)
+  setGame(hs) {
+    if (!this.meRef || !this.extraOk) return;
+    update(this.meRef, { hs: hs || null }).catch((e) => console.warn('[cache-cache]', e?.code));
   }
 
   onPresence(cb) { this.listen((fail) => onValue(ref(this.db, '/presence'), (s) => cb(s.val() || {}), fail)); }

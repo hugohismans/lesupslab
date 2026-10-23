@@ -8,13 +8,25 @@ export class Net {
   async enter({ name, color, avatar }) { this._p[this.uid] = { name, color, avatar, x: 0, z: 0, ry: 0, last: Date.now() }; this._emit(); }
   pose(x, z, ry) { Object.assign(this._p[this.uid] || {}, { x, z, ry, last: Date.now() }); }
   profile(f) { Object.assign(this._p[this.uid] || {}, f); this._emit(); }
+  // cache-cache en démo : les personnages de démo rejoignent la partie et se cachent
+  setGame(hs) {
+    const me = this._p[this.uid]; if (me) { if (hs) me.hs = hs; else delete me.hs; }
+    for (let i = 0; i < 4; i++) {
+      const b = this._p['bot' + i]; if (!b) continue;
+      if (hs && hs.role === 'seek' && !b.hs) {
+        const a = i * 1.7 + 0.5, r = 12 + i * 6;
+        setTimeout(() => { b.hs = { role: 'hide', host: this.uid, t0: hs.t0 }; b.hideAt = [hs.zx + Math.cos(a) * r, hs.zz + Math.sin(a) * r]; this._emit(); }, 800 + i * 400);
+      } else if (!hs) { delete b.hs; delete b.hideAt; }
+    }
+    this._emit();
+  }
   onPresence(cb) {
     this._pcb = cb;
     const bots = [['Hormun', '#ffb347', 'renard'], ['Alexis', '#7ad7ff', 'esprit'], ['Alain', '#c38bff', 'champi'], ['Maria', '#ff7eb6', 'fee']];
     bots.forEach(([n, c, a], i) => { this._p['bot' + i] = { name: n, color: c, avatar: a, x: 6 + i * 3, z: 8 - i * 4, ry: 0, last: Date.now() }; });
     setInterval(() => {
       const t = Date.now() / 1000;
-      bots.forEach((_, i) => { const b = this._p['bot' + i]; b.x = Math.cos(t * 0.15 + i * 1.6) * (8 + i * 4); b.z = Math.sin(t * 0.15 + i * 1.6) * (8 + i * 4); b.ry = -(t * 0.15 + i * 1.6); b.last = Date.now(); });
+      bots.forEach((_, i) => { const b = this._p['bot' + i]; if (b.hideAt) { b.x += (b.hideAt[0] - b.x) * 0.3; b.z += (b.hideAt[1] - b.z) * 0.3; b.last = Date.now(); return; } b.x = Math.cos(t * 0.15 + i * 1.6) * (8 + i * 4); b.z = Math.sin(t * 0.15 + i * 1.6) * (8 + i * 4); b.ry = -(t * 0.15 + i * 1.6); b.last = Date.now(); });
       this._emit();
     }, 300);
     this._emit();

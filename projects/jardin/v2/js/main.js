@@ -19,6 +19,7 @@ import { FX } from './fx.js';
 import { Creatures } from './creatures.js';
 import { Portals, HallOfFame } from './landmarks.js';
 import { Ambience } from './audio.js';
+import { Games } from './games.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -113,6 +114,8 @@ let myBubble = null, myBubbleT = 0; // bulle de chat au-dessus de soi
 const { Net } = DEMO ? await import('./demo.js') : await import('./net.js');
 const net = new Net();
 const netReady = net.init().catch(e => { console.error('[firebase]', e); toast('Connexion au jardin impossible'); });
+const games = new Games({ scene, fx, audio, toast, net, flowers, player, self });
+games.bindUI();
 
 // ---------- Interface d'entrée ----------
 const SWATCHES = ['#ff7aa8', '#ffb36b', '#ffd35a', '#9be15d', '#5ed6c0', '#6cb8ff', '#a98bff', '#ff6b6b', '#ffffff'];
@@ -321,6 +324,7 @@ net.onGarden({
   added: (key, d) => {
     gotData();
     flowers.add(key, d, { fresh: freshTs(d.ts) });
+    games.onFlower();
     decor.clearAround(+d.x || 0, +d.z || 0, 0.9);
     if (freshTs(d.ts)) { const m = flowers.nodes.get(key); if (m) fx.plantPuff(m.position.x, m.position.y, m.position.z, d.color || '#ffffff'); }
   },
@@ -366,6 +370,7 @@ function spawnOther(uid, data) {
 }
 function despawnOther(uid) { const o = others.get(uid); if (!o) return; disposeLabel(o.label); disposeLabel(o.bubble); scene.remove(o.ch.root); o.ch.dispose(); others.delete(uid); }
 net.onPresence((all) => {
+  games.onPresence(all);
   const now = Date.now(), list = [];
   const seen = new Set();
   for (const [uid, d] of Object.entries(all)) {
@@ -420,6 +425,7 @@ function updatePlayer(dt) {
     if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
     ix += stick.mx; iz -= stick.my;
   }
+  if (games.frozen) { ix = 0; iz = 0; }   // cache-cache : le chercheur compte
   const len = Math.hypot(ix, iz); if (len > 1) { ix /= len; iz /= len; }
   const run = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 1.7 : 1;
   const inWater = groundY(player.x, player.z) < WATER_LEVEL - 0.15 && decor.bridgeY(player.x, player.z) === null && self.avatar !== 'fee';
@@ -486,7 +492,8 @@ function occluderDist(d, p) {
 
 function updateOthers(dt) {
   const t = U.uTime.value;
-  for (const o of others.values()) {
+  for (const [uid, o] of others) {
+    o.label.visible = !games.hideLabelOf(uid);   // cache-cache : pas de nom au-dessus des cachés
     const p = o.ch.root.position;
     const ox = p.x, oz = p.z, k = 1 - Math.exp(-dt * 6);
     p.x += (o.tx - p.x) * k; p.z += (o.tz - p.z) * k;
@@ -574,6 +581,7 @@ function frame() {
     }
     if (Math.random() < dt) LS.set('jf2_pos', JSON.stringify({ x: +player.x.toFixed(1), z: +player.z.toFixed(1) }));
   }
+  if (self.entered) games.update(dt);
   autoQuality(dt);
   if (composer) composer.render(dt); else renderer.render(scene, camera);
   if (firstFrame) { firstFrame = false; $('loading').classList.add('fade'); $('overlay').classList.remove('hidden'); setTimeout(() => $('loading').remove(), 700); }
@@ -586,5 +594,5 @@ function onResize() {
   composer?.setSize(innerWidth, innerHeight);
 }
 addEventListener('resize', onResize);
-window.JARDIN = { scene, camera, renderer, player, cam, flowers, trees, net, QUALITY, applyTier };
+window.JARDIN = { games, scene, camera, renderer, player, cam, flowers, trees, net, QUALITY, applyTier };
 requestAnimationFrame(frame);
