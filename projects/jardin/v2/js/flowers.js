@@ -6,6 +6,13 @@ import { U } from './shared.js';
 import { rng, hashStr, lerp, clamp01, makeLabel, disposeLabel, softRamp } from './util.js';
 import { groundY, WATER_LEVEL } from './world.js';
 
+// Portée d'affichage : distance des messages visibles, nombre max d'étiquettes, distance des fleurs
+export const RANGES = {
+  petit: { msg: 0, max: 0, cull: 95 },
+  grand: { msg: 40, max: 40, cull: 140 },
+  infini: { msg: Infinity, max: 300, cull: Infinity },
+};
+
 export const FAMILIES = ['marguerite', 'tulipe', 'clochette', 'coquelicot', 'cosmos', 'lupin', 'pompon'];
 
 // Matériau commun : ombrage doux + balancement au vent + lueur la nuit
@@ -217,7 +224,8 @@ export class Flowers {
     this.nodes = new Map();      // fleurs construites : clé → maillage
     this.data = new Map();       // toutes les fleurs connues, dans l'ordre d'arrivée
     this.pending = new Map();    // en attente de construction (on étale le travail)
-    this.labelOn = null;
+    this.labels = new Map();     // étiquettes en cache : clé → sprite
+    this.range = 'grand';        // portée d'affichage des messages
     this.group = new THREE.Group(); this.group.name = 'Flowers';
     scene.add(this.group);
     this._islet = null;
@@ -266,13 +274,13 @@ export class Flowers {
     if (this.pending.has(key)) this.pending.set(key, d);
     const m = this.nodes.get(key); if (!m) return;
     m.userData.data = d;
-    if (this.labelOn === m) { this.hideLabel(); }
+    this.dropLabel(key);
   }
 
   remove(key) {
     this.data.delete(key); this.pending.delete(key);
     const m = this.nodes.get(key); if (!m) return;
-    if (this.labelOn === m) this.hideLabel();
+    this.dropLabel(key);
     if (m.userData.islet) this.group.remove(m.userData.islet);
     m.geometry.dispose(); this.group.remove(m); this.nodes.delete(key);
   }
@@ -285,23 +293,29 @@ export class Flowers {
     if (d.msg && String(d.msg).trim()) s += ' — « ' + String(d.msg).trim().slice(0, 140) + ' »';
     return s;
   }
-  showLabel(m) {
-    if (this.labelOn === m) return;
-    this.hideLabel();
-    const lbl = makeLabel(this.labelText(m.userData.data), '#' + m.userData.petal.getHexString(), { fontSize: 26, maxWidth: 380, worldHeight: 0.36 });
-    lbl.position.set(m.position.x, m.position.y + m.userData.height + 0.25, m.position.z);
-    this.scene.add(lbl);
-    this.labelOn = m; this.label = lbl;
+  // Étiquette (nom, date, message) d'une fleur, créée une fois puis gardée en cache
+  labelFor(m) {
+    const key = m.userData.key;
+    let lbl = this.labels.get(key);
+    if (!lbl) {
+      lbl = makeLabel(this.labelText(m.userData.data), '#' + m.userData.petal.getHexString(), { fontSize: 26, maxWidth: 380, worldHeight: 0.36 });
+      lbl.userData.base = lbl.scale.clone();
+      this.scene.add(lbl);
+      this.labels.set(key, lbl);
+    }
+    return lbl;
   }
-  hideLabel() { if (this.label) disposeLabel(this.label); this.label = null; this.labelOn = null; }
+  dropLabel(key) { const l = this.labels.get(key); if (l) { disposeLabel(l); this.labels.delete(key); } }
 
-  // Visibilité par distance + éclosion des fleurs fraîches + étiquette de la plus proche
+  // Visibilité par distance, éclosion des fleurs fraîches, et étiquettes selon la portée choisie :
+  // la plus proche toujours, puis les fleurs à message dans la portée (de plus en plus grandes au loin)
   tick(player, now) {
+    const R = RANGES[this.range] || RANGES.grand;
     let best = null, bestD = 2.6;
-    const maxD2 = 95 * 95;
+    const cull2 = R.cull * R.cull, withMsg = [];
     for (const m of this.nodes.values()) {
       const dx = m.position.x - player.x, dz = m.position.z - player.z, d2 = dx * dx + dz * dz;
-      m.visible = d2 < maxD2;
+      m.visible = d2 < cull2;
       if (m.userData.islet) m.userData.islet.visible = m.visible;
       if (m.userData.born) {
         const t = clamp01((now - m.userData.born) / 1600);
@@ -311,9 +325,22 @@ export class Flowers {
       }
       const d = Math.sqrt(d2);
       if (d < bestD) { bestD = d; best = m; }
+      if (R.msg > 0 && d < R.msg && m.userData.data.msg && String(m.userData.data.msg).trim()) withMsg.push([m, d]);
     }
-    if (this.pinned && this.nodes.has(this.pinned.userData.key)) best = this.pinned;
-    if (best) this.showLabel(best); else this.hideLabel();
+    withMsg.sort((a, b) => a[1] - b[1]);
+    const shown = new Map(withMsg.slice(0, R.max));
+    if (best) shown.set(best, bestD);
+    if (this.pinned && this.nodes.has(this.pinned.userData.key)) shown.set(this.pinned, Math.hypot(this.pinned.position.x - player.x, this.pinned.position.z - player.z));
+    const keep = new Set();
+    for (const [m, d] of shown) {
+      const lbl = this.labelFor(m);
+      const k = Math.min(8, Math.max(1, d / 5));          // taille quasi constante à l’écran : lisible de loin
+      lbl.scale.copy(lbl.userData.base).multiplyScalar(k);
+      lbl.position.set(m.position.x, m.position.y + m.userData.height + 0.25, m.position.z);
+      lbl.visible = true; keep.add(m.userData.key);
+    }
+    for (const [key, l] of this.labels) if (!keep.has(key)) l.visible = false;
+    if (this.labels.size > 400) for (const key of [...this.labels.keys()]) if (!keep.has(key)) this.dropLabel(key);
   }
 
   pick(raycaster) {

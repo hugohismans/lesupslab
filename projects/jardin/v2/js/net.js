@@ -2,7 +2,7 @@
 // (/presence, /garden, /trees, /chat/global, /events/spells, /creatures, /meta/lastTree).
 // La V2 ajoute seulement deux champs facultatifs à /presence : avatar et ry (orientation).
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js';
+import { initializeAppCheck, ReCaptchaV3Provider, onTokenChanged } from 'https://www.gstatic.com/firebasejs/10.12.3/firebase-app-check.js';
 import { getAuth, onAuthStateChanged, signInAnonymously, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js';
 import {
   getDatabase, ref, set, update, onValue, onDisconnect, push, query, limitToLast,
@@ -24,18 +24,28 @@ export const TREE_COOLDOWN_MS = 172800000; // 2 jours, comme la V1
 export class Net {
   constructor() {
     this.app = initializeApp(firebaseConfig);
-    initializeAppCheck(this.app, { provider: new ReCaptchaV3Provider('6LcI9LMrAAAAAF6biBHZG20s55PAE24lsPyAwSwZ'), isTokenAutoRefreshEnabled: true });
+    this.appCheck = initializeAppCheck(this.app, { provider: new ReCaptchaV3Provider('6LcI9LMrAAAAAF6biBHZG20s55PAE24lsPyAwSwZ'), isTokenAutoRefreshEnabled: true });
     this.auth = getAuth(this.app);
     this.db = getDatabase(this.app);
     this.uid = null; this.meRef = null;
     this.extraOk = true;   // false si les règles refusent avatar/ry
     this.ready = new Promise((res) => { this._ready = res; });
+    // État de la connexion, affiché dans le menu pour diagnostiquer un souci
+    this.status = { connected: false, appCheck: null, auth: null, read: null, data: false };
+    this.onStatus = null;
+    onTokenChanged(this.appCheck, () => this.setStatus({ appCheck: 'ok' }), (e) => this.setStatus({ appCheck: e?.code || 'erreur' }));
+    onValue(ref(this.db, '.info/connected'), (s) => this.setStatus({ connected: !!s.val() }));
   }
+  setStatus(p) { Object.assign(this.status, p); this.onStatus?.(this.status); }
 
   async init() {
     try { await setPersistence(this.auth, browserLocalPersistence); } catch { await setPersistence(this.auth, browserSessionPersistence); }
-    onAuthStateChanged(this.auth, (u) => { if (u) { this.uid = u.uid; this._ready(u.uid); } });
-    if (!this.auth.currentUser) await signInAnonymously(this.auth);
+    onAuthStateChanged(this.auth, (u) => { if (u) { this.uid = u.uid; this.setStatus({ auth: 'ok' }); this._ready(u.uid); } });
+    // on attend que la session enregistrée soit relue avant d'en créer une nouvelle
+    try { await this.auth.authStateReady(); } catch { /* ignore */ }
+    if (!this.auth.currentUser) {
+      try { await signInAnonymously(this.auth); } catch (e) { this.setStatus({ auth: e?.code || 'erreur' }); throw e; }
+    }
     return this.ready;
   }
 
@@ -66,19 +76,37 @@ export class Net {
     const f = { ...fields }; if (!this.extraOk) delete f.avatar;
     update(this.meRef, f).catch(() => {});
   }
-  onPresence(cb) { onValue(ref(this.db, '/presence'), (s) => cb(s.val() || {})); }
+  // Abonnement robuste : on attend la connexion (sinon les règles refusent la lecture
+  // et Firebase coupe l'écoute sans rien dire), puis on se réabonne si la base refuse.
+  listen(attach) {
+    const go = async (attempt) => {
+      // on attend la connexion, mais pas plus de 5 s (si la lecture est publique, ça suffit)
+      await Promise.race([this.ready, new Promise(r => setTimeout(r, 5000))]);
+      let unsub = null;
+      unsub = attach((err) => {
+        console.warn('[firebase] lecture refusée', err?.code || err);
+        this.setStatus({ read: err?.code || String(err) });
+        unsub?.();
+        this.onTrouble?.(err);
+        setTimeout(() => go(attempt + 1), Math.min(30000, 2000 * (attempt + 1)));
+      });
+    };
+    go(0);
+  }
+
+  onPresence(cb) { this.listen((fail) => onValue(ref(this.db, '/presence'), (s) => cb(s.val() || {}), fail)); }
 
   // --- Jardin ---
   onGarden({ added, changed, removed }) {
     const r = ref(this.db, '/garden');
-    onChildAdded(query(r, limitToLast(2000)), (s) => s.val() && added(s.key, s.val()));
-    onChildChanged(r, (s) => s.val() && changed(s.key, s.val()));
-    onChildRemoved(r, (s) => removed(s.key));
+    this.listen((fail) => onChildAdded(query(r, limitToLast(2000)), (s) => s.val() && added(s.key, s.val()), fail));
+    this.listen((fail) => onChildChanged(r, (s) => s.val() && changed(s.key, s.val()), fail));
+    this.listen((fail) => onChildRemoved(r, (s) => removed(s.key), fail));
   }
   onTrees({ added, removed }) {
     const r = ref(this.db, '/trees');
-    onChildAdded(query(r, limitToLast(1000)), (s) => s.val() && added(s.key, s.val()));
-    onChildRemoved(r, (s) => removed(s.key));
+    this.listen((fail) => onChildAdded(query(r, limitToLast(1000)), (s) => s.val() && added(s.key, s.val()), fail));
+    this.listen((fail) => onChildRemoved(r, (s) => removed(s.key), fail));
   }
   async plantFlower({ name, color, x, z, biome, msg }) {
     const payload = { uid: this.uid, name, x: +x.toFixed(2), z: +z.toFixed(2), color, ts: serverTimestamp(), seed: Math.floor(Math.random() * 1e9), biome };
@@ -100,9 +128,9 @@ export class Net {
   }
 
   // --- Chat / sorts / créatures ---
-  onChat(cb) { onChildAdded(query(ref(this.db, '/chat/global'), limitToLast(50)), (s) => s.val() && cb(s.val())); }
+  onChat(cb) { this.listen((fail) => onChildAdded(query(ref(this.db, '/chat/global'), limitToLast(50)), (s) => s.val() && cb(s.val(), s.key), fail)); }
   sendChat(name, text) { return push(ref(this.db, '/chat/global'), { name, text, ts: Date.now() }); }
-  onSpells(cb) { onChildAdded(query(ref(this.db, '/events/spells'), limitToLast(40)), (s) => s.val() && cb(s.val())); }
+  onSpells(cb) { this.listen((fail) => onChildAdded(query(ref(this.db, '/events/spells'), limitToLast(40)), (s) => s.val() && cb(s.val(), s.key), fail)); }
   castSpell(x, z, color) { return push(ref(this.db, '/events/spells'), { uid: this.uid, x: +x.toFixed(2), z: +z.toFixed(2), color, ts: Date.now() }); }
-  onCreatures(cb) { onChildAdded(query(ref(this.db, '/creatures'), limitToLast(200)), (s) => s.val() && cb(s.key, s.val())); }
+  onCreatures(cb) { this.listen((fail) => onChildAdded(query(ref(this.db, '/creatures'), limitToLast(200)), (s) => s.val() && cb(s.key, s.val()), fail)); }
 }

@@ -49,12 +49,18 @@
     <div id="menu" class="card panel hidden">
       <div class="row"><strong>Connectés</strong><span id="onlineCount" class="badge">1</span></div>
       <ul id="who"></ul>
+      <div class="row"><span>Connexion</span><span id="netStatus" class="netstatus">⏳ Connexion…</span></div>
       <div class="row"><span>Son</span>
         <div class="inline"><button id="audioToggle" class="pill">Coupé</button><input id="audioVol" type="range" min="0" max="1" step="0.01" value="0.25" /></div>
       </div>
       <div class="row"><span>Qualité</span>
         <div class="seg" id="qualitySeg">
           <button data-q="auto">Auto</button><button data-q="high">Haute</button><button data-q="low">Basse</button>
+        </div>
+      </div>
+      <div class="row"><span>Messages des fleurs</span>
+        <div class="seg" id="rangeSeg">
+          <button data-r="petit">Petit</button><button data-r="grand">Grand</button><button data-r="infini">Infini</button>
         </div>
       </div>
       <div class="row"><span>Personnage</span><button id="changeChar" class="pill">Changer</button></div>

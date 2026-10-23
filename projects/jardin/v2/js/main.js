@@ -168,6 +168,11 @@ document.querySelectorAll('#qualitySeg button').forEach(b => b.onclick = () => {
   applyTier(b.dataset.q === 'auto' ? (IS_MOBILE ? 'low' : 'high') : b.dataset.q);
 });
 refreshQualityButtons();
+// portée d'affichage des messages des fleurs (réglage mémorisé)
+flowers.range = ['petit', 'grand', 'infini'].includes(LS.get('jf2_range')) ? LS.get('jf2_range') : 'grand';
+function refreshRangeButtons() { document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.toggle('sel', b.dataset.r === flowers.range)); }
+document.querySelectorAll('#rangeSeg button').forEach(b => b.onclick = () => { flowers.range = b.dataset.r; LS.set('jf2_range', b.dataset.r); refreshRangeButtons(); });
+refreshRangeButtons();
 const chatEl = $('chat');
 if (IS_MOBILE) chatEl.classList.add('collapsed');
 $('chatToggle').onclick = () => { chatEl.classList.remove('collapsed'); };
@@ -287,8 +292,28 @@ function askFlowerMessage() {
 
 // ---------- Données partagées ----------
 const freshTs = (ts) => typeof ts === 'number' && Math.abs(Date.now() - ts) < 15000;
+// État de la connexion dans le menu (pour comprendre un éventuel souci)
+let troubleShown = false;
+function renderNetStatus() {
+  const el = $('netStatus'), st = net.status;
+  if (!st) { el.textContent = '🧪 Mode démo'; return; }
+  let t, bad = true;
+  if (st.appCheck && st.appCheck !== 'ok') t = `⚠️ Vérification anti-robot refusée (${st.appCheck})`;
+  else if (st.auth && st.auth !== 'ok') t = `⚠️ Connexion refusée (${st.auth})`;
+  else if (st.read && !st.data) t = `⚠️ Lecture refusée (${st.read})`;
+  else if (st.data) { t = '✅ Connecté'; bad = false; }
+  else if (st.connected) { t = '⏳ Connecté, chargement…'; bad = false; }
+  else { t = '⏳ Connexion…'; bad = false; }
+  el.textContent = t; el.classList.toggle('bad', bad);
+  if (bad && !troubleShown) { troubleShown = true; toast('Souci de connexion au jardin : détails dans le menu ☰'); }
+}
+net.onStatus = renderNetStatus;
+net.onTrouble = () => renderNetStatus();
+const gotData = () => { if (net.status && !net.status.data) net.setStatus({ data: true }); };
+renderNetStatus();
 net.onGarden({
   added: (key, d) => {
+    gotData();
     flowers.add(key, d, { fresh: freshTs(d.ts) });
     decor.clearAround(+d.x || 0, +d.z || 0, 0.9);
     if (freshTs(d.ts)) { const m = flowers.nodes.get(key); if (m) fx.plantPuff(m.position.x, m.position.y, m.position.z, d.color || '#ffffff'); }
@@ -300,9 +325,14 @@ net.onTrees({
   added: (key, d) => { trees.add(key, d, { now: freshTs(d.ts) }); decor.clearAround(+d.x || 0, +d.z || 0, 2.2); if (freshTs(d.ts)) fx.plantPuff(+d.x, groundY(+d.x, +d.z), +d.z, d.color || '#9be15d'); },
   removed: (key) => trees.remove(key),
 });
-net.onSpells((ev) => { if (Date.now() - (ev.ts || 0) > 15000) return; fx.aurora(+ev.x || 0, +ev.z || 0, ev.color || '#88e5ff'); });
+// (après une reconnexion, Firebase renvoie les éléments déjà reçus : on les ignore)
+const seenKeys = new Set();
+const once = (key) => { if (key && seenKeys.has(key)) return false; if (key) seenKeys.add(key); return true; };
+net.onSpells((ev, key) => { if (!once(key) || Date.now() - (ev.ts || 0) > 15000) return; fx.aurora(+ev.x || 0, +ev.z || 0, ev.color || '#88e5ff'); });
 net.onCreatures((id, d) => creatures.add(id, d));
-net.onChat((m) => {
+net.onChat((m, key) => {
+  gotData();
+  if (!once(key)) return;
   const li = document.createElement('li'); const b = document.createElement('b'); b.textContent = m.name || 'Fée';
   li.append(b, ' ' + (m.text || '')); $('messages').appendChild(li); $('messages').scrollTop = 1e9;
   if (Date.now() - (m.ts || 0) < 20000) bubbleFor(m.name, m.text);
