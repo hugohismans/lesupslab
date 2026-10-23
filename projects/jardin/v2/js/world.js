@@ -30,7 +30,8 @@ export const POND = { x: 60, z: 26, r: 11 };
 const RIVER_HALF = 3.6;
 
 export const PATHS = [
-  [[0, 0], [5, -6], [7, -14], [7, -4], [7, 8], [7, 19]],                  // allée des portails
+  [[0, 0], [4, -1], [7, 2], [7.5, 14], [7.5, 34]],                       // allée des portails (nord)
+  [[4, -1], [7, -5], [7.5, -16], [7.5, -29]],                            // allée des portails (sud)
   [[0, 0], [-8, -7], [-15, -13], [-19, -16]],                              // vers le Hall of Fame
   [[0, 0], [18, -5], [36, -9], [52, -8], [72, -12], [100, -18], [130, -12]], // vers l'est (pont)
   [[0, 0], [-4, 22], [-14, 48], [-30, 78], [-40, 110]],                    // vers le sud
@@ -40,7 +41,7 @@ export const PATHS = [
 export const BRIDGE = { x: 51, z: -8 }; // là où l'allée de l'est traverse la rivière
 
 const HOF = { x: -20, z: -20, r: 9 };
-const PORTALS_PAD = { x0: 4, x1: 15, z0: -15, z1: 20 };
+const PORTALS_PAD = { x0: 4, x1: 17, z0: -29, z1: 34 };
 export const WINDMILL = { x: -52, z: 42 };
 
 // Poids de chaque biome (transitions douces pour le rendu)

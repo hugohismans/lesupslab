@@ -124,7 +124,7 @@ export class Decor {
       const pd = pathDist(x, z), wd = waterDist(x, z);
       if (wd < -0.5) continue;
       if (rr < 10) continue;                                        // clairière centrale libre
-      if (x > 0 && x < 19 && z > -19 && z < 24) continue;            // allée des portails
+      if (x > 0 && x < 21 && z > -33 && z < 38) continue;            // allée des portails
       if (Math.hypot(x + 20, z + 20) < 13) continue;                // Hall of Fame
       if (Math.hypot(x - WINDMILL.x, z - WINDMILL.z) < 7) continue; // moulin
       if (Math.hypot(x - BRIDGE.x, z - BRIDGE.z) < 9) continue;

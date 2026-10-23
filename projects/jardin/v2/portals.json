@@ -1,0 +1,147 @@
+[
+  {
+    "id": "portfolio",
+    "big": true,
+    "scale": 2.2,
+    "title": "Le portfolio de Hugo Hismans",
+    "description": "Tous les projets, sur une carte du ciel",
+    "image": "assets/portails/portfolio.webp",
+    "url": "https://hugohismans.github.io/",
+    "position": [
+      12.5,
+      0,
+      2.5
+    ],
+    "particleColor": "#ffd59a"
+  },
+  {
+    "id": "dieandrelight",
+    "title": "Die and Relight",
+    "description": "Guide l'étincelle dans le circuit : meurs, rallume, recommence",
+    "image": "assets/portails/dieandrelight.webp",
+    "url": "https://dieandrelight.be/",
+    "position": [
+      11,
+      0,
+      -4.5
+    ],
+    "particleColor": "#ffb36b"
+  },
+  {
+    "id": "ailleurs",
+    "title": "Ailleurs",
+    "description": "Marche dans un musée sans fin, accroché de vraies œuvres, qui s'efface derrière toi. Son conservateur, lui, se souvient de toi",
+    "image": "assets/portails/ailleurs.webp",
+    "url": "https://hugohismans.github.io/infArt/",
+    "position": [
+      11,
+      0,
+      9.5
+    ],
+    "particleColor": "#c9a7ff"
+  },
+  {
+    "id": "addGame",
+    "title": "Operand",
+    "description": "Fais rebondir les bulles et fabrique le nombre cible",
+    "image": "assets/portails/addGame.webp",
+    "url": "https://hugohismans.github.io/addGame/?lang=fr",
+    "position": [
+      11,
+      0,
+      -9.5
+    ],
+    "particleColor": "#ffb36b"
+  },
+  {
+    "id": "lesupslab__lesupsflair",
+    "title": "LeSuperFlair",
+    "description": "Fais deviner un mot à tes amis, un indice d'un seul mot à la fois",
+    "image": "assets/portails/lesupslab__lesupsflair.webp",
+    "url": "https://hugohismans.github.io/lesupslab/projects/lesupsflair/",
+    "position": [
+      11,
+      0,
+      14.5
+    ],
+    "particleColor": "#ff7aa8"
+  },
+  {
+    "id": "Worldgame",
+    "title": "Worldgame",
+    "description": "Tourne le globe et trouve le pays : drapeau, capitale, monnaie, devise…",
+    "image": "assets/portails/Worldgame.webp",
+    "url": "https://hugohismans.github.io/Worldgame/",
+    "position": [
+      11,
+      0,
+      -14.5
+    ],
+    "particleColor": "#ffb36b"
+  },
+  {
+    "id": "RubiksSolver",
+    "title": "Rubik's Solver",
+    "description": "Montre ton cube à la caméra, il te dit comment le résoudre",
+    "image": "assets/portails/RubiksSolver.webp",
+    "url": "https://hugohismans.github.io/RubiksSolver/",
+    "position": [
+      11,
+      0,
+      19.5
+    ],
+    "particleColor": "#5ed6c0"
+  },
+  {
+    "id": "periastre",
+    "title": "Périastre",
+    "description": "Sagittarius A* calculé pixel par pixel, soixante fois par seconde",
+    "image": "assets/portails/periastre.webp",
+    "url": "https://hugohismans.github.io/periastre/",
+    "position": [
+      11,
+      0,
+      -19.5
+    ],
+    "particleColor": "#6cb8ff"
+  },
+  {
+    "id": "sumi-portals",
+    "title": "Lavis",
+    "description": "Un monde à l'encre, des portails qui changent ta taille",
+    "image": "assets/portails/sumi-portals.webp",
+    "url": "https://hugohismans.github.io/sumi-portals/",
+    "position": [
+      11,
+      0,
+      24.5
+    ],
+    "particleColor": "#ffb36b"
+  },
+  {
+    "id": "PokerMenteur",
+    "title": "Poker Menteur",
+    "description": "Bluffe aux dés sous le chapeau, autour de la table ou en ligne",
+    "image": "assets/portails/PokerMenteur.webp",
+    "url": "https://hugohismans.github.io/PokerMenteur/",
+    "position": [
+      11,
+      0,
+      -24.5
+    ],
+    "particleColor": "#ff7aa8"
+  },
+  {
+    "id": "coursier-relativiste",
+    "title": "Le Coursier relativiste",
+    "description": "Livre des colis dans une ville où la lumière ne va qu'à 30 m/s",
+    "image": "assets/portails/coursier-relativiste.webp",
+    "url": "https://hugohismans.github.io/aSlower/",
+    "position": [
+      11,
+      0,
+      29.5
+    ],
+    "particleColor": "#ffb36b"
+  }
+]

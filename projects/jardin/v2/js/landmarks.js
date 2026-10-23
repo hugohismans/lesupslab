@@ -1,4 +1,4 @@
-// Portails vers les autres projets et Hall of Fame : mêmes fichiers JSON que la V1, nouveau style.
+// Portails (projets phares du portfolio, voir ../portals.json) et Hall of Fame (hof.json de la V1), nouveau style.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { U } from './shared.js';
@@ -46,23 +46,26 @@ export class Portals {
 
   async load() {
     let list = [];
-    try { list = await (await fetch(V1 + 'portals.json', { cache: 'no-cache' })).json(); } catch (e) { console.warn('[portails] JSON introuvable', e); }
+    // portails propres à la V2 (projets phares du portfolio) ; la V1 garde les siens
+    try { list = await (await fetch('portals.json', { cache: 'no-cache' })).json(); } catch (e) { console.warn('[portails] JSON introuvable', e); }
     const stoneGeo = this.archGeo();
     for (const p of list) {
       const [x, , z] = p.position || [0, 0, 0];
       const y = groundY(x, z);
       const g = new THREE.Group(); g.position.set(x, y, z);
       g.rotation.y = -Math.PI / 2; // face à l'allée
+      const scale = p.scale || 1;
+      g.scale.setScalar(scale);
       const arch = new THREE.Mesh(stoneGeo, toon(0xffffff, { vertexColors: true })); arch.castShadow = arch.receiveShadow = true;
       const tint = new THREE.Color(p.particleColor || '#66ccff');
       const disc = new THREE.Mesh(new THREE.CircleGeometry(1.15, 48), new THREE.ShaderMaterial({
-        uniforms: { uMap: { value: tex(V1 + p.image) }, uTime: U.uTime, uHover: { value: 0 }, uTint: { value: tint } },
+        uniforms: { uMap: { value: tex(p.image) }, uTime: U.uTime, uHover: { value: 0 }, uTint: { value: tint } },
         vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
         fragmentShader: PORTAL_FS, side: THREE.DoubleSide,
       }));
       disc.position.y = 1.75;
       // particules en orbite
-      const n = 90, pos = new Float32Array(n * 3), ang = new Float32Array(n);
+      const n = p.big ? 220 : 90, pos = new Float32Array(n * 3), ang = new Float32Array(n);
       for (let i = 0; i < n; i++) ang[i] = Math.random() * Math.PI * 2;
       const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       const pts = new THREE.Points(pg, new THREE.PointsMaterial({ color: tint, size: 0.09, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -70,9 +73,10 @@ export class Portals {
       const title = (p.title || p.id || '').replace(/^Clique pour acc[ée]der à\s*:\s*/i, '');
       const label = makeLabel(title, '#' + tint.getHexString(), { fontSize: 30, worldHeight: 0.5 });
       label.position.y = 3.55;
+      if (p.big) label.scale.multiplyScalar(0.7);  // le groupe est déjà agrandi
       g.add(arch, disc, pts, label);
       this.group.add(g);
-      this.items.push({ g, disc, pts, ang, n, url: p.url, title, desc: p.description || '', x, z });
+      this.items.push({ g, disc, pts, ang, n, url: p.url, title, desc: p.description || '', x, z, scale });
     }
   }
 
@@ -104,7 +108,7 @@ export class Portals {
   }
 
   update(dt, player) {
-    let near = null, nd = 3.2;
+    let near = null, nd = Infinity;
     for (const it of this.items) {
       for (let i = 0; i < it.n; i++) {
         it.ang[i] += dt * (0.4 + (i % 5) * 0.12);
@@ -112,8 +116,8 @@ export class Portals {
         it.pts.geometry.attributes.position.setXYZ(i, Math.cos(it.ang[i]) * rad, Math.sin(it.ang[i]) * rad, Math.sin(it.ang[i] * 3 + i) * 0.15);
       }
       it.pts.geometry.attributes.position.needsUpdate = true;
-      const d = Math.hypot(player.x - it.x, player.z - it.z);
-      if (d < nd) { nd = d; near = it; }
+      const d = Math.hypot(player.x - it.x, player.z - it.z) / it.scale;
+      if (d < 3.2 && d < nd) { nd = d; near = it; }
       it.disc.material.uniforms.uHover.value += ((it.hover ? 1 : 0) - it.disc.material.uniforms.uHover.value) * 0.15;
     }
     return near;

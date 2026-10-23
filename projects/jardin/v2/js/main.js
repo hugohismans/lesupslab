@@ -519,7 +519,14 @@ function frame() {
   updateOthers(dt);
   const near = portals.update(dt, player);
   const pb = $('portalBtn');
-  if (near && self.entered) { pb.textContent = `✦ Visiter : ${near.title}`; pb.onclick = () => portals.go(near); pb.classList.remove('hidden'); } else pb.classList.add('hidden');
+  if (near && self.entered) {
+    if (pb.dataset.url !== near.url) {
+      pb.dataset.url = near.url; pb.textContent = `✦ Visiter : ${near.title}`;
+      if (near.desc) { const sm = document.createElement('small'); sm.textContent = near.desc; pb.appendChild(sm); }
+      pb.onclick = () => portals.go(near);
+    }
+    pb.classList.remove('hidden');
+  } else { pb.classList.add('hidden'); pb.dataset.url = ''; }
   if (self.entered) {
     updateHUD(now, st);
     audio.tick(dt, st.night, w);
